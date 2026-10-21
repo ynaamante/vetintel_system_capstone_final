@@ -389,7 +389,7 @@ const s = {
     width: 19,
     height: 19,
     margin: 0,
-    accentColor: '#087f65',
+    accentColor: '#005447',
   },
   footer: {
     color: '#708184',
@@ -400,14 +400,14 @@ const s = {
   forgotLink: {
     fontSize: 13,
     fontWeight: 600,
-    color: '#07866a',
+    color: '#005447',
     textDecoration: 'none',
   },
   btnPrimary: {
     width: '100%',
     height: 52,
     padding: '0 14px',
-    background: '#087f65',
+    background: '#005447',
     color: '#fff',
     border: 'none',
     borderRadius: 10,

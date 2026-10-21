@@ -5,6 +5,7 @@ const path = require('path');
 const db = require('./config/db');
 const userModel = require('./models/userModel');
 const apiRoutes = require('./routes/api');
+const clinicRecords = require('./controllers/clinicRecordController');
 
 dotenv.config();
 
@@ -16,9 +17,11 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     const isOwnerRecordShare = req.originalUrl.includes('/clinic-records/shareable-records');
     const isPetPhotoUpload = /^\/api\/clinic-records\/pets\/\d+\/photo(?:\?|$)/.test(req.originalUrl);
+    const isLabReportUpload = /^\/api\/clinic-records\/lab-tests\/[^/]+\/report(?:\?|$)/.test(req.originalUrl);
+    const isClinicalConsultation = /^\/api\/clinic-records\/appointments\/\d+\/consultation(?:\?|$)/.test(req.originalUrl);
     const bodyPreview = ['POST', 'PUT', 'PATCH'].includes(req.method) && req.body && Object.keys(req.body).length
-      ? isOwnerRecordShare || isPetPhotoUpload
-        ? ` body=[${isPetPhotoUpload ? 'pet photo' : 'owner record-sharing content'} omitted]`
+      ? isOwnerRecordShare || isPetPhotoUpload || isLabReportUpload || isClinicalConsultation
+        ? ` body=[${isPetPhotoUpload ? 'pet photo' : isLabReportUpload ? 'lab report file' : isClinicalConsultation ? 'clinical consultation data' : 'owner record-sharing content'} omitted]`
         : ` body=${JSON.stringify(req.body)}`
       : '';
     console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms${bodyPreview}`);
@@ -289,6 +292,8 @@ async function ensureVaccinationSchema() {
     ALTER TABLE vaccinations ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
     ALTER TABLE vaccinations ADD COLUMN IF NOT EXISTS verification_reason TEXT;
     ALTER TABLE vaccinations ADD COLUMN IF NOT EXISTS sticker_attachment_id INTEGER;
+    ALTER TABLE vaccinations ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'administered';
+    ALTER TABLE vaccinations ADD COLUMN IF NOT EXISTS appointment_id INTEGER;
   `);
 }
 
@@ -311,6 +316,194 @@ async function ensureConsultationSchema() {
     );
     CREATE INDEX IF NOT EXISTS consultations_clinic_status_idx
       ON consultations (clinic_id, status);
+  `);
+}
+
+async function ensureBillingCatalogSchema() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS clinic_billing_catalog (
+      id SERIAL PRIMARY KEY,
+      clinic_id INTEGER NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
+      item_type TEXT NOT NULL CHECK (item_type IN ('consultation', 'treatment', 'medication', 'vaccination', 'lab_test', 'inpatient')),
+      name TEXT NOT NULL,
+      description TEXT,
+      unit TEXT NOT NULL DEFAULT 'item',
+      duration TEXT,
+      unit_price NUMERIC(12, 2) NOT NULL CHECK (unit_price >= 0),
+      active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (clinic_id, item_type, name)
+    );
+    ALTER TABLE clinic_billing_catalog ADD COLUMN IF NOT EXISTS duration TEXT;
+    ALTER TABLE clinic_billing_catalog ADD COLUMN IF NOT EXISTS category TEXT;
+    UPDATE clinic_billing_catalog
+      SET category = CASE item_type
+        WHEN 'consultation' THEN 'Consultation'
+        WHEN 'treatment' THEN 'Treatment'
+        WHEN 'medication' THEN 'Medication'
+        WHEN 'vaccination' THEN 'Vaccination'
+        WHEN 'lab_test' THEN 'Laboratory'
+        WHEN 'inpatient' THEN 'Confinement'
+        ELSE 'General'
+      END
+      WHERE category IS NULL OR category = '';
+    ALTER TABLE invoices ADD COLUMN IF NOT EXISTS consultation_id INTEGER REFERENCES consultations(id) ON DELETE SET NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS invoices_consultation_id_unique
+      ON invoices (consultation_id) WHERE consultation_id IS NOT NULL;
+    ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS catalog_item_id INTEGER REFERENCES clinic_billing_catalog(id) ON DELETE SET NULL;
+    ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS item_type TEXT;
+    CREATE TABLE IF NOT EXISTS clinic_inpatient_stays (
+      id SERIAL PRIMARY KEY,
+      clinic_id INTEGER NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
+      pet_id INTEGER NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+      appointment_id INTEGER NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
+      consultation_id INTEGER NOT NULL REFERENCES consultations(id) ON DELETE CASCADE,
+      catalog_item_id INTEGER NOT NULL REFERENCES clinic_billing_catalog(id) ON DELETE RESTRICT,
+      invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+      daily_price NUMERIC(12, 2) NOT NULL CHECK (daily_price >= 0),
+      admitted_on DATE NOT NULL DEFAULT CURRENT_DATE,
+      last_charged_on DATE NOT NULL DEFAULT CURRENT_DATE,
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'discharged')),
+      discharged_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (consultation_id, catalog_item_id)
+    );
+    ALTER TABLE clinic_inpatient_stays ALTER COLUMN appointment_id DROP NOT NULL;
+    ALTER TABLE clinic_inpatient_stays ALTER COLUMN consultation_id DROP NOT NULL;
+    ALTER TABLE clinic_inpatient_stays ALTER COLUMN catalog_item_id DROP NOT NULL;
+    ALTER TABLE clinic_inpatient_stays ALTER COLUMN daily_price SET DEFAULT 0;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS ward TEXT;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS admitted_at TIMESTAMPTZ NOT NULL DEFAULT now();
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS admission_reason TEXT;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS initial_assessment TEXT;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS attending_veterinarian_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS treatment_plan_id INTEGER REFERENCES treatment_plans(id) ON DELETE SET NULL;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS expected_discharge_at TIMESTAMPTZ;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS discharge_assessment TEXT;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS home_instructions TEXT;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS outstanding_concerns TEXT;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS follow_up_recommendations TEXT;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS consent_status TEXT NOT NULL DEFAULT 'pending';
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS consent_notes TEXT;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS estimated_cost NUMERIC(12, 2);
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS urgency_level TEXT NOT NULL DEFAULT 'Normal';
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS presenting_complaint TEXT;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS provisional_diagnosis TEXT;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS patient_weight NUMERIC(8, 2);
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS temperature NUMERIC(5, 2);
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS heart_rate INTEGER;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS respiratory_rate INTEGER;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS physical_notes TEXT;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS known_allergies TEXT;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS relevant_medical_history TEXT;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS estimated_add_ons NUMERIC(12, 2) NOT NULL DEFAULT 0;
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS authorized_limit NUMERIC(12, 2);
+    ALTER TABLE clinic_inpatient_stays ADD COLUMN IF NOT EXISTS admitted_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    CREATE TABLE IF NOT EXISTS clinic_inpatient_observations (
+      id SERIAL PRIMARY KEY,
+      stay_id INTEGER NOT NULL REFERENCES clinic_inpatient_stays(id) ON DELETE CASCADE,
+      recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      observed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      temperature NUMERIC(5,2),
+      heart_rate INTEGER,
+      respiratory_rate INTEGER,
+      hydration TEXT,
+      appetite TEXT,
+      pain_assessment TEXT,
+      clinical_progress TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS clinic_inpatient_observations_stay_idx
+      ON clinic_inpatient_observations (stay_id, observed_at DESC);
+    CREATE TABLE IF NOT EXISTS clinic_inpatient_medication_administrations (
+      id SERIAL PRIMARY KEY,
+      stay_id INTEGER NOT NULL REFERENCES clinic_inpatient_stays(id) ON DELETE CASCADE,
+      prescription_id INTEGER REFERENCES prescriptions(id) ON DELETE SET NULL,
+      medication TEXT NOT NULL,
+      dose TEXT,
+      status TEXT NOT NULL CHECK (status IN ('administered', 'missed', 'withheld', 'delayed')),
+      event_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS clinic_inpatient_medications_stay_idx
+      ON clinic_inpatient_medication_administrations (stay_id, event_at DESC);
+    CREATE INDEX IF NOT EXISTS clinic_inpatient_stays_due_idx
+      ON clinic_inpatient_stays (status, last_charged_on);
+    CREATE TABLE IF NOT EXISTS clinic_inpatient_stay_charges (
+      id SERIAL PRIMARY KEY,
+      stay_id INTEGER NOT NULL REFERENCES clinic_inpatient_stays(id) ON DELETE CASCADE,
+      invoice_item_id INTEGER NOT NULL REFERENCES invoice_items(id) ON DELETE CASCADE,
+      charge_date DATE NOT NULL,
+      UNIQUE (stay_id, charge_date)
+    );
+  `);
+}
+
+async function ensureTreatmentPlanSchema() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS treatment_plans (
+      id SERIAL PRIMARY KEY,
+      clinic_id INTEGER NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
+      pet_id INTEGER NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      diagnosis TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      archived BOOLEAN NOT NULL DEFAULT false,
+      severity TEXT,
+      follow_up DATE,
+      steps JSONB NOT NULL DEFAULT '[]'::jsonb,
+      monitoring JSONB,
+      notes JSONB NOT NULL DEFAULT '[]'::jsonb,
+      clinical_updates JSONB NOT NULL DEFAULT '[]'::jsonb,
+      issued_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      attending_veterinarian_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    ALTER TABLE treatment_plans ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE treatment_plans ADD COLUMN IF NOT EXISTS attending_veterinarian_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    ALTER TABLE treatment_plans ADD COLUMN IF NOT EXISTS monitoring JSONB;
+    ALTER TABLE treatment_plans ADD COLUMN IF NOT EXISTS notes JSONB NOT NULL DEFAULT '[]'::jsonb;
+    ALTER TABLE treatment_plans ADD COLUMN IF NOT EXISTS clinical_updates JSONB NOT NULL DEFAULT '[]'::jsonb;
+    CREATE TABLE IF NOT EXISTS treatment_records (
+      id SERIAL PRIMARY KEY,
+      clinic_id INTEGER NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
+      pet_id INTEGER NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+      treatment_plan_id INTEGER REFERENCES treatment_plans(id) ON DELETE SET NULL,
+      diagnosis TEXT NOT NULL,
+      procedure TEXT NOT NULL,
+      outcome TEXT,
+      notes TEXT,
+      status TEXT NOT NULL DEFAULT 'completed',
+      performed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      performed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      archived BOOLEAN NOT NULL DEFAULT false,
+      cost NUMERIC(10, 2),
+      follow_up_instructions TEXT
+    );
+    ALTER TABLE treatment_records ADD COLUMN IF NOT EXISTS cost NUMERIC(10, 2);
+    ALTER TABLE treatment_records ADD COLUMN IF NOT EXISTS follow_up_instructions TEXT;
+    ALTER TABLE treatment_records ADD COLUMN IF NOT EXISTS treatment_plan_id INTEGER REFERENCES treatment_plans(id) ON DELETE SET NULL;
+    CREATE TABLE IF NOT EXISTS treatment_record_prescriptions (
+      treatment_record_id INTEGER NOT NULL REFERENCES treatment_records(id) ON DELETE CASCADE,
+      prescription_id INTEGER NOT NULL REFERENCES prescriptions(id) ON DELETE CASCADE,
+      administered BOOLEAN NOT NULL DEFAULT false,
+      PRIMARY KEY (treatment_record_id, prescription_id)
+    );
+    ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS route TEXT;
+    ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS frequency TEXT;
+    ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS start_date DATE;
+    ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS end_date DATE;
+    ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS treatment_plan_id INTEGER
+      REFERENCES treatment_plans(id) ON DELETE SET NULL;
+    CREATE INDEX IF NOT EXISTS prescriptions_pet_clinic_idx ON prescriptions(clinic_id, pet_id, issued_at DESC);
+    CREATE INDEX IF NOT EXISTS treatment_plans_pet_clinic_idx ON treatment_plans(clinic_id, pet_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS treatment_records_pet_clinic_idx ON treatment_records(clinic_id, pet_id, performed_at DESC);
   `);
 }
 
@@ -499,6 +692,8 @@ const port = process.env.PORT || 3000;
     await ensureClinicRecordArchiveSchema();
     await ensureVaccinationSchema();
     await ensureConsultationSchema();
+    await ensureBillingCatalogSchema();
+    await ensureTreatmentPlanSchema();
     await ensureTransferSchema();
     await ensureAppointmentWorkflowSchema();
     await ensureAdminSurfaceSchema();
@@ -506,7 +701,13 @@ const port = process.env.PORT || 3000;
     // Optionally run a one-time normalizer to dedupe roles if explicitly requested via env var.
     await runOptionalRoleNormalizer();
     await seedSuperAdmin();
-    app.listen(port, () => console.log(`Server running on port ${port}`));
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+      const accrueInpatientCharges = () => clinicRecords.accrueInpatientCharges()
+        .catch(error => console.error('Unable to accrue inpatient charges', error));
+      accrueInpatientCharges();
+      setInterval(accrueInpatientCharges, 60 * 60 * 1000);
+    });
   } catch (e) {
     console.error('Failed to start server', e);
     process.exit(1);

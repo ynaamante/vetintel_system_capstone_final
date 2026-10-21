@@ -1,58 +1,54 @@
-import { cloneElement, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import StatusIndicator from './StatusIndicator';
 import { Icons } from '../icons';
+import { formatDateText, formatDateTimeText } from '../utils/dateFormatting';
 
 const styles = {
   backdrop: { position: 'fixed', inset: 0, zIndex: 39, background: 'rgba(15, 38, 42, .18)' },
   panel: { position: 'fixed', zIndex: 40, inset: '0 0 0 auto', display: 'flex', width: 'min(560px, 100vw)', flexDirection: 'column', borderLeft: '1px solid #dce8e5', background: '#fff', color: '#173d37', boxShadow: '-10px 0 32px rgba(20, 48, 43, .12)' },
   header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '16px 22px 14px', borderBottom: '1px solid #e1ebe8' },
   back: { display: 'inline-flex', minHeight: 32, alignItems: 'center', gap: 7, margin: '-4px 0 8px', padding: 0, border: 0, background: 'transparent', color: '#087967', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
-  backIcon: { width: 18, height: 18, flex: '0 0 18px' },
   title: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 9 },
   h2: { margin: 0, color: '#183b36', fontSize: 21, lineHeight: 1.3, letterSpacing: '-.02em' },
-  meta: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 6, color: '#647873', fontSize: 13 },
-  close: { display: 'grid', width: 38, height: 38, flex: '0 0 auto', placeItems: 'center', border: 0, borderRadius: 11, background: '#f0f6f4', color: '#385b55', cursor: 'pointer' },
+  meta: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 6, color: '#334155', fontSize: 13 },
+  close: { display: 'grid', width: 38, height: 38, flex: '0 0 auto', placeItems: 'center', border: 0, borderRadius: 11, background: '#f0f6f4', color: '#385b55', fontSize: 21, lineHeight: 1, cursor: 'pointer' },
   tabs: { display: 'flex', gap: 4, padding: '0 20px', borderBottom: '1px solid #dfe9e6' },
-  tab: { minHeight: 46, padding: '0 14px', border: 0, borderBottom: '2px solid transparent', background: 'transparent', color: '#657975', font: 'inherit', fontSize: 13, fontWeight: 550, cursor: 'pointer', whiteSpace: 'nowrap' },
+  tab: { minHeight: 46, padding: '0 14px', border: 0, borderBottom: '2px solid transparent', background: 'transparent', color: '#334155', font: 'inherit', fontSize: 13, fontWeight: 550, cursor: 'pointer', whiteSpace: 'nowrap' },
   body: { flex: 1, overflowY: 'auto', padding: '18px 22px 22px' },
   grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '17px 20px', padding: '2px 0 18px' },
   field: { display: 'grid', minWidth: 0, gap: 5 },
-  label: { color: '#71847f', fontSize: 12 },
+  label: { color: '#334155', fontSize: 12 },
   value: { overflowWrap: 'anywhere', color: '#203b37', fontSize: 14, fontWeight: 600, lineHeight: 1.4 },
   section: { padding: '16px 0', borderTop: '1px solid #e2ebe8' },
   sectionTitle: { margin: '0 0 8px', color: '#203b37', fontSize: 14, fontWeight: 700 },
-  hint: { margin: 0, color: '#647873', fontSize: 13, lineHeight: 1.5 },
+  hint: { margin: 0, color: '#334155', fontSize: 13, lineHeight: 1.5 },
   warning: { display: 'flex', gap: 9, margin: '12px 0', padding: 11, border: '1px solid #efd08c', borderRadius: 10, background: '#fffaed', color: '#98600b', fontSize: 13, lineHeight: 1.45 },
   sampleSticker: { position: 'relative', maxWidth: 470, margin: '12px auto', padding: 18, overflow: 'hidden', border: '1px solid #a9c8b2', borderRadius: 12, background: 'linear-gradient(135deg, #f7fff8 0%, #e8f5e9 100%)', color: '#173d37', boxShadow: '0 5px 16px rgba(23, 61, 55, .1)' },
   sampleStickerHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingBottom: 12, borderBottom: '1px dashed #9db9a4' },
   sampleStickerBrand: { color: '#276749', fontSize: 11, fontWeight: 800, letterSpacing: '.09em', textTransform: 'uppercase' },
   sampleStickerDemo: { padding: '4px 7px', border: '1px solid #dba33e', borderRadius: 5, background: '#fff8e6', color: '#8a5800', fontSize: 10, fontWeight: 800, letterSpacing: '.04em' },
   sampleStickerTitle: { margin: '14px 0 3px', color: '#173d37', fontSize: 19, lineHeight: 1.3 },
-  sampleStickerSubtitle: { margin: 0, color: '#58736a', fontSize: 12 },
+  sampleStickerSubtitle: { margin: 0, color: '#334155', fontSize: 12 },
   sampleStickerGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px', marginTop: 16 },
   sampleStickerField: { display: 'grid', gap: 3 },
-  sampleStickerLabel: { color: '#648078', fontSize: 10, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase' },
+  sampleStickerLabel: { color: '#334155', fontSize: 10, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase' },
   sampleStickerValue: { overflowWrap: 'anywhere', color: '#234b3e', fontSize: 13, fontWeight: 700 },
-  sampleStickerFoot: { marginTop: 15, paddingTop: 10, borderTop: '1px dashed #9db9a4', color: '#5b766d', fontSize: 11, lineHeight: 1.45 },
-  verified: { display: 'flex', gap: 10, margin: '2px 0 14px', padding: '13px 14px', border: '1px solid #c5e5dc', borderRadius: 11, background: '#f0f8f5', color: '#087260', fontSize: 13, lineHeight: 1.5 },
+  sampleStickerFoot: { marginTop: 15, paddingTop: 10, borderTop: '1px dashed #9db9a4', color: '#334155', fontSize: 11, lineHeight: 1.45 },
+  verified: { display: 'flex', gap: 10, margin: '2px 0 14px', padding: '13px 14px', border: '1px solid #c5e5dc', borderRadius: 11, background: '#f0f8f5', color: '#334155', fontSize: 13, lineHeight: 1.5 },
   proofEmpty: { display: 'grid', justifyItems: 'center', gap: 9, marginTop: 2, padding: '32px 18px', border: '1px dashed #b5cbc5', borderRadius: 12, background: '#f8fbfa', textAlign: 'center' },
-  proofCamera: { width: 28, height: 28, color: '#087967' },
   proofTitle: { margin: 0, color: '#203b37', fontSize: 14, fontWeight: 700 },
-  proofAction: { minHeight: 38, marginTop: 2, padding: '0 14px', border: '1px solid #cfe0db', borderRadius: 8, background: '#fff', color: '#28544b', font: 'inherit', fontSize: 13, fontWeight: 650, cursor: 'pointer' },
   statusBadge: { display: 'inline-flex', alignItems: 'center', gap: 5, minHeight: 24, padding: '0 9px', borderRadius: 999, background: '#dcf8e7', color: '#087b43', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' },
   dueBadge: { display: 'inline-flex', alignItems: 'center', minHeight: 21, padding: '0 8px', borderRadius: 999, background: '#e2f8e9', color: '#087b43', fontSize: 11, fontWeight: 650, whiteSpace: 'nowrap' },
-  dueText: { marginLeft: 6, color: '#73847f', fontSize: 12, fontWeight: 450 },
+  dueText: { marginLeft: 6, color: '#334155', fontSize: 12, fontWeight: 450 },
   footer: { display: 'flex', flexWrap: 'wrap', gap: 8, padding: '13px 20px', borderTop: '1px solid #e1ebe8', background: '#fff' },
   button: { minHeight: 40, padding: '0 14px', border: '1px solid #d4e2de', borderRadius: 9, background: '#fff', color: '#28544b', font: 'inherit', fontSize: 13, fontWeight: 650, cursor: 'pointer' },
   primary: { borderColor: '#087967', background: '#087967', color: '#fff' },
   disabled: { opacity: .55, cursor: 'not-allowed' },
-  timeline: { position: 'relative', display: 'grid', gap: 0, padding: '4px 0 0 8px' },
-  timelineItem: { position: 'relative', display: 'grid', gridTemplateColumns: '22px minmax(0, 1fr)', gap: 9, minHeight: 62 },
-  timelineRail: { position: 'absolute', top: 18, bottom: 0, left: 9, width: 1, background: '#d8e4e0' },
-  timelineIcon: { zIndex: 1, display: 'grid', width: 19, height: 19, placeItems: 'center', border: '1px solid #b7d8cf', borderRadius: '50%', background: '#fff', color: '#087967' },
+  timeline: { position: 'relative', display: 'grid', gap: 0, padding: '4px 0 0' },
+  timelineItem: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minHeight: 62 },
   timelineContent: { paddingBottom: 17 },
   timelineEvent: { margin: 0, color: '#203b37', fontSize: 13, fontWeight: 700, lineHeight: 1.4 },
-  timelineMeta: { display: 'block', marginTop: 3, color: '#72837f', fontSize: 12, lineHeight: 1.4 },
+  timelineMeta: { display: 'block', marginTop: 3, color: '#334155', fontSize: 12, lineHeight: 1.4 },
 };
 
 const verificationDialogStyles = {
@@ -74,7 +70,7 @@ const verificationDialogStyles = {
   uploadFileName: { minWidth: 0, color: '#526b70', fontSize: 12, overflowWrap: 'anywhere' },
   uploadInput: { position: 'absolute', width: 1, height: 1, padding: 0, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', clipPath: 'inset(50%)' },
   attestation: { display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: 12, border: '1px solid #dce9e6', borderRadius: 9, background: '#f8fbfa', color: '#38555a', fontSize: 13, lineHeight: 1.5, cursor: 'pointer' },
-  checkbox: { width: 18, height: 18, flex: '0 0 18px', margin: '1px 0 0', accentColor: '#087f70' },
+  checkbox: { width: 18, height: 18, flex: '0 0 18px', margin: '1px 0 0', accentColor: '#005447' },
   audit: { margin: '12px 0 0', color: '#61777d', fontSize: 12, lineHeight: 1.5 },
   error: { marginTop: 11, color: '#b42318', fontSize: 13 },
   footer: { display: 'flex', justifyContent: 'flex-end', gap: 9, padding: '12px 20px 16px', borderTop: '1px solid #e6eef1' },
@@ -85,16 +81,12 @@ const verificationDialogStyles = {
 
 function formatVaccinationDate(value) {
   if (!value || value === 'Not recorded') return value || 'Not recorded';
-  const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return formatDateText(String(value).slice(0, 10), 'en-GB', value);
 }
 
 function formatAuditDate(value) {
   if (!value) return 'Date not recorded';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? formatVaccinationDate(value)
-    : date.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return formatDateTimeText(value, 'en-GB', formatVaccinationDate(value));
 }
 
 function getDueStatus(value) {
@@ -115,6 +107,8 @@ export function VaccinationVerificationDialog({ record, user, onClose, onVerifie
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const stickerInputRef = useRef(null);
+  const existingStickerUrl = record.stickerUrl || record.sticker_url || '';
+  const displayedStickerUrl = stickerPreview || existingStickerUrl;
 
   const submit = async () => {
     if (!attestation) {
@@ -172,7 +166,7 @@ export function VaccinationVerificationDialog({ record, user, onClose, onVerifie
           {[
             ['Patient', record.pet || record.pet_name || '—'],
             ['Vaccine / Product', record.type || record.vaccine_name || record.title || '—'],
-            ['Date Given', record.dateGiven || record.date_given || record.date || '—'],
+            ['Date Given', formatVaccinationDate(record.dateGiven || record.date_given || record.date || '—')],
             ['Manufacturer', record.manufacturer || 'Not recorded'],
             ['Lot / Batch Number', record.batch_number || record.lotNumber || 'Not recorded'],
             ['Administered By', record.attendingDoctor || record.administered_by || record.administeredBy || 'Not recorded'],
@@ -180,11 +174,11 @@ export function VaccinationVerificationDialog({ record, user, onClose, onVerifie
         </div>
         <div style={verificationDialogStyles.meaning}><strong>What “Clinic Verified” means</strong><br />Clinic staff reviewed the record against the physical sticker and confirmed the vaccine was administered at this clinic. This is a clinic attestation, not independent proof of manufacturer authenticity.</div>
         <div style={verificationDialogStyles.upload}>
-          <strong>Attach a photo (optional)</strong>
-          <p style={{ margin: '4px 0 0', color: '#61777d', fontSize: 12, lineHeight: 1.45 }}>A clear image of the vaccine sticker or product label helps keep evidence with this record.</p>
+          <strong>Vaccination sticker photo <span style={{ color: '#61777d', fontWeight: 400 }}>(optional)</span></strong>
+          <p style={{ margin: '4px 0 0', color: '#61777d', fontSize: 12, lineHeight: 1.45 }}>Attach or review a clear photo of the physical vaccine sticker before verifying this record.</p>
           <div style={verificationDialogStyles.uploadControls}>
-            <button type="button" disabled={saving} style={{ ...verificationDialogStyles.uploadButton, ...(saving ? verificationDialogStyles.disabled : {}) }} onClick={() => stickerInputRef.current?.click()}>{stickerFile ? 'Change photo' : 'Choose photo'}</button>
-            <span style={verificationDialogStyles.uploadFileName}>{stickerFile ? stickerFile.name : 'No file selected'}</span>
+            <button type="button" disabled={saving} style={{ ...verificationDialogStyles.uploadButton, ...(saving ? verificationDialogStyles.disabled : {}) }} onClick={() => stickerInputRef.current?.click()}>{stickerFile || existingStickerUrl ? 'Replace photo' : 'Choose photo'}</button>
+            <span style={verificationDialogStyles.uploadFileName}>{stickerFile ? stickerFile.name : existingStickerUrl ? (record.stickerFilename || record.sticker_filename || 'Saved sticker photo') : 'No file selected'}</span>
           </div>
           <input ref={stickerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={saving} aria-label="Choose vaccine sticker photo" style={verificationDialogStyles.uploadInput} onChange={event => {
             const file = event.target.files?.[0] || null;
@@ -198,13 +192,13 @@ export function VaccinationVerificationDialog({ record, user, onClose, onVerifie
             }
             event.target.value = '';
           }} />
-          {stickerPreview && <img src={stickerPreview} alt="Selected vaccine sticker preview" style={{ display: 'block', maxWidth: '100%', maxHeight: 160, marginTop: 9, borderRadius: 8, objectFit: 'contain' }} />}
+          {displayedStickerUrl && <img src={displayedStickerUrl} alt="Vaccination sticker" style={{ display: 'block', width: '100%', maxHeight: 230, marginTop: 10, border: '1px solid #dce9e6', borderRadius: 8, background: '#fff', objectFit: 'contain' }} />}
         </div>
         <label style={verificationDialogStyles.attestation}>
           <input type="checkbox" checked={attestation} disabled={saving} onChange={event => { setAttestation(event.target.checked); setError(''); }} style={verificationDialogStyles.checkbox} />
           <span>I checked the physical vaccine sticker against these details and confirm this vaccine was administered at this clinic.</span>
         </label>
-        <p style={verificationDialogStyles.audit}>Verification will be recorded under <strong>{user?.name || user?.full_name || user?.email || 'Signed-in clinic staff'}</strong> at {new Date().toLocaleString()}.</p>
+        <p style={verificationDialogStyles.audit}>Verification will be recorded under <strong>{user?.name || user?.full_name || user?.email || 'Signed-in clinic staff'}</strong> at {formatDateTimeText(new Date())}.</p>
         {error && <div role="alert" style={verificationDialogStyles.error}>{error}</div>}
       </div>
       <footer style={verificationDialogStyles.footer}>
@@ -249,11 +243,10 @@ export default function VaccinationRecordDrawer({ record, sourceLabel = 'Vaccina
     <aside className="vaccine-detail-panel" role="dialog" aria-modal="false" aria-label={`${title} vaccination details`} style={styles.panel}>
       <header style={styles.header}>
         <div>
-          <button type="button" style={styles.back} onClick={onClose}>{cloneElement(Icons.arrowRight, { style: styles.backIcon })} Back to {sourceLabel}</button>
           <div style={styles.title}>
             <h2 style={styles.h2}>{title}</h2>
             {verified
-              ? <span style={styles.statusBadge}>{cloneElement(Icons.check, { style: { width: 13, height: 13 } })} Clinic verified</span>
+              ? <span style={styles.statusBadge}>Clinic verified</span>
               : <StatusIndicator status="Pending Verification" />}
           </div>
           <div style={styles.meta}>
@@ -263,10 +256,10 @@ export default function VaccinationRecordDrawer({ record, sourceLabel = 'Vaccina
             {dueStatus && <span style={{ ...styles.dueBadge, background: dueStatus.background, color: dueStatus.color }}>{dueStatus.label}</span>}
           </div>
         </div>
-        <button type="button" aria-label="Close vaccination details" onClick={onClose} style={styles.close}>{Icons.close}</button>
+        <button type="button" aria-label="Close vaccination details" onClick={onClose} style={styles.close}>×</button>
       </header>
       <nav aria-label="Vaccination detail sections" style={styles.tabs}>
-        {['Details', 'Proof / Sticker', 'History'].map(tab => <button key={tab} type="button" onClick={() => setActiveTab(tab === 'History' ? 'History' : tab)} aria-current={activeTab === (tab === 'History' ? 'History' : tab) ? 'page' : undefined} style={{ ...styles.tab, ...(activeTab === (tab === 'History' ? 'History' : tab) ? { borderBottomColor: '#087967', color: '#075e4d', fontWeight: 700 } : {}) }}>{tab}{tab === 'Proof / Sticker' ? ` (${stickerUrl ? 1 : 0})` : tab === 'History' ? ` (${audit.length})` : ''}</button>)}
+        {['Details', 'Proof / Sticker', 'History'].map(tab => <button key={tab} type="button" onClick={() => setActiveTab(tab === 'History' ? 'History' : tab)} aria-current={activeTab === (tab === 'History' ? 'History' : tab) ? 'page' : undefined} style={{ ...styles.tab, ...(activeTab === (tab === 'History' ? 'History' : tab) ? { borderBottomColor: '#087967', color: '#004f43', fontWeight: 700 } : {}) }}>{tab}{tab === 'Proof / Sticker' ? ` (${stickerUrl ? 1 : 0})` : tab === 'History' ? ` (${audit.length})` : ''}</button>)}
       </nav>
       <div style={styles.body}>
         {isMock && <div style={styles.warning}><span>i</span><span><strong>Prototype sample.</strong> This record is for demonstration only and is not saved to the clinic database.</span></div>}
@@ -285,8 +278,8 @@ export default function VaccinationRecordDrawer({ record, sourceLabel = 'Vaccina
             ].map(([label, value]) => <div key={label} style={styles.field}><span style={styles.label}>{label}</span><strong style={styles.value}>{value || 'Not recorded'}</strong></div>)}
           </div>
           {verified
-            ? <div style={styles.verified}><span>{Icons.shieldCheck}</span><div><strong>Clinic verified</strong><div>Reviewed against the physical vaccine sticker and confirmed as administered at this clinic.</div><div>Verified by {verifiedBy}{verifiedAt ? ` · ${formatAuditDate(verifiedAt)}` : ''}</div></div></div>
-            : <div style={styles.warning}><span>!</span><span><strong>Pending verification.</strong> Compare the record with the physical vaccine sticker before sharing it with the owner.</span></div>}
+            ? <div style={styles.verified}><div><strong>Clinic verified</strong><div>Reviewed against the physical vaccine sticker and confirmed as administered at this clinic.</div><div>Verified by {verifiedBy}{verifiedAt ? ` · ${formatAuditDate(verifiedAt)}` : ''}</div></div></div>
+            : <div style={styles.warning}><span><strong>Pending verification.</strong> Compare the record with the physical vaccine sticker before sharing it with the owner.</span></div>}
           {!stickerUrl && !isMock && <div style={{ ...styles.warning, alignItems: 'center', justifyContent: 'space-between' }}><span>No sticker photo is attached to this record.</span><button type="button" disabled={isMock || !onVerify} style={styles.button} onClick={onVerify}>Add proof</button></div>}
           <section style={styles.section}><h3 style={styles.sectionTitle}>Notes</h3><p style={styles.hint}>{record.notes || 'No additional notes for this vaccination.'}</p></section>
           <section style={styles.section}><h3 style={styles.sectionTitle}>Sharing with owner</h3><p style={styles.hint}>{isShared ? `Shared with ${record.owner || 'the linked owner'}${record.clinic_name ? ` in the ${record.clinic_name} app` : ' in PetWatch'}.` : verified ? 'This record is verified and ready to share with the owner.' : 'Only clinic-verified vaccinations can be shared with the owner.'}</p></section>
@@ -309,7 +302,7 @@ export default function VaccinationRecordDrawer({ record, sourceLabel = 'Vaccina
                 ['Dose / Route', dose],
                 ['Lot / Batch', lot],
                 ['Date given', dateGiven],
-                ['Expiry date', record.expiryDate || record.expiry_date || 'Not recorded'],
+                ['Expiry date', formatVaccinationDate(record.expiryDate || record.expiry_date)],
                 ['Next due', nextDue],
               ].map(([label, value]) => <div key={label} style={styles.sampleStickerField}>
                 <span style={styles.sampleStickerLabel}>{label}</span>
@@ -319,15 +312,12 @@ export default function VaccinationRecordDrawer({ record, sourceLabel = 'Vaccina
             <div style={styles.sampleStickerFoot}>Illustrative UI mockup only. This is not a photograph or proof of an actual vaccine sticker, product, or administration.</div>
           </div>
         </> : <div style={styles.proofEmpty}>
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={styles.proofCamera}><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z" /><circle cx="12" cy="13" r="3.5" /></svg>
           <h3 style={styles.proofTitle}>No sticker photo yet</h3>
           <p style={styles.hint}>Photograph the vaccine sticker to keep supporting evidence with this record.</p>
           {onVerify && <button type="button" disabled={isMock} style={{ ...styles.button, ...styles.primary, ...(isMock ? styles.disabled : {}) }} onClick={onVerify}>Add proof</button>}
         </div>)}
         {activeTab === 'History' && (audit.length
           ? <div style={styles.timeline}>{audit.map((item, index) => <div key={`${item.event}-${index}`} style={styles.timelineItem}>
-            {index < audit.length - 1 && <span aria-hidden="true" style={styles.timelineRail} />}
-            <span style={styles.timelineIcon}>{cloneElement(Icons.check, { style: { width: 11, height: 11 } })}</span>
             <div style={styles.timelineContent}><p style={styles.timelineEvent}>{item.event}</p><time style={styles.timelineMeta}>{[item.actor, item.displayDate].filter(Boolean).join(' · ')}</time></div>
           </div>)}</div>
           : <p style={styles.hint}>No audit events are available for this vaccination.</p>)}

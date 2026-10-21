@@ -91,7 +91,7 @@ export const INVENTORY_USAGE = [
 ];
 
 export const INVENTORY_PURCHASE_ORDERS = [
-  { order: 'PO-2026-018', supplier: 'VetPharm Supplies', items: 4, total: 2480, status: 'Pending', expected: 'Mar 18, 2026' },
-  { order: 'PO-2026-017', supplier: 'Guardian Animal Health', items: 2, total: 1740, status: 'In transit', expected: 'Mar 15, 2026' },
-  { order: 'PO-2026-016', supplier: 'MediPet Wholesale', items: 6, total: 3120, status: 'Received', expected: 'Mar 08, 2026' },
+  { order: 'PO-2026-018', supplier: 'VetPharm Supplies', items: 4, total: 2480, status: 'Pending', expected: 'March 18, 2026' },
+  { order: 'PO-2026-017', supplier: 'Guardian Animal Health', items: 2, total: 1740, status: 'In transit', expected: 'March 15, 2026' },
+  { order: 'PO-2026-016', supplier: 'MediPet Wholesale', items: 6, total: 3120, status: 'Received', expected: 'March 08, 2026' },
 ];

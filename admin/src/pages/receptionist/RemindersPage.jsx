@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import Topbar from '../../components/Topbar';
 import { Icons } from '../../icons';
 import { canViewFeature } from '../../utils/permissionUtils';
+import { formatDateText } from '../../utils/dateFormatting';
 
 function formatDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return formatDateText(value, undefined, '');
 }
 
 export default function RemindersPage({ user }) {
@@ -95,7 +94,7 @@ export default function RemindersPage({ user }) {
           {[
             { label: 'Overdue', value: stats.overdue, icon: Icons.shield, iconBg: '#fef2f2', iconColor: '#dc2626' },
             { label: 'Due Soon', value: stats.dueSoon, icon: Icons.calendar, iconBg: '#fffbeb', iconColor: '#d97706' },
-            { label: 'Upcoming', value: stats.upcoming, icon: Icons.file, iconBg: '#e7f5f2', iconColor: '#07866a' },
+            { label: 'Upcoming', value: stats.upcoming, icon: Icons.file, iconBg: '#e7f5f2', iconColor: '#005447' },
             { label: 'Total', value: stats.total, icon: Icons.check, iconBg: '#f0fdf4', iconColor: '#16a34a' },
           ].map((c) => (
             <div key={c.label} style={s.statCard}>

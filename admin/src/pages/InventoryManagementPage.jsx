@@ -1,15 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import jsPDF from 'jspdf';
 import {
   Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
 import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
+import LabDateTimePicker from '../components/LabDateTimePicker';
 import { Icons } from '../icons';
+import { formatDateText } from '../utils/dateFormatting';
 import {
   INVENTORY_ITEMS, INVENTORY_PURCHASE_ORDERS, INVENTORY_USAGE,
 } from '../data/mockData';
 import { canViewFeature } from '../utils/permissionUtils';
+
+function formatInventoryDate(value) {
+  if (!value || value === 'N/A' || value === '—') return value || '—';
+  const rawValue = String(value);
+  const datePrefix = /^(\d{4}-\d{2}-\d{2})(.*)$/.exec(rawValue);
+  if (datePrefix) return `${formatDateText(datePrefix[1])}${datePrefix[2]}`;
+  return formatDateText(rawValue, undefined, rawValue);
+}
 
 const CATEGORY_VALUE_DATA = [
   { name: 'Medications', value: 42580, color: '#139b76' },
@@ -65,49 +75,49 @@ const PURCHASE_ORDER_TABLE_DATA = [
   { order: 'PO-2026-003', supplier: 'VetSupply Inc.', requestedBy: 'Owner', date: '2026-09-01', expected: '2026-09-10', received: '2026-09-09', items: '1 item', total: 1700, status: 'Received', email: 'sales@vetsupply.ph', lines: [['Metronidazole 250mg', 200, 'tablets', 8.5]], actions: [] },
   { order: 'PO-2026-004', supplier: 'MedSupply Direct', requestedBy: 'Owner', date: '2026-09-05', expected: '2026-09-12', received: '—', items: '1 item', total: 2250, status: 'Cancelled', email: '', cancellationReason: 'Found better pricing from alternative supplier.', lines: [['Exam Gloves (Medium)', 300, 'pairs', 7.5]], actions: ['Duplicate'] },
   { order: 'PO-2026-005', supplier: 'Merck Animal Health', requestedBy: 'Owner', date: '2026-09-11', expected: '2026-09-20', received: '—', items: '1 item', total: 3250, status: 'Pending Approval', email: 'merck.ah@merck.com', lines: [['Feline Distemper (FVRCP)', 25, 'vials', 130]], actions: ['Approve', 'Cancel'] },
-  { order: 'PO-2026-006', supplier: 'Zoetis Philippines', requestedBy: 'Owner', date: '2026-09-07', expected: '2026-09-13', received: '2026-09-12', items: '2 items', total: 12700, status: 'Partially Received', email: '', notes: 'Blood glucose kits backordered, expected Sep 20.', lines: [['Leptospirosis 4-way', 20, 'vials', 185], ['Blood Glucose Test Kit', 5, 'kits', 1800]], actions: ['Receive Remaining'] },
+  { order: 'PO-2026-006', supplier: 'Zoetis Philippines', requestedBy: 'Owner', date: '2026-09-07', expected: '2026-09-13', received: '2026-09-12', items: '2 items', total: 12700, status: 'Partially Received', email: '', notes: 'Blood glucose kits backordered, expected September 20.', lines: [['Leptospirosis 4-way', 20, 'vials', 185], ['Blood Glucose Test Kit', 5, 'kits', 1800]], actions: ['Receive Remaining'] },
   { order: 'PO-2026-007', supplier: 'PharmVet Co.', requestedBy: 'Owner', date: '2026-09-12', expected: '—', received: '—', items: '1 item', total: 4500, status: 'Draft', email: '', notes: 'Urgent restock needed — expiring batch.', lines: [['Meloxicam Oral 1.5mg/ml', 10, 'bottles (100ml)', 450]], actions: ['Submit', 'Cancel'] },
 ];
 const PURCHASE_ORDER_ACTIONS = ['Approve', 'Receive', 'Receive Remaining', 'Submit', 'Duplicate', 'Cancel'];
 const INVENTORY_ITEM_DETAILS = {
-  'Amoxicillin 500mg': { generic: 'Amoxicillin Trihydrate', brand: 'Moxamox', dosage: '500mg capsule', storage: 'Store below 25°C, away from moisture', purchasePrice: 12.5, sellingPrice: 18, movements: [['PO Receipt — PO-2026-001', 'Sep 10, 2026 · Owner', '+100']], },
-  'Blood Glucose Test Kit': { generic: 'Portable Glucometer + Strips', brand: 'AlphaTRAK 2', dosage: 'N/A', storage: 'Store below 30°C, away from moisture', purchasePrice: 1800, sellingPrice: 2500, movements: [['Purchase', 'Jan 10, 2026 · Owner', '+10']], },
-  'DHPP (Distemper Combo)': { generic: 'Canine DHPP Combination', brand: 'Vanguard Plus 5', dosage: '1ml/dose', storage: 'Store 2–8°C refrigerated', purchasePrice: 160, sellingPrice: 230, movements: [['Purchase', 'Apr 1, 2026 · Owner', '+25']], },
-  'Exam Gloves (Medium)': { generic: 'Nitrile Examination Gloves', brand: 'Kimberly-Clark', dosage: 'N/A', storage: 'Store in dry, cool place away from sunlight', purchasePrice: 7.5, sellingPrice: 10, movements: [['Purchase', 'Jun 1, 2026 · Owner', '+200']], },
-  'Feline Distemper (FVRCP)': { generic: 'Feline Viral Rhinotracheitis', brand: 'Purevax', dosage: '1ml/dose', storage: 'Store 2–8°C refrigerated', purchasePrice: 130, sellingPrice: 195, movements: [['Purchase', 'Mar 15, 2026 · Owner', '+20']], },
-  'Metronidazole 250mg': { generic: 'Metronidazole', brand: 'Flagyl', dosage: '250mg tablet', storage: 'Store below 25°C', purchasePrice: 8.5, sellingPrice: 14, movements: [['Purchase', 'Jul 5, 2026 · Owner', '+100']], },
+  'Amoxicillin 500mg': { generic: 'Amoxicillin Trihydrate', brand: 'Moxamox', dosage: '500mg capsule', storage: 'Store below 25°C, away from moisture', purchasePrice: 12.5, sellingPrice: 18, movements: [['PO Receipt — PO-2026-001', 'September 10, 2026 · Owner', '+100']], },
+  'Blood Glucose Test Kit': { generic: 'Portable Glucometer + Strips', brand: 'AlphaTRAK 2', dosage: 'N/A', storage: 'Store below 30°C, away from moisture', purchasePrice: 1800, sellingPrice: 2500, movements: [['Purchase', 'January 10, 2026 · Owner', '+10']], },
+  'DHPP (Distemper Combo)': { generic: 'Canine DHPP Combination', brand: 'Vanguard Plus 5', dosage: '1ml/dose', storage: 'Store 2–8°C refrigerated', purchasePrice: 160, sellingPrice: 230, movements: [['Purchase', 'April 1, 2026 · Owner', '+25']], },
+  'Exam Gloves (Medium)': { generic: 'Nitrile Examination Gloves', brand: 'Kimberly-Clark', dosage: 'N/A', storage: 'Store in dry, cool place away from sunlight', purchasePrice: 7.5, sellingPrice: 10, movements: [['Purchase', 'June 1, 2026 · Owner', '+200']], },
+  'Feline Distemper (FVRCP)': { generic: 'Feline Viral Rhinotracheitis', brand: 'Purevax', dosage: '1ml/dose', storage: 'Store 2–8°C refrigerated', purchasePrice: 130, sellingPrice: 195, movements: [['Purchase', 'March 15, 2026 · Owner', '+20']], },
+  'Metronidazole 250mg': { generic: 'Metronidazole', brand: 'Flagyl', dosage: '250mg tablet', storage: 'Store below 25°C', purchasePrice: 8.5, sellingPrice: 14, movements: [['Purchase', 'July 5, 2026 · Owner', '+100']], },
 };
 const STOCK_MOVEMENT_DATA = [
-  ['Jul 15, 2026', 'Amoxicillin 500mg', 'INV-001', 'Stock Out', '−4', 'Consultation — Luna', 'Dr. Chen'],
-  ['Jul 12, 2026', 'Amoxicillin 500mg', 'INV-001', 'Stock Out', '−10', 'Consultation — Max', 'Dr. Torres'],
-  ['Jul 12, 2026', 'Doxycycline 100mg', 'INV-002', 'Stock Out', '−10', 'Vaccination', 'Dr. Torres'],
-  ['Jul 12, 2026', 'Rabies Vaccine (IMRAB)', 'INV-006', 'Stock Out', '−8', 'Vaccination clinic', 'Dr. Torres'],
-  ['Jul 12, 2026', 'Leptospirosis 4-way', 'INV-010', 'Stock Out', '−15', 'Annual lepto vaccination', 'Dr. Chen'],
-  ['Jul 12, 2026', 'Syringes 5ml', 'INV-011', 'Stock Out', '−100', 'Clinic operations', 'Dr. Torres'],
-  ['Jul 10, 2026', 'Amoxicillin 500mg', 'INV-001', 'Stock In', '+100', 'Purchase', 'Owner'],
-  ['Jul 10, 2026', 'Meloxicam Oral 1.5mg/ml', 'INV-004', 'Stock Out', '−3', 'Surgery post-op', 'Dr. Torres'],
-  ['Jul 10, 2026', 'DHPP (Distemper Combo)', 'INV-007', 'Stock Out', '−17', 'Vaccination schedule', 'Dr. Chen'],
-  ['Jul 10, 2026', 'Bordetella Intranasal', 'INV-009', 'Stock Out', '−10', 'Kennel cough prevention', 'Dr. Torres'],
-  ['Jul 10, 2026', 'Exam Gloves (Medium)', 'INV-012', 'Stock Out', '−120', 'Clinic operations', 'Dr. Smith'],
-  ['Jul 8, 2026', 'Feline Distemper (FVRCP)', 'INV-008', 'Stock Out', '−5', 'Feline vaccination', 'Dr. Smith'],
-  ['Jul 5, 2026', 'Enrofloxacin 50mg', 'INV-005', 'Stock Out', '−25', 'Multiple consultations', 'Dr. Smith'],
-  ['Jul 5, 2026', 'IV Catheter 22G', 'INV-013', 'Stock Out', '−15', 'IV therapy patients', 'Dr. Chen'],
-  ['Jul 1, 2026', 'Doxycycline 100mg', 'INV-002', 'Stock Out', '−30', 'Consultation — Charlie', 'Dr. Smith'],
-  ['Jul 1, 2026', 'Blood Glucose Test Kit', 'INV-014', 'Stock Out', '−7', 'Diabetes monitoring', 'Dr. Torres'],
-  ['Jun 30, 2026', 'Metronidazole 250mg', 'INV-003', 'Stock Out', '−100', 'Multiple consultations', 'Dr. Chen'],
-  ['Jun 20, 2026', 'Doxycycline 100mg', 'INV-002', 'Stock In', '+80', 'Purchase', 'Owner'],
-  ['Jun 15, 2026', 'Syringes 5ml', 'INV-011', 'Stock In', '+600', 'Purchase', 'Owner'],
-  ['Jun 1, 2026', 'Bordetella Intranasal', 'INV-009', 'Stock In', '+40', 'Purchase', 'Owner'],
-  ['Jun 1, 2026', 'Exam Gloves (Medium)', 'INV-012', 'Stock In', '+200', 'Purchase', 'Owner'],
+  ['July 15, 2026', 'Amoxicillin 500mg', 'INV-001', 'Stock Out', '−4', 'Consultation — Luna', 'Dr. Chen'],
+  ['July 12, 2026', 'Amoxicillin 500mg', 'INV-001', 'Stock Out', '−10', 'Consultation — Max', 'Dr. Torres'],
+  ['July 12, 2026', 'Doxycycline 100mg', 'INV-002', 'Stock Out', '−10', 'Vaccination', 'Dr. Torres'],
+  ['July 12, 2026', 'Rabies Vaccine (IMRAB)', 'INV-006', 'Stock Out', '−8', 'Vaccination clinic', 'Dr. Torres'],
+  ['July 12, 2026', 'Leptospirosis 4-way', 'INV-010', 'Stock Out', '−15', 'Annual lepto vaccination', 'Dr. Chen'],
+  ['July 12, 2026', 'Syringes 5ml', 'INV-011', 'Stock Out', '−100', 'Clinic operations', 'Dr. Torres'],
+  ['July 10, 2026', 'Amoxicillin 500mg', 'INV-001', 'Stock In', '+100', 'Purchase', 'Owner'],
+  ['July 10, 2026', 'Meloxicam Oral 1.5mg/ml', 'INV-004', 'Stock Out', '−3', 'Surgery post-op', 'Dr. Torres'],
+  ['July 10, 2026', 'DHPP (Distemper Combo)', 'INV-007', 'Stock Out', '−17', 'Vaccination schedule', 'Dr. Chen'],
+  ['July 10, 2026', 'Bordetella Intranasal', 'INV-009', 'Stock Out', '−10', 'Kennel cough prevention', 'Dr. Torres'],
+  ['July 10, 2026', 'Exam Gloves (Medium)', 'INV-012', 'Stock Out', '−120', 'Clinic operations', 'Dr. Smith'],
+  ['July 8, 2026', 'Feline Distemper (FVRCP)', 'INV-008', 'Stock Out', '−5', 'Feline vaccination', 'Dr. Smith'],
+  ['July 5, 2026', 'Enrofloxacin 50mg', 'INV-005', 'Stock Out', '−25', 'Multiple consultations', 'Dr. Smith'],
+  ['July 5, 2026', 'IV Catheter 22G', 'INV-013', 'Stock Out', '−15', 'IV therapy patients', 'Dr. Chen'],
+  ['July 1, 2026', 'Doxycycline 100mg', 'INV-002', 'Stock Out', '−30', 'Consultation — Charlie', 'Dr. Smith'],
+  ['July 1, 2026', 'Blood Glucose Test Kit', 'INV-014', 'Stock Out', '−7', 'Diabetes monitoring', 'Dr. Torres'],
+  ['June 30, 2026', 'Metronidazole 250mg', 'INV-003', 'Stock Out', '−100', 'Multiple consultations', 'Dr. Chen'],
+  ['June 20, 2026', 'Doxycycline 100mg', 'INV-002', 'Stock In', '+80', 'Purchase', 'Owner'],
+  ['June 15, 2026', 'Syringes 5ml', 'INV-011', 'Stock In', '+600', 'Purchase', 'Owner'],
+  ['June 1, 2026', 'Bordetella Intranasal', 'INV-009', 'Stock In', '+40', 'Purchase', 'Owner'],
+  ['June 1, 2026', 'Exam Gloves (Medium)', 'INV-012', 'Stock In', '+200', 'Purchase', 'Owner'],
   ['May 25, 2026', 'IV Catheter 22G', 'INV-013', 'Stock In', '+60', 'Purchase', 'Owner'],
   ['May 20, 2026', 'Leptospirosis 4-way', 'INV-010', 'Stock In', '+20', 'Purchase', 'Owner'],
   ['May 10, 2026', 'Rabies Vaccine (IMRAB)', 'INV-006', 'Stock In', '+30', 'Purchase', 'Owner'],
   ['May 5, 2026', 'Metronidazole 250mg', 'INV-003', 'Stock In', '+100', 'Purchase', 'Owner'],
-  ['Apr 15, 2026', 'Enrofloxacin 50mg', 'INV-005', 'Stock In', '+120', 'Purchase', 'Owner'],
-  ['Apr 1, 2026', 'DHPP (Distemper Combo)', 'INV-007', 'Stock In', '+25', 'Purchase', 'Owner'],
-  ['Mar 15, 2026', 'Feline Distemper (FVRCP)', 'INV-008', 'Stock In', '+20', 'Purchase', 'Owner'],
-  ['Mar 1, 2026', 'Meloxicam Oral 1.5mg/ml', 'INV-004', 'Stock In', '+15', 'Purchase', 'Owner'],
-  ['Jan 10, 2026', 'Blood Glucose Test Kit', 'INV-014', 'Stock In', '+10', 'Purchase', 'Owner'],
+  ['April 15, 2026', 'Enrofloxacin 50mg', 'INV-005', 'Stock In', '+120', 'Purchase', 'Owner'],
+  ['April 1, 2026', 'DHPP (Distemper Combo)', 'INV-007', 'Stock In', '+25', 'Purchase', 'Owner'],
+  ['March 15, 2026', 'Feline Distemper (FVRCP)', 'INV-008', 'Stock In', '+20', 'Purchase', 'Owner'],
+  ['March 1, 2026', 'Meloxicam Oral 1.5mg/ml', 'INV-004', 'Stock In', '+15', 'Purchase', 'Owner'],
+  ['January 10, 2026', 'Blood Glucose Test Kit', 'INV-014', 'Stock In', '+10', 'Purchase', 'Owner'],
 ];
 const STOCK_MOVEMENT_DISPLAY_DATA = [
   ['2026-09-10 09:15', 'Amoxicillin 500mg', 'INV-001', 'Stock In / PO Receipt', '+100', '240 tablets', 'PO-2026-001', 'Purchase Order receipt from PharmVet Co.', 'Owner'],
@@ -177,7 +187,7 @@ function downloadInventoryPdf(reportType = 'inventory') {
   pdf.setFontSize(16);
   pdf.text(`VetIntel ${getReportTitle(reportType)}`, 14, 18);
   pdf.setFontSize(9);
-  pdf.text(`Generated: ${new Date().toLocaleDateString('en-PH')}`, 14, 26);
+  pdf.text(`Generated: ${formatDateText(new Date(), 'en-PH')}`, 14, 26);
   let y = 38;
   const columnWidth = 182 / rows[0].length;
   rows.forEach((row, rowIndex) => {
@@ -265,6 +275,8 @@ export default function InventoryManagementPage({ user }) {
   const [receivedDeliveries, setReceivedDeliveries] = useState([]);
   const [expandedDeliveryId, setExpandedDeliveryId] = useState('');
   const [inventoryItems, setInventoryItems] = useState(ALL_ITEMS_TABLE_DATA);
+  const [catalogProducts, setCatalogProducts] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
   const [purchaseOrderFilter, setPurchaseOrderFilter] = useState('all');
   const [openPurchaseOrderActions, setOpenPurchaseOrderActions] = useState('');
   const [viewPurchaseOrder, setViewPurchaseOrder] = useState(null);
@@ -278,17 +290,81 @@ export default function InventoryManagementPage({ user }) {
   const canView = canViewFeature(user.permissions, user.role, 'Inventory Management')
     || String(user.role || '').trim().toLowerCase() === 'owner';
 
+  useEffect(() => {
+    if (!canView || !user?.token) return;
+    const loadCatalogProducts = async () => {
+      setCatalogLoading(true);
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const normalizedRole = String(user.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+        if (['owner', 'clinic_owner'].includes(normalizedRole)) {
+          const seedResponse = await fetch(`${apiUrl}/clinic-records/billing-catalog/seed-defaults`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${user.token}` },
+          });
+          const seedPayload = await seedResponse.json().catch(() => ({}));
+          if (!seedResponse.ok) throw new Error(seedPayload.error || 'Unable to load the owner-managed product catalog.');
+        }
+        const response = await fetch(`${apiUrl}/clinic-records/billing-catalog`, {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
+        const payload = await response.json().catch(() => []);
+        if (!response.ok || !Array.isArray(payload)) throw new Error(payload.error || 'Unable to load the clinic product catalog.');
+        const productCategories = new Set([
+          'Medical Supplies', 'Wound Care', 'Laboratory Supplies', 'Grooming & Hygiene',
+          'Surgical Equipment', 'Clinic Accessories',
+        ]);
+        const products = payload
+          .filter(item => item.active !== false && productCategories.has(item.category))
+          .map(item => ({
+            id: `CAT-${item.id}`,
+            catalogId: item.id,
+            name: item.name,
+            subtitle: item.description || 'Clinic catalog product',
+            batch: 'Not assigned',
+            lot: 'Not assigned',
+            category: item.category,
+            unit: item.unit || 'pieces',
+            quantity: 0,
+            reorderLevel: 0,
+            expiry: 'N/A',
+            supplier: 'Not assigned',
+            value: 0,
+            status: 'Catalog item',
+          }));
+        setCatalogProducts(products);
+        setInventoryItems(current => {
+          const existingNames = new Set(current.map(item => item.name.toLowerCase()));
+          return [...current, ...products.filter(item => !existingNames.has(item.name.toLowerCase()))];
+        });
+      } catch (catalogError) {
+        setNotificationError(true);
+        setNotification(catalogError.message || 'Unable to load the clinic product catalog.');
+      } finally {
+        setCatalogLoading(false);
+      }
+    };
+    loadCatalogProducts();
+  }, [canView, user?.token]);
+
   if (!canView) {
     return <div style={s.main}><Topbar user={user} title="Inventory Management" subtitle="Track clinic stock, suppliers, and replenishment" /><div style={s.page}><div style={s.empty}>You do not have permission to view Inventory Management.</div></div></div>;
   }
 
   return (
-    <div style={s.main}>
+    <div className="inventory-management-page" style={s.main}>
       <Topbar user={user} title="Inventory Management" subtitle="Track clinic stock, suppliers, and replenishment" />
       {notification && (
         <div style={s.notification} role="status">
           <span style={{ ...s.notificationIcon, ...(notificationError ? s.notificationErrorIcon : {}) }}>{notificationError ? '!' : '✓'}</span>
           <span>{notification}</span>
+        </div>
+      )}
+      {canView && (
+        <div style={{ ...s.notification, margin: '12px 22px 0', background: '#e7f5f2', color: '#005447' }} role="status">
+          {catalogLoading
+            ? 'Loading owner-managed products…'
+            : `${catalogProducts.length} owner-managed products are available for inventory purchasing and stock setup.`}
         </div>
       )}
       {movementDetail && (() => {
@@ -442,7 +518,7 @@ export default function InventoryManagementPage({ user }) {
                 <div style={s.editInventoryTriple}>
                   <label style={s.formField}>Batch Number<input name="batch" placeholder="e.g., AMX-2025-A1" style={s.formInput} /></label>
                   <label style={s.formField}>Lot Number<input name="lot" placeholder="e.g., LOT-10284" style={s.formInput} /></label>
-                  <label style={s.formField}>Expiry Date<input name="expiry" type="date" style={s.formInput} /></label>
+                  <label style={s.formField}>Expiry Date<LabDateTimePicker name="expiry" mode="date" style={s.formInput} /></label>
                 </div>
                 <label style={{ ...s.formField, gridColumn: '1 / -1' }}>Storage Requirements<textarea name="storage" placeholder="e.g., Store below 25°C, away from moisture" style={s.editInventoryTextarea} /></label>
               </div>
@@ -469,7 +545,7 @@ export default function InventoryManagementPage({ user }) {
                 <div style={s.inventoryViewInfoItem}><span style={s.inventoryViewInfoLabel}>Generic Name</span><strong>{detail.generic}</strong></div><div style={s.inventoryViewInfoItem}><span style={s.inventoryViewInfoLabel}>Brand</span><strong>{detail.brand}</strong></div>
                 <div style={s.inventoryViewInfoItem}><span style={s.inventoryViewInfoLabel}>Dosage / Form</span><strong>{detail.dosage}</strong></div><div style={s.inventoryViewInfoItem}><span style={s.inventoryViewInfoLabel}>Supplier</span><strong>{viewInventoryItem.supplier}</strong></div>
                 <div style={s.inventoryViewInfoItem}><span style={s.inventoryViewInfoLabel}>Batch Number</span><strong>{viewInventoryItem.batch}</strong></div><div style={s.inventoryViewInfoItem}><span style={s.inventoryViewInfoLabel}>Lot Number</span><strong>{viewInventoryItem.lot}</strong></div>
-                <div style={s.inventoryViewInfoItem}><span style={s.inventoryViewInfoLabel}>Expiry Date</span><strong style={viewInventoryItem.expiry.includes('Expired') || viewInventoryItem.expiry.includes('d)') ? s.inventoryExpiryWarning : {}}>{viewInventoryItem.expiry}</strong></div><div style={s.inventoryViewInfoItem}><span style={s.inventoryViewInfoLabel}>Purchase Price</span><strong>₱{detail.purchasePrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>
+                <div style={s.inventoryViewInfoItem}><span style={s.inventoryViewInfoLabel}>Expiry Date</span><strong style={viewInventoryItem.expiry.includes('Expired') || viewInventoryItem.expiry.includes('d)') ? s.inventoryExpiryWarning : {}}>{formatInventoryDate(viewInventoryItem.expiry)}</strong></div><div style={s.inventoryViewInfoItem}><span style={s.inventoryViewInfoLabel}>Purchase Price</span><strong>₱{detail.purchasePrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>
                 <div style={s.inventoryViewInfoItem}><span style={s.inventoryViewInfoLabel}>Selling Price</span><strong>{detail.sellingPrice ? `₱${detail.sellingPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : 'N/A'}</strong></div>
                 <div style={{ ...s.inventoryViewInfoItem, gridColumn: '1 / -1' }}><span style={s.inventoryViewInfoLabel}>Storage Requirements</span><strong>{detail.storage}</strong></div>
               </div>
@@ -486,7 +562,7 @@ export default function InventoryManagementPage({ user }) {
             <div style={s.purchaseViewHeader}>
               <div>
                 <h2 id="purchase-order-view-title" style={s.purchaseViewTitle}>Purchase Order — {viewPurchaseOrder.order}</h2>
-                <p style={s.purchaseViewSubtitle}>{viewPurchaseOrder.supplier} · {viewPurchaseOrder.date}</p>
+                <p style={s.purchaseViewSubtitle}>{viewPurchaseOrder.supplier} · {formatInventoryDate(viewPurchaseOrder.date)}</p>
               </div>
               <button type="button" style={s.closeButton} onClick={() => setViewPurchaseOrder(null)} aria-label="Close">×</button>
             </div>
@@ -496,8 +572,8 @@ export default function InventoryManagementPage({ user }) {
             </div>
             <div style={s.purchaseViewInfo}>
               <div><span style={s.purchaseViewInfoLabel}>Requested By</span><strong style={s.purchaseViewInfoValue}>{viewPurchaseOrder.requestedBy}</strong></div>
-              <div><span style={s.purchaseViewInfoLabel}>Order Date</span><strong style={s.purchaseViewInfoValue}>{viewPurchaseOrder.date}</strong></div>
-              <div><span style={s.purchaseViewInfoLabel}>Expected Delivery</span><strong style={s.purchaseViewInfoValue}>{viewPurchaseOrder.expected}</strong></div>
+              <div><span style={s.purchaseViewInfoLabel}>Order Date</span><strong style={s.purchaseViewInfoValue}>{formatInventoryDate(viewPurchaseOrder.date)}</strong></div>
+              <div><span style={s.purchaseViewInfoLabel}>Expected Delivery</span><strong style={s.purchaseViewInfoValue}>{formatInventoryDate(viewPurchaseOrder.expected)}</strong></div>
               <div><span style={s.purchaseViewInfoLabel}>Send To</span><strong style={s.purchaseViewInfoValue}>{viewPurchaseOrder.email || '—'}</strong></div>
             </div>
             {viewPurchaseOrder.cancellationReason && <div style={s.purchaseCancellation}><strong>Cancellation Reason</strong><span>{viewPurchaseOrder.cancellationReason}</span></div>}
@@ -569,17 +645,17 @@ export default function InventoryManagementPage({ user }) {
           </div>
         </div>
       )}
-      <div style={s.page}>
+      <div className="inventory-management-content" style={s.page}>
         <div style={s.alert}>
           <span style={s.alertIcon}>!</span>
           <div style={s.alertSummary}><strong>3 items require immediate attention</strong><small style={s.alertSmall}>1 out of stock · 2 critical stock · 0 expired</small></div>
           <button type="button" style={s.alertDetailsButton} onClick={() => setShowAttention(true)}><span><b style={s.alertDetailsLabel}>View affected items</b><small style={s.alertDetailsHint}>See stock levels and suppliers</small></span></button>
         </div>
-        <div style={s.actionRow}>
-          <button type="button" style={s.primaryButton} onClick={() => { setFormNotice(''); setShowAddItem(true); }}><span style={s.actionIcon}>{Icons.plus}</span> Add Item</button>
-          <button type="button" style={s.secondaryButton} onClick={() => setShowDeliveries(true)} aria-expanded={showDeliveries}><span style={s.actionIcon}>{Icons.archive}</span> Recent Deliveries</button>
+        <div className="inventory-management-actions" style={s.actionRow}>
+          <button type="button" className="inventory-primary-action" style={s.primaryButton} onClick={() => { setFormNotice(''); setShowAddItem(true); }}><span style={s.actionIcon}>{Icons.plus}</span> Add Item</button>
+          <button type="button" className="inventory-secondary-action" style={s.secondaryButton} onClick={() => setShowDeliveries(true)} aria-expanded={showDeliveries}><span style={s.actionIcon}>{Icons.archive}</span> Recent Deliveries</button>
           <div style={s.exportWrap}>
-            <button type="button" style={s.secondaryButton} onClick={() => { setShowExportMenu(previous => !previous); setSelectedExportReport(null); }}><span style={s.actionIcon}>▣</span> Export Report</button>
+            <button type="button" className="inventory-secondary-action" style={s.secondaryButton} onClick={() => { setShowExportMenu(previous => !previous); setSelectedExportReport(null); }}><span style={s.actionIcon}>▣</span> Export Report</button>
             {showExportMenu && (
               <div style={s.exportMenu}>
                 <div style={s.exportMenuTitle}>Choose report type</div>
@@ -602,7 +678,7 @@ export default function InventoryManagementPage({ user }) {
             )}
           </div>
         </div>
-        <div style={s.tabsNav}>{['Overview', 'All Items', 'Medications', 'Vaccines', 'Supplies', 'Purchase Orders', 'Suppliers', 'Stock Movement'].map(item => <button type="button" key={item} onClick={() => setActiveTab(item)} style={{ ...s.navTab, ...(activeTab === item ? s.navTabActive : {}) }}>{item}</button>)}</div>
+        <div className="inventory-management-tabs" style={s.tabsNav}>{['Overview', 'All Items', 'Medications', 'Vaccines', 'Supplies', 'Purchase Orders', 'Suppliers', 'Stock Movement'].map(item => <button type="button" key={item} onClick={() => setActiveTab(item)} style={{ ...s.navTab, ...(activeTab === item ? s.navTabActive : {}) }}>{item}</button>)}</div>
         {activeTab === 'Purchase Orders' && (
           <section style={s.purchaseOrdersPage}>
             <div style={s.purchaseOrderToolbar}>
@@ -632,9 +708,9 @@ export default function InventoryManagementPage({ user }) {
                     <td style={s.purchaseOrderTableCell}><button type="button" style={s.purchaseOrderLink}>{order.order}</button></td>
                     <td style={s.purchaseOrderTableCell}>{order.supplier}</td>
                     <td style={{ ...s.purchaseOrderTableCell, ...s.purchaseOrderMuted }}>{order.requestedBy}</td>
-                    <td style={{ ...s.purchaseOrderTableCell, ...s.purchaseOrderMuted }}>{order.date}</td>
-                    <td style={{ ...s.purchaseOrderTableCell, ...s.purchaseOrderMuted }}>{order.expected}</td>
-                    <td style={{ ...s.purchaseOrderTableCell, ...s.purchaseOrderMuted }}>{order.received}</td>
+                    <td style={{ ...s.purchaseOrderTableCell, ...s.purchaseOrderMuted }}>{formatInventoryDate(order.date)}</td>
+                    <td style={{ ...s.purchaseOrderTableCell, ...s.purchaseOrderMuted }}>{formatInventoryDate(order.expected)}</td>
+                    <td style={{ ...s.purchaseOrderTableCell, ...s.purchaseOrderMuted }}>{formatInventoryDate(order.received)}</td>
                     <td style={s.purchaseOrderTableCell}>{order.items}</td>
                     <td style={s.purchaseOrderTableCell}><strong>₱{order.total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></td>
                     <td style={s.purchaseOrderTableCell}><StatusBadge status={order.status} /></td>
@@ -699,7 +775,7 @@ export default function InventoryManagementPage({ user }) {
               <select value={movementType} onChange={event => setMovementType(event.target.value)} style={s.stockMovementFilter}><option>All Movements</option>{[...new Set(STOCK_MOVEMENT_DISPLAY_DATA.map(row => row[3]))].map(type => <option key={type}>{type}</option>)}</select>
               <select value={movementItem} onChange={event => setMovementItem(event.target.value)} style={s.stockMovementFilter}><option>All Items</option>{[...new Set(STOCK_MOVEMENT_DISPLAY_DATA.map(row => row[1]))].map(item => <option key={item}>{item}</option>)}</select>
               <select value={movementStaff} onChange={event => setMovementStaff(event.target.value)} style={s.stockMovementFilter}><option>All Staff</option>{[...new Set(STOCK_MOVEMENT_DISPLAY_DATA.map(row => row[8]))].map(staff => <option key={staff}>{staff}</option>)}</select>
-              <input type="date" style={s.stockMovementDateFilter} aria-label="Filter by date" />
+              <LabDateTimePicker mode="date" label="Filter by date" style={s.stockMovementDateFilter} />
             </div>
             <div style={s.stockMovementTableWrap}>
               <table style={s.stockMovementTable}>
@@ -712,7 +788,7 @@ export default function InventoryManagementPage({ user }) {
                     && (movementStaff === 'All Staff' || row[8] === movementStaff);
                 }).map(([date, name, id, type, quantity, balance, reference, reason, performedBy], index) => (
                   <tr key={`${id}-${date}`}>
-                    <td style={s.stockMovementTableCell}>{date}</td>
+                    <td style={s.stockMovementTableCell}>{formatInventoryDate(date)}</td>
                     <td style={s.stockMovementTableCell}><strong style={s.stockMovementItem}>{name}</strong><small style={s.stockMovementId}>{id}</small></td>
                     <td style={s.stockMovementTableCell}><span style={{ ...s.stockMovementBadge, ...(type.includes('Stock In') ? s.stockInBadge : type.includes('Stock Count') ? s.stockCountBadge : type === 'Return to Supplier' ? s.stockReturnBadge : s.stockOutBadge) }}>{type}</span></td>
                     <td style={{ ...s.stockMovementTableCell, ...s.stockMovementQuantity, color: quantity.startsWith('+') ? '#16a34a' : quantity.startsWith('±') ? '#f97316' : '#ef1d2d' }}>{quantity} <small>{balance.split(' ').slice(1).join(' ')}</small></td>
@@ -728,18 +804,18 @@ export default function InventoryManagementPage({ user }) {
           </section>
         )}
         {['All Items', 'Medications', 'Vaccines', 'Supplies'].includes(activeTab) && (
-          <section style={s.itemsSection}>
+          <section className="inventory-items-section" style={s.itemsSection}>
             <div style={s.itemsTableWrap}>
-              <table style={s.itemsTable}>
+              <table className="inventory-items-table" style={s.itemsTable}>
                 <thead><tr>{['Item', 'Batch / Lot', 'Category', 'Stock', 'Reorder', 'Expiry', 'Supplier', 'Status', 'Value', 'Actions'].map(label => <th key={label} style={s.itemsTableHeadCell}>{label}</th>)}</tr></thead>
                 <tbody>{inventoryItems.filter(item => activeTab === 'All Items' || item.category === activeTab).map(item => (
                   <tr key={item.id}>
-                    <td style={s.itemsTableCell}><div style={s.itemCell}><span style={{ ...s.itemTypeIcon, color: item.category === 'Vaccines' ? '#8b5cf6' : item.category === 'Laboratory' ? '#f59e0b' : item.category === 'Supplies' ? '#64748b' : '#087f65' }}>{item.category === 'Vaccines' ? Icons.syringe : item.category === 'Laboratory' ? Icons.activity : item.category === 'Supplies' ? Icons.archive : Icons.pill}</span><div><strong style={s.itemName}>{item.name}</strong><small style={s.itemId}>{item.subtitle}</small></div></div></td>
+                    <td style={s.itemsTableCell}><div style={s.itemCell}><span style={{ ...s.itemTypeIcon, color: item.category === 'Vaccines' ? '#8b5cf6' : item.category === 'Laboratory' ? '#f59e0b' : item.category === 'Supplies' ? '#64748b' : '#005447' }}>{item.category === 'Vaccines' ? Icons.syringe : item.category === 'Laboratory' ? Icons.activity : item.category === 'Supplies' ? Icons.archive : Icons.pill}</span><div><strong style={s.itemName}>{item.name}</strong><small style={s.itemId}>{item.subtitle}</small></div></div></td>
                     <td style={s.itemsTableCell}><span style={s.batchLot}>{item.batch}</span><small style={s.itemId}>{item.lot}</small></td>
                     <td style={s.itemsTableCell}><span style={s.categoryBadge}>{item.category === 'Medications' ? 'Medication' : item.category === 'Vaccines' ? 'Vaccine' : item.category === 'Supplies' ? 'Supply' : 'Laboratory'}</span></td>
                     <td style={s.itemsTableCell}><strong style={{ color: item.status === 'Out of Stock' ? '#dc2626' : ['Low Stock', 'Critical Stock', 'Reorder Soon'].includes(item.status) ? '#d97706' : '#374151' }}>{item.quantity} {item.unit} </strong><small style={s.stockMeta}>~{Math.max(2, Math.round(item.quantity / 8))}w left</small></td>
                     <td style={s.itemsTableCell}>{item.reorderLevel} {item.unit}</td>
-                    <td style={s.itemsTableCell}><span style={item.expiry.includes('Expired') || item.expiry.includes('d)') ? s.expiryWarning : s.expiryDate}>{item.expiry}</span></td>
+                    <td style={s.itemsTableCell}><span style={item.expiry.includes('Expired') || item.expiry.includes('d)') ? s.expiryWarning : s.expiryDate}>{formatInventoryDate(item.expiry)}</span></td>
                     <td style={s.itemsTableCell}>{item.supplier}</td>
                     <td style={s.itemsTableCell}><StatusBadge status={item.status} /></td>
                     <td style={s.itemsTableCell}>₱{item.value.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
@@ -752,7 +828,7 @@ export default function InventoryManagementPage({ user }) {
         )}
 
         {activeTab === 'Overview' && <div style={s.stats}>
-          <StatCard label="Total Items" value="14" detail="" color="#087f65" />
+          <StatCard label="Total Items" value="14" detail="" color="#005447" />
           <StatCard label="Inventory Value" value="₱32,094.00" detail="" color="#16a34a" />
           <StatCard label="Low Stock" value="4" detail="" color="#d97706" />
           <StatCard label="Out of Stock" value="1" detail="" color="#dc2626" />
@@ -794,7 +870,7 @@ export default function InventoryManagementPage({ user }) {
         {activeTab === 'Overview' && <><section style={s.card}><div style={s.cardHeader}><h2 style={s.cardTitle}>Top Used Medicines</h2></div><ResponsiveContainer width="100%" height={220}><BarChart data={TOP_USED} layout="vertical" margin={{ top: 0, right: 10, left: 35, bottom: 0 }}><CartesianGrid stroke="#dbe3ee" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={{ fontSize: 10, fill: '#64748b' }} /><YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} width={85} /><Tooltip content={<MedicineTooltip />} cursor={{ fill: '#d1d5db', opacity: 0.9 }} /><Bar dataKey="value" fill="#139b76" radius={[0, 4, 4, 0]} barSize={18} /></BarChart></ResponsiveContainer></section>
         <section style={s.card}><div style={s.cardHeader}><h2 style={s.cardTitle}>⚡ Stock Forecasting — Estimated Depletion</h2></div><div style={s.forecastGrid}>{FORECAST_ITEMS.map(([name, remaining, days, usage]) => <div key={name} style={{ ...s.forecastCard, ...(days === '~11 days' ? s.forecastWarning : {}) }}><strong>{name}</strong><span>{remaining}</span><b>{days}</b><small>{usage}</small></div>)}</div></section></>}
 
-        {showOrders && <section style={s.card}><div style={s.cardHeader}><div><h2 style={s.cardTitle}>Recent purchase orders</h2><p style={s.cardDescription}>Supplier orders and expected delivery dates.</p></div></div><div style={s.tableWrap}><table style={s.table}><thead><tr><th>Order</th><th>Supplier</th><th>Items</th><th>Total</th><th>Expected</th><th>Status</th></tr></thead><tbody>{INVENTORY_PURCHASE_ORDERS.map((order) => <tr key={order.order}><td><strong>{order.order}</strong></td><td>{order.supplier}</td><td>{order.items}</td><td>${order.total.toLocaleString()}</td><td>{order.expected}</td><td><StatusBadge status={order.status} /></td></tr>)}</tbody></table></div></section>}
+        {showOrders && <section style={s.card}><div style={s.cardHeader}><div><h2 style={s.cardTitle}>Recent purchase orders</h2><p style={s.cardDescription}>Supplier orders and expected delivery dates.</p></div></div><div style={s.tableWrap}><table style={s.table}><thead><tr><th>Order</th><th>Supplier</th><th>Items</th><th>Total</th><th>Expected</th><th>Status</th></tr></thead><tbody>{INVENTORY_PURCHASE_ORDERS.map((order) => <tr key={order.order}><td><strong>{order.order}</strong></td><td>{order.supplier}</td><td>{order.items}</td><td>${order.total.toLocaleString()}</td><td>{formatInventoryDate(order.expected)}</td><td><StatusBadge status={order.status} /></td></tr>)}</tbody></table></div></section>}
       </div>
       {showAddItem && (
         <div style={s.modalOverlay} role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setShowAddItem(false); }}>
@@ -861,7 +937,7 @@ export default function InventoryManagementPage({ user }) {
               </div>
               <label style={s.formField}>Batch Number<input placeholder="e.g., AMX-2025-A1" style={s.formInput} /></label>
               <label style={s.formField}>Lot Number<input placeholder="e.g., LOT-10284" style={s.formInput} /></label>
-              <label style={s.formField}>Expiry Date<input type="date" style={s.formInput} /></label>
+              <label style={s.formField}>Expiry Date<LabDateTimePicker mode="date" style={s.formInput} /></label>
               <label style={{ ...s.formField, gridColumn: '1 / -1' }}>Storage Requirements<textarea placeholder="e.g., Store below 25°C, away from moisture" style={s.formTextarea} /></label>
             </div>
             <div style={s.modalFooter}>
@@ -961,7 +1037,7 @@ export default function InventoryManagementPage({ user }) {
               <div style={s.orderItemsHeader}><strong>Order Items</strong><button type="button" style={s.addOrderItemButton} onClick={() => setPurchaseOrderItems(previous => [...previous, { product: '', quantity: 0, unit: 'pieces', unitPrice: '0.00' }])}><span>+</span> Add Item</button></div>
               <div style={s.orderItemLabels}><span>Product</span><span>Qty</span><span>Unit</span><span>Unit Price</span><span>Line Total</span></div>
               {purchaseOrderItems.map((item, index) => <div key={`purchase-item-${index}`} style={s.orderItemRow}>
-                <select value={item.product} onChange={event => setPurchaseOrderItems(previous => previous.map((row, rowIndex) => rowIndex === index ? { ...row, product: event.target.value } : row))} style={s.orderProductInput}><option value="">Select product</option>{ALL_ITEMS_TABLE_DATA.map(product => <option key={product.id}>{product.name}</option>)}</select>
+                <select value={item.product} onChange={event => setPurchaseOrderItems(previous => previous.map((row, rowIndex) => rowIndex === index ? { ...row, product: event.target.value } : row))} style={s.orderProductInput}><option value="">Select product</option>{inventoryItems.map(product => <option key={product.id}>{product.name}</option>)}</select>
                 <input type="number" min="0" value={item.quantity} onChange={event => setPurchaseOrderItems(previous => previous.map((row, rowIndex) => rowIndex === index ? { ...row, quantity: event.target.value } : row))} style={s.orderQuantityInput} />
                 <select value={item.unit} onChange={event => setPurchaseOrderItems(previous => previous.map((row, rowIndex) => rowIndex === index ? { ...row, unit: event.target.value } : row))} style={s.orderUnitInput}>{unitOptions.map(unit => <option key={unit}>{unit}</option>)}</select>
                 <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={event => setPurchaseOrderItems(previous => previous.map((row, rowIndex) => rowIndex === index ? { ...row, unitPrice: event.target.value } : row))} style={s.orderPriceInput} />
@@ -970,7 +1046,7 @@ export default function InventoryManagementPage({ user }) {
               </div>)}
               <div style={s.purchaseTwoFields}>
                 <label style={s.formField}>Requested By<input required value={purchaseOrder.requestedBy} placeholder="Your name" style={s.formInput} onChange={event => setPurchaseOrder(previous => ({ ...previous, requestedBy: event.target.value }))} /></label>
-                <label style={s.formField}>Expected Delivery Date<input type="date" value={purchaseOrder.expectedDeliveryDate} style={s.formInput} onChange={event => setPurchaseOrder(previous => ({ ...previous, expectedDeliveryDate: event.target.value }))} /></label>
+                <label style={s.formField}>Expected Delivery Date<LabDateTimePicker mode="date" value={purchaseOrder.expectedDeliveryDate} style={s.formInput} onChange={expectedDeliveryDate => setPurchaseOrder(previous => ({ ...previous, expectedDeliveryDate }))} /></label>
               </div>
               <label style={s.formField}>Notes / Special Instructions<textarea value={purchaseOrder.notes} placeholder="Priority items, delivery instructions..." style={s.purchaseTextarea} onChange={event => setPurchaseOrder(previous => ({ ...previous, notes: event.target.value }))} /></label>
             </div>
@@ -1033,8 +1109,8 @@ export default function InventoryManagementPage({ user }) {
                       <StatusBadge status={receivePurchaseOrder.status} />
                     </div>
                     <div style={s.receiveOrderSummaryGrid}>
-                      <div><span style={s.purchaseViewInfoLabel}>Order Date</span><strong style={s.purchaseViewInfoValue}>{receivePurchaseOrder.date}</strong></div>
-                      <div><span style={s.purchaseViewInfoLabel}>Expected Delivery</span><strong style={s.purchaseViewInfoValue}>{receivePurchaseOrder.expected}</strong></div>
+                      <div><span style={s.purchaseViewInfoLabel}>Order Date</span><strong style={s.purchaseViewInfoValue}>{formatInventoryDate(receivePurchaseOrder.date)}</strong></div>
+                      <div><span style={s.purchaseViewInfoLabel}>Expected Delivery</span><strong style={s.purchaseViewInfoValue}>{formatInventoryDate(receivePurchaseOrder.expected)}</strong></div>
                       <div><span style={s.purchaseViewInfoLabel}>Items</span><strong style={s.purchaseViewInfoValue}>{receivePurchaseOrder.items}</strong></div>
                       <div><span style={s.purchaseViewInfoLabel}>Total Amount</span><strong style={s.purchaseViewInfoValue}>₱{receivePurchaseOrder.total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>
                     </div>
@@ -1047,7 +1123,7 @@ export default function InventoryManagementPage({ user }) {
                 <label style={s.formField}>Purchase Order<span style={s.required}>*</span><select name="purchaseOrder" required defaultValue="" style={s.formInput}><option value="">Select PO to receive</option>{PURCHASE_ORDER_TABLE_DATA.filter(order => order.status !== 'Received').map(order => <option key={order.order} value={order.order}>{order.order} — {order.supplier}</option>)}</select></label>
               )}
               <label style={s.formField}>Received By<span style={s.required}>*</span><input name="receivedBy" required placeholder="Your name" style={s.formInput} /></label>
-              <label style={s.formField}>Delivery Date<input name="deliveryDate" type="date" defaultValue={receivePurchaseOrder?.received !== '—' ? receivePurchaseOrder?.received : new Date().toISOString().slice(0, 10)} style={s.formInput} /></label>
+              <label style={s.formField}>Delivery Date<LabDateTimePicker name="deliveryDate" mode="date" defaultValue={receivePurchaseOrder?.received !== '—' ? receivePurchaseOrder?.received : new Date().toISOString().slice(0, 10)} style={s.formInput} /></label>
               <label style={s.formField}>Receipt Photo<span style={s.optional}>Optional</span>
                 <input type="file" accept="image/*" style={s.fileInput} onChange={event => {
                   const file = event.target.files?.[0];
@@ -1079,7 +1155,7 @@ const s = {
   title: { margin: 0, color: '#0f172a', fontSize: '1.65rem', letterSpacing: '-.03em' },
   subtitle: { margin: '7px 0 0', color: '#475569', fontSize: '.95rem' },
   actions: { display: 'flex', gap: 10, flexShrink: 0 },
-  primaryButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 34, border: 0, borderRadius: 7, padding: '7px 11px', background: '#087f65', color: '#fff', fontSize: '.74rem', fontWeight: 700, lineHeight: 1.2, cursor: 'pointer' },
+  primaryButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 34, border: 0, borderRadius: 7, padding: '7px 11px', background: '#005447', color: '#fff', fontSize: '.74rem', fontWeight: 700, lineHeight: 1.2, cursor: 'pointer' },
   secondaryButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 34, border: '1px solid #cbd5e1', borderRadius: 7, padding: '6px 10px', background: '#fff', color: '#334155', fontSize: '.74rem', fontWeight: 600, lineHeight: 1.2, cursor: 'pointer' },
   exportWrap: { position: 'relative' },
   exportMenu: { position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 20, width: 255, padding: 6, border: '1px solid #dbe3ee', borderRadius: 8, background: '#fff', boxShadow: '0 8px 20px rgba(15,23,42,.12)' },
@@ -1090,7 +1166,7 @@ const s = {
   exportOptionDescription: { display: 'block', marginTop: 2, color: '#64748b', fontSize: '.66rem', lineHeight: 1.25 },
   exportFormatSection: { marginTop: 5, paddingTop: 5, borderTop: '1px solid #e2e8f0' },
   exportFormatRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, padding: '0 8px 6px' },
-  exportFormatButton: { border: '1px solid #087f65', borderRadius: 5, background: '#087f65', color: '#fff', padding: '7px 8px', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer' },
+  exportFormatButton: { border: '1px solid #005447', borderRadius: 5, background: '#005447', color: '#fff', padding: '7px 8px', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer' },
   actionIcon: { width: 15, height: 15, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 'inherit' },
   alert: { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', border: '1px solid #fecaca', borderRadius: 9, background: '#fff1f2', color: '#b91c1c', marginBottom: 12, fontSize: '.78rem' },
   alertIcon: { width: 20, height: 20, borderRadius: 5, display: 'grid', placeItems: 'center', background: '#ef4444', color: '#fff', fontWeight: 800 },
@@ -1113,7 +1189,7 @@ const s = {
   purchaseOrderFilterActive: { background: '#1e293b', color: '#fff' },
   purchaseOrderFilterDraft: { background: '#f1f5f9', color: '#475569' },
   purchaseOrderFilterPending: { background: '#fef3c7', color: '#a16207' },
-  purchaseOrderFilterApproved: { background: '#d8f4e8', color: '#07866a' },
+  purchaseOrderFilterApproved: { background: '#d8f4e8', color: '#005447' },
   purchaseOrderFilterPartial: { background: '#f3e8ff', color: '#7e22ce' },
   purchaseOrderFilterDelivered: { background: '#d1fae5', color: '#047857' },
   purchaseOrderFilterCancelled: { background: '#fee2e2', color: '#b91c1c' },
@@ -1126,7 +1202,7 @@ const s = {
   purchaseOrderActionsHead: { textAlign: 'center' },
   purchaseOrderActionsCell: { textAlign: 'center' },
   purchaseOrderTitle: { color: '#334155', fontSize: '.86rem', fontWeight: 700 },
-  purchaseOrderLink: { border: 0, padding: 0, background: 'transparent', color: '#087f65', fontWeight: 600, cursor: 'pointer' },
+  purchaseOrderLink: { border: 0, padding: 0, background: 'transparent', color: '#005447', fontWeight: 600, cursor: 'pointer' },
   purchaseOrderMuted: { color: '#526581' },
   purchaseOrderItems: { display: 'grid', gap: 4, color: '#526581', fontSize: '.7rem' },
   purchaseOrderView: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, border: 0, background: 'transparent', color: '#526581', cursor: 'pointer' },
@@ -1226,7 +1302,7 @@ const s = {
   stockCountBadge: { background: '#ffedd5', color: '#c2410c' },
   stockReturnBadge: { background: '#f3e8ff', color: '#9333ea' },
   stockMovementQuantity: { fontWeight: 700 },
-  stockMovementReference: { padding: '9px 8px', borderBottom: '1px solid #e5e7eb', color: '#087f65', whiteSpace: 'nowrap' },
+  stockMovementReference: { padding: '9px 8px', borderBottom: '1px solid #e5e7eb', color: '#005447', whiteSpace: 'nowrap' },
   stockMovementInfo: { padding: '9px 8px', borderBottom: '1px solid #e5e7eb', color: '#64748b', fontSize: '.82rem', textAlign: 'center' },
   stockMovementInfoButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, border: 0, padding: 0, background: 'transparent', color: '#64748b', lineHeight: 1, cursor: 'pointer' },
   itemsSection: { border: '1px solid #dbe3ee', borderRadius: 10, background: '#fff', overflow: 'hidden', marginBottom: 20 },
@@ -1268,7 +1344,7 @@ const s = {
   usageTooltipRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, lineHeight: 1.35 },
   medicineTooltip: { minWidth: 108, padding: '9px 11px', border: '1px solid #dbe3ee', borderRadius: 0, background: '#fff', boxShadow: '0 2px 5px rgba(15,23,42,.08)', fontSize: '.72rem' },
   medicineTooltipName: { color: '#0f172a', fontSize: '.78rem', marginBottom: 7 },
-  medicineTooltipValue: { color: '#087f65', fontSize: '.75rem' },
+  medicineTooltipValue: { color: '#005447', fontSize: '.75rem' },
   health: { display: 'flex', alignItems: 'center', gap: 30, padding: '24px 12px 20px' },
   donut: { width: 138, height: 138, borderRadius: '50%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', border: '18px solid #22c55e', outline: '12px solid #dcfce7', flexShrink: 0 },
   donutValue: { color: '#166534', fontSize: '1.65rem' },
@@ -1291,7 +1367,7 @@ const s = {
   search: { width: 230, border: '1px solid #cbd5e1', borderRadius: 7, padding: '9px 11px', color: '#0f172a', outline: 'none' },
   tabs: { display: 'flex', gap: 7, borderBottom: '1px solid #e2e8f0', margin: '18px -20px 0', padding: '0 20px' },
   tab: { border: 0, borderBottom: '2px solid transparent', background: 'transparent', color: '#64748b', padding: '10px 4px', marginRight: 16, fontWeight: 600, cursor: 'pointer' },
-  activeTab: { color: '#087f65', borderBottomColor: '#087f65' },
+  activeTab: { color: '#005447', borderBottomColor: '#005447' },
   tableWrap: { overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse', marginTop: 4, fontSize: '.82rem', color: '#475569' },
   tableHeaderCell: { textAlign: 'left', color: '#64748b', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em', padding: '13px 10px', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' },
@@ -1307,7 +1383,7 @@ const s = {
   movementDetailGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 20px', color: '#334155', fontSize: '.74rem' },
   movementDetailGridCell: { display: 'grid', gap: 3, minWidth: 0 },
   movementDetailLabel: { color: '#64748b', fontSize: '.65rem' },
-  movementDetailLink: { color: '#087f65' },
+  movementDetailLink: { color: '#005447' },
   movementDetailReason: { fontWeight: 500, lineHeight: 1.45 },
   movementDetailFooter: { display: 'flex', justifyContent: 'flex-end', marginTop: 17, paddingTop: 13, borderTop: '1px solid #e2e8f0' },  addModal: { width: 'min(640px, 100%)', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', background: '#fff', borderRadius: 10, padding: '22px 24px 24px', boxShadow: '0 18px 50px rgba(15, 23, 42, .22)' },
   attentionModal: { width: 'min(570px, 100%)', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', background: '#fff', borderRadius: 10, padding: '22px 24px 24px', boxShadow: '0 18px 50px rgba(15, 23, 42, .22)' },
@@ -1328,7 +1404,7 @@ const s = {
   receiptImage: { width: 54, height: 54, objectFit: 'cover', borderRadius: 5 },
   receiptDetails: { display: 'grid', gap: 5, minWidth: 0, color: '#334155', fontSize: '.72rem' },
   removeReceipt: { width: 'fit-content', padding: 0, border: 0, background: 'transparent', color: '#dc2626', fontSize: '.68rem', cursor: 'pointer' },
-  viewReceiptButton: { border: 0, background: 'transparent', color: '#087f65', padding: 0, fontSize: '.75rem', fontWeight: 600, cursor: 'pointer' },
+  viewReceiptButton: { border: 0, background: 'transparent', color: '#005447', padding: 0, fontSize: '.75rem', fontWeight: 600, cursor: 'pointer' },
   noReceipt: { color: '#94a3b8', fontSize: '.75rem' },
   closeSectionButton: { border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', color: '#475569', padding: '5px 9px', fontSize: '.7rem', cursor: 'pointer' },
   deliveryEmpty: { padding: '22px 12px', border: '1px dashed #cbd5e1', borderRadius: 8, background: '#f8fafc', color: '#64748b', fontSize: '.78rem', textAlign: 'center' },

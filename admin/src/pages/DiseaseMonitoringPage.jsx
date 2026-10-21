@@ -7,18 +7,19 @@ import {
 import Topbar from '../components/Topbar';
 import { Icons } from '../icons';
 import { canExportFeature, canInteractWithFeature, canViewFeature } from '../utils/permissionUtils';
+import { formatDateText } from '../utils/dateFormatting';
 
 const DISEASE_OPTIONS = ['Parvovirus', 'Kennel Cough', 'Distemper', 'Giardia', 'Leptospirosis'];
 const TIME_OPTIONS    = ['Last 30 Days', 'Last 60 Days', 'Last 90 Days'];
 const REGION_OPTIONS  = ['All Regions', 'East Region', 'West Region', 'North Region'];
 
 const LINE_DATA = [
-  { month: 'Sep', cases: 38 },
-  { month: 'Oct', cases: 42 },
-  { month: 'Nov', cases: 65 },
-  { month: 'Dec', cases: 78 },
-  { month: 'Jan', cases: 103 },
-  { month: 'Feb', cases: 145 },
+  { month: 'September', cases: 38 },
+  { month: 'October', cases: 42 },
+  { month: 'November', cases: 65 },
+  { month: 'December', cases: 78 },
+  { month: 'January', cases: 103 },
+  { month: 'February', cases: 145 },
 ];
 
 const CLINIC_DATA = [
@@ -119,10 +120,10 @@ function AlertModal({ alert, onClose }) {
             </div>
             <div>
               <div style={m.headerTitle}>{alert.title}</div>
-              <div style={m.headerDate}>Alert triggered on {alert.date}</div>
+              <div style={m.headerDate}>Alert triggered on {formatDateText(alert.date, undefined, alert.date)}</div>
             </div>
           </div>
-          <button style={m.closeBtn} onClick={onClose}>
+          <button type="button" aria-label="Close disease alert details" style={m.closeBtn} onClick={onClose}>
             <span style={{ width: 18, height: 18, display: 'flex', color: '#64748b' }}>
               {Icons.close}
             </span>
@@ -328,7 +329,7 @@ export default function DiseaseMonitoringPage({ user }) {
             <div style={s.toggleRow}>
               <span style={s.toggleLabel}>Show Vaccination Rate</span>
               <div
-                style={{ ...s.toggle, background: showVacc ? '#07866a' : '#e2e8f0' }}
+                style={{ ...s.toggle, background: showVacc ? '#005447' : '#e2e8f0' }}
                 onClick={() => setShowVacc(v => !v)}
               >
                 <div style={{
@@ -377,7 +378,7 @@ export default function DiseaseMonitoringPage({ user }) {
                   <text
                     x={x} y={y + 12}
                     textAnchor="middle" fontSize={11}
-                    fill={payload.value === 'CLI-001 (You)' ? '#07866a' : '#64748b'}
+                    fill={payload.value === 'CLI-001 (You)' ? '#005447' : '#64748b'}
                     fontWeight={payload.value === 'CLI-001 (You)' ? 600 : 400}
                   >
                     {payload.value}
@@ -418,7 +419,7 @@ export default function DiseaseMonitoringPage({ user }) {
                 <div>
                   <div style={s.alertTitle}>{a.title}</div>
                   <div style={s.alertDesc}>{a.desc}</div>
-                  <div style={s.alertDate}>{a.date}</div>
+                  <div style={s.alertDate}>{formatDateText(a.date, undefined, a.date)}</div>
                 </div>
               </div>
               <div
@@ -533,7 +534,7 @@ const s = {
   alertDate:   { fontSize: '.68rem', color: '#64748b', marginTop: 3 },
   viewDetails: {
     display: 'flex', alignItems: 'center', gap: 4,
-    fontSize: '.75rem', color: '#07866a',
+    fontSize: '.75rem', color: '#005447',
     cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
   },
 };

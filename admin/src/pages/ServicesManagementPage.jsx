@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
@@ -8,53 +8,59 @@ import { Icons } from '../icons';
 import { canViewFeature } from '../utils/permissionUtils';
 
 const CATEGORY_COLORS = {
-  Consultation: ['#d8f4e8', '#087f65', '#139b76'],
+  Consultation: ['#d8f4e8', '#005447', '#139b76'],
+  Treatment: ['#ccfbf1', '#0f766e', '#14b8a6'],
+  Medication: ['#eff6ff', '#1d4ed8', '#3b82f6'],
   Vaccination: ['#f3e8ff', '#9333ea', '#8b5cf6'],
   Surgery: ['#fee2e2', '#dc2626', '#ef4444'],
   Dental: ['#ccfbf1', '#0f766e', '#14b8a6'],
   Grooming: ['#fce7f3', '#db2777', '#ec4899'],
   Laboratory: ['#fef3c7', '#b45309', '#f59e0b'],
-  Confinement: ['#e0e7ff', '#087f65', '#6366f1'],
+  Confinement: ['#e0e7ff', '#005447', '#6366f1'],
   General: ['#f1f5f9', '#475569', '#64748b'],
+  'Medical Supplies': ['#ecfeff', '#155e75', '#0891b2'],
+  'Wound Care': ['#fff1f2', '#9f1239', '#e11d48'],
+  'Laboratory Supplies': ['#fefce8', '#854d0e', '#ca8a04'],
+  'Grooming & Hygiene': ['#fdf2f8', '#9d174d', '#db2777'],
+  'Surgical Equipment': ['#eef2ff', '#3730a3', '#6366f1'],
+  'Clinic Accessories': ['#f0fdf4', '#166534', '#16a34a'],
 };
 
-const INITIAL_SERVICES = [
-  ['General Consultation', 'Consultation', 500, '30 min', 1, 78, 'Available', 'Routine physical examination, diagnosis, and treatment'],
-  ['Rabies Vaccination', 'Vaccination', 350, '15 min', 3, 52, 'Available', 'Annual anti-rabies vaccination for dogs and cats'],
-  ['DHPP Vaccination (Dogs)', 'Vaccination', 380, '15 min', 2, 41, 'Available', 'Combination vaccine protecting against Distemper'],
-  ['FVRCP Vaccination (Cats)', 'Vaccination', 360, '15 min', 2, 28, 'Available', 'Core feline vaccine against viral Rhinotracheitis'],
-  ['Complete Vaccination Package', 'Vaccination', 1200, '30 min', 3, 18, 'Available', 'Full puppy/kitten vaccination series package'],
-  ['Deworming Treatment', 'General', 350, '20 min', 2, 35, 'Available', 'Oral antiparasitic treatment for intestinal worms'],
-  ['Spay Surgery (Female)', 'Surgery', 3500, '2h', 4, 8, 'Available', 'Elective ovariohysterectomy for female dogs and cats'],
-  ['Neuter Surgery (Male)', 'Surgery', 2800, '1h 30m', 4, 11, 'Available', 'Elective castration for male dogs and cats'],
-  ['Dental Cleaning & Polishing', 'Dental', 1500, '1h', 2, 12, 'Available', 'Professional dental scaling and polishing'],
-  ['Full Grooming (Small Breed)', 'Grooming', 500, '1h 30m', 1, 24, 'Available', 'Bath, blow dry, haircut, nail trim, ear cleaning'],
-  ['Full Grooming (Large Breed)', 'Grooming', 800, '2h', 1, 15, 'Available', 'Complete grooming service for large breeds'],
-  ['CBC (Complete Blood Count)', 'Laboratory', 800, '30 min', 2, 20, 'Available', 'Full blood count laboratory test to assess overall health'],
-  ['Urinalysis', 'Laboratory', 600, '30 min', 1, 14, 'Available', 'Comprehensive urine analysis for kidney health'],
-  ['X-Ray (Digital)', 'Laboratory', 1200, '20 min', 0, 9, 'Available', 'Digital radiography for orthopedic and thoracic assessment'],
-  ['Confinement (per day)', 'Confinement', 800, 'Per day', 0, 6, 'Available', 'In-patient ward care including monitoring and feeding'],
-  ['IV Fluid Therapy (per day)', 'Confinement', 1200, 'Per day', 1, 5, 'Available', 'Intravenous fluid administration for hydration'],
-  ['Wound Care & Dressing', 'General', 400, '30 min', 2, 16, 'Available', 'Wound assessment, cleaning, disinfection, and dressing'],
-  ['Emergency Consultation', 'Consultation', 1000, '45 min', 1, 2, 'Unavailable', 'After-hours or urgent veterinary consultation'],
-].map((row, index) => ({
-  id: `SRV-${String(index + 1).padStart(3, '0')}`,
-  name: row[0],
-  category: row[1],
-  price: row[2],
-  duration: row[3],
-  requiredItems: row[4],
-  month: row[5],
-  status: row[6],
-  description: row[7],
-  archived: false,
-}));
-
-const chartData = Object.keys(CATEGORY_COLORS).map(category => ({
-  category,
-  count: INITIAL_SERVICES.filter(service => service.category === category).reduce((total, service) => total + service.month, 0),
-  color: CATEGORY_COLORS[category][2],
-}));
+const CATEGORY_TO_TYPE = {
+  Consultation: 'consultation',
+  Treatment: 'treatment',
+  Medication: 'medication',
+  Vaccination: 'vaccination',
+  Laboratory: 'lab_test',
+  Confinement: 'inpatient',
+  Surgery: 'treatment',
+  Dental: 'treatment',
+  Grooming: 'treatment',
+  General: 'treatment',
+  'Medical Supplies': 'medication',
+  'Wound Care': 'medication',
+  'Laboratory Supplies': 'medication',
+  'Grooming & Hygiene': 'medication',
+  'Surgical Equipment': 'medication',
+  'Clinic Accessories': 'medication',
+};
+const TYPE_TO_CATEGORY = {
+  consultation: 'Consultation',
+  treatment: 'Treatment',
+  medication: 'Medication',
+  vaccination: 'Vaccination',
+  lab_test: 'Laboratory',
+  inpatient: 'Confinement',
+};
+const mapCatalogItem = item => ({
+  ...item,
+  category: item.category || TYPE_TO_CATEGORY[item.item_type] || 'General',
+  price: Number(item.unit_price),
+  month: 0,
+  requiredItems: 0,
+  status: item.active ? 'Available' : 'Unavailable',
+  archived: !item.active,
+});
 
 function CategoryBadge({ category }) {
   const [background, color] = CATEGORY_COLORS[category] || CATEGORY_COLORS.General;
@@ -83,32 +89,57 @@ function SummaryIcon({ type }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">{paths[type]}</svg>;
 }
 
-function ChartTooltip({ active, payload }) {
-  if (!active || !payload?.length) return null;
-  return <div className="services-chart-tooltip"><strong>{payload[0].payload.category}</strong><span>Performed: {payload[0].value} services</span></div>;
-}
-
-function getServiceMaterials(service) {
-  if (service.category === 'Confinement') return { medicines: [], supplies: [] };
-  if (service.name === 'Rabies Vaccination') return { medicines: [['IMRAB 3TF (Rabies)', '1 vial']], supplies: [['Syringe 5ml', '1 pc'], ['Exam Gloves', '1 pair']] };
-  if (service.name === 'Deworming Treatment') return { medicines: [['Pyrantel Pamoate', '1 tablet']], supplies: [['Exam Gloves', '1 pair']] };
-  if (service.name === 'Spay Surgery (Female)') return { medicines: [['Meloxicam (post-op)', '1 bottle'], ['Amoxicillin 500mg', '7 tablets']], supplies: [['IV Catheter 22G', '1 pc'], ['Syringe 5ml', '3 pcs']] };
-  if (service.category === 'Dental') return { medicines: [['Amoxicillin 500mg', '5 tablets']], supplies: [['IV Catheter 22G', '1 pc']] };
-  if (service.name === 'CBC (Complete Blood Count)') return { medicines: [], supplies: [['Blood Tube (EDTA)', '1 tube'], ['Syringe 5ml', '1 pc']] };
-  return { medicines: [], supplies: [['Exam Gloves', '1 pair']] };
-}
-
 export default function ServicesManagementPage({ user }) {
-  const [services, setServices] = useState(INITIAL_SERVICES);
+  const [services, setServices] = useState([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All Categories');
   const [status, setStatus] = useState('All Statuses');
   const [showArchived, setShowArchived] = useState(false);
   const [modal, setModal] = useState(null);
-  const [form, setForm] = useState({ name: '', category: 'Consultation', price: '', duration: '', description: '', status: 'Available', medicines: [], supplies: [] });
+  const [form, setForm] = useState({ name: '', category: 'Consultation', price: '', duration: '', unit: 'item', description: '', status: 'Available' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [catalogSeedMessage, setCatalogSeedMessage] = useState('');
 
   const canView = String(user.role || '').trim().toLowerCase() === 'owner'
     || canViewFeature(user.permissions, user.role, 'Services Management');
+  const chartData = useMemo(() => Object.keys(CATEGORY_COLORS).map(category => ({
+    category,
+    count: services.filter(service => service.category === category && !service.archived).length,
+    color: CATEGORY_COLORS[category][2],
+  })).filter(item => item.count > 0), [services]);
+  const loadCatalog = async () => {
+    setLoading(true);
+    setError('');
+    setCatalogSeedMessage('');
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const isClinicOwner = ['owner', 'clinic_owner'].includes(String(user.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_'));
+      if (isClinicOwner) {
+        const seedResponse = await fetch(`${apiUrl}/clinic-records/billing-catalog/seed-defaults`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + user.token },
+        });
+        const seedPayload = await seedResponse.json().catch(() => ({}));
+        if (!seedResponse.ok) throw new Error(seedPayload.error || 'Unable to add the supplied clinic price list.');
+        if (seedPayload.added > 0) setCatalogSeedMessage(`${seedPayload.added} supplied service and product prices were loaded. You can edit them; these defaults will not overwrite later changes.`);
+      }
+      const response = await fetch(`${apiUrl}/clinic-records/billing-catalog?include_inactive=true`, {
+        headers: { Authorization: 'Bearer ' + user.token },
+      });
+      const payload = await response.json().catch(() => []);
+      if (!response.ok || !Array.isArray(payload)) throw new Error(payload.error || 'Unable to load the clinic price catalog.');
+      setServices(payload.map(mapCatalogItem));
+    } catch (loadError) {
+      setError(loadError.message || 'Unable to load the clinic price catalog.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (canView) loadCatalog();
+  }, [canView, user?.token]);
   const visibleServices = useMemo(() => services.filter(service => (
     (showArchived ? service.archived : !service.archived)
     && (category === 'All Categories' || service.category === category)
@@ -117,19 +148,67 @@ export default function ServicesManagementPage({ user }) {
   )), [category, search, services, showArchived, status]);
 
   const openAdd = () => {
-    setForm({ name: '', category: 'Consultation', price: '', duration: '', description: '', status: 'Available', medicines: [], supplies: [] });
+    setForm({ name: '', category: 'Consultation', price: '', duration: '', unit: 'item', description: '', status: 'Available' });
     setModal({ type: 'add' });
   };
   const openEdit = service => {
-    setForm({ name: service.name, category: service.category, price: service.price, duration: service.duration, description: service.description, status: service.status, medicines: [], supplies: [] });
+    setForm({ name: service.name, category: service.category, price: service.price, duration: service.duration || '', unit: service.unit || 'item', description: service.description || '', status: service.status });
     setModal({ type: 'edit', service });
   };
-  const saveService = event => {
+  const saveService = async event => {
     event.preventDefault();
-    const next = { ...form, price: Number(form.price) || 0, requiredItems: form.medicines.length + form.supplies.length, month: modal.type === 'edit' ? modal.service.month : 0, archived: false };
-    if (modal.type === 'edit') setServices(current => current.map(service => service.id === modal.service.id ? { ...service, ...next } : service));
-    else setServices(current => [...current, { ...next, id: `SRV-${String(current.length + 1).padStart(3, '0')}` }]);
-    setModal(null);
+    setSaving(true);
+    setError('');
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${apiUrl}/clinic-records/billing-catalog${modal.type === 'edit' ? `/${modal.service.id}` : ''}`, {
+        method: modal.type === 'edit' ? 'PUT' : 'POST',
+        headers: { Authorization: 'Bearer ' + user.token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          item_type: CATEGORY_TO_TYPE[form.category],
+          category: form.category,
+          unit: form.unit,
+          duration: form.duration,
+          description: form.description,
+          unit_price: Number(form.price),
+          active: form.status === 'Available',
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Unable to save the price catalog item.');
+      setModal(null);
+      await loadCatalog();
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to save the price catalog item.');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const saveServiceStatus = async service => {
+    setError('');
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${apiUrl}/clinic-records/billing-catalog/${service.id}`, {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer ' + user.token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: service.name,
+          item_type: service.item_type,
+          category: service.category,
+          unit: service.unit || 'item',
+          duration: service.duration || '',
+          description: service.description || '',
+          unit_price: service.price,
+          active: service.archived,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Unable to update catalog availability.');
+      setServices(current => current.map(item => item.id === service.id ? mapCatalogItem(payload) : item));
+    } catch (statusError) {
+      setError(statusError.message || 'Unable to update catalog availability.');
+    }
   };
 
   if (!canView) {
@@ -138,32 +217,33 @@ export default function ServicesManagementPage({ user }) {
 
   return (
     <div className="services-page" style={s.page}>
-      <Topbar user={user} title="Services Management" subtitle="Manage clinic services, pricing, required items, and availability" />
+      <Topbar user={user} title="Services & Price Catalog" subtitle="Maintain the clinic prices used to register consultation services and prepare invoices" />
       <div style={s.content}>
         <div style={s.summaryGrid}>
-          <SummaryCard icon="tag" label="Total Services" value={services.length} detail={`${services.filter(service => service.status === 'Available' && !service.archived).length} available`} color="#087f65" background="#e7f5f2" />
-          <SummaryCard icon="pulse" label="Services This Month" value={services.reduce((total, service) => total + service.month, 0)} detail="across all categories" color="#16a34a" background="#f0fdf4" />
-          <SummaryCard icon="dollar" label="Estimated Revenue" value={`₱${services.reduce((total, service) => total + service.price * service.month, 0).toLocaleString('en-PH')}`} detail="from services this month" color="#9333ea" background="#faf5ff" />
-          <SummaryCard icon="clock" label="Unavailable Services" value={services.filter(service => service.status === 'Unavailable' && !service.archived).length} detail={`${services.filter(service => service.status === 'Available' && !service.archived).length} currently active`} color="#d97706" background="#fffbeb" />
+          <SummaryCard icon="tag" label="Catalog Items" value={services.length} detail={`${services.filter(service => service.status === 'Available' && !service.archived).length} available`} color="#005447" background="#e7f5f2" />
+          <SummaryCard icon="pulse" label="Consultation Services" value={services.filter(service => service.category !== 'Medication' && service.category !== 'Confinement').length} detail="priced for clinical use" color="#16a34a" background="#f0fdf4" />
+          <SummaryCard icon="dollar" label="Products & Medication" value={services.filter(service => ['Medication', 'Medical Supplies', 'Wound Care', 'Laboratory Supplies', 'Grooming & Hygiene', 'Surgical Equipment', 'Clinic Accessories'].includes(service.category)).length} detail="priced for prescriptions, supplies, and use" color="#9333ea" background="#faf5ff" />
+          <SummaryCard icon="clock" label="Unavailable Items" value={services.filter(service => service.status === 'Unavailable' && !service.archived).length} detail={`${services.filter(service => service.archived).length} archived`} color="#d97706" background="#fffbeb" />
         </div>
+        {catalogSeedMessage && <div role="status" style={{ marginBottom: 16, padding: '11px 14px', border: '1px solid #cce8da', borderRadius: 9, background: '#f0faf5', color: '#176346', fontSize: '.78rem' }}>{catalogSeedMessage}</div>}
 
         <section style={s.chartCard}>
-          <h2 style={s.chartTitle}>Services Performed This Month by Category</h2>
+          <h2 style={s.chartTitle}>Active Catalog Items by Category</h2>
           <div style={{ height: 185 }}>
-            <ResponsiveContainer width="100%" height="100%">
+            {chartData.length ? <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} barSize={120} margin={{ top: 8, right: 8, left: 18, bottom: 0 }}>
                 <CartesianGrid stroke="#e8edf3" strokeDasharray="2 3" vertical />
                 <XAxis dataKey="category" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: '#94a3b8' }} tickLine={false} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={{ stroke: '#94a3b8' }} tickLine={false} />
-                <Tooltip content={<ChartTooltip />} />
+                <Tooltip />
                 <Bar dataKey="count" radius={[3, 3, 0, 0]}>{chartData.map(item => <Cell key={item.category} fill={item.color} />)}</Bar>
               </BarChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer> : <p style={s.empty}>Add clinic prices to populate the catalog.</p>}
           </div>
         </section>
 
         <div style={s.toolbar}>
-          <div className="searchBox" style={s.searchBox}><span style={s.searchIcon}>{Icons.search}</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search services..." /></div>
+          <div className="searchBox" style={s.searchBox}><span style={s.searchIcon}>{Icons.search}</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search services or medications..." /></div>
           <select value={category} onChange={event => setCategory(event.target.value)} style={s.filter}><option>All Categories</option>{Object.keys(CATEGORY_COLORS).map(item => <option key={item}>{item}</option>)}</select>
           <select value={status} onChange={event => setStatus(event.target.value)} style={s.filter}><option>All Statuses</option><option>Available</option><option>Unavailable</option></select>
           <button type="button" style={s.archiveToggle} onClick={() => setShowArchived(value => !value)}><span style={{ ...s.toggle, ...(showArchived ? s.toggleOn : {}) }}><span style={s.toggleKnob} /></span>Show Archived</button>
@@ -172,32 +252,27 @@ export default function ServicesManagementPage({ user }) {
 
         <section style={s.tableCard}>
           <table className="services-table" style={s.table}>
-            <thead><tr>{['Service', 'Category', 'Price', 'Duration', 'Required Items', 'This Month', 'Status', 'Actions'].map(label => <th key={label}>{label}</th>)}</tr></thead>
+            <thead><tr>{['Service / Item', 'Category', 'Unit Price', 'Unit', 'Duration', 'Status', 'Actions'].map(label => <th key={label}>{label}</th>)}</tr></thead>
             <tbody>
               {visibleServices.map(service => (
                 <tr key={service.id}>
                   <td><div style={s.serviceName}><ServiceIcon category={service.category} /><div><strong className="service-name-text">{service.name}</strong><small className="service-description-text">{service.description}</small></div></div></td>
                   <td><CategoryBadge category={service.category} /></td>
                   <td style={s.strongCell}>₱{service.price.toLocaleString('en-PH')}</td>
+                  <td>{service.unit}</td>
                   <td>{service.duration}</td>
-                  <td><button type="button" style={s.itemsLink}>{service.requiredItems ? `${service.requiredItems} ${service.requiredItems === 1 ? 'item' : 'items'}` : '—'}</button></td>
-                  <td>{service.month}</td>
                   <td><StatusIndicator status={service.status} /></td>
-                  <td><div className="service-actions" style={s.actions}><button className="service-view-action" type="button" title="View" onClick={() => setModal({ type: 'view', service })}>{Icons.eye}</button><button className="service-edit-action" type="button" title="Edit" onClick={() => openEdit(service)}>{Icons.edit}</button><button className="service-delete-action" type="button" title={service.archived ? 'Restore' : 'Archive'} onClick={() => setServices(current => current.map(item => item.id === service.id ? { ...item, archived: !item.archived } : item))}>{Icons.trash}</button></div></td>
+                  <td><div className="service-actions" style={s.actions}><button className="service-edit-action" type="button" title="Edit" onClick={() => openEdit(service)}>{Icons.edit}</button><button className="service-delete-action" type="button" title={service.archived ? 'Restore' : 'Archive'} onClick={() => saveServiceStatus(service)}>{Icons.trash}</button></div></td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {!visibleServices.length && <div style={s.empty}>No services match your filters.</div>}
+          {loading && <div style={s.empty}>Loading clinic price catalog…</div>}
+          {!loading && !visibleServices.length && <div style={s.empty}>{error || 'No items match your filters. Add the clinic’s actual prices before recording billable services.'}</div>}
         </section>
       </div>
 
-      {modal && modal.type === 'view' && (() => {
-        const materials = getServiceMaterials(modal.service);
-        const hasMaterials = materials.medicines.length || materials.supplies.length;
-        return <div style={s.overlay} onClick={() => setModal(null)}><div className="service-view-modal" style={s.viewModal} onClick={event => event.stopPropagation()}><div style={s.viewHeader}><div className="service-view-heading"><ServiceIcon category={modal.service.category} /><div><h2>{modal.service.name}</h2><p>{modal.service.category}</p></div></div><button type="button" style={s.close} onClick={() => setModal(null)}>×</button></div><p className="service-view-description">{modal.service.description}. {modal.service.category === 'Consultation' ? 'Includes routine examination and treatment planning.' : ''}</p><div className="service-view-stats"><div><small>Standard Price</small><strong>₱{modal.service.price.toLocaleString('en-PH')}</strong></div><div><small>Duration</small><strong>{modal.service.duration}</strong></div></div>{hasMaterials ? <div className="service-material-details">{materials.medicines.length > 0 && <MaterialDetails title={modal.service.category === 'Vaccination' ? 'REQUIRED VACCINES' : 'REQUIRED MEDICINES'} items={materials.medicines} />}{materials.supplies.length > 0 && <MaterialDetails title="REQUIRED SUPPLIES" items={materials.supplies} />}</div> : <p className="service-no-materials">No consumables required for this service.</p>}<div style={s.modalFooter}><button type="button" style={s.cancelButton} onClick={() => setModal(null)}>Close</button></div></div></div>;
-      })()}
-      {modal && (modal.type === 'add' || modal.type === 'edit') && <div style={s.overlay} onClick={() => setModal(null)}><form className={modal.type === 'edit' ? 'service-edit-modal' : 'service-add-modal'} style={{ ...s.modal, ...s.serviceModal }} onSubmit={saveService} onClick={event => event.stopPropagation()}><div style={s.modalHeader}><div><h2 className="service-modal-title">{modal.type === 'add' ? 'Add New Service' : 'Edit Service'}</h2><p className="service-modal-subtitle">{modal.type === 'add' ? 'Register a new service offered by the clinic.' : `Update details for ${modal.service.name}`}</p></div><button type="button" style={s.close} onClick={() => setModal(null)}>×</button></div><div style={s.formGrid}><label className="service-form-label service-form-full">Service Name*<input className="service-form-control service-form-focus" required value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="e.g. General Consultation" /></label><label className="service-form-label">Category*<select className="service-form-control" value={form.category} onChange={event => setForm({ ...form, category: event.target.value })}>{Object.keys(CATEGORY_COLORS).map(item => <option key={item}>{item}</option>)}</select></label><label className="service-form-label">Status<select className="service-form-control" value={form.status} onChange={event => setForm({ ...form, status: event.target.value })}><option>Available</option><option>Unavailable</option></select></label><label className="service-form-label">Standard Price (₱)*<input className="service-form-control" required type="number" min="0" value={form.price} onChange={event => setForm({ ...form, price: event.target.value })} placeholder="500" /></label><label className="service-form-label">Duration (minutes)<input className="service-form-control" value={form.duration} onChange={event => setForm({ ...form, duration: event.target.value })} placeholder="30 (leave blank = per day)" /></label><label className="service-form-label service-form-full">Description<textarea className="service-form-control service-form-textarea" value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} placeholder="Brief description of the service..." /></label></div>{modal.type === 'add' && <><MaterialSection title="REQUIRED MEDICINES / VACCINES" items={form.medicines} setItems={items => setForm({ ...form, medicines: items })} placeholder="Medicine name" unitPlaceholder="Unit (e.g. tablet)" buttonLabel="Add Medicine" /><MaterialSection title="REQUIRED SUPPLIES" items={form.supplies} setItems={items => setForm({ ...form, supplies: items })} placeholder="Supply name" unitPlaceholder="Unit (e.g. pair)" buttonLabel="Add Supply" /></>}<div style={s.modalFooter}><button type="button" style={s.cancelButton} onClick={() => setModal(null)}>Cancel</button><button className="saveButton" type="submit" style={s.saveButton}><span style={s.addIcon}>{modal.type === 'add' ? Icons.plus : null}</span>{modal.type === 'add' ? 'Add Service' : 'Save Changes'}</button></div></form></div>}
+      {modal && <div style={s.overlay} onClick={() => setModal(null)}><form className="vi-modal vi-modal--small service-add-modal" style={{ ...s.modal, ...s.serviceModal }} onSubmit={saveService} onClick={event => event.stopPropagation()}><div style={s.modalHeader}><div><h2 className="service-modal-title">{modal.type === 'add' ? 'Add Catalog Item' : 'Edit Catalog Item'}</h2><p className="service-modal-subtitle">Use the clinic’s verified prices. These amounts are used when an item is added to a consultation invoice.</p></div><button type="button" style={s.close} onClick={() => setModal(null)}>×</button></div>{error && <div role="alert" style={s.formError}>{error}</div>}<div style={s.formGrid}><label className="service-form-label service-form-full">Item Name<span className="system-required-star">*</span><input className="service-form-control service-form-focus" required value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="e.g. General Consultation" /></label><label className="service-form-label">Category<span className="system-required-star">*</span><select className="service-form-control" value={form.category} onChange={event => setForm({ ...form, category: event.target.value })}>{Object.keys(CATEGORY_TO_TYPE).map(item => <option key={item}>{item}</option>)}</select></label><label className="service-form-label">Availability<select className="service-form-control" value={form.status} onChange={event => setForm({ ...form, status: event.target.value })}><option>Available</option><option>Unavailable</option></select></label><label className="service-form-label">Unit Price (₱)<span className="system-required-star">*</span><input className="service-form-control" required type="number" min="0" step="0.01" value={form.price} onChange={event => setForm({ ...form, price: event.target.value })} placeholder="0.00" /></label><label className="service-form-label">Billing Unit<input className="service-form-control" required value={form.unit} onChange={event => setForm({ ...form, unit: event.target.value })} placeholder="item, tablet, dose, day..." /></label><label className="service-form-label">Duration / Billing period<input className="service-form-control" value={form.duration} onChange={event => setForm({ ...form, duration: event.target.value })} placeholder="e.g. 30 min or per day" /></label><label className="service-form-label service-form-full">Description<textarea className="service-form-control service-form-textarea" value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} placeholder="Description shown to clinical staff..." /></label></div><div style={s.modalFooter}><button type="button" style={s.cancelButton} onClick={() => setModal(null)}>Cancel</button><button className="saveButton" type="submit" style={s.saveButton} disabled={saving}>{saving ? 'Saving…' : modal.type === 'add' ? 'Add Catalog Item' : 'Save Changes'}</button></div></form></div>}
     </div>
   );
 }
@@ -234,7 +309,7 @@ const s = {
   filter: { height: 34, minWidth: 126, padding: '0 10px', border: 0, borderRadius: 7, background: '#eef1f5', color: '#475569', fontSize: '.72rem' },
   archiveToggle: { display: 'inline-flex', alignItems: 'center', gap: 7, color: '#64748b', fontSize: '.72rem', whiteSpace: 'nowrap' },
   toggle: { width: 28, height: 16, display: 'inline-flex', alignItems: 'center', padding: 2, borderRadius: 10, background: '#cbd5e1' },
-  toggleOn: { background: '#087f65', justifyContent: 'flex-end' },
+  toggleOn: { background: '#005447', justifyContent: 'flex-end' },
   toggleKnob: { width: 12, height: 12, borderRadius: '50%', background: '#fff' },
   addButton: { height: 34, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0 13px', borderRadius: 7, background: '#0b0b1c', color: '#fff', fontSize: '.72rem', fontWeight: 700, whiteSpace: 'nowrap' },
   addIcon: { width: 13, height: 13, display: 'flex' },
@@ -244,7 +319,7 @@ const s = {
   serviceIcon: { width: 15, height: 17, flexShrink: 0, display: 'flex' },
   categoryBadge: { display: 'inline-block', padding: '4px 9px', borderRadius: 7, fontSize: '.64rem', fontWeight: 700 },
   strongCell: { color: '#1e293b', fontWeight: 700 },
-  itemsLink: { color: '#087f65', fontSize: '.7rem', fontWeight: 600 },
+  itemsLink: { color: '#005447', fontSize: '.7rem', fontWeight: 600 },
   actions: { display: 'flex', alignItems: 'center', gap: 12 },
   empty: { padding: 40, color: '#64748b', textAlign: 'center', fontSize: '.8rem' },
   denied: { padding: 40, color: '#64748b' },

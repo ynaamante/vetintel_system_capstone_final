@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Topbar from '../components/Topbar';
 import { Icons } from '../icons';
+import { formatDateTimeText } from '../utils/dateFormatting';
 
 export default function LocalAuditTrailPage({ user }) {
   const [logs, setLogs] = useState([]);
@@ -39,7 +40,7 @@ export default function LocalAuditTrailPage({ user }) {
       <div style={styles.page}>
         <div style={styles.statsGrid}>
           {[
-            ['Active Users', new Set(logs.map(log => log.user).filter(Boolean)).size, 'users', '#d8f4e8', '#087f65'],
+            ['Active Users', new Set(logs.map(log => log.user).filter(Boolean)).size, 'users', '#d8f4e8', '#005447'],
             ['Total Actions', logs.length, 'file', '#dcfce7', '#16a34a'],
             ["Today's Activity", todayCount, 'calendar', '#fef3c7', '#d97706'],
             ['Critical Actions', criticalCount, 'info', '#f3e8ff', '#9333ea'],
@@ -63,7 +64,7 @@ export default function LocalAuditTrailPage({ user }) {
               <thead><tr>{['Audit ID', 'Timestamp', 'User', 'Action', 'Description', 'Entity', 'Actions'].map(label => <th key={label} style={styles.th}>{label}</th>)}</tr></thead>
               <tbody>{filtered.map(log => <tr key={log.id}>
                 <td style={styles.mono}>{`AUD-${String(log.id).padStart(4, '0')}`}</td>
-                <td style={styles.td}>{new Date(log.timestamp).toLocaleString()}</td>
+                <td style={styles.td}>{formatDateTimeText(log.timestamp)}</td>
                 <td style={{ ...styles.td, fontWeight: 600 }}>{log.user || 'System'}</td>
                 <td style={styles.td}><span style={styles.badge}>{log.action}</span></td>
                 <td style={styles.td}>{log.details || 'Updated a clinic record'}</td>
@@ -75,7 +76,7 @@ export default function LocalAuditTrailPage({ user }) {
           {!filtered.length && !error && <div style={styles.empty}>No local clinic activity found.</div>}
         </div>
       </div>
-      {selectedLog && <div style={styles.overlay} onClick={() => setSelectedLog(null)}><div style={styles.modal} onClick={event => event.stopPropagation()}><div style={styles.modalHeader}><div><h2 style={styles.title}>Audit Log Details</h2><div style={styles.subtitle}>{`AUD-${String(selectedLog.id).padStart(4, '0')}`}</div></div><button type="button" style={styles.close} onClick={() => setSelectedLog(null)}>{Icons.close}</button></div><div style={styles.detailGrid}><strong>Timestamp</strong><span>{new Date(selectedLog.timestamp).toLocaleString()}</span><strong>User</strong><span>{selectedLog.user || 'System'}</span><strong>Action</strong><span>{selectedLog.action}</span><strong>Record</strong><span>{selectedLog.category || '—'}</span><strong>Details</strong><span>{selectedLog.details || 'Updated a clinic record'}</span></div></div></div>}
+      {selectedLog && <div style={styles.overlay} onClick={() => setSelectedLog(null)}><div style={styles.modal} onClick={event => event.stopPropagation()}><div style={styles.modalHeader}><div><h2 style={styles.title}>Audit Log Details</h2><div style={styles.subtitle}>{`AUD-${String(selectedLog.id).padStart(4, '0')}`}</div></div><button type="button" style={styles.close} onClick={() => setSelectedLog(null)}>{Icons.close}</button></div><div style={styles.detailGrid}><strong>Timestamp</strong><span>{formatDateTimeText(selectedLog.timestamp)}</span><strong>User</strong><span>{selectedLog.user || 'System'}</span><strong>Action</strong><span>{selectedLog.action}</span><strong>Record</strong><span>{selectedLog.category || '—'}</span><strong>Details</strong><span>{selectedLog.details || 'Updated a clinic record'}</span></div></div></div>}
     </div>
   );
 }
@@ -103,7 +104,7 @@ const styles = {
   th: { textAlign: 'left', padding: '0 7px 9px', borderBottom: '1px solid #e5e7eb', color: '#374151', fontSize: '.7rem' },
   td: { padding: '9px 7px', borderBottom: '1px solid #f1f5f9', color: '#475569', fontSize: '.72rem', verticalAlign: 'top' },
   mono: { padding: '9px 7px', borderBottom: '1px solid #f1f5f9', color: '#64748b', fontSize: '.69rem', fontFamily: 'monospace', whiteSpace: 'nowrap' },
-  badge: { display: 'inline-flex', padding: '3px 9px', borderRadius: 20, background: '#e7f5f2', border: '1px solid #b7e4d7', color: '#087f65', fontSize: '.68rem', fontWeight: 600 },
+  badge: { display: 'inline-flex', padding: '3px 9px', borderRadius: 20, background: '#e7f5f2', border: '1px solid #b7e4d7', color: '#005447', fontSize: '.68rem', fontWeight: 600 },
   detailsButton: { border: '1px solid #dbe3ed', borderRadius: 7, background: '#fff', color: '#334155', padding: '5px 9px', fontSize: '.68rem', cursor: 'pointer', whiteSpace: 'nowrap' },
   overlay: { position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   modal: { width: 460, maxWidth: 'calc(100vw - 32px)', background: '#fff', borderRadius: 12, padding: 20, boxShadow: '0 18px 45px rgba(15,23,42,.2)' },

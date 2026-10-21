@@ -150,6 +150,8 @@ const loadRolePermissions = async (roleName, token) => {
 export default function App() {
   const [user, setUser] = useState(null);
   const [page, setPage] = useState('dashboard');
+  const [clinicInitialTab, setClinicInitialTab] = useState('dashboard');
+  const [clinicInitialInvoiceId, setClinicInitialInvoiceId] = useState(null);
   const [inboxPatientRequest, setInboxPatientRequest] = useState(null);
   const [inboxConversationRequest, setInboxConversationRequest] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => (
@@ -163,6 +165,13 @@ export default function App() {
     const timeout = window.setTimeout(() => setToast(null), 3500);
     return () => window.clearTimeout(timeout);
   }), []);
+
+  useEffect(() => {
+    if (page !== 'clinic') {
+      setClinicInitialTab('dashboard');
+      setClinicInitialInvoiceId(null);
+    }
+  }, [page]);
 
   useEffect(() => {
     const toggleSidebar = () => setSidebarCollapsed(current => !current);
@@ -340,7 +349,7 @@ export default function App() {
       <main className={`admin-content ${page === 'inbox' ? 'inbox-content' : ''}`}>
         {page === 'dashboard' && <DashboardPage user={user} />}
         {page === 'disease' && <DiseaseMonitoringPage user={user} />}
-        {page === 'clinic' && <ClinicLayout user={user} onNavigate={setPage} />}
+        {page === 'clinic' && <ClinicLayout user={user} initialTab={clinicInitialTab} initialInvoiceId={clinicInitialInvoiceId} onNavigate={setPage} />}
         {page === 'schedule' && <MySchedulePage user={user} />}
         {page === 'patient-intakes' && <PatientIntakesPage user={user} />}
 
@@ -354,6 +363,10 @@ export default function App() {
           user={user}
           onNavigate={(nextPage, conversation) => {
             if (nextPage === 'inbox') setInboxConversationRequest(conversation);
+            if (nextPage === 'clinic') {
+              setClinicInitialTab(conversation?.tab || 'dashboard');
+              setClinicInitialInvoiceId(conversation?.invoiceId || null);
+            }
             setPage(nextPage);
           }}
           initialPatient={inboxPatientRequest}

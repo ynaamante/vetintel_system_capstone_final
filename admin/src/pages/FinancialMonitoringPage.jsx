@@ -9,6 +9,7 @@ import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
 import { Icons } from '../icons';
 import { canViewFeature } from '../utils/permissionUtils';
+import { formatDateText } from '../utils/dateFormatting';
 
 const TREND_DATA = [
   { month: 'Sep', revenue: 20200, expenses: 12400, profit: 7800 },
@@ -190,7 +191,7 @@ export default function FinancialMonitoringPage({ user }) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
-    doc.text(`Generated ${new Date().toLocaleDateString('en-PH')}`, pageWidth - margin, y, { align: 'right' });
+    doc.text(`Generated ${formatDateText(new Date(), 'en-PH')}`, pageWidth - margin, y, { align: 'right' });
     y += 12;
 
     sectionTitle('Financial Summary');
@@ -307,7 +308,7 @@ export default function FinancialMonitoringPage({ user }) {
         <div style={s.statsGrid}>
           {[
             ['Today\'s Income', '₱2,450', '↗ +15% vs yesterday', '#f0fdf4', '#16a34a', Icons.dollar],
-            ['Monthly Income', '₱26,300', '↗ +19% vs last month', '#e7f5f2', '#07866a', Icons.calendar],
+            ['Monthly Income', '₱26,300', '↗ +19% vs last month', '#e7f5f2', '#005447', Icons.calendar],
             ['Yearly Income', '₱142,700', '↗ +12% vs last year', '#faf5ff', '#7c3aed', Icons.file],
             ['Profit Margin', '63.9%', '↗ +2.1% this month', '#fffbeb', '#d97706', Icons.dollar],
           ].map(([label, value, sub, iconBg, color, icon]) => (
@@ -387,7 +388,7 @@ export default function FinancialMonitoringPage({ user }) {
               {TRANSACTIONS.map((t, i) => (
                 <tr key={t.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
                   <td style={{ ...s.td, fontFamily: 'monospace', color: '#64748b', fontSize: '.78rem' }}>{t.id}</td>
-                  <td style={{ ...s.td, color: '#64748b' }}>{t.date}</td>
+                  <td style={{ ...s.td, color: '#64748b' }}>{formatDateText(t.date)}</td>
                   <td style={{ ...s.td, color: '#0f1117', fontWeight: 500 }}>{t.service}</td>
                   <td style={{ ...s.td, color: '#16a34a', fontWeight: 600 }}>{pesoFormatter.format(t.amount)}</td>
                   <td style={s.td}><StatusIndicator status={t.status} /></td>
@@ -417,14 +418,14 @@ const s = {
   toolbarSubtitle: { color: '#64748b', fontSize: '.74rem', marginTop: 3 },
   select: { padding: '8px 12px', border: '1px solid #dbe3ee', borderRadius: 8, fontSize: '.78rem', color: '#0f1117', background: '#f8fafc', outline: 'none', cursor: 'pointer' },
   exportGroup: { display: 'flex', alignItems: 'stretch', gap: 6 },
-  exportSelect: { padding: '0 8px', border: '1px solid #dbe3ee', borderRadius: 8, fontSize: '.78rem', color: '#07866a', background: '#e7f5f2', outline: 'none', cursor: 'pointer', fontWeight: 600 },
+  exportSelect: { padding: '0 8px', border: '1px solid #dbe3ee', borderRadius: 8, fontSize: '.78rem', color: '#005447', background: '#e7f5f2', outline: 'none', cursor: 'pointer', fontWeight: 600 },
   exportBtn: { display: 'flex', alignItems: 'center', gap: 7, padding: '9px 15px', background: '#0f1117', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer' },
   chartGrid: { display: 'grid', gridTemplateColumns: 'minmax(0, 1.55fr) minmax(320px, 1fr)', gap: 20, marginBottom: 20 },
   card: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '20px 22px', marginBottom: 20 },
   cardHeader: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 },
   cardTitle: { fontSize: '.88rem', fontWeight: 600, color: '#0f1117', letterSpacing: '-.01em' },
   cardDescription: { fontSize: '.72rem', color: '#94a3b8', marginTop: 4 },
-  periodBadge: { padding: '4px 9px', borderRadius: 6, background: '#e7f5f2', color: '#087f65', fontSize: '.68rem', fontWeight: 600 },
+  periodBadge: { padding: '4px 9px', borderRadius: 6, background: '#e7f5f2', color: '#005447', fontSize: '.68rem', fontWeight: 600 },
   transactionCount: { color: '#64748b', fontSize: '.72rem', paddingTop: 2 },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: { textAlign: 'left', padding: '10px 12px', fontSize: '.7rem', fontWeight: 600, color: '#64748b', borderBottom: '1px solid #e2e8f0' },

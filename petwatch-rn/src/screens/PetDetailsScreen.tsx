@@ -10,7 +10,6 @@ import { useAuth } from '../context/AuthContext';
 import { ownerSharedRecordsApi } from '../services/api';
 import { colors, spacing, radius } from '../theme/colors';
 import { mockPets, mockVaccinations, mockSymptoms, mockClinics, mockUser } from '../data/mockData';
-
 type SharedRecordBundle = {
   id: string;
   petName: string;

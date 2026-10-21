@@ -6,6 +6,7 @@ import {
 import Topbar from '../components/Topbar';
 import { Icons } from '../icons';
 import { LINE_DATA, BAR_DATA, RISK_DATA, ALERTS } from '../data/mockData';
+import { formatDateText } from '../utils/dateFormatting';
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -59,7 +60,7 @@ export default function DashboardPage({ user }) {
             label="Total Clinics Connected"
             value="6"
             icon={Icons.building}
-            iconBg="#e7f5f2" iconColor="#07866a"
+            iconBg="#e7f5f2" iconColor="#005447"
             sub="6 of 8 clinics reporting"
           />
           <StatCard
@@ -104,8 +105,8 @@ export default function DashboardPage({ user }) {
                 <Tooltip content={<CustomTooltip />} />
                 <ReferenceLine y={80} stroke="#fca5a5" strokeDasharray="4 4"
                   label={{ value: 'Threshold', position: 'insideTopRight', fontSize: 10, fill: '#dc2626' }} />
-                <Line type="monotone" dataKey="cases" stroke="#07866a" strokeWidth={2}
-                  dot={{ r: 3, fill: '#07866a', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="cases" stroke="#005447" strokeWidth={2}
+                  dot={{ r: 3, fill: '#005447', strokeWidth: 0 }} activeDot={{ r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -173,7 +174,7 @@ export default function DashboardPage({ user }) {
                 </span>
               </div>
               <div style={s.alertDesc}>{a.desc}</div>
-              <div style={s.alertDate}>{a.date}</div>
+              <div style={s.alertDate}>{formatDateText(a.date, undefined, a.date)}</div>
             </div>
           ))}
           <button style={s.viewAllBtn}>View all alerts</button>
@@ -195,7 +196,7 @@ const s = {
   statVal:    { fontFamily: "'DM Sans', sans-serif", fontSize: '2rem', fontWeight: 600, lineHeight: 1, letterSpacing: '-.03em' },
   statMarker: { width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   statSub:    { fontSize: '.78rem', marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 },
-  viewAllLink:{ fontSize: '.78rem', color: '#087f65', fontWeight: 600, marginTop: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 },
+  viewAllLink:{ fontSize: '.78rem', color: '#005447', fontWeight: 600, marginTop: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 },
   chartsRow:  { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 },
   card:       { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '20px 22px', marginBottom: 14 },
   cardHd:     { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 },

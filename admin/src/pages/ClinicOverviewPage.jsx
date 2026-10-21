@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import Topbar from '../components/Topbar';
 import { Icons } from '../icons';
+import { formatDateText } from '../utils/dateFormatting';
 import { canViewFeature } from '../utils/permissionUtils';
 
 const APPT_TREND = [
@@ -103,7 +104,7 @@ function OverviewModal({ type, onClose }) {
               <tbody>{NEW_PATIENTS.map(patient => (
                 <tr key={patient.name}>
                   <td style={s.modalTd}><strong style={s.patientName}><span style={s.patientIcon}>{Icons.pet}</span>{patient.name}</strong></td>
-                  <td style={s.modalTd}>{patient.species}</td><td style={s.modalTd}>{patient.breed}</td><td style={s.modalTd}>{patient.owner}</td><td style={{ ...s.modalTd, ...s.doctorCell }}>{patient.registered}</td>
+                  <td style={s.modalTd}>{patient.species}</td><td style={s.modalTd}>{patient.breed}</td><td style={s.modalTd}>{patient.owner}</td><td style={{ ...s.modalTd, ...s.doctorCell }}>{formatDateText(patient.registered)}</td>
                 </tr>
               ))}</tbody>
             </table>
@@ -118,7 +119,7 @@ const StatCard = ({ icon, iconBg, label, value, sub, subColor, compact = false }
   <div style={{ ...s.statCard, ...(compact ? s.compactStatCard : {}) }}>
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
       <div style={{ ...s.statIcon, ...(compact ? s.compactStatIcon : {}), background: iconBg }}>
-        <span style={{ width: compact ? 16 : 20, height: compact ? 16 : 20, display: 'flex', color: subColor || '#087f65' }}>{icon}</span>
+        <span style={{ width: compact ? 16 : 20, height: compact ? 16 : 20, display: 'flex', color: subColor || '#005447' }}>{icon}</span>
       </div>
       <div>
         <div style={s.statLabel}>{label}</div>
@@ -134,7 +135,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   return (
     <div style={{ background: '#fff', border: '1px solid #e8ecf0', borderRadius: 8, padding: '8px 12px', fontSize: '.75rem', boxShadow: '0 2px 8px rgba(0,0,0,.08)' }}>
       <div style={{ color: '#64748b', marginBottom: 3 }}>{label}</div>
-      <div style={{ fontWeight: 600, color: '#07866a' }}>{payload[0].name} : {payload[0].value}</div>
+      <div style={{ fontWeight: 600, color: '#005447' }}>{payload[0].name} : {payload[0].value}</div>
     </div>
   );
 };
@@ -198,7 +199,7 @@ export default function ClinicOverviewPage({ user, onNavigate }) {
         </div>
 
         <div style={s.inventoryStats}>
-          <StatCard compact iconBg="#e7f5f2" icon={Icons.archive} label="Inventory Value" value="₱286,450" sub="" subColor="#087f65" />
+          <StatCard compact iconBg="#e7f5f2" icon={Icons.archive} label="Inventory Value" value="₱286,450" sub="" subColor="#005447" />
           <StatCard compact iconBg="#fffbeb" icon={Icons.archive} label="Low Stock Items" value="6" sub="" subColor="#d97706" />
           <StatCard compact iconBg="#fff1f2" icon={Icons.xCircle} label="Out of Stock" value="1" sub="" subColor="#dc2626" />
           <StatCard compact iconBg="#fff7ed" icon={Icons.clock} label="Expiring Medicines" value="4" sub="" subColor="#ea580c" />
@@ -246,7 +247,7 @@ export default function ClinicOverviewPage({ user, onNavigate }) {
             <div style={{ ...s.todayItem, ...s.todayAppointments }}>
               <div style={s.todayLeft}>
                 <div style={{ ...s.todayIcon, background: '#e7f5f2' }}>
-                  <span style={{ width: 16, height: 16, display: 'flex', color: '#07866a' }}>{Icons.calendar}</span>
+                  <span style={{ width: 16, height: 16, display: 'flex', color: '#005447' }}>{Icons.calendar}</span>
                 </div>
                 <div>
                   <div style={s.todayLabel}>Today's Appointments</div>

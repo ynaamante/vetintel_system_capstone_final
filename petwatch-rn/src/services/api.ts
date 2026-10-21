@@ -32,7 +32,7 @@ export async function apiCall(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || `HTTP ${response.status}`);
+      throw new Error(error.error || error.message || `HTTP ${response.status}`);
     }
 
     return await response.json();

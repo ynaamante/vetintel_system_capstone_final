@@ -89,7 +89,7 @@ export default function PatientQueuePage({ user }) {
 
         <div style={s.statsGrid}>
           {[
-            { label: 'Total in Queue', value: total, icon: Icons.users, iconBg: '#e7f5f2', iconColor: '#07866a' },
+            { label: 'Total in Queue', value: total, icon: Icons.users, iconBg: '#e7f5f2', iconColor: '#005447' },
             { label: 'Waiting', value: waitingCount, icon: Icons.clock, iconBg: '#fffbeb', iconColor: '#d97706' },
             { label: 'In Consultation', value: inConsultationCount, icon: Icons.check, iconBg: '#f0fdf4', iconColor: '#16a34a' },
           ].map((c) => (

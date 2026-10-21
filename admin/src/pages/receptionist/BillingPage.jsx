@@ -3,6 +3,7 @@ import Topbar from '../../components/Topbar';
 import StatusIndicator from '../../components/StatusIndicator';
 import { Icons } from '../../icons';
 import { canViewFeature } from '../../utils/permissionUtils';
+import { formatDateText } from '../../utils/dateFormatting';
 
 function formatCurrency(value) {
   const amount = Number(value || 0);
@@ -11,9 +12,7 @@ function formatCurrency(value) {
 }
 
 function formatDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return formatDateText(value, undefined, '');
 }
 
 function StatusBadge({ status }) {
@@ -23,6 +22,8 @@ function StatusBadge({ status }) {
 export default function BillingPage({ user }) {
   const [invoices, setInvoices] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [inpatientStays, setInpatientStays] = useState([]);
+  const [dischargingStay, setDischargingStay] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -43,27 +44,31 @@ export default function BillingPage({ user }) {
       setError(null);
 
       try {
-        const [invoicesRes, paymentsRes] = await Promise.all([
+        const [invoicesRes, paymentsRes, staysRes] = await Promise.all([
           fetch(`${apiUrl}/clinic-records/invoices${query}`, { headers }),
           fetch(`${apiUrl}/clinic-records/payments${query}`, { headers }),
+          fetch(`${apiUrl}/clinic-records/inpatient-stays${query}`, { headers }),
         ]);
 
-        if (!invoicesRes.ok || !paymentsRes.ok) {
+        if (!invoicesRes.ok || !paymentsRes.ok || !staysRes.ok) {
           throw new Error('Failed to load billing data');
         }
 
-        const [invoicesData, paymentsData] = await Promise.all([
+        const [invoicesData, paymentsData, staysData] = await Promise.all([
           invoicesRes.json(),
           paymentsRes.json(),
+          staysRes.json(),
         ]);
 
         setInvoices(Array.isArray(invoicesData) ? invoicesData : []);
         setPayments(Array.isArray(paymentsData) ? paymentsData : []);
+        setInpatientStays(Array.isArray(staysData) ? staysData : []);
       } catch (err) {
         console.error(err);
         setError('Unable to load billing data from the database.');
         setInvoices([]);
         setPayments([]);
+        setInpatientStays([]);
       } finally {
         setLoading(false);
       }
@@ -71,6 +76,29 @@ export default function BillingPage({ user }) {
 
     loadBilling();
   }, [user, canView]);
+
+  const dischargeStay = async stay => {
+    if (!window.confirm(`Discharge ${stay.pet || 'this patient'} and stop future daily inpatient charges?`)) return;
+    setDischargingStay(stay.id);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const params = new URLSearchParams();
+      if (user.clinic_id) params.set('clinic_id', user.clinic_id);
+      const query = params.toString() ? `?${params.toString()}` : '';
+      const response = await fetch(`${apiUrl}/clinic-records/inpatient-stays/${stay.id}/discharge${query}`, {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + user.token},
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Unable to discharge inpatient stay.');
+      setInpatientStays(current => current.map(item => item.id === stay.id ? { ...item, ...payload } : item));
+    } catch (dischargeError) {
+      console.error(dischargeError);
+      setError(dischargeError.message || 'Unable to discharge inpatient stay.');
+    } finally {
+      setDischargingStay(null);
+    }
+  };
 
   const pendingInvoices = useMemo(
     () => invoices.filter((invoice) => String(invoice.status || '').toLowerCase() !== 'paid'),
@@ -132,7 +160,7 @@ export default function BillingPage({ user }) {
             { label: 'Pending Invoices', value: pendingInvoices.length, icon: Icons.clock, iconBg: '#fffbeb', iconColor: '#d97706' },
             { label: "Today's Revenue", value: formatCurrency(todayRevenue), icon: Icons.dollar, iconBg: '#f0fdf4', iconColor: '#16a34a' },
             { label: 'Due Invoices', value: dueInvoices.length, icon: Icons.file, iconBg: '#fef2f2', iconColor: '#dc2626' },
-            { label: 'Payments Processed', value: payments.length, icon: Icons.check, iconBg: '#e7f5f2', iconColor: '#07866a' },
+            { label: 'Payments Processed', value: payments.length, icon: Icons.check, iconBg: '#e7f5f2', iconColor: '#005447' },
           ].map((c) => (
             <div key={c.label} style={s.statCard}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -165,7 +193,15 @@ export default function BillingPage({ user }) {
                 ) : (
                   pendingInvoices.map((invoice) => (
                     <tr key={invoice.id}>
-                      <td style={{ ...s.td, fontWeight: 600 }}>{invoice.id}</td>
+                      <td style={{ ...s.td, fontWeight: 600 }}>
+                        {invoice.id}
+                        {Array.isArray(invoice.items) && invoice.items.length > 0 && <details style={{ marginTop: 5, fontSize: '.72rem', fontWeight: 400 }}>
+                          <summary style={{ color: '#005447', cursor: 'pointer' }}>View {invoice.items.length} item{invoice.items.length === 1 ? '' : 's'}</summary>
+                          <ul style={{ margin: '6px 0 0', paddingLeft: 16 }}>
+                            {invoice.items.map(item => <li key={item.id}>{item.description} · {item.quantity} × {formatCurrency(item.unit_price)} = {formatCurrency(item.line_total)}</li>)}
+                          </ul>
+                        </details>}
+                      </td>
                       <td style={s.tdMuted}>{formatDate(invoice.issued_at)}</td>
                       <td style={{ ...s.td, fontWeight: 600 }}>{invoice.pet || 'N/A'}</td>
                       <td style={s.td}>{invoice.owner || 'N/A'}</td>
@@ -183,6 +219,26 @@ export default function BillingPage({ user }) {
               </tbody>
             </table>
           )}
+        </div>
+
+        <div style={{ ...s.card, marginBottom: 16 }}>
+          <div style={s.tableTitle}>Active Inpatient Stays ({inpatientStays.filter(stay => stay.status === 'active').length})</div>
+          <p style={{ margin: '0 0 14px', color: '#64748b', fontSize: '.78rem' }}>Daily charges use the clinic catalog price and are added automatically. Discharge the patient to stop future daily charges.</p>
+          {loading ? <div style={{ padding: 24, color: '#64748b' }}>Loading inpatient stays…</div>
+            : inpatientStays.filter(stay => stay.status === 'active').length === 0
+              ? <div style={{ padding: 24, color: '#64748b' }}>No active inpatient stays.</div>
+              : <table style={s.table}>
+                <thead><tr>{['Patient', 'Owner', 'Service', 'Admitted', 'Daily charge', 'Charged through', 'Action'].map(label => <th key={label} style={s.th}>{label}</th>)}</tr></thead>
+                <tbody>{inpatientStays.filter(stay => stay.status === 'active').map(stay => <tr key={stay.id}>
+                  <td style={{ ...s.td, fontWeight: 600 }}>{stay.pet || 'Patient'}</td>
+                  <td style={s.td}>{stay.owner || 'N/A'}</td>
+                  <td style={s.td}>{stay.service_name}</td>
+                  <td style={s.tdMuted}>{formatDate(stay.admitted_on)}</td>
+                  <td style={{ ...s.td, color: '#005447', fontWeight: 600 }}>{formatCurrency(stay.daily_price)} / day</td>
+                  <td style={s.tdMuted}>{formatDate(stay.last_charged_on)}</td>
+                  <td style={s.td}><button type="button" disabled={dischargingStay === stay.id} onClick={() => dischargeStay(stay)} style={{ padding: '7px 10px', border: '1px solid #d8e9e1', borderRadius: 7, background: '#fff', color: '#005447', font: 'inherit', fontSize: '.74rem', cursor: 'pointer' }}>{dischargingStay === stay.id ? 'Discharging…' : 'Discharge'}</button></td>
+                </tr>)}</tbody>
+              </table>}
         </div>
 
         <div style={s.card}>

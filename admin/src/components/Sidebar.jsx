@@ -73,11 +73,10 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
             aria-label="Expand navigation menu"
             title="Expand navigation menu"
           >
-            <span style={{ ...s.brandIcon, ...s.brandIconCollapsed }}>{Icons.activity}</span>
+            <span style={{ ...s.brand, ...s.brandCollapsed }}>V</span>
           </button>
         ) : (
           <>
-            <div style={s.brandIcon}>{Icons.activity}</div>
             <div style={s.brand}>VetIntel</div>
             <button
               type="button"
@@ -183,28 +182,29 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
 }
 
 const s = {
-  sidebar:    { width: 264, minHeight: '100vh', background: 'linear-gradient(155deg, #159b79 0%, #087a61 100%)', display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto', padding: '0 13px', color: '#fff', position: 'relative', isolation: 'isolate' },
+  sidebar:    { width: 264, minHeight: '100vh', background: '#004f43', display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto', padding: '0 13px', color: '#fff', position: 'relative', isolation: 'isolate' },
   sidebarCollapsed: { width: 66, padding: '0 6px' },
   mobileSidebar: { position: 'fixed', top: 0, bottom: 0, left: 0, zIndex: 1000, transition: 'transform .2s ease' },
   mobileSidebarOpen: { width: 264, boxShadow: '8px 0 24px rgba(6,72,56,.25)' },
   backdrop: { position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(15,23,42,.42)' },
   brand:      { padding: 0, fontFamily: "'DM Sans', sans-serif", fontSize: '1.1rem', fontWeight: 700, color: '#fff', letterSpacing: '-.01em', lineHeight: 1, whiteSpace: 'nowrap' },
-  brandRow:   { display: 'flex', alignItems: 'center', gap: 10, minHeight: 70, padding: '10px 0' },
+  brandCollapsed: { fontSize: '1rem', letterSpacing: 0 },
+  brandRow:   { display: 'flex', alignItems: 'center', gap: 10, minHeight: 70, padding: '10px 10px' },
   brandRowCollapsed: { justifyContent: 'center', gap: 0, minHeight: 98, padding: '14px 0 20px', marginBottom: 1, borderBottom: '1px solid rgba(255,255,255,.2)' },
   brandToggle: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, padding: 0, border: 0, borderRadius: 10, background: 'transparent', cursor: 'pointer' },
-  brandIcon: { width: 40, height: 40, borderRadius: 10, background: '#fff', color: '#07866a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, flexShrink: 0 },
+  brandIcon: { width: 40, height: 40, borderRadius: 10, background: 'transparent', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, flexShrink: 0 },
   brandIconCollapsed: { width: 34, height: 34, borderRadius: 9, padding: 8 },
   menuButton: { width: 26, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: 7, background: 'transparent', color: '#fff', cursor: 'pointer', marginLeft: 'auto' },
-  clinicCard: { minHeight: 62, padding: '10px 12px', marginBottom: 10, borderRadius: 13, background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.24)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, overflow: 'hidden' },
+  clinicCard: { minHeight: 54, padding: '8px 10px', marginBottom: 4, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, overflow: 'hidden' },
   clinicName: { color: '#fff', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  clinicMeta: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 5, color: 'rgba(255,255,255,.94)', fontSize: 12, whiteSpace: 'nowrap' },
+  clinicMeta: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, color: 'rgba(255,255,255,.94)', fontSize: 12, whiteSpace: 'nowrap' },
   status:     { display: 'inline-flex', alignItems: 'center', gap: 5, color: '#eafff6', fontSize: 12 },
   statusDot:  { width: 8, height: 8, borderRadius: '50%', background: '#55e595', boxShadow: '0 0 0 3px rgba(85,229,149,.18)', flexShrink: 0 },
   section:    { padding: '13px 10px 5px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.95)', letterSpacing: '.08em', textTransform: 'uppercase' },
   item:       { display: 'flex', alignItems: 'center', gap: 12, minHeight: 42, padding: '9px 11px', margin: '1px 0', borderRadius: 11, color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', position: 'relative', whiteSpace: 'nowrap', transition: 'background .15s ease, color .15s ease, transform .15s ease' },
   itemCollapsed: { justifyContent: 'center', gap: 0, minHeight: 41, padding: 6, margin: '0 0 0' },
-  itemActive: { background: '#fff', color: '#087f65', boxShadow: '0 3px 9px rgba(4,74,57,.15)', fontWeight: 700 },
-  inboxItem: { margin: '0 0 8px', background: 'rgba(255,255,255,.12)', color: '#fff' },
+  itemActive: { background: '#39a98f', color: '#fff', boxShadow: 'none', fontWeight: 700 },
+  inboxItem: { margin: '0 0 8px', color: '#fff' },
   inboxCount: { marginLeft: 'auto', minWidth: 21, height: 21, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 11, background: '#f45128', color: '#fff', fontSize: 11, fontWeight: 700 },
   icon:       { width: 18, height: 18, flexShrink: 0, display: 'flex', alignItems: 'center', opacity: 1 },
   iconCollapsed: { width: 20, height: 20, justifyContent: 'center' },
@@ -212,10 +212,10 @@ const s = {
   collapsedAlertCount: { position: 'absolute', zIndex: 1, top: -10, left: '50%', transform: 'translateX(-50%)', padding: '1px 4px', borderRadius: 8, background: '#fff', color: '#bd3e1f', fontSize: 7, fontWeight: 700, lineHeight: 1.3, whiteSpace: 'nowrap' },
   collapsedAlertDot: { display: 'none' },
   collapsedInboxCount: { position: 'absolute', top: -4, right: -5, minWidth: 12, height: 12, padding: '0 2px', borderRadius: 7, background: '#f45128', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, lineHeight: 1 },
-  userBox:    { minHeight: 56, padding: '7px 8px', marginBottom: 11, borderRadius: 13, border: '1px solid rgba(255,255,255,.24)', background: 'rgba(255,255,255,.12)', display: 'flex', alignItems: 'center', gap: 10 },
-  avatar: { width: 38, height: 38, borderRadius: '50%', background: '#fff', color: '#07866a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 },
+  userBox:    { minHeight: 56, padding: '7px 8px', marginBottom: 11, display: 'flex', alignItems: 'center', gap: 10, borderRadius: 10, background: 'rgba(255,255,255,.12)' },
+  avatar: { width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 },
   userDetails: { minWidth: 0, flex: 1 },
-  userName:   { fontSize: 13, color: '#fff', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  userName:   { width: 'fit-content', maxWidth: '100%', fontSize: 13, color: '#fff', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   userRole:   { fontSize: 12, color: 'rgba(255,255,255,.85)', marginTop: 1 },
   actions:    { padding: '6px 0 8px', borderTop: '1px solid rgba(255,255,255,.25)' },
   action:     { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 11px', borderRadius: 8, color: '#fff', fontSize: 13, cursor: 'pointer', transition: 'background .15s ease, color .15s ease' },

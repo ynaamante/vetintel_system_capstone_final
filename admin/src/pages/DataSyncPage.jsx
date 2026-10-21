@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
 import { Icons } from '../icons';
+import { formatDateText, formatDateTimeText } from '../utils/dateFormatting';
 import { canExportFeature, canInteractWithFeature, canViewFeature } from '../utils/permissionUtils';
 
 /* ── DATA ── */
@@ -86,7 +87,7 @@ export function DataSyncPage({ user }) {
           <div style={s.statCard}>
             <div style={s.statLabel}>Last Sync</div>
             <div style={s.statVal}>09:45 AM</div>
-            <div style={s.statSub}>2026-03-03</div>
+            <div style={s.statSub}>{formatDateText('2026-03-03')}</div>
           </div>
           <div style={s.statCard}>
             <div style={s.statLabel}>Records Synced</div>
@@ -107,7 +108,7 @@ export function DataSyncPage({ user }) {
           <div style={s.controlRow}>
             <div>
               <div style={s.controlLabel}>Next Scheduled Sync</div>
-              <div style={s.controlVal}>2026-03-03 03:45 PM</div>
+              <div style={s.controlVal}>{formatDateTimeText('2026-03-03T15:45:00')}</div>
             </div>
           </div>
 
@@ -121,7 +122,7 @@ export function DataSyncPage({ user }) {
                 style={{
                   ...s.changeLink,
                   opacity: canChangeInterval ? 1 : 0.45,
-                  color: canChangeInterval ? '#07866a' : '#64748b',
+                  color: canChangeInterval ? '#005447' : '#64748b',
                   pointerEvents: canChangeInterval ? 'auto' : 'none',
                 }}
                 onClick={(e) => {
@@ -234,7 +235,7 @@ export function DataSyncPage({ user }) {
                     </span>
                   )}
                   <span style={{ fontSize: '.8rem', color: '#64748b', paddingLeft: row.expandable ? 0 : 20 }}>
-                    {row.datetime}
+                    {formatDateTimeText(row.datetime)}
                   </span>
                 </div>
                 <div style={{ fontSize: '.8rem', color: '#64748b', paddingLeft: 8 }}>{row.synced}</div>
@@ -309,7 +310,7 @@ const s = {
   },
   controlLabel: { fontSize: '.82rem', color: '#0f1117', marginBottom: 4 },
   controlVal:   { fontFamily: "'DM Sans', sans-serif", fontSize: '1rem', fontWeight: 600, color: '#0f1117' },
-  changeLink:   { fontSize: '.75rem', color: '#07866a', textDecoration: 'none' },
+  changeLink:   { fontSize: '.75rem', color: '#005447', textDecoration: 'none' },
   divider:      { height: 1, background: '#f1f5f9' },
 
   toggle: {

@@ -1,4 +1,10 @@
 export const Icons = {
+  home: (
+    <svg fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+      <path d="m3 10 9-7 9 7" />
+      <path d="M5 9v12h14V9M9 21v-7h6v7" />
+    </svg>
+  ),
   grid: (
     <svg fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
       <rect x={3} y={3} width={7} height={7} rx={1} />
@@ -148,6 +154,11 @@ export const Icons = {
     <svg fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
       <line x1={5} y1={12} x2={19} y2={12} />
       <polyline points="12 5 19 12 12 19" />
+    </svg>
+  ),
+  chevronRight: (
+    <svg fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+      <polyline points="9 18 15 12 9 6" />
     </svg>
   ),
   transfer: (

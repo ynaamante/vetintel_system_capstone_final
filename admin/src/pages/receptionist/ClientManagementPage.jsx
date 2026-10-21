@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import Topbar from '../../components/Topbar';
 import { Icons } from '../../icons';
 import { canViewFeature } from '../../utils/permissionUtils';
+import { formatDateText } from '../../utils/dateFormatting';
 
 function formatDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return formatDateText(value, undefined, '');
 }
 
 export default function ClientManagementPage({ user }) {
@@ -92,7 +91,7 @@ export default function ClientManagementPage({ user }) {
       <div style={s.page}>
         <div style={s.statsGrid}>
           {[
-            { label: 'Total Clients', value: clients.length, icon: Icons.users, iconBg: '#e7f5f2', iconColor: '#07866a' },
+            { label: 'Total Clients', value: clients.length, icon: Icons.users, iconBg: '#e7f5f2', iconColor: '#005447' },
             { label: 'Total Pets', value: totalPets, icon: Icons.pet, iconBg: '#f5f3ff', iconColor: '#7c3aed' },
             { label: 'New This Month', value: newThisMonth, icon: Icons.users, iconBg: '#fffbeb', iconColor: '#d97706' },
             { label: 'Searchable', value: 'Yes', icon: Icons.search, iconBg: '#f0fdf4', iconColor: '#16a34a' },

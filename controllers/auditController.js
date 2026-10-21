@@ -51,7 +51,7 @@ exports.list = async (req, res, next) => {
 
 exports.getByFilter = async (req, res, next) => {
   try {
-    const { user_id, action, table_name, days, clinic_id } = req.query;
+    const { user_id, action, table_name, record_id, days, clinic_id } = req.query;
         let query = `
           SELECT a.id, a.user_id, a.action, a.table_name, a.record_id, a.old_data, a.new_data, a.ip_address, a.created_at,
             u.name, u.email
@@ -79,9 +79,26 @@ exports.getByFilter = async (req, res, next) => {
       params.push(table_name);
     }
 
+    if (record_id) {
+      paramCount++;
+      query += ` AND a.record_id::text = $${paramCount}`;
+      params.push(String(record_id));
+    }
+
     if (clinic_id) {
       paramCount++;
-      query += ` AND (a.new_data->>'clinic_id' = $${paramCount} OR a.old_data->>'clinic_id' = $${paramCount})`;
+      query += ` AND (
+        a.new_data->>'clinic_id' = $${paramCount}
+        OR a.old_data->>'clinic_id' = $${paramCount}
+        OR (
+          a.table_name = 'appointments'
+          AND EXISTS (
+            SELECT 1 FROM appointments appointment
+            WHERE appointment.id::text = a.record_id::text
+              AND appointment.clinic_id::text = $${paramCount}
+          )
+        )
+      )`;
       params.push(String(clinic_id));
     }
 

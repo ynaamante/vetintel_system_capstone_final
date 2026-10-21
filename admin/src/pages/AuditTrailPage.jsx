@@ -3,10 +3,11 @@ import { jsPDF } from 'jspdf';
 import Topbar from '../components/Topbar';
 import { Icons } from '../icons';
 import { canViewFeature } from '../utils/permissionUtils';
+import { formatDateTimeText } from '../utils/dateFormatting';
 
 const ACTION_META = {
   'alert acknowledged': { color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
-  update: { color: '#07866a', bg: '#e7f5f2', border: '#b7e4d7' },
+  update: { color: '#005447', bg: '#e7f5f2', border: '#b7e4d7' },
   'report generated': { color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff' },
   create: { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
   'data sync': { color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' },
@@ -81,7 +82,7 @@ function downloadAuditPdf(logs) {
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(8);
     pdf.setTextColor(100, 116, 139);
-    pdf.text(`Generated: ${new Date().toLocaleString('en-PH')}  |  ${logs.length} entries`, margin, y + 6);
+    pdf.text(`Generated: ${formatDateTimeText(new Date(), 'en-PH')} | ${logs.length} entries`, margin, y + 6);
     y += 16;
     pdf.setFillColor(241, 245, 249);
     pdf.rect(margin, y - 4, pageWidth - margin * 2, 8, 'F');
@@ -165,7 +166,7 @@ function DetailModal({ log, onClose }) {
             </div>
             <div style={m.headerSub}>{log.id}</div>
           </div>
-          <button style={m.closeBtn} onClick={onClose}>
+          <button type="button" aria-label="Close audit log details" style={m.closeBtn} onClick={onClose}>
             <span style={{ width: 18, height: 18, display: 'flex', color: '#64748b' }}>{Icons.close}</span>
           </button>
         </div>
@@ -173,7 +174,7 @@ function DetailModal({ log, onClose }) {
           <div style={m.metaGrid}>
             <div style={m.field}>
               <div style={m.fieldLabel}>Timestamp</div>
-              <div style={m.fieldValue}>{log.timestamp}</div>
+              <div style={m.fieldValue}>{formatDateTimeText(log.timestamp)}</div>
             </div>
             <div style={m.field}>
               <div style={m.fieldLabel}>User</div>
@@ -299,7 +300,7 @@ export default function AuditTrailPage({ user }) {
 
         {/* STAT CARDS */}
         <div style={s.statsGrid}>{[
-        { icon: 'users', iconBg: '#d8f4e8', iconColor: '#087f65', label: 'Active Users', value: String(users.length) },
+        { icon: 'users', iconBg: '#d8f4e8', iconColor: '#005447', label: 'Active Users', value: String(users.length) },
         { icon: 'file', iconBg: '#dcfce7', iconColor: '#16a34a', label: 'Total Actions', value: String(logs.length) },
         { icon: 'calendar', iconBg: '#fef3c7', iconColor: '#f59e0b', label: "Today's Activity", value: String(logs.filter(log => new Date(log.timestamp).toDateString() === today).length) },
         { icon: 'info', iconBg: '#f3e8ff', iconColor: '#9333ea', label: 'Critical Actions', value: String(criticalActions) },
@@ -378,7 +379,7 @@ export default function AuditTrailPage({ user }) {
                 {filtered.map((log, i) => (
                   <tr key={log.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
                     <td style={{ ...s.td, fontFamily: 'monospace', color: '#64748b', fontSize: '.76rem' }}>{log.id}</td>
-                    <td style={{ ...s.td, color: '#64748b', whiteSpace: 'nowrap', fontSize: '.78rem' }}>{log.timestamp}</td>
+                    <td style={{ ...s.td, color: '#64748b', whiteSpace: 'nowrap', fontSize: '.78rem' }}>{formatDateTimeText(log.timestamp)}</td>
                     <td style={{ ...s.td, fontWeight: 500, color: '#0f1117', whiteSpace: 'nowrap' }}>{log.user}</td>
                     <td style={s.td}><ActionBadge action={log.action} /></td>
                     <td style={{ ...s.td, color: '#374151', maxWidth: 280 }}>{log.description}</td>

@@ -3,6 +3,7 @@ import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
 import { Icons } from '../icons';
 import { notifySuccess } from '../utils/notifications';
+import { formatDateText } from '../utils/dateFormatting';
 
 const INITIAL_INTAKES = [
   {
@@ -14,7 +15,7 @@ const INITIAL_INTAKES = [
     species: 'Dog',
     breed: 'Shih Tzu',
     phone: '+63 917 888 1234',
-    received: 'Sep 30, 2026',
+    received: 'September 30, 2026',
     receivedMeta: '9:18 AM',
     submittedBy: 'Emily Rodriguez',
     status: 'Needs review',
@@ -39,7 +40,7 @@ const INITIAL_INTAKES = [
     species: 'Cat',
     breed: 'Scottish Fold',
     phone: '+63 920 777 5678',
-    received: 'Sep 28, 2026',
+    received: 'September 28, 2026',
     receivedMeta: '2:30 PM · by Emily',
     submittedBy: 'Emily Rodriguez',
     status: 'Waiting on reception',
@@ -65,7 +66,7 @@ const INITIAL_INTAKES = [
     species: 'Dog',
     breed: 'Golden Retriever',
     phone: '+63 912 333 9999',
-    received: 'Sep 26, 2026',
+    received: 'September 26, 2026',
     receivedMeta: '10:05 AM · by Emily',
     submittedBy: 'Emily Rodriguez',
     status: 'Approved',
@@ -94,7 +95,7 @@ const CORRECTION_REASONS = [
 const DOCTORS = ['Dr. Yna Amante', 'Dr. Emily Rodriguez', 'Dr. Marco Santos'];
 
 function IntakeStatus({ status }) {
-  return <StatusIndicator status={status} style={{ fontSize: '11px', fontWeight: 600 }} />;
+  return <StatusIndicator status={status} style={{ fontSize: '12px', fontWeight: 600 }} />;
 }
 
 function FilterIcon() {
@@ -103,10 +104,6 @@ function FilterIcon() {
       <path d="M4 6h16M7 12h10m-7 6h4" />
     </svg>
   );
-}
-
-function PaperclipIcon() {
-  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m8 12.5 6.8-6.8a3.2 3.2 0 0 1 4.5 4.5l-8.5 8.5a5 5 0 0 1-7.1-7.1l8.2-8.2" /></svg>;
 }
 
 function AlertIcon() {
@@ -305,23 +302,22 @@ export default function PatientIntakesPage({ user }) {
             <tbody>
               {filtered.map(item => (
                 <tr key={item.id} onClick={() => { setSelectedId(item.id); setShowMoreActions(false); setShowActivity(false); setPreviewAttachment(false); }} className={selectedId === item.id ? 'intake-row-selected' : ''}>
-                  <td>
-                    <span className="intake-id">{item.id}</span>
-                    <span className={`intake-tag intake-tag-${item.tag.toLowerCase()}`}>{item.tag}</span>
-                  </td>
+                  <td><span className="intake-id">{item.id}</span></td>
                   <td>
                     <div className="intake-pet-name">
                       <strong>{item.pet}</strong>
-                      {item.attachmentName && <span className="intake-paperclip" aria-label="Has attachment"><PaperclipIcon /></span>}
-                      {item.alert && <span className="intake-alert" aria-label="Needs attention"><AlertIcon /></span>}
+                      {item.attachmentName && <span className="intake-listing-indicator">Attachment</span>}
+                      {item.alert && <span className="intake-listing-indicator intake-listing-alert">Needs attention</span>}
                     </div>
-                    <div className="intake-pet-meta"><span>{Icons.pet}</span>{item.species} · {item.breed}</div>
+                    <div className="intake-pet-meta">{item.species} · {item.breed}</div>
+                    <div className="intake-pet-meta">{item.age || 'Age not recorded'} · {item.gender || 'Sex not recorded'}</div>
                   </td>
                   <td>
                     <div className="intake-owner">{item.owner}</div>
-                    <div className="intake-phone"><span>{Icons.phone}</span>{item.phone}</div>
+                    <div className="intake-phone">{item.phone}</div>
+                    {item.email && <div className="intake-phone">{item.email}</div>}
                   </td>
-                  <td><span className="intake-date">{item.received}</span><span className="intake-received-meta">{item.receivedMeta}</span></td>
+                  <td><span className="intake-date">{item.received}</span><span className="intake-received-meta">{item.receivedMeta}</span><span className="intake-received-meta">Submitted by {item.submittedBy || '—'}</span></td>
                   <td><IntakeStatus status={item.status} /></td>
                   <td><button type="button" aria-label={`View ${item.pet} intake details`} className="intake-open" onClick={event => { event.stopPropagation(); setSelectedId(item.id); }}>›</button></td>
                 </tr>
@@ -332,6 +328,9 @@ export default function PatientIntakesPage({ user }) {
         </div>
       </main>
 
+      {selected && (
+        <div className="intake-detail-backdrop" aria-hidden="true" onClick={() => { setSelectedId(null); setShowMoreActions(false); setShowActivity(false); setPreviewAttachment(false); }} />
+      )}
       {selected && (
         <aside className="intake-detail-panel" role="dialog" aria-modal="false" aria-label={`${selected.pet} intake details`}>
           <header className="intake-detail-head">
@@ -363,7 +362,7 @@ export default function PatientIntakesPage({ user }) {
                 <Detail label="Species" value={selected.species} />
                 <Detail label="Breed" value={selected.breed} />
                 <Detail label="Gender" value={selected.gender} />
-                <Detail label="Date of birth" value={selected.dateOfBirth} />
+                <Detail label="Date of birth" value={formatDateText(selected.dateOfBirth)} />
                 <Detail label="Weight" value={selected.weight} />
                 <Detail label="Color" value={selected.color} />
                 <Detail label="Known allergies" value={selected.allergies} />
@@ -459,12 +458,12 @@ export default function PatientIntakesPage({ user }) {
               <button type="button" aria-label="Close reassignment" className="correction-modal-close" onClick={() => setShowReassignModal(false)}>{Icons.close}</button>
             </header>
             <p>Transfer this intake to another available doctor. All data will be preserved.</p>
-            <label className="reassign-label" htmlFor="reassign-doctor">Transfer To*</label>
+            <label className="reassign-label" htmlFor="reassign-doctor">Transfer To<span className="system-required-star">*</span></label>
             <select id="reassign-doctor" className="reassign-select" value={assignedDoctor} onChange={event => setAssignedDoctor(event.target.value)}>
               <option value="">Select doctor</option>
               {DOCTORS.map(doctor => <option key={doctor}>{doctor}</option>)}
             </select>
-            <label className="reassign-label" htmlFor="reassign-reason">Reason for Reassignment*</label>
+            <label className="reassign-label" htmlFor="reassign-reason">Reason for Reassignment<span className="system-required-star">*</span></label>
             <textarea id="reassign-reason" className="reassign-reason" value={reassignReason} onChange={event => setReassignReason(event.target.value)} placeholder="e.g. Outside my specialty area, conflict of interest..." />
             <p className="reassign-audit">{Icons.info}<span>This action will be recorded in the audit log.</span></p>
             <div className="correction-modal-actions">
@@ -485,7 +484,7 @@ export default function PatientIntakesPage({ user }) {
               <button type="button" aria-label="Close rejection" className="correction-modal-close" onClick={() => setShowRejectionModal(false)}>{Icons.close}</button>
             </header>
             <p>This intake will be permanently rejected. The receptionist will be notified.</p>
-            <label className="reassign-label" htmlFor="rejection-reason">Rejection Reason*</label>
+            <label className="reassign-label" htmlFor="rejection-reason">Rejection Reason<span className="system-required-star">*</span></label>
             <textarea
               id="rejection-reason"
               className="reassign-reason"
@@ -510,6 +509,7 @@ function Detail({ label, value, link = false }) {
 }
 
 const responsiveStyles = `
+  .intake-topbar > div:first-child p { color: #334155 !important; }
   .intake-content { box-sizing: border-box; width: 100%; padding: 15px 23px 24px; }
   .intake-top-search { display: flex; align-items: center; gap: 9px; width: 226px; height: 37px; box-sizing: border-box; padding: 0 11px; color: #83918e; border: 1px solid #e1e9e7; border-radius: 10px; background: #f8faf9; }
   .intake-top-search > span { display: flex; width: 13px; height: 13px; flex: 0 0 auto; }
@@ -539,46 +539,35 @@ const responsiveStyles = `
   .intake-filter-menu select { padding: 7px; border: 1px solid #dce5e3; border-radius: 6px; background: #fff; color: #26332f; font: inherit; }
   .intake-table-wrap { overflow-x: auto; border: 1px solid #e2e9e7; border-radius: 12px; background: #fff; }
   .intake-table { width: 100%; min-width: 850px; border-collapse: collapse; text-align: left; }
-  .intake-table th { height: 35px; padding: 0 15px; border-bottom: 1px solid #e3eae8; background: #f8faf9; color: #111; font-size: 11px; font-weight: 650; }
+  .intake-table th { height: 39px; padding: 0 15px; border-bottom: 1px solid #e3eae8; background: #f8faf9; color: #111; font-size: 12px; font-weight: 650; }
   .intake-table th:first-child { width: 90px; }
   .intake-table th:nth-child(2), .intake-table th:nth-child(3) { width: 21%; }
   .intake-table th:nth-child(4) { width: 19%; }
   .intake-table th:nth-child(5) { width: 15%; }
-  .intake-table td { height: 71px; padding: 6px 15px; border-bottom: 1px solid #e4eae8; color: #26332f; font-size: 11px; vertical-align: middle; }
+  .intake-table td { height: 84px; padding: 9px 15px; border-bottom: 1px solid #e4eae8; color: #26332f; font-size: 12px; vertical-align: middle; }
+  .intake-table th:last-child, .intake-table td:last-child { width: 42px; padding-right: 10px; padding-left: 4px; text-align: right; }
   .intake-table tbody tr:last-child td { border-bottom: 0; }
   .intake-table tbody tr:not(:has(.intake-empty)) { cursor: pointer; }
-  .intake-id { display: block; color: #111; font-family: Georgia, serif; font-size: 11px; }
+  .intake-id { display: block; color: #000; font-family: 'DM Sans', sans-serif; font-size: 12px; }
   .intake-tag { display: inline-flex; margin-top: 6px; padding: 3px 8px; border-radius: 10px; font-size: 9px; font-weight: 800; line-height: 1; }
   .intake-tag-new { background: #eaf0ff; color: #3372ff; }
   .intake-tag-updated { background: #ffebc5; color: #a45a00; }
   .intake-tag-approved { background: #cff2dd; color: #118153; }
   .intake-pet-name { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
-  .intake-pet-name strong { color: #26332f; font-size: 12px; }
-  .intake-paperclip, .intake-alert { display: inline-flex; width: 12px; height: 12px; }
-  .intake-paperclip { color: #72817b; }
-  .intake-alert { color: #ef4e43; }
-  .intake-paperclip svg, .intake-alert svg { width: 100%; height: 100%; }
-  .intake-pet-meta, .intake-phone { display: flex; align-items: center; gap: 5px; margin: 2px 0; color: #303b36; font-size: 11px; }
-  .intake-pet-meta span, .intake-phone span { display: flex; width: 10px; height: 10px; }
-  .intake-pet-meta svg, .intake-phone svg { width: 100%; height: 100%; }
-  .intake-owner { margin: 2px 0; color: #111; font-size: 12px; font-weight: 600; }
-  .intake-date { display: block; color: #111; font-size: 12px; }
-  .intake-received-meta { display: block; margin-top: 3px; color: #303b36; font-size: 11px; }
-  .intake-open { display: grid; place-items: center; width: 26px; height: 28px; border: 0; background: transparent; color: #9aaba7; cursor: pointer; font-size: 24px; line-height: 1; }
+  .intake-pet-name strong { color: #26332f; font-size: 13px; }
+  .intake-listing-indicator { margin-left: 6px; color: #72817b; font-size: 11px; font-weight: 600; }
+  .intake-listing-alert { color: #c73830; }
+  .intake-pet-meta, .intake-phone { margin: 2px 0; color: #000; font-size: 12px; }
+  .intake-phone { color: #000; font-size: 11px; }
+  .intake-owner { margin: 2px 0; color: #111; font-size: 13px; font-weight: 600; }
+  .intake-date { display: block; color: #111; font-size: 13px; }
+  .intake-received-meta { display: block; margin-top: 3px; color: #000; font-size: 11px; }
+  .intake-open { display: grid; place-items: center; width: 26px; height: 28px; margin-left: auto; border: 0; background: transparent; color: #9aaba7; cursor: pointer; font-size: 24px; line-height: 1; }
   .intake-empty { height: 90px !important; text-align: center; color: #71807b !important; }
-  .intake-shell:has(.intake-detail-panel) > .intake-topbar,
-  .intake-shell:has(.intake-detail-panel) > .intake-content {
-    width: calc(100% - 352px) !important;
-    max-width: calc(100% - 352px);
-    margin-right: 0;
-    box-sizing: border-box;
-  }
-  .intake-shell:has(.intake-detail-panel) .intake-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
   .intake-row-selected td { background: #e8f6f1; }
   .intake-row-selected td:first-child { box-shadow: inset 3px 0 #139675; }
-  .intake-detail-panel { position: fixed; z-index: 30; inset: 0 0 0 auto; display: flex; flex-direction: column; width: 352px; box-sizing: border-box; border-left: 1px solid #e2e9e7; background: #fff; color: #111; }
+  .intake-detail-backdrop { position: fixed; z-index: 39; inset: 0; background: rgba(15, 38, 42, .18); }
+  .intake-detail-panel { position: fixed; z-index: 40; inset: 0 0 0 auto; display: flex; flex-direction: column; width: min(560px, 100vw); box-sizing: border-box; border-left: 1px solid #e2e9e7; background: #fff; color: #111; box-shadow: -10px 0 32px rgba(20, 48, 43, .12); }
   .intake-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; min-height: 84px; box-sizing: border-box; padding: 17px 17px 12px; border-bottom: 1px solid #e7ecea; }
   .intake-detail-heading { min-width: 0; }
   .intake-detail-heading h2 { margin: 0 0 6px; color: #17221e; font-size: 19px; font-weight: 750; }
@@ -694,10 +683,7 @@ const responsiveStyles = `
   @media (max-width: 900px) {
     .intake-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .intake-content { padding: 14px 16px 24px; }
-    .intake-shell:has(.intake-detail-panel) > .intake-topbar,
-    .intake-shell:has(.intake-detail-panel) > .intake-content { width: 100%; margin-right: 0; }
-    .intake-detail-panel { width: min(370px, 100vw); box-shadow: -8px 0 25px #18302424; }
-    .intake-shell:has(.intake-detail-panel) .intake-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .intake-detail-panel { width: min(560px, 100vw); box-shadow: -10px 0 32px rgba(20, 48, 43, .12); }
   }
   @media (max-width: 640px) {
     .intake-top-search { display: none; }
