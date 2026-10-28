@@ -1,7 +1,7 @@
 import { cloneElement, useEffect, useMemo, useState } from 'react';
 import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
-import LabDateTimePicker from '../components/LabDateTimePicker';
+import LabDateTimePicker, { getUnavailableAppointmentTimes } from '../components/LabDateTimePicker';
 import { ModalDialog } from '../components/ModalDialog';
 import { getStatusToneColors } from '../utils/statusTone';
 import { Icons } from '../icons';
@@ -159,6 +159,7 @@ const CONSULTATION_FIELDS = [
   ['ownerSummary', 'Visit summary for owner', 1],
   ['attachments', 'Attachments / file references', 1],
 ];
+const CONSULTATION_REQUIRED_FIELDS = new Set(['clinicalFindings', 'diagnosis', 'outcome']);
 
 function Badge({ children, tone }) {
   return <span style={{ ...styles.badge, ...tone }}>{children}</span>;
@@ -195,6 +196,13 @@ export default function MySchedulePage({ user }) {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => new Date());
   const [showAllRecentActivities, setShowAllRecentActivities] = useState(false);
   const today = new Date();
+  const workflowUnavailableTimes = appointmentWorkflow
+    ? getUnavailableAppointmentTimes(
+      appointments,
+      appointmentWorkflow.date,
+      appointmentWorkflow.action === 'reschedule' ? appointmentWorkflow.appointment.id : undefined,
+    )
+    : [];
   const activeBillingCatalog = billingCatalog.filter(item => item.active);
   const consultationBillItems = Array.isArray(consultationForm.billingItems) ? consultationForm.billingItems : [];
   const consultationBillTotal = consultationBillItems.reduce((total, item) => {
@@ -979,8 +987,8 @@ export default function MySchedulePage({ user }) {
               : <input required value={appointmentWorkflow.visitType} onChange={event => setAppointmentWorkflow(current => ({ ...current, visitType: event.target.value }))} style={workflowStyles.input} />}
           </label>
           <div style={workflowStyles.dateTime}>
-            <label style={workflowStyles.field}>Date<LabDateTimePicker mode="date" required min={toDateInputValue(new Date())} value={appointmentWorkflow.date} onChange={date => setAppointmentWorkflow(current => ({ ...current, date, error: '' }))} style={workflowStyles.input} /></label>
-            <label style={workflowStyles.field}>Time<LabDateTimePicker mode="time" required value={appointmentWorkflow.time} onChange={time => setAppointmentWorkflow(current => ({ ...current, time, error: '' }))} style={workflowStyles.input} /></label>
+            <label style={workflowStyles.field}>Date<LabDateTimePicker mode="date" required min={toDateInputValue(new Date())} value={appointmentWorkflow.date} onChange={date => setAppointmentWorkflow(current => ({ ...current, date, time: getUnavailableAppointmentTimes(appointments, date, current.action === 'reschedule' ? current.appointment.id : undefined).includes(current.time) ? '' : current.time, error: '' }))} style={workflowStyles.input} /></label>
+            <label style={workflowStyles.field}>Time<LabDateTimePicker mode="time" required value={appointmentWorkflow.time} unavailableTimes={workflowUnavailableTimes} unavailableLabel="another appointment" onChange={time => setAppointmentWorkflow(current => ({ ...current, time, error: '' }))} style={workflowStyles.input} /></label>
           </div>
           <label style={workflowStyles.field}>
             {appointmentWorkflow.action === 'reschedule' ? 'Reason (optional)' : 'Reason'}
@@ -1019,8 +1027,9 @@ export default function MySchedulePage({ user }) {
         <div className="consultation-step-bar" style={consultationStyles.stepBar}>
           {['Assessment', 'Care & records', 'Charges'].map((label, index) => <button className={consultationStep === index ? 'consultation-step-active' : 'consultation-step'} key={label} type="button" aria-current={consultationStep === index ? 'step' : undefined} onClick={() => setConsultationStep(index)} style={{ ...consultationStyles.stepButton, ...(consultationStep === index ? consultationStyles.stepButtonActive : {}) }}><span>{index + 1}</span>{label}</button>)}
         </div>
+        <p style={{ margin: '10px 0 0', color: '#52645f', fontSize: 13 }}><span aria-hidden="true" style={{ color: '#d83740', fontWeight: 700 }}>*</span> Required to complete consultation</p>
         <div className="consultation-modal-grid" style={styles.consultationGrid}>
-          {consultationStep < 2 && CONSULTATION_FIELDS.filter(([, , step]) => step === consultationStep).map(([field, label]) => <label key={field} style={{ ...styles.modalField, gridColumn: ['clinicalFindings', 'treatment', 'outcome', 'medications', 'vaccinations', 'labTests', 'followUpInstructions', 'internalNotes', 'ownerSummary', 'attachments'].includes(field) ? '1 / -1' : undefined }}>{label}<textarea value={consultationForm[field] || ''} onChange={event => updateConsultationField(field, event.target.value)} style={styles.modalTextarea} rows={field === 'clinicalFindings' || field === 'internalNotes' ? 3 : 2} /></label>)}
+          {consultationStep < 2 && CONSULTATION_FIELDS.filter(([, , step]) => step === consultationStep).map(([field, label]) => <label key={field} style={{ ...styles.modalField, gridColumn: ['clinicalFindings', 'treatment', 'outcome', 'medications', 'vaccinations', 'labTests', 'followUpInstructions', 'internalNotes', 'ownerSummary', 'attachments'].includes(field) ? '1 / -1' : undefined }}><span>{label}{CONSULTATION_REQUIRED_FIELDS.has(field) && <span aria-hidden="true" style={{ color: '#d83740', fontWeight: 700, marginLeft: 3 }}>*</span>}</span><textarea aria-required={CONSULTATION_REQUIRED_FIELDS.has(field)} value={consultationForm[field] || ''} onChange={event => updateConsultationField(field, event.target.value)} style={styles.modalTextarea} rows={field === 'clinicalFindings' || field === 'internalNotes' ? 3 : 2} /></label>)}
           {consultationStep === 0 && <>
           <div style={styles.modalField}>
             Hydration

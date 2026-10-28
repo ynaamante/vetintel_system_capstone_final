@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Topbar from '../../components/Topbar';
-import LabDateTimePicker from '../../components/LabDateTimePicker';
+import LabDateTimePicker, { getUnavailableAppointmentTimes } from '../../components/LabDateTimePicker';
 import { Icons } from '../../icons';
 import { canViewFeature } from '../../utils/permissionUtils';
 import { formatDateText } from '../../utils/dateFormatting';
@@ -107,6 +107,7 @@ function NewAppointmentModal({ appointments, onClose, onSchedule }) {
   const owners = [...new Set(appointments.map((appointment) => appointment.owner).filter(Boolean))];
   const [form, setForm] = useState({ pet: '', owner: '', date: '', time: '', type: '', notes: '' });
   const canSubmit = form.pet && form.owner && form.date && form.time && form.type;
+  const unavailableTimes = getUnavailableAppointmentTimes(appointments, form.date);
 
   return (
     <div style={s.modalBackdrop} onClick={onClose}>
@@ -127,8 +128,8 @@ function NewAppointmentModal({ appointments, onClose, onSchedule }) {
         <div style={s.newAppointmentGrid}>
           <label style={s.newAppointmentLabel}>Pet<span className="system-required-star">*</span><select required value={form.pet} onChange={(event) => setForm({ ...form, pet: event.target.value })} style={s.newAppointmentInput}><option value="">Select pet</option>{pets.map((pet) => <option key={pet}>{pet}</option>)}</select></label>
           <label style={s.newAppointmentLabel}>Owner<span className="system-required-star">*</span><select required value={form.owner} onChange={(event) => setForm({ ...form, owner: event.target.value })} style={s.newAppointmentInput}><option value="">Select owner</option>{owners.map((owner) => <option key={owner}>{owner}</option>)}</select></label>
-          <label style={s.newAppointmentLabel}>Date<span className="system-required-star">*</span><LabDateTimePicker mode="date" required value={form.date} onChange={date => setForm({ ...form, date })} style={s.newAppointmentInput} /></label>
-          <label style={s.newAppointmentLabel}>Time<span className="system-required-star">*</span><LabDateTimePicker mode="time" required value={form.time} onChange={time => setForm({ ...form, time })} style={s.newAppointmentInput} /></label>
+          <label style={s.newAppointmentLabel}>Date<span className="system-required-star">*</span><LabDateTimePicker mode="date" required value={form.date} onChange={date => setForm(current => ({ ...current, date, time: getUnavailableAppointmentTimes(appointments, date).includes(current.time) ? '' : current.time }))} style={s.newAppointmentInput} /></label>
+          <label style={s.newAppointmentLabel}>Time<span className="system-required-star">*</span><LabDateTimePicker mode="time" required value={form.time} unavailableTimes={unavailableTimes} unavailableLabel="another appointment" onChange={time => setForm({ ...form, time })} style={s.newAppointmentInput} /></label>
           <label style={{ ...s.newAppointmentLabel, gridColumn: '1 / -1' }}>Appointment Type<span className="system-required-star">*</span><select required value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })} style={s.newAppointmentInput}><option value="">Select type</option><option>General Checkup</option><option>Vaccination</option><option>Dental Cleaning</option><option>Follow-up</option><option>Surgery</option></select></label>
           <label style={{ ...s.newAppointmentLabel, gridColumn: '1 / -1' }}>Notes<textarea placeholder="Additional information..." value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} style={s.newAppointmentNotes} /></label>
         </div>

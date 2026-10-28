@@ -9,8 +9,21 @@ export default function FilterSelect({ label, value, options, onChange, classNam
   const menuRef = useRef(null);
   const triggerRef = useRef(null);
 
-  const selectedIndex = Math.max(0, options.findIndex(option => option.value === value));
-  const selectedOption = options[selectedIndex];
+  // API-backed filters can briefly receive incomplete values while their
+  // parent refreshes. Keep the control renderable instead of letting one bad
+  // option unmount the page.
+  const safeOptions = Array.isArray(options)
+    ? options
+      .filter(option => option && typeof option === 'object')
+      .map(option => ({
+        value: String(option.value ?? ''),
+        label: String(option.label ?? option.value ?? ''),
+      }))
+      .filter(option => option.value)
+    : [];
+  const normalizedValue = String(value ?? '');
+  const selectedIndex = Math.max(0, safeOptions.findIndex(option => option.value === normalizedValue));
+  const selectedOption = safeOptions[selectedIndex];
   const menuZIndex = className.includes('lab-date-time-select') ? 2200 : 2000;
 
   useEffect(() => {
@@ -30,7 +43,7 @@ export default function FilterSelect({ label, value, options, onChange, classNam
         && window.matchMedia('(pointer: coarse), (max-width: 1024px)').matches;
       const rowHeight = touchLayout ? 50 : 34;
       const menuLimit = touchLayout ? Math.min(400, window.innerHeight * 0.45) : Math.min(260, window.innerHeight * 0.45);
-      const menuHeight = Math.min(options.length * rowHeight + 14, menuLimit);
+      const menuHeight = Math.min(safeOptions.length * rowHeight + 14, menuLimit);
       const spaceBelow = window.innerHeight - rect.bottom - 12;
       const spaceAbove = rect.top - 12;
       const opensAbove = spaceBelow < Math.min(menuHeight, 180) && spaceAbove > spaceBelow;
@@ -47,14 +60,16 @@ export default function FilterSelect({ label, value, options, onChange, classNam
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [open, options.length]);
+  }, [open, safeOptions.length]);
 
   const openMenu = () => {
     setActiveIndex(selectedIndex);
     setOpen(true);
   };
   const chooseOption = index => {
-    onChange(options[index].value);
+    const option = safeOptions[index];
+    if (!option) return;
+    onChange?.(option.value);
     setOpen(false);
     triggerRef.current?.focus();
   };
@@ -65,13 +80,14 @@ export default function FilterSelect({ label, value, options, onChange, classNam
         openMenu();
         return;
       }
-      setActiveIndex(index => (index + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length);
+      if (!safeOptions.length) return;
+      setActiveIndex(index => (index + (event.key === 'ArrowDown' ? 1 : -1) + safeOptions.length) % safeOptions.length);
     } else if (event.key === 'Home' && open) {
       event.preventDefault();
       setActiveIndex(0);
     } else if (event.key === 'End' && open) {
       event.preventDefault();
-      setActiveIndex(options.length - 1);
+      setActiveIndex(Math.max(0, safeOptions.length - 1));
     } else if (event.key === 'Enter' && open) {
       event.preventDefault();
       chooseOption(activeIndex);
@@ -97,7 +113,7 @@ export default function FilterSelect({ label, value, options, onChange, classNam
         <span>{selectedOption?.label || ''}</span>
         <span className="filter-select-chevron" aria-hidden="true" />
       </button>
-      {open && menuPosition && createPortal(<div
+      {open && menuPosition && safeOptions.length > 0 && createPortal(<div
         className={`filter-select-menu${className ? ` ${className}-menu` : ''}`}
         role="listbox"
         aria-label={label}
@@ -105,11 +121,11 @@ export default function FilterSelect({ label, value, options, onChange, classNam
         ref={menuRef}
         style={{ ...menuPosition, position: 'fixed', zIndex: menuZIndex }}
       >
-        {options.map((option, index) => <button
+        {safeOptions.map((option, index) => <button
           key={option.value}
           type="button"
           role="option"
-          aria-selected={option.value === value}
+          aria-selected={option.value === normalizedValue}
           className={`filter-select-option${className ? ` ${className}-option` : ''}${index === activeIndex ? ' highlighted' : ''}`}
           onFocus={() => setActiveIndex(index)}
           onMouseEnter={() => setActiveIndex(index)}

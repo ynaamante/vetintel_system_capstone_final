@@ -13,6 +13,38 @@ const normalizeClinicId = (value) => {
   return Number.isNaN(clinicId) ? null : clinicId;
 };
 
+const calculatePetAge = (birthDate) => {
+  if (!birthDate) return null;
+  const dateText = birthDate instanceof Date
+    ? birthDate.toISOString().slice(0, 10)
+    : String(birthDate).slice(0, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateText);
+  if (!match) return null;
+
+  const [, yearText, monthText, dayText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const birth = new Date(Date.UTC(year, month - 1, day));
+  if (birth.getUTCFullYear() !== year || birth.getUTCMonth() !== month - 1 || birth.getUTCDate() !== day) return null;
+
+  const today = new Date();
+  let years = today.getFullYear() - year;
+  let months = today.getMonth() + 1 - month;
+  if (today.getDate() < day) months -= 1;
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+  if (years < 0) return null;
+  return years ? `${years} yr${months ? ` ${months} mo` : ''}` : `${months} mo`;
+};
+
+const withPetAge = (pet) => ({
+  ...pet,
+  age: calculatePetAge(pet.birth_date) || pet.metadata?.age || pet.age || null,
+});
+
 const getClinicIdFromRequest = (req) => {
   const explicitClinicId = normalizeClinicId(req.query.clinic_id);
   const userClinicId = normalizeClinicId(req.user && req.user.clinic_id);
@@ -56,7 +88,9 @@ exports.listBillingCatalog = async (req, res, next) => {
     const result = await db.query(
       `SELECT id, clinic_id, item_type, category, name, description, unit, duration, unit_price, active, created_at, updated_at
        FROM clinic_billing_catalog
-       WHERE clinic_id = $1 AND ($2::boolean OR active = true)
+       WHERE clinic_id = $1
+         AND ($2::boolean OR active = true)
+         AND NULLIF(BTRIM(name), '') IS NOT NULL
        ORDER BY item_type, name`,
       [clinicId, includeInactive]
     );
@@ -421,7 +455,7 @@ exports.listPets = async (req, res, next) => {
               p.created_at,
               p.updated_at
        FROM pets p
-       LEFT JOIN clients c ON p.client_id = c.id
+       LEFT JOIN clients c ON p.client_id = c.id AND c.clinic_id = p.clinic_id
        LEFT JOIN LATERAL (
          SELECT a.url
          FROM attachments a
@@ -437,7 +471,7 @@ exports.listPets = async (req, res, next) => {
       [clinicId]
     );
 
-    res.json(result.rows);
+    res.json(result.rows.map(withPetAge));
   } catch (e) {
     next(e);
   }
@@ -547,14 +581,20 @@ exports.createPet = async (req, res, next) => {
        RETURNING id, clinic_id, client_id, name, species, breed, sex, birth_date, color, microchip, notes, metadata, created_at, updated_at`,
       [clinicId, clientId, name, species, breed, sex, birthDate, color, microchip, notes, allergies, age, weight]
     );
-    const pet = {
+    const ownerDetails = await db.query(
+      `SELECT name AS owner, phone AS owner_phone, email AS owner_email
+       FROM clients WHERE id = $1 AND clinic_id = $2`,
+      [clientId, clinicId]
+    );
+    const pet = withPetAge({
       ...result.rows[0],
-      age: age || null,
+      ...ownerDetails.rows[0],
+      age,
       weight: weight || null,
       allergies: allergies || 'Not recorded',
       photo_url: null,
       archived: false,
-    };
+    });
     await logAudit({
       user_id: req.user && req.user.id ? req.user.id : null,
       role: req.user && req.user.role,
@@ -618,7 +658,17 @@ exports.updatePet = async (req, res, next) => {
        RETURNING id, clinic_id, client_id, name, species, breed, sex, birth_date, color, microchip, notes, metadata, updated_at`,
       [Number.isInteger(clientId) ? clientId : existing.client_id, name, species, breed, sexValue, birthDate, color, microchip, notes, JSON.stringify(metadata), petId, clinicId]
     );
-    const pet = result.rows[0];
+    const ownerDetails = await db.query(
+      `SELECT name AS owner, phone AS owner_phone, email AS owner_email
+       FROM clients WHERE id = $1 AND clinic_id = $2`,
+      [result.rows[0].client_id, clinicId]
+    );
+    const pet = withPetAge({
+      ...result.rows[0],
+      ...ownerDetails.rows[0],
+      weight: result.rows[0].metadata?.weight || null,
+      allergies: result.rows[0].metadata?.allergies || 'Not recorded',
+    });
     await db.query(
       `INSERT INTO audit_trail (user_id, action, table_name, record_id, old_data, new_data, ip_address)
       VALUES ($1, $2, 'pets', $3, $4, $5, $6)`,

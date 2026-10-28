@@ -5,7 +5,7 @@ import Topbar from '../../components/Topbar';
 import StatusIndicator from '../../components/StatusIndicator';
 import { VaccinationVerificationDialog } from '../../components/VaccinationRecordDrawer';
 import FilterSelect from '../../components/FilterSelect';
-import LabDateTimePicker from '../../components/LabDateTimePicker';
+import LabDateTimePicker, { getUnavailableAppointmentTimes } from '../../components/LabDateTimePicker';
 import { ModalDialog, ModalHeader, ModalTitle, ModalDescription, ModalFooter, ModalStepper } from '../../components/ModalDialog';
 import { Icons } from '../../icons';
 import { canViewFeature } from '../../utils/permissionUtils';
@@ -2174,12 +2174,40 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
     setAdmitError('');
     setActiveAdmissionTab(current => Math.min(current + 1, admissionTabs.length - 1));
   };
+  const selectAdmissionTab = index => {
+    if (index <= activeAdmissionTab) {
+      setAdmitError('');
+      setActiveAdmissionTab(index);
+      return;
+    }
+    for (let tab = activeAdmissionTab; tab < index; tab += 1) {
+      if (!admissionTabIsValid(tab)) {
+        setActiveAdmissionTab(tab);
+        return;
+      }
+    }
+    setAdmitError('');
+    setActiveAdmissionTab(index);
+  };
+  const reviewAdmissionSummary = event => {
+    event.preventDefault();
+    event.stopPropagation();
+    for (let tab = 0; tab < admissionTabs.length - 1; tab += 1) {
+      if (!admissionTabIsValid(tab)) {
+        setActiveAdmissionTab(tab);
+        return;
+      }
+    }
+    setAdmitError('');
+    setActiveAdmissionTab(admissionTabs.length - 1);
+  };
   const retreatAdmissionTab = () => {
     setAdmitError('');
     setActiveAdmissionTab(current => Math.max(current - 1, 0));
   };
   const submitAdmission = async event => {
     event.preventDefault();
+    if (activeAdmissionTab !== admissionTabs.length - 1 || savingCare) return;
     const invalidTab = [0, 1, 2, 3].find(tab => !admissionTabIsValid(tab));
     if (invalidTab !== undefined || !admitForm.pet_id || !admitForm.ward || !admitForm.attending_veterinarian_id || !admitForm.admission_reason || !admitForm.presenting_complaint || !admitForm.admitted_at
       || !admitForm.consent_status || !admitForm.authorized_by || !admitForm.consent_date_time || !admitForm.consent_scope
@@ -2353,14 +2381,14 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
         </div>
       </section>
       {admitOpen && <div style={modalStyles.backdrop} onClick={closeAdmit}>
-        <ModalDialog as="form" size="large" role="dialog" aria-modal="true" aria-labelledby="admit-patient-title" onSubmit={submitAdmission} onClick={event => event.stopPropagation()} className="clinic-inpatient-admit-dialog" style={{ ...modalStyles.dialog, width: 640, padding: '24px 25px 20px' }}>
+        <ModalDialog as="form" size="large" role="dialog" aria-modal="true" aria-labelledby="admit-patient-title" onSubmit={submitAdmission} onClick={event => event.stopPropagation()} className="clinic-inpatient-admit-dialog" style={modalStyles.dialog}>
           <button type="button" aria-label="Close admit patient" onClick={closeAdmit} style={modalStyles.close}>{Icons.close}</button>
           <ModalHeader style={{ paddingRight: 24, marginBottom: 0 }}>
             <ModalTitle id="admit-patient-title" style={{ margin: 0, color: '#171717', fontSize: '1.05rem', fontWeight: 700 }}>Admit Patient</ModalTitle>
             <ModalDescription as="div" style={{ marginTop: 7, color: '#64748b', fontSize: '.73rem' }}>Create this hospital stay and link it to the registered patient and treatment plan.</ModalDescription>
           </ModalHeader>
           <ModalStepper as="div" className="clinic-inpatient-admit-tabs" role="tablist" aria-label="Admission sections">
-            {admissionTabs.map((tab, index) => <button key={tab} id={`inpatient-admission-tab-${index}`} type="button" role="tab" aria-selected={activeAdmissionTab === index} aria-controls={index === 5 ? 'inpatient-admission-summary-panel' : 'inpatient-admission-tabpanel'} onClick={() => { if (index <= activeAdmissionTab || admissionTabIsValid(activeAdmissionTab)) { setActiveAdmissionTab(index); setAdmitError(''); } }} className={activeAdmissionTab === index ? 'is-active' : index < activeAdmissionTab ? 'is-complete' : ''}><span>{index + 1}</span><span>{tab}</span></button>)}
+            {admissionTabs.map((tab, index) => <button key={tab} id={`inpatient-admission-tab-${index}`} type="button" role="tab" aria-selected={activeAdmissionTab === index} aria-controls={index === 5 ? 'inpatient-admission-summary-panel' : 'inpatient-admission-tabpanel'} onClick={() => selectAdmissionTab(index)} className={activeAdmissionTab === index ? 'is-active' : index < activeAdmissionTab ? 'is-complete' : ''}><span aria-hidden="true" /><small>{tab}</small></button>)}
           </ModalStepper>
           <div className="clinic-inpatient-admit-body">
           <div id="inpatient-admission-tabpanel" role="tabpanel" aria-labelledby={`inpatient-admission-tab-${activeAdmissionTab}`} className={`clinic-inpatient-admit-fields${activeAdmissionTab === 1 ? ' clinic-inpatient-assessment-fields' : ''}`} style={{ display: activeAdmissionTab === 5 ? 'none' : 'grid', gridTemplateColumns: '1fr 1fr', gap: activeAdmissionTab === 1 ? '10px 14px' : '14px 16px', marginTop: activeAdmissionTab === 1 ? 14 : 18 }}>
@@ -2484,7 +2512,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
               <input value={admitForm.relevant_medical_history} onChange={event => setAdmitForm(previous => ({ ...previous, relevant_medical_history: event.target.value }))} placeholder="Previous episodes, conditions, or procedures" />
             </label>
             </>}
-            {activeAdmissionTab === 4 && <div style={{ gridColumn: '1 / -1', display: 'grid', gap: 16 }}>
+            {activeAdmissionTab === 4 && <div className="clinic-inpatient-consent-fields" style={{ gridColumn: '1 / -1', display: 'grid', gap: 16 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <strong style={{ color: '#193a32', fontSize: '1.04rem', fontWeight: 700 }}>Consent &amp; Authorization</strong>
                 <span style={{ color: '#64748b', fontSize: '.72rem' }}>Record the owner's authorization for admission and inpatient care.</span>
@@ -2550,7 +2578,6 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
             <section><h4>Admission Details</h4><div><span>Date &amp; Time</span><strong>{admitForm.admitted_at ? formatDateTimeText(admitForm.admitted_at, 'en-US', admitForm.admitted_at) : 'Not set'}</strong></div><div><span>Reason</span><strong>{admitForm.admission_reason || 'Not entered'}</strong></div><div><span>Urgency</span><strong>{admitForm.urgency_level}</strong></div><div><span>Attending Vet</span><strong>{doctorOptions.find(doctor => String(doctor.id) === String(admitForm.attending_veterinarian_id))?.name || 'Not assigned'}</strong></div></section>
             <section><h4>Hospitalization Plan</h4><div><span>Ward / Cage</span><strong>{admitForm.ward || 'Not assigned'}</strong></div><div><span>Expected Discharge</span><strong>{admitForm.expected_discharge_at ? formatDateText(admitForm.expected_discharge_at) : 'Not scheduled'}</strong></div></section>
             <section><h4>Treatment Plan</h4><strong>{treatmentPlanMode === 'new' ? newPlanForm.title || 'New plan' : linkedAdmissionPlan?.title || 'No linked plan'}</strong>{linkedAdmissionPlan && <small>{linkedAdmissionPlan.status || 'Active'}</small>}</section>
-            <section className="clinic-inpatient-estimate-summary"><h4>Estimated Cost</h4><div><span>Estimate</span><strong>₱{Number(admitForm.estimated_cost || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div><div><span>Add-ons</span><strong>₱{Number(admitForm.estimated_add_ons || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div><div className="clinic-inpatient-total"><span>Total Estimate</span><strong>₱{(Number(admitForm.estimated_cost || 0) + Number(admitForm.estimated_add_ons || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div></section>
             <p className="clinic-inpatient-summary-note">This admission links to the selected treatment plan. Planned steps and medications stay in that plan; inpatient records track actual care.</p>
           </aside>}
           </div>
@@ -2559,15 +2586,17 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
             <button type="button" style={modalStyles.cancel} onClick={closeAdmit}>Cancel</button>
             <div className="clinic-inpatient-admit-footer-nav">
               {activeAdmissionTab > 0 && <button type="button" className="clinic-inpatient-admit-back" onClick={retreatAdmissionTab}>Back</button>}
-              {activeAdmissionTab < admissionTabs.length - 1
+              {activeAdmissionTab < admissionTabs.length - 2
                 ? <button type="button" className="clinic-inpatient-admit-next" onClick={advanceAdmissionTab}>Next</button>
+                : activeAdmissionTab === admissionTabs.length - 2
+                  ? <button type="button" className="clinic-inpatient-admit-next" onClick={reviewAdmissionSummary}>Review Summary</button>
                 : <button type="submit" disabled={savingCare} style={{ ...T.primaryBtn, display: 'flex', alignItems: 'center', gap: 7, padding: '9px 13px', fontSize: '.72rem', borderRadius: 8, opacity: savingCare ? .65 : 1 }}><span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.bed}</span>{savingCare ? 'Saving...' : 'Admit Patient'}</button>}
             </div>
           </ModalFooter>
         </ModalDialog>
       </div>}
       {selectedRecord && <div style={modalStyles.backdrop} onClick={() => setSelectedRecord(null)}>
-        <div role="dialog" aria-modal="true" aria-labelledby="inpatient-record-title" onClick={event => event.stopPropagation()} style={{ ...modalStyles.dialog, width: 'min(760px, 96vw)', maxHeight: '90vh', overflowY: 'auto', padding: '22px 24px 18px' }}>
+        <div className="clinic-inpatient-record-dialog" role="dialog" aria-modal="true" aria-labelledby="inpatient-record-title" onClick={event => event.stopPropagation()} style={{ ...modalStyles.dialog, overflowY: 'auto' }}>
           <button type="button" aria-label="Close inpatient record" onClick={() => setSelectedRecord(null)} style={modalStyles.close}>{Icons.close}</button>
           <div style={{ paddingRight: 24 }}><h2 id="inpatient-record-title" style={{ margin: 0, color: '#111827', fontSize: '1.05rem', fontWeight: 700 }}>Inpatient Record</h2><div style={{ marginTop: 6, color: '#64748b', fontSize: '.72rem' }}>{selectedRecord.id} - {selectedRecord.pet}</div></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '17px 28px', marginTop: 20 }}>
@@ -4732,10 +4761,73 @@ function LocalAuditTab({ user }) {
   </div>;
 }
 
-function VisitCheckupTab({ visits = [], loading = false, error = '' }) {
+function VisitCheckupTab({ visits = [], loading = false, error = '', onNewVisitCheckup }) {
   const [search, setSearch] = useState('');
-  const filteredVisits = visits.filter(visit => [visit.pet, visit.owner, visit.reason, visit.veterinarian, visit.appointment_status, visit.consultation_status]
-    .some(value => String(value || '').toLowerCase().includes(search.trim().toLowerCase())));
+  const [visitTypeFilter, setVisitTypeFilter] = useState('all');
+  const [visitStatusFilter, setVisitStatusFilter] = useState('all');
+  const [dateRangeOpen, setDateRangeOpen] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const dateRangeRef = useRef(null);
+  const dateRangeTriggerRef = useRef(null);
+  const dateRangePopoverRef = useRef(null);
+  const [dateRangePosition, setDateRangePosition] = useState(null);
+  const getVisitType = visit => {
+    const notes = visit.consultation_notes && typeof visit.consultation_notes === 'object' ? visit.consultation_notes : {};
+    const type = visit.visit_type || visit.type || notes.visit_type || visit.reason || '';
+    return /check\s*-?up/i.test(type) ? 'check-up' : 'clinic-visit';
+  };
+  const getVisitStatus = visit => {
+    const appointmentStatus = String(visit.appointment_status || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+    const consultationStatus = String(visit.consultation_status || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+    if (['cancelled', 'canceled'].includes(appointmentStatus)) return 'cancelled';
+    if (appointmentStatus === 'completed' || appointmentStatus === 'complete' || consultationStatus === 'completed' || consultationStatus === 'complete') return 'completed';
+    if (consultationStatus === 'in progress') return 'in-progress';
+    return 'scheduled';
+  };
+  const visitDateValue = value => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+  useEffect(() => {
+    if (!dateRangeOpen) return undefined;
+    const updatePosition = () => {
+      const trigger = dateRangeTriggerRef.current?.getBoundingClientRect();
+      if (!trigger) return;
+      const width = Math.min(260, window.innerWidth - 16);
+      const height = dateRangePopoverRef.current?.getBoundingClientRect().height || 180;
+      const left = Math.max(8, Math.min(trigger.left, window.innerWidth - width - 8));
+      const top = trigger.bottom + height + 8 <= window.innerHeight
+        ? trigger.bottom + 6
+        : Math.max(8, trigger.top - height - 6);
+      setDateRangePosition({ top, left, width });
+    };
+    const closeOutside = event => {
+      if (!dateRangeRef.current?.contains(event.target) && !dateRangePopoverRef.current?.contains(event.target)) setDateRangeOpen(false);
+    };
+    const frame = window.requestAnimationFrame(updatePosition);
+    document.addEventListener('mousedown', closeOutside);
+    document.addEventListener('touchstart', closeOutside, { passive: true });
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener('mousedown', closeOutside);
+      document.removeEventListener('touchstart', closeOutside);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [dateRangeOpen]);
+  const filteredVisits = visits.filter(visit => (
+    (visitTypeFilter === 'all' || getVisitType(visit) === visitTypeFilter)
+    && (visitStatusFilter === 'all' || getVisitStatus(visit) === visitStatusFilter)
+    && (!dateFrom || visitDateValue(visit.visit_date) >= dateFrom)
+    && (!dateTo || visitDateValue(visit.visit_date) <= dateTo)
+    && [visit.pet, visit.owner, visit.reason, visit.veterinarian, visit.appointment_status, visit.consultation_status]
+      .some(value => String(value || '').toLowerCase().includes(search.trim().toLowerCase()))
+  ));
   const visitDate = value => {
     if (!value) return { date: '—', time: '' };
     const date = new Date(value);
@@ -4746,12 +4838,51 @@ function VisitCheckupTab({ visits = [], loading = false, error = '' }) {
     const notes = visit.consultation_notes && typeof visit.consultation_notes === 'object' ? visit.consultation_notes : {};
     return notes.assessment || notes.chief_complaint || notes.reason_for_visit || visit.reason || 'Check-up';
   };
-  return <div className="lab-results-list clinic-appointments-list" style={{ ...T.wrap, padding: 18 }}>
-    <div className="clinic-record-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
-      <div><h2 style={{ ...T.title, margin: 0 }}>Visit &amp; Check-up</h2><p style={{ margin: '5px 0 0', color: '#64748b', fontSize: '.76rem' }}>Completed visits, active consultations, and scheduled check-ups for this clinic.</p></div>
-      <input aria-label="Search visits" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search patient, owner, or visit..." style={{ ...T.search, width: 'min(100%, 300px)', marginBottom: 0 }} />
+  return <div className="lab-results-list clinic-appointments-list clinic-visits-tab" style={{ ...T.wrap, padding: 18 }}>
+    <div className="lab-results-header clinic-visits-page-header">
+      <div><h2 className="lab-results-title">Visit &amp; Check-up</h2><p className="lab-results-description">Completed visits, active consultations, and scheduled check-ups for this clinic.</p></div>
     </div>
     {error && <div className="lab-clinical-history-error" role="alert">{error}</div>}
+    <div className="lab-status-row clinic-vaccinations-status-row clinic-visits-status-row">
+      <div className="lab-status-filters" role="tablist" aria-label="Filter visits by type">
+        {[['all', 'All visits'], ['check-up', 'Check-ups'], ['clinic-visit', 'Clinic visits']].map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={visitTypeFilter === value} className={visitTypeFilter === value ? 'active' : ''} onClick={() => setVisitTypeFilter(value)}>{label}</button>)}
+      </div>
+      <button type="button" className="lab-results-add" onClick={onNewVisitCheckup}>{Icons.plus} Visit &amp; Check-up</button>
+    </div>
+    <div className="lab-filter-bar clinic-visits-filter-bar">
+      <label className="lab-results-search">
+        {Icons.search}
+        <input aria-label="Search visits" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search patient, owner, or visit..." />
+      </label>
+      <div className="lab-date-range clinic-visits-date-range" ref={dateRangeRef}>
+        <button type="button" className="lab-date-range-trigger" ref={dateRangeTriggerRef} aria-label="Choose visit date range" aria-expanded={dateRangeOpen} onClick={() => { setDateRangePosition(null); setDateRangeOpen(open => !open); }}>
+          <span className="lab-date-range-calendar">{Icons.calendar}</span>
+          <span>{dateFrom || dateTo ? `${dateFrom || 'Any date'} – ${dateTo || 'Any date'}` : 'Date Range'}</span>
+          <span className={`lab-date-range-chevron${dateRangeOpen ? ' open' : ''}`} aria-hidden="true" />
+        </button>
+        {dateRangeOpen && createPortal(<div className="lab-date-range-popover clinic-visits-date-range-popover" role="group" aria-label="Visit date range" ref={dateRangePopoverRef} style={dateRangePosition ? { position: 'fixed', ...dateRangePosition, zIndex: 1200 } : { position: 'fixed', visibility: 'hidden', width: 'min(260px, calc(100vw - 16px))', top: 8, left: 8, zIndex: 1200 }}>
+          <label>From<LabDateTimePicker label="Start date" mode="date" value={dateFrom} max={dateTo || undefined} onChange={setDateFrom} /></label>
+          <label>To<LabDateTimePicker label="End date" mode="date" value={dateTo} min={dateFrom || undefined} onChange={setDateTo} /></label>
+          <div className="lab-date-range-actions">
+            <button type="button" onClick={() => { setDateFrom(''); setDateTo(''); }}>Clear</button>
+            <button type="button" onClick={() => setDateRangeOpen(false)}>Done</button>
+          </div>
+        </div>, document.body)}
+      </div>
+      <FilterSelect
+        className="lab-records-filter-select clinic-visits-status-select"
+        label="Filter by visit status"
+        value={visitStatusFilter}
+        onChange={setVisitStatusFilter}
+        options={[
+          { value: 'all', label: 'All Statuses' },
+          { value: 'scheduled', label: 'Scheduled' },
+          { value: 'in-progress', label: 'In Consultation' },
+          { value: 'completed', label: 'Completed' },
+          { value: 'cancelled', label: 'Cancelled' },
+        ]}
+      />
+    </div>
     <section className="lab-results-list clinic-appointments-list">
       <div className="lab-results-table-wrap clinic-appointments-table-wrap">
         <table className="lab-results-table clinic-appointments-table">
@@ -4770,7 +4901,7 @@ function VisitCheckupTab({ visits = [], loading = false, error = '' }) {
                 <td data-label="Status"><StatusIndicator status={status} /></td>
               </tr>;
             })}
-            {!loading && !filteredVisits.length && <tr><td className="lab-results-empty" colSpan="6">{search ? 'No visits match your search.' : 'No visit or check-up records are available yet.'}</td></tr>}
+            {!loading && !filteredVisits.length && <tr><td className="lab-results-empty" colSpan="6">{search || visitTypeFilter !== 'all' || visitStatusFilter !== 'all' || dateFrom || dateTo ? 'No visits match the selected filters.' : 'No visit or check-up records are available yet.'}</td></tr>}
             {loading && <tr><td className="lab-results-empty" colSpan="6">Loading visit records…</td></tr>}
           </tbody>
         </table>
@@ -4799,6 +4930,18 @@ function RecordDetailSection({ title, items }) {
       </div>)}
     </div>
   </section>;
+}
+
+function ConsentDocumentView({ document }) {
+  const contentType = String(document?.content_type || '');
+  const data = String(document?.data || '');
+  if (!['application/pdf', 'image/jpeg', 'image/png'].includes(contentType)
+    || !/^(data:(application\/pdf|image\/jpeg|image\/png);base64,|blob:)/.test(data)) return null;
+  return <div className="confinement-consent-preview">
+    {contentType.startsWith('image/') ? <img src={data} alt="Uploaded consent paper" /> : <span className="confinement-consent-pdf">PDF consent paper</span>}
+    <a href={data} target="_blank" rel="noreferrer">View consent</a>
+    <span className="confinement-consent-preview-filename">{document.filename || 'Consent paper'}</span>
+  </div>;
 }
 
 function AuditTimelineEntry({ date, dateTime, title, detail, actor, actorRole = 'Veterinarian', changes }) {
@@ -5356,7 +5499,7 @@ function PetDetailsModal({ pet, onClose, onBack, onUploadPhoto, initialTab = 'de
         ['Pet ID', pet.id], ['Species', pet.species], ['Breed', pet.breed],
         ['Gender', pet.sex && pet.sex !== 'unknown' ? pet.sex : 'Not recorded'],
         ['Date of birth', pet.birth_date ? formatDateText(String(pet.birth_date).slice(0, 10)) : 'Not recorded'],
-        ['Age', pet.age || 'Not recorded'],
+        ['Age', pet.age || calculatePatientAge(pet.birth_date) || 'Not recorded'],
         ['Weight', pet.weight || (pet.metadata?.weight ? `${pet.metadata.weight} kg` : 'Not recorded')], ['Color', pet.color],
       ]} />
       <RecordDetailSection title="Health & Identification" items={[
@@ -5713,7 +5856,7 @@ function PetsTab({ pets, owners, user, onPetsChange, onOwnersChange }) {
 }
 
 // ── APPOINTMENTS TAB ───────────────────────────────────────────────────
-function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = [], user, onAppointmentsChange, onVaccinationsChange, onCreateLabRequest }) {
+function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = [], user, onAppointmentsChange, onVaccinationsChange, onCreateLabRequest, createVisitRequest }) {
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [localAppointments, setLocalAppointments] = useState(null);
@@ -5725,6 +5868,7 @@ function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = 
   const [appointmentAuditError, setAppointmentAuditError] = useState('');
   const [archiveError, setArchiveError] = useState('');
   const [showNewAppointment, setShowNewAppointment] = useState(false);
+  const [initialAppointmentType, setInitialAppointmentType] = useState('');
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
@@ -5734,6 +5878,11 @@ function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = 
   const [clinicVeterinarians, setClinicVeterinarians] = useState([]);
   const [page, setPage] = useState(1);
   const pageSize = 8;
+  useEffect(() => {
+    if (!createVisitRequest) return;
+    setInitialAppointmentType('Check-up');
+    setShowNewAppointment(true);
+  }, [createVisitRequest]);
   const displayedAppointments = localAppointments || appointments || [];
   const getAppointmentDate = appointment => appointment.start_time || appointment.datetime || '';
   const getAppointmentPractitioner = appointment => (
@@ -5890,7 +6039,7 @@ function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = 
           <h2 className="lab-results-title">Appointments</h2>
           <p className="lab-results-description">Manage and view all scheduled appointments.</p>
         </div>
-        <button type="button" className="lab-results-add" onClick={() => setShowNewAppointment(true)}>{Icons.plus} New Appointment</button>
+        <button type="button" className="lab-results-add" onClick={() => { setInitialAppointmentType(''); setShowNewAppointment(true); }}>{Icons.plus} New Appointment</button>
       </div>
       <div className="clinic-appointment-type-tabs" role="tablist" aria-label="Filter appointments by type">
         {appointmentTypeTabs.map(([value, label]) => <button
@@ -6044,6 +6193,9 @@ function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = 
           <RecordDetailSection title="Visit Information" items={[
             ['Reason for visit', getAppointmentNoteDetails(viewAppointment).reason_for_visit || viewAppointment.reason_for_visit],
             ['Internal notes', getAppointmentNoteDetails(viewAppointment).internal_notes],
+            ...(getAppointmentNoteDetails(viewAppointment).service_details?.consent_document
+              ? [['Consent paper', <ConsentDocumentView key="consent-paper" document={getAppointmentNoteDetails(viewAppointment).service_details.consent_document} />]]
+              : []),
             ['Created', viewAppointment.created_at ? formatDateTimeText(viewAppointment.created_at, 'en-US', viewAppointment.created_at) : 'Not recorded'],
             ['Last updated', viewAppointment.updated_at ? formatDateTimeText(viewAppointment.updated_at, 'en-US', viewAppointment.updated_at) : 'Not recorded'],
           ]} />
@@ -6101,8 +6253,9 @@ function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = 
           vaccinations={vaccinations}
           appointments={displayedAppointments}
           user={user}
+          initialType={initialAppointmentType}
           onCreateLabRequest={onCreateLabRequest}
-          onClose={() => setShowNewAppointment(false)}
+          onClose={() => { setShowNewAppointment(false); setInitialAppointmentType(''); }}
           onSchedule={async form => {
             if (!user?.clinic_id || !user?.token) throw new Error('Your account is not assigned to a clinic.');
             const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
@@ -6241,7 +6394,7 @@ function AppointmentLabTestWizard({ pet, owner, user, testType: initialTestType,
   };
 
   return <div style={modalStyles.backdrop} onClick={event => { if (event.target === event.currentTarget && !saving) onBack(); }}>
-    <ModalDialog as="form" size="large" className="lab-add-test-dialog lab-wizard-dialog" role="dialog" aria-modal="true" aria-labelledby="appointment-lab-wizard-title" onSubmit={step === 3 ? save : advance} style={{ ...modalStyles.dialog, width: 'min(820px, calc(100vw - 24px))', height: 'min(700px, calc(100dvh - 32px))', maxHeight: 'calc(100dvh - 32px)', overflow: 'hidden', padding: 'clamp(16px, 3vw, 26px)' }}>
+    <ModalDialog as="form" size="large" className="lab-add-test-dialog lab-wizard-dialog" role="dialog" aria-modal="true" aria-labelledby="appointment-lab-wizard-title" onSubmit={step === 3 ? save : advance} style={{ ...modalStyles.dialog, width: '760px', maxWidth: 'calc(100vw - 24px)', height: '767px', maxHeight: 'calc(100dvh - 32px)', overflow: 'hidden', padding: 'clamp(16px, 3vw, 26px)' }}>
       <button type="button" className="lab-add-test-close" onClick={onClose} disabled={saving}>Close</button>
       <header className="lab-wizard-header">
         <div><h2 id="appointment-lab-wizard-title">Add Lab Test</h2><p>Step {step} of 3 · {['Patient', 'Test Details', 'Review & Save'][step - 1]}</p></div>
@@ -6307,12 +6460,14 @@ function AppointmentLabTestWizard({ pet, owner, user, testType: initialTestType,
   </div>;
 }
 
-function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinations = [], user, onClose, onSchedule, onCreateLabRequest }) {
-  const [form, setForm] = useState({ pet_id: '', client_id: '', date: '', time: '', type: '', service_name: '', manufacturer: '', lotNumber: '', expiryDate: '', dose: '', nextDue: '', treatment_plan_title: '', treatment_diagnosis: '', treatment_severity: 'moderate', treatment_follow_up: '', treatment_steps: '', treatment_plan_steps: [{ title: '', due: '' }], treatment_include_medication: false, treatment_medication: { name: '', dosage: '', route: '', frequency: '', quantity: '', instructions: '' }, reason_for_visit: '', notes: '', practitioner_id: '', service_details: {}, parent_appointment_id: '', related_treatment_plan_id: '' });
+function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinations = [], user, onClose, onSchedule, onCreateLabRequest, initialType = '' }) {
+  const [form, setForm] = useState({ pet_id: '', client_id: '', date: '', time: '', type: initialType, service_name: '', manufacturer: '', lotNumber: '', expiryDate: '', dose: '', nextDue: '', treatment_plan_title: '', treatment_diagnosis: '', treatment_severity: 'moderate', treatment_follow_up: '', treatment_steps: '', treatment_plan_steps: [{ title: '', due: '' }], treatment_include_medication: false, treatment_medication: { name: '', dosage: '', route: '', frequency: '', quantity: '', instructions: '' }, reason_for_visit: '', notes: '', practitioner_id: '', service_details: {}, parent_appointment_id: '', related_treatment_plan_id: '' });
   const [step, setStep] = useState(1);
   const [confinementStep, setConfinementStep] = useState(0);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [consentPaperFile, setConsentPaperFile] = useState(null);
+  const [consentPaperPreviewUrl, setConsentPaperPreviewUrl] = useState('');
   const [labWizardOpen, setLabWizardOpen] = useState(false);
   const [veterinarians, setVeterinarians] = useState([]);
   const [serviceCatalog, setServiceCatalog] = useState([]);
@@ -6323,6 +6478,15 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
   const [servicePickerPosition, setServicePickerPosition] = useState(null);
   const [showAllVaccinationHistory, setShowAllVaccinationHistory] = useState(false);
   const servicePickerRef = useRef(null);
+  useEffect(() => {
+    if (!consentPaperFile) {
+      setConsentPaperPreviewUrl('');
+      return undefined;
+    }
+    const previewUrl = URL.createObjectURL(consentPaperFile);
+    setConsentPaperPreviewUrl(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [consentPaperFile]);
   useEffect(() => {
     if (!user?.clinic_id || !user?.token) {
       setServiceCatalog([]);
@@ -6347,7 +6511,11 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
     })).then(async response => {
       const payload = await response.json().catch(() => null);
       if (!response.ok || !Array.isArray(payload)) throw new Error('Unable to load the clinic service catalog.');
-      setServiceCatalog(payload.filter(item => item.active !== false && item.item_type !== 'medication'));
+      setServiceCatalog(payload.filter(item => item
+        && typeof item.name === 'string'
+        && item.name.trim()
+        && item.active !== false
+        && item.item_type !== 'medication'));
     }).catch(loadError => {
       if (loadError.name !== 'AbortError') setServiceCatalog([]);
     });
@@ -6381,7 +6549,9 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
   const activeOwners = owners.filter(owner => !owner.archived);
   const selectedPet = pets.find(pet => String(pet.id) === String(form.pet_id));
   const selectedOwner = owners.find(owner => String(owner.id) === String(form.client_id));
-  const selectedPetVaccinations = vaccinations.filter(item => String(item.pet_id) === String(selectedPet?.id));
+  const unavailableAppointmentTimes = getUnavailableAppointmentTimes(appointments, form.date);
+  const selectedPetVaccinations = (Array.isArray(vaccinations) ? vaccinations : [])
+    .filter(item => item && String(item.pet_id) === String(selectedPet?.id));
   const speciesLabels = { dog: 'Canine', canine: 'Canine', cat: 'Feline', feline: 'Feline', bird: 'Avian', avian: 'Avian', rabbit: 'Rabbit', equine: 'Equine', horse: 'Equine' };
   const selectedPetSpecies = speciesLabels[String(selectedPet?.species || '').toLowerCase()] || selectedPet?.species || 'Species not recorded';
   useEffect(() => {
@@ -6399,7 +6569,8 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
   const categoryForCatalog = appointmentCategory === 'Check-up' || appointmentCategory === 'Follow-up'
     ? 'Consultation'
     : appointmentCategory;
-  const serviceOptions = serviceCatalog.filter(item => {
+  const serviceOptions = (Array.isArray(serviceCatalog) ? serviceCatalog : []).filter(item => {
+    if (!item || typeof item.name !== 'string' || !item.name.trim()) return false;
     const category = item.category || (item.item_type === 'vaccination' ? 'Vaccination' : item.item_type === 'lab_test' ? 'Laboratory' : item.item_type === 'inpatient' ? 'Confinement' : item.item_type === 'consultation' ? 'Consultation' : 'Treatment');
     if (category !== categoryForCatalog) return false;
     if (appointmentCategory === 'Check-up') return !/follow[- ]?up/i.test(item.name);
@@ -6454,6 +6625,9 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
   }[appointmentCategory] || 'Specify the service';
   const durationByType = { 'check-up': 30, consultation: 30, vaccination: 20, surgery: 120, dental: 60, treatment: 30, laboratory: 30, confinement: 30, 'follow-up': 20, grooming: 30, general: 30 };
   const durationMinutes = durationByType[String(appointmentCategory || '').toLowerCase()] || 30;
+  const update = (key, value) => setForm(current => ({ ...current, [key]: value }));
+  const updateServiceDetail = (key, value) => setForm(current => ({ ...current, service_details: { ...(current.service_details || {}), [key]: value } }));
+  const serviceDetail = key => form.service_details?.[key] || '';
   const appointmentBasicsReady = Boolean(form.pet_id && form.client_id && form.date && form.time && form.type);
   const treatmentStepsReady = form.treatment_plan_steps.some(item => item.title.trim()) || Boolean(form.treatment_steps.trim() || form.service_name.trim());
   const treatmentMedicationReady = !form.treatment_include_medication || Boolean(form.treatment_medication.name.trim() && form.treatment_medication.dosage.trim());
@@ -6471,14 +6645,29 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
       && (form.type !== 'Follow-up' || Boolean(form.parent_appointment_id || form.related_treatment_plan_id))
       && (form.type !== 'Surgery' || Boolean(serviceDetail('diagnosis').trim()))
       && (form.type !== 'Confinement' || confinementStepReady)) && !saving;
-  const update = (key, value) => setForm(current => ({ ...current, [key]: value }));
-  const updateServiceDetail = (key, value) => setForm(current => ({ ...current, service_details: { ...(current.service_details || {}), [key]: value } }));
-  const serviceDetail = key => form.service_details?.[key] || '';
-  const serviceTextField = (label, key, placeholder, { full = false, readOnly = false, value = serviceDetail(key), rows = 2, className, gridColumn, gridRow } = {}) => <label className={className} style={{ ...modalStyles.doctorAppointmentLabel, ...(full ? { gridColumn: '1 / -1' } : {}), ...(gridColumn ? { gridColumn } : {}), ...(gridRow ? { gridRow } : {}) }}><span>{label}</span>{rows === 1
-    ? <input readOnly={readOnly} value={value} onChange={event => updateServiceDetail(key, event.target.value)} placeholder={placeholder} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput} />
-    : <textarea readOnly={readOnly} value={value} onChange={event => updateServiceDetail(key, event.target.value)} placeholder={placeholder} rows={rows} className="doctor-appointment-input" style={{ ...modalStyles.doctorAppointmentInput, minHeight: 70, padding: '9px 11px', resize: 'vertical', background: readOnly ? '#f8fafc' : '#fff' }} />}</label>;
-  const attendingVeterinarianField = <label className="appointment-attending-veterinarian" style={{ ...modalStyles.doctorAppointmentLabel, gridColumn: ['Dental', 'Check-up', 'General'].includes(appointmentCategory) ? '7 / -1' : '1 / -1' }}><span>Attending Veterinarian</span><span className="doctor-appointment-control has-chevron"><select value={form.practitioner_id} onChange={event => update('practitioner_id', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option value="">Select veterinarian (optional)</option>{veterinarians.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</select></span></label>;
-  const matchingAppointments = appointments.filter(item => String(item.pet_id || item.petId) === String(form.pet_id) && !item.archived && !['cancelled', 'canceled'].includes(String(item.status || '').toLowerCase()));
+  const handleConsentPaperChange = event => {
+    const file = event.target.files?.[0] || null;
+    event.target.value = '';
+    if (!file) return;
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
+      setConsentPaperFile(null);
+      setError('Choose a consent paper in PDF, JPG, or PNG format.');
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setConsentPaperFile(null);
+      setError('Choose a consent paper that is 4 MB or smaller.');
+      return;
+    }
+    setConsentPaperFile(file);
+    setError('');
+  };
+  const serviceTextField = (label, key, placeholder, { full = false, readOnly = false, required = false, value = serviceDetail(key), rows = 2, className, gridColumn, gridRow } = {}) => <label className={className} style={{ ...modalStyles.doctorAppointmentLabel, ...(full ? { gridColumn: '1 / -1' } : {}), ...(gridColumn ? { gridColumn } : {}), ...(gridRow ? { gridRow } : {}) }}><span>{label}{required && <span className="doctor-appointment-required" aria-hidden="true">*</span>}</span>{rows === 1
+    ? <input readOnly={readOnly} required={required} value={value} onChange={event => updateServiceDetail(key, event.target.value)} placeholder={placeholder} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput} />
+    : <textarea readOnly={readOnly} required={required} value={value} onChange={event => updateServiceDetail(key, event.target.value)} placeholder={placeholder} rows={rows} className="doctor-appointment-input" style={{ ...modalStyles.doctorAppointmentInput, minHeight: 70, padding: '9px 11px', resize: 'vertical', background: readOnly ? '#f8fafc' : '#fff' }} />}</label>;
+  const attendingVeterinarianField = <label className="appointment-attending-veterinarian" style={{ ...modalStyles.doctorAppointmentLabel, gridColumn: appointmentCategory === 'General' ? '2' : ['Dental', 'Check-up', 'Follow-up'].includes(appointmentCategory) ? '7 / -1' : '1 / -1' }}><span>{appointmentCategory === 'General' ? 'Attending veterinarian' : 'Attending Veterinarian'}</span><span className="doctor-appointment-control has-chevron"><select value={form.practitioner_id} onChange={event => update('practitioner_id', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option value="">Select veterinarian (optional)</option>{veterinarians.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</select></span></label>;
+  const matchingAppointments = (Array.isArray(appointments) ? appointments : [])
+    .filter(item => item && String(item.pet_id || item.petId) === String(form.pet_id) && !item.archived && !['cancelled', 'canceled'].includes(String(item.status || '').toLowerCase()));
   const vaccinationHistory = [
     ...selectedPetVaccinations.filter(item => !item.archived).map(item => {
       const rawStatus = String(item.status || '').toLowerCase();
@@ -6567,7 +6756,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
   return (
     <div style={modalStyles.backdrop} onClick={onClose}>
       <ModalDialog as="form" size="standard"
-        className={`appointment-create-dialog${isWorkflowDetailsStep ? ' appointment-create-dialog--details' : ' appointment-create-dialog--new'}${isWorkflowDetailsStep ? ` appointment-create-dialog--${appointmentCategory.toLowerCase().replace(/[^a-z]+/g, '-')}` : ''}${isWorkflowDetailsStep && appointmentCategory === 'Dental' ? ' vi-modal--appt' : ''}${isWorkflowDetailsStep && appointmentCategory === 'Surgery' ? ' appointment-create-dialog--surgery' : ''}${isWorkflowDetailsStep && appointmentCategory === 'Vaccination' ? ' appointment-create-dialog--vaccination' : ''}`}
+        className={`appointment-create-dialog${isWorkflowDetailsStep ? ' appointment-create-dialog--details' : ' appointment-create-dialog--new'}${isWorkflowDetailsStep ? ` appointment-create-dialog--${appointmentCategory.toLowerCase().replace(/[^a-z]+/g, '-')}` : ''}${isWorkflowDetailsStep && ['Dental', 'General'].includes(appointmentCategory) ? ' vi-modal--appt' : ''}${isWorkflowDetailsStep && appointmentCategory === 'Surgery' ? ' appointment-create-dialog--surgery' : ''}${isWorkflowDetailsStep && appointmentCategory === 'Vaccination' ? ' appointment-create-dialog--vaccination' : ''}${isWorkflowDetailsStep && appointmentCategory === 'Confinement' && confinementStep === 1 ? ' appointment-create-dialog--confinement-assessment' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="doctor-new-appointment-title"
@@ -6628,8 +6817,25 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
               update('related_treatment_plan_id', treatmentPlanId);
               setTreatmentPlans(current => [planPayload, ...current.filter(item => String(item.id) !== treatmentPlanId)]);
             }
+            const appointmentForm = { ...form };
+            if (appointmentCategory === 'Confinement' && consentPaperFile) {
+              const data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('Unable to read the selected consent paper.'));
+                reader.readAsDataURL(consentPaperFile);
+              });
+              appointmentForm.service_details = {
+                ...(form.service_details || {}),
+                consent_document: {
+                  filename: consentPaperFile.name,
+                  content_type: consentPaperFile.type,
+                  data,
+                },
+              };
+            }
             await onSchedule({
-              ...form,
+              ...appointmentForm,
               related_treatment_plan_id: treatmentPlanId,
               type: appointmentCategory,
               service_name: form.service_name.trim(),
@@ -6655,20 +6861,28 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
             setSaving(false);
           }
         }}
-        style={{ ...modalStyles.doctorAppointmentDialog, ...(isWorkflowDetailsStep ? { width: 'min(620px, calc(100vw - 32px))', maxWidth: 'calc(100vw - 32px)', boxSizing: 'border-box', maxHeight: 'none', overflowY: 'visible', padding: '22px 26px 20px' } : {}) }}
+        style={{ ...modalStyles.doctorAppointmentDialog, ...(isWorkflowDetailsStep ? { width: ['Confinement', 'General'].includes(appointmentCategory) ? 760 : appointmentCategory === 'Grooming' ? 'min(720px, calc(100vw - 32px))' : 'min(620px, calc(100vw - 32px))', maxWidth: 'calc(100vw - 32px)', height: 'auto', boxSizing: 'border-box', maxHeight: ['Confinement', 'Grooming', 'General'].includes(appointmentCategory) ? 'calc(100dvh - 32px)' : 'none', overflowY: ['Confinement', 'Grooming', 'General'].includes(appointmentCategory) ? 'hidden' : 'visible', padding: ['Confinement', 'General'].includes(appointmentCategory) ? '28px 32px 24px' : appointmentCategory === 'Grooming' ? '26px 30px 24px' : '22px 26px 20px' } : {}) }}
       >
         <button type="button" onClick={onClose} style={isWorkflowDetailsStep ? modalStyles.close : { ...modalStyles.vaccinationActionsClose, width: 'auto', height: 'auto', font: 'inherit', fontSize: '.74rem', fontWeight: 600 }}>{isWorkflowDetailsStep ? Icons.close : 'Close'}</button>
         <h2 id="doctor-new-appointment-title" style={isWorkflowDetailsStep ? { ...modalStyles.addVaccinationTitle, color: '#00695c' } : { ...modalStyles.doctorAppointmentTitle, fontSize: '1.1rem' }}>{isWorkflowDetailsStep ? ({ Vaccination: 'Vaccination Appointment Details', Laboratory: 'Lab Test Details', Treatment: 'Treatment Plan Details', Surgery: 'Surgery Details', Dental: 'Dental Visit Details', 'Check-up': 'Check-up Details', 'Follow-up': 'Follow-up Details', Confinement: 'Confinement Admission Details', Grooming: 'Grooming Details', General: 'General Consultation Details' }[appointmentCategory] || `${appointmentCategory} Details`) : 'New Appointment'}</h2>
-        <p style={isWorkflowDetailsStep ? { ...modalStyles.addVaccinationIntro, margin: '7px 0 14px', color: '#526b64', fontSize: '.95rem' } : modalStyles.doctorAppointmentIntro}>{isWorkflowDetailsStep ? appointmentCategory === 'Dental' ? 'Record the dental service and what the team needs to know.' : appointmentCategory === 'Vaccination' ? 'Details stay with the appointment until the doctor confirms administration.' : appointmentCategory === 'Surgery' ? 'Schedule the procedure and record the pre-op steps.' : appointmentCategory === 'Laboratory' ? 'Enter the test details for this patient. You can complete the request in the Lab Test tab.' : appointmentCategory === 'Confinement' ? 'Enter the admission details to admit this patient through the appointment workflow.' : 'Create a structured care plan and assign follow-up steps to a patient.' : 'Schedule a new appointment for a patient.'}</p>
-        {isWorkflowDetailsStep && <div className="vaccination-stepper" aria-label="Appointment progress"><span className="is-complete"><span aria-hidden="true">✓</span>Appointment</span><span className="vaccination-stepper-connector" aria-hidden="true" /><span className="is-active" aria-current="step"><span aria-hidden="true">2</span>{appointmentCategory === 'Laboratory' ? 'Lab Test' : appointmentCategory === 'Confinement' ? ['Patient & Owner', 'Assessment', 'Treatment Plan', 'Hospitalization', 'Consent & Authorization', 'Patient Summary'][confinementStep] : `${appointmentCategory} details`}</span></div>}
-        {isWorkflowDetailsStep && ['Laboratory', 'Confinement'].includes(appointmentCategory) && <label style={{ ...modalStyles.addVaccinationLabel, gridColumn: '1 / -1', marginBottom: 14 }}><span style={modalStyles.addVaccinationLabelText}>Pet<span style={modalStyles.required}>*</span></span><input readOnly value={selectedPet?.name || ''} style={modalStyles.addVaccinationInput} /></label>}
-        <div className={`doctor-appointment-grid${appointmentCategory === 'Treatment' && step === 2 ? ' treatment-plan-workflow-grid' : ''}${appointmentCategory === 'Vaccination' && step === 2 ? ' appointment-vaccination-grid' : ''}`} style={isWorkflowDetailsStep ? { ...modalStyles.addVaccinationGrid, gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gap: 20 } : modalStyles.doctorAppointmentGrid}>
+        <p style={isWorkflowDetailsStep ? { ...modalStyles.addVaccinationIntro, margin: '7px 0 14px', color: '#526b64', fontSize: '.95rem' } : modalStyles.doctorAppointmentIntro}>{isWorkflowDetailsStep ? appointmentCategory === 'Dental' ? 'Record the dental service and what the team needs to know.' : appointmentCategory === 'Vaccination' ? 'Details stay with the appointment until the doctor confirms administration.' : appointmentCategory === 'Surgery' ? 'Schedule the procedure and record the pre-op steps.' : appointmentCategory === 'Laboratory' ? 'Enter the test details for this patient. You can complete the request in the Lab Test tab.' : appointmentCategory === 'Confinement' ? 'Enter the admission details to admit this patient through the appointment workflow.' : appointmentCategory === 'Grooming' ? 'Record the service, the requested style and any handling needs.' : appointmentCategory === 'General' ? 'Record the service and the main concern.' : 'Create a structured care plan and assign follow-up steps to a patient.' : 'Schedule a new appointment for a patient.'}</p>
+        {isWorkflowType && appointmentCategory === 'Confinement' && <div className="confinement-step-progress" aria-label={`Confinement admission step ${confinementStep + 1} of 6`}>
+          <strong>Step {confinementStep + 1} of 6</strong>
+          <div className="confinement-step-progress-items">
+            {['Patient & owner', 'Assessment', 'Treatment plan', 'Hospitalization', 'Consent', 'Summary'].map((label, index) => <button type="button" className={index <= confinementStep ? 'is-complete' : ''} aria-current={confinementStep === index ? 'step' : undefined} disabled={index > confinementStep} onClick={() => setConfinementStep(index)} key={label}><span aria-hidden="true" /><small>{label}</small></button>)}
+          </div>
+        </div>}
+        {isWorkflowType && appointmentCategory !== 'Confinement' && <div className="vaccination-stepper" aria-label="Appointment progress"><span className={step === 2 || appointmentBasicsReady ? 'is-complete' : 'is-active'}><span aria-hidden="true">{step === 2 || appointmentBasicsReady ? '✓' : '1'}</span>Appointment</span><span className="vaccination-stepper-connector" aria-hidden="true" /><span className={step === 2 || appointmentBasicsReady ? 'is-active' : 'is-pending'} aria-current={step === 2 || appointmentBasicsReady ? 'step' : undefined}><span aria-hidden="true">2</span>{appointmentCategory === 'Laboratory' ? 'Lab Test' : `${appointmentCategory} details`}</span></div>}
+        {isWorkflowDetailsStep && appointmentCategory === 'Laboratory' && <label style={{ ...modalStyles.addVaccinationLabel, gridColumn: '1 / -1', marginBottom: 14 }}><span style={modalStyles.addVaccinationLabelText}>Pet<span style={modalStyles.required}>*</span></span><input readOnly value={selectedPet?.name || ''} style={modalStyles.addVaccinationInput} /></label>}
+        <div className={`doctor-appointment-grid${appointmentCategory === 'Treatment' && step === 2 ? ' treatment-plan-workflow-grid' : ''}${appointmentCategory === 'Vaccination' && step === 2 ? ' appointment-vaccination-grid' : ''}`} style={isWorkflowDetailsStep ? { ...modalStyles.addVaccinationGrid, gridTemplateColumns: appointmentCategory === 'Grooming' ? 'repeat(2, minmax(0, 1fr))' : 'repeat(12, minmax(0, 1fr))', gap: appointmentCategory === 'Grooming' ? '14px 16px' : 20 } : modalStyles.doctorAppointmentGrid}>
+          {isWorkflowDetailsStep && appointmentCategory === 'Confinement' && <label className="confinement-pet-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Pet</span><span className="confinement-pet-card"><span className="confinement-pet-avatar" aria-hidden="true">{selectedPet?.name?.slice(0, 1) || 'P'}</span><span>{selectedPet?.name || 'Patient'}<span className="confinement-pet-species"> · {selectedPetSpecies}</span></span></span></label>}
           {!isWorkflowDetailsStep && <>
           <label style={modalStyles.doctorAppointmentLabel}><span>Pet<span className="doctor-appointment-required">*</span></span>
             <span className="doctor-appointment-control has-chevron">
               <select required value={form.pet_id} onChange={event => {
                 const pet = pets.find(item => String(item.id) === event.target.value);
                 setForm(current => ({ ...current, pet_id: event.target.value, client_id: pet ? String(pet.client_id) : '', service_details: {}, parent_appointment_id: '', related_treatment_plan_id: '', treatment_plan_title: '', treatment_diagnosis: '', treatment_plan_steps: [{ title: '', due: '' }] }));
+                setConsentPaperFile(null);
                 setShowAllVaccinationHistory(false);
               }} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}>
                 <option value="">Select pet</option>{activePets.map(pet => <option key={pet.id} value={pet.id}>{pet.name}</option>)}
@@ -6677,17 +6891,17 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
           </label>
           <label style={modalStyles.doctorAppointmentLabel}><span>Owner<span className="doctor-appointment-required">*</span></span>
             <span className="doctor-appointment-control has-chevron">
-              <select required value={form.client_id} onChange={event => { setForm(current => ({ ...current, client_id: event.target.value, pet_id: '', service_details: {}, parent_appointment_id: '', related_treatment_plan_id: '', treatment_plan_title: '', treatment_diagnosis: '', treatment_plan_steps: [{ title: '', due: '' }] })); setShowAllVaccinationHistory(false); }} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}>
+              <select required value={form.client_id} onChange={event => { setForm(current => ({ ...current, client_id: event.target.value, pet_id: '', service_details: {}, parent_appointment_id: '', related_treatment_plan_id: '', treatment_plan_title: '', treatment_diagnosis: '', treatment_plan_steps: [{ title: '', due: '' }] })); setConsentPaperFile(null); setShowAllVaccinationHistory(false); }} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}>
                 <option value="">Select owner</option>{activeOwners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
               </select>
             </span>
           </label>
           <div className="doctor-appointment-owner-hint" style={{ gridColumn: '1 / -1' }}>Auto-fill owner from selected pet</div>
           <label style={modalStyles.doctorAppointmentLabel}><span>Date<span className="doctor-appointment-required">*</span></span>
-            <span className="doctor-appointment-control"><LabDateTimePicker mode="date" required value={form.date} onChange={date => update('date', date)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput} /></span>
+            <span className="doctor-appointment-control"><LabDateTimePicker mode="date" required value={form.date} onChange={date => setForm(current => ({ ...current, date, time: getUnavailableAppointmentTimes(appointments, date).includes(current.time) ? '' : current.time }))} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput} /></span>
           </label>
           <label style={modalStyles.doctorAppointmentLabel}><span>Time<span className="doctor-appointment-required">*</span></span>
-            <span className="doctor-appointment-control"><LabDateTimePicker mode="time" required value={form.time} onChange={time => update('time', time)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput} /></span>
+            <span className="doctor-appointment-control"><LabDateTimePicker mode="time" required value={form.time} unavailableTimes={unavailableAppointmentTimes} unavailableLabel="another appointment" onChange={time => update('time', time)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput} /></span>
           </label>
           <label style={modalStyles.doctorAppointmentLabel}><span>Appointment Type<span className="doctor-appointment-required">*</span></span>
             <span className="doctor-appointment-control has-chevron">
@@ -6714,7 +6928,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
             <span className="doctor-appointment-control"><input readOnly value={`${durationMinutes} minutes`} className="doctor-appointment-input" style={{ ...modalStyles.doctorAppointmentInput, color: '#64748b' }} /></span>
           </label>}
           </>}
-          {isWorkflowDetailsStep && appointmentCategory === 'Vaccination' && <label className="vaccination-product-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Planned vaccine / product<span style={modalStyles.required}>*</span></span><span className="doctor-appointment-control service-picker-control" ref={servicePickerRef} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setServicePickerOpen(false); }}>
+          {isWorkflowDetailsStep && appointmentCategory === 'Vaccination' && <label className="vaccination-product-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Planned vaccine / product<span style={modalStyles.required}>*</span></span><span className="doctor-appointment-control service-picker-control vaccination-product-control" ref={servicePickerRef} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setServicePickerOpen(false); }}>
             <input
               required
               role="combobox"
@@ -6733,7 +6947,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
               }}
               placeholder="Rabies (IMRAB 3TF)"
               className="doctor-appointment-input service-picker-input"
-              style={modalStyles.addVaccinationInput}
+              style={{ ...modalStyles.addVaccinationInput, display: 'block', width: '100%', minWidth: 0, minHeight: 0, height: '100%', maxHeight: 'none', boxSizing: 'border-box', padding: '0 42px 0 14px', border: '1px solid #d9e3de', borderRadius: 10, background: '#f7faf8', color: '#1f2d28', fontSize: '15.5px', fontWeight: 500, lineHeight: 'normal' }}
             />
             <button type="button" className="service-picker-toggle" aria-label="Choose from clinic services" aria-expanded={servicePickerOpen} onMouseDown={event => event.preventDefault()} onClick={() => setServicePickerOpen(open => !open)}><span aria-hidden="true" /></button>
             {servicePickerOpen && servicePickerPosition && createPortal(<div className="service-picker-menu" id="appointment-service-options" role="listbox" aria-label="Available clinic services" style={servicePickerPosition}>
@@ -6741,7 +6955,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
             </div>, document.body)}
           </span></label>}
           {isWorkflowDetailsStep && appointmentCategory === 'Vaccination' && <label className="vaccination-pet-field"><span>Pet</span><span className="vaccination-patient-card"><span className="vaccination-patient-avatar" aria-hidden="true">{selectedPet?.name?.slice(0, 1) || 'P'}</span><span>{selectedPet?.name || 'Patient not selected'}<span className="vaccination-patient-species"> · {selectedPetSpecies}</span></span></span></label>}
-          {isWorkflowDetailsStep && !['Laboratory', 'Vaccination'].includes(appointmentCategory) && <label           className={`${appointmentCategory === 'Surgery' ? 'surgery-procedure-field ' : ''}appointment-service-field`}           style={{ ...modalStyles.doctorAppointmentLabel, gridColumn: ['Dental', 'Check-up', 'General'].includes(appointmentCategory) ? '1 / 7' : '1 / -1' }}><span>{appointmentCategory === 'Treatment' ? <>Treatment Service<span className="doctor-appointment-required">*</span></> : appointmentCategory === 'Surgery' ? <>Surgical Procedure<span className="doctor-appointment-required">*</span></> : appointmentCategory === 'Dental' ? <>Dental Service<span className="doctor-appointment-required">*</span></> : appointmentCategory === 'Follow-up' ? <>Follow-up Service<span className="doctor-appointment-required">*</span></> : appointmentCategory === 'Check-up' ? <>Check-up Type<span className="doctor-appointment-required">*</span></> : appointmentCategory === 'Grooming' ? <>Grooming Service<span className="doctor-appointment-required">*</span></> : appointmentCategory === 'General' ? <>General Service<span className="doctor-appointment-required">*</span></> : <>Confinement Service<span className="doctor-appointment-required">*</span></>}</span>
+          {isWorkflowDetailsStep && !['Laboratory', 'Vaccination'].includes(appointmentCategory) && <label           className={`${appointmentCategory === 'Surgery' ? 'surgery-procedure-field ' : ''}appointment-service-field`}           style={{ ...modalStyles.doctorAppointmentLabel, gridColumn: appointmentCategory === 'General' ? '1' : ['Dental', 'Check-up', 'Follow-up'].includes(appointmentCategory) ? '1 / 7' : '1 / -1' }}><span>{appointmentCategory === 'Treatment' ? <>Treatment Service<span className="doctor-appointment-required">*</span></> : appointmentCategory === 'Surgery' ? <>Surgical Procedure<span className="doctor-appointment-required">*</span></> : appointmentCategory === 'Dental' ? <>Dental Service<span className="doctor-appointment-required">*</span></> : appointmentCategory === 'Follow-up' ? <>Follow-up Service<span className="doctor-appointment-required">*</span></> : appointmentCategory === 'Check-up' ? <>Check-up Type<span className="doctor-appointment-required">*</span></> : appointmentCategory === 'Grooming' ? <>Grooming Service<span className="doctor-appointment-required">*</span></> : appointmentCategory === 'General' ? <>General Service<span className="doctor-appointment-required">*</span></> : <>Confinement Service<span className="doctor-appointment-required">*</span></>}</span>
             <span className="doctor-appointment-control service-picker-control" ref={servicePickerRef} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setServicePickerOpen(false); }}>
               <input
                 required
@@ -6790,7 +7004,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
             <section className="vaccination-history-panel" aria-label="Vaccination history">
               <div className="vaccination-history-heading"><strong>Vaccination history</strong></div>
               {vaccinationHistory.length ? <div className="vaccination-history-rows" role="list">{(showAllVaccinationHistory ? vaccinationHistory : vaccinationHistory.slice(0, 3)).map(entry => <div className="vaccination-history-row" role="listitem" key={entry.key}>
-                <div className="vaccination-history-details"><span className="vaccination-history-name">{entry.vaccine}</span><time className="vaccination-history-date" dateTime={entry.dateKey || undefined}>{formatShortClinicDate(entry.date)}</time>{duplicateVaccineEntry?.key === entry.key && <span className="vaccination-duplicate-inline" role="status">Possible duplicate booking</span>}</div>
+                <div className="vaccination-history-details"><span className="vaccination-history-name">{String(entry.vaccine || 'Vaccination')}</span><time className="vaccination-history-date" dateTime={entry.dateKey || undefined}>{formatShortClinicDate(entry.date)}</time>{duplicateVaccineEntry?.key === entry.key && <span className="vaccination-duplicate-inline" role="status">Possible duplicate booking</span>}</div>
                 <span className={`vaccination-history-status${entry.status === 'Administered' ? ' is-administered' : ''}`}>{entry.status}</span>
               </div>)}</div> : <p className="vaccination-history-empty">No vaccination history recorded.</p>}
               {vaccinationHistory.length > 3 && <button type="button" className="vaccination-history-toggle" aria-expanded={showAllVaccinationHistory} onClick={() => setShowAllVaccinationHistory(value => !value)}>{showAllVaccinationHistory ? 'Show less' : 'Show all'}</button>}
@@ -6798,23 +7012,23 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
             <label className="vaccination-booking-notes" style={{ ...modalStyles.addVaccinationLabel, gridColumn: '1 / -1' }}><span style={modalStyles.addVaccinationLabelText}>Booking notes (optional)</span><textarea rows={2} value={form.notes} onChange={event => update('notes', event.target.value)} placeholder="Optional notes for the scheduled vaccination" style={{ ...modalStyles.addVaccinationInput, minHeight: 54, height: 'auto', maxHeight: 90, padding: '8px 10px' }} /></label>
           </>}
           {appointmentCategory === 'Treatment' && step === 2 && <>
-            <label style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Patient (Pet)<span style={modalStyles.required}>*</span></span><input readOnly value={selectedPet?.name || ''} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }} /></label>
-            <label style={{ ...modalStyles.addVaccinationLabel, gridColumn: '1 / -1' }}><span style={modalStyles.addVaccinationLabelText}>Existing Treatment Plan</span><select value={form.related_treatment_plan_id} onChange={event => update('related_treatment_plan_id', event.target.value)} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }}><option value="">Create a new plan for this care episode</option>{treatmentPlans.map(plan => <option key={plan.id} value={plan.id}>{plan.title} · {plan.status || 'Active'}</option>)}</select><small style={{ color: '#64748b' }}>Choose an existing plan to avoid creating a duplicate.</small></label>
+            <label className="treatment-plan-patient-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Patient (Pet)<span style={modalStyles.required}>*</span></span><input readOnly value={selectedPet?.name || ''} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }} /></label>
+            <label className="treatment-plan-existing-field" style={{ ...modalStyles.addVaccinationLabel, gridColumn: '1 / -1' }}><span style={modalStyles.addVaccinationLabelText}>Existing Treatment Plan</span><select value={form.related_treatment_plan_id} onChange={event => update('related_treatment_plan_id', event.target.value)} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }}><option value="">Create a new plan for this care episode</option>{treatmentPlans.map(plan => <option key={plan.id} value={plan.id}>{plan.title} · {plan.status || 'Active'}</option>)}</select><small>Choose an existing plan to avoid creating a duplicate.</small></label>
             {!form.related_treatment_plan_id && <>
-            <label style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Plan title<span style={modalStyles.required}>*</span></span><input required value={form.treatment_plan_title || (form.service_name ? `${form.service_name} Plan` : '')} onChange={event => update('treatment_plan_title', event.target.value)} placeholder="e.g. Post-surgery recovery" style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }} /></label>
-            <label style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Diagnosis<span style={modalStyles.required}>*</span></span><input required value={form.treatment_diagnosis} onChange={event => update('treatment_diagnosis', event.target.value)} placeholder="Enter diagnosis or reason for care" style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }} /></label>
-            <label style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Severity</span><select value={form.treatment_severity} onChange={event => update('treatment_severity', event.target.value)} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }}><option value="mild">Mild</option><option value="moderate">Moderate</option><option value="severe">Severe</option><option value="critical">Critical</option></select></label>
-            <label style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Attending veterinarian</span><select value={form.practitioner_id} onChange={event => update('practitioner_id', event.target.value)} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }}><option value="">Select veterinarian</option>{veterinarians.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label>
-            <label style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Expected follow-up</span><LabDateTimePicker mode="date" value={form.treatment_follow_up} onChange={date => update('treatment_follow_up', date)} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }} /></label>
-            <section style={{ gridColumn: '1 / -1', display: 'grid', gap: 10, marginTop: 4 }}>
+            <label className="treatment-plan-title-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Plan title<span style={modalStyles.required}>*</span></span><input required value={form.treatment_plan_title || (form.service_name ? `${form.service_name} Plan` : '')} onChange={event => update('treatment_plan_title', event.target.value)} placeholder="e.g. Post-surgery recovery" style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }} /></label>
+            <label className="treatment-plan-diagnosis-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Diagnosis<span style={modalStyles.required}>*</span></span><input required value={form.treatment_diagnosis} onChange={event => update('treatment_diagnosis', event.target.value)} placeholder="Enter diagnosis or reason for care" style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }} /></label>
+            <label className="treatment-plan-severity-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Severity</span><FilterSelect className="treatment-plan-select" label="Severity" value={form.treatment_severity} onChange={value => update('treatment_severity', value)} options={[['mild', 'Mild'], ['moderate', 'Moderate'], ['severe', 'Severe'], ['critical', 'Critical']].map(([value, label]) => ({ value, label }))} /></label>
+            <label className="treatment-plan-veterinarian-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Attending veterinarian</span><FilterSelect className="treatment-plan-select" label="Attending veterinarian" value={form.practitioner_id} onChange={value => update('practitioner_id', value)} options={[{ value: '', label: 'Select veterinarian' }, ...veterinarians.map(member => ({ value: String(member.id), label: member.name }))]} /></label>
+            <label className="treatment-plan-follow-up-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Expected follow-up</span><LabDateTimePicker className="treatment-plan-date" mode="date" displayFormat="input" value={form.treatment_follow_up} onChange={date => update('treatment_follow_up', date)} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }} /></label>
+            <section className="treatment-plan-steps-section" style={{ gridColumn: '1 / -1', display: 'grid', gap: 10, marginTop: 4 }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}><div><strong style={{ color: '#193a32', fontSize: '1.1rem' }}>Treatment steps<span style={modalStyles.required}>*</span></strong><p style={{ margin: '4px 0 0', color: '#526b64', fontSize: '.9rem' }}>Add the actions that make up this care plan.</p></div><button type="button" onClick={() => update('treatment_plan_steps', [...form.treatment_plan_steps, { title: '', due: '' }])} style={{ ...modalStyles.cancel, minHeight: 42, padding: '8px 13px', color: '#005447', fontSize: '.9rem' }}>＋ Add step</button></div>
               {form.treatment_plan_steps.map((planStep, index) => <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(145px, .55fr) auto', gap: 9, alignItems: 'center' }}>
                 <input aria-label={`Treatment step ${index + 1}`} required={index === 0 || Boolean(planStep.title)} value={planStep.title || (index === 0 ? form.treatment_steps || form.service_name : '')} onChange={event => update('treatment_plan_steps', form.treatment_plan_steps.map((item, stepIndex) => stepIndex === index ? { ...item, title: event.target.value } : item))} placeholder={`Step ${index + 1} · e.g. Initial assessment`} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '.95rem' }} />
-                <LabDateTimePicker mode="date" label={`Treatment step ${index + 1} due date`} value={planStep.due || (index === 0 ? form.date : '')} onChange={due => update('treatment_plan_steps', form.treatment_plan_steps.map((item, stepIndex) => stepIndex === index ? { ...item, due } : item))} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '.95rem' }} />
-                <button type="button" disabled={form.treatment_plan_steps.length === 1} aria-label={`Remove treatment step ${index + 1}`} onClick={() => update('treatment_plan_steps', form.treatment_plan_steps.filter((_, stepIndex) => stepIndex !== index))} style={{ ...modalStyles.cancel, minWidth: 42, minHeight: 42, padding: 7, color: '#b42318' }}>×</button>
+                <LabDateTimePicker className="treatment-plan-date" displayFormat="input" mode="date" label={`Treatment step ${index + 1} due date`} value={planStep.due || (index === 0 ? form.date : '')} onChange={due => update('treatment_plan_steps', form.treatment_plan_steps.map((item, stepIndex) => stepIndex === index ? { ...item, due } : item))} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '.95rem' }} />
+                <button type="button" disabled={form.treatment_plan_steps.length === 1} aria-label={`Remove treatment step ${index + 1}`} onClick={() => update('treatment_plan_steps', form.treatment_plan_steps.filter((_, stepIndex) => stepIndex !== index))} style={{ ...modalStyles.cancel, minWidth: 42, minHeight: 42, padding: 7, color: '#b42318' }}>{Icons.trash}</button>
               </div>)}
             </section>
-            <section style={{ gridColumn: '1 / -1', display: 'grid', gap: 12, marginTop: 6, padding: 16, border: '1px solid #d8e9e1', borderRadius: 10, background: '#f8fbf9' }}>
+            <section className="treatment-plan-medication-section" style={{ gridColumn: '1 / -1', display: 'grid', gap: 12, marginTop: 6, padding: 16, border: '1px solid #d8e9e1', borderRadius: 10, background: '#f8fbf9' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#193a32', fontSize: '.95rem', fontWeight: 650, cursor: 'pointer' }}><input type="checkbox" checked={form.treatment_include_medication} onChange={event => update('treatment_include_medication', event.target.checked)} style={{ width: 18, height: 18, accentColor: '#078673' }} />Add a medication prescription to this treatment plan</label>
               {form.treatment_include_medication && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px 14px' }}>{[['Medication*', 'name', 'e.g. Amoxicillin'], ['Dosage*', 'dosage', 'e.g. 250 mg'], ['Route', 'route', 'e.g. Oral'], ['Frequency', 'frequency', 'e.g. Twice daily'], ['Quantity', 'quantity', 'e.g. 14 capsules']].map(([label, key, placeholder]) => <label key={key} style={{ display: 'grid', gap: 6, color: '#193a32', fontSize: '.86rem', fontWeight: 600 }}>{label}<input required={key === 'name' || key === 'dosage'} value={form.treatment_medication[key]} onChange={event => update('treatment_medication', { ...form.treatment_medication, [key]: event.target.value })} placeholder={placeholder} style={{ ...modalStyles.addVaccinationInput, minHeight: 43, border: '1px solid #d8e9e1', background: '#fff', fontSize: '.9rem' }} /></label>)}</div>}
             </section>
@@ -6842,40 +7056,43 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
           {appointmentCategory === 'Check-up' && step === 2 && <>
             {serviceTextField('Reason for Check-up', 'reason', 'Reason for this check-up', { full: true, className: 'checkup-reason-field' })}
             {serviceTextField('Current Concerns', 'concerns', 'Describe current concerns', { className: 'checkup-concerns-field' })}
-            {serviceTextField('Relevant Medical History', 'medical_history', 'Loading linked medical history…', { full: true, readOnly: true, className: 'checkup-history-field', value: clinicalHistory?.medicalHistory?.length ? clinicalHistory.medicalHistory.join('\n') : 'No linked medical history recorded.' })}
+            <label className="checkup-history-field" style={{ ...modalStyles.doctorAppointmentLabel, gridColumn: '1 / -1', gridRow: 3 }}><span>Relevant medical history</span><div className="checkup-history-card">{clinicalHistory?.medicalHistory?.length ? <><div className="checkup-history-card-content"><strong>{String(clinicalHistory.medicalHistory[0]).split('\n')[0]}</strong><small>{String(clinicalHistory.medicalHistory[0]).split('\n').slice(1).join(' ') || 'To avoid infection while recovering'}</small></div><span className="checkup-history-status">Active</span></> : <span className="checkup-history-empty">No linked medical history recorded.</span>}</div></label>
             {serviceTextField('Booking Notes', 'notes', 'Notes for the visit', { full: true, className: 'checkup-notes-field' })}{attendingVeterinarianField}
           </>}
           {appointmentCategory === 'Follow-up' && step === 2 && <>
             <label className="followup-original-field" style={{ ...modalStyles.doctorAppointmentLabel, gridColumn: '1 / -1' }}><span>Original Visit / Treatment Plan<span className="doctor-appointment-required">*</span></span><select required value={form.parent_appointment_id} onChange={event => update('parent_appointment_id', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option value="">Select original appointment</option>{matchingAppointments.map(item => <option key={item.id} value={item.id}>{formatDateTimeText(item.start_time || item.datetime)} · {item.reason || item.type || 'Appointment'}</option>)}</select></label>
             <label className="followup-related-field" style={modalStyles.doctorAppointmentLabel}><span>Related Treatment Plan</span><select value={form.related_treatment_plan_id} onChange={event => update('related_treatment_plan_id', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option value="">Select treatment plan (optional)</option>{treatmentPlans.map(plan => <option key={plan.id} value={plan.id}>{plan.title} · {plan.status}</option>)}</select></label>
             {serviceTextField('Previous Instructions', 'previous_instructions', 'Select an original visit or treatment plan to view instructions', { full: true, readOnly: true, className: 'followup-instructions-field', value: linkedAppointment ? readLinkedInstructions(linkedAppointment) : linkedTreatmentPlan ? `${linkedTreatmentPlan.diagnosis || ''}${Array.isArray(linkedTreatmentPlan.steps) ? `\n${linkedTreatmentPlan.steps.map(item => item.title).filter(Boolean).join('\n')}` : ''}`.trim() || 'No previous instructions recorded.' : 'Select an original visit or treatment plan.' })}
-            {serviceTextField('Follow-up Reason', 'reason', 'Reason for follow-up', { full: true, className: 'followup-reason-field' })}
-            <label className="followup-date-field" style={modalStyles.doctorAppointmentLabel}><span>Expected Follow-up Date</span><LabDateTimePicker mode="date" value={serviceDetail('expected_follow_up')} onChange={value => updateServiceDetail('expected_follow_up', value)} style={modalStyles.doctorAppointmentInput} /></label>
-            {serviceTextField('Booking Notes', 'notes', 'Notes for the follow-up', { full: true, className: 'followup-notes-field' })}{attendingVeterinarianField}
+            {serviceTextField('Follow-up Reason', 'reason', 'Reason for follow-up', { className: 'followup-reason-field', gridColumn: '1 / 7' })}
+            <label className="followup-date-field" style={modalStyles.doctorAppointmentLabel}><span>Expected follow-up date</span><input type="date" className="followup-date-input" value={serviceDetail('expected_follow_up')} onChange={event => updateServiceDetail('expected_follow_up', event.target.value)} style={modalStyles.doctorAppointmentInput} /></label>
+            {serviceTextField('Booking Notes', 'notes', 'Notes for the follow-up', { className: 'followup-notes-field', gridColumn: '7 / -1' })}{attendingVeterinarianField}
           </>}
           {appointmentCategory === 'Grooming' && step === 2 && <>
             {serviceTextField('Requested Style / Haircut', 'style', 'Requested style or haircut', { className: 'grooming-style-field' })}
-            {serviceTextField('Coat Condition', 'coat_condition', 'Describe the coat condition', { className: 'grooming-coat-field' })}
-            {serviceTextField('Special Handling Instructions', 'handling', 'Handling needs or sensitivities', { className: 'grooming-handling-field' })}
+            <label className="grooming-coat-field"><span>Coat condition</span><span className="grooming-chip-group" role="group" aria-label="Coat condition">{['Normal', 'Tangled', 'Matted', 'Heavy shedding'].map(option => <button key={option} type="button" className={serviceDetail('coat_condition') === option ? 'is-selected' : ''} aria-pressed={serviceDetail('coat_condition') === option} onClick={() => updateServiceDetail('coat_condition', serviceDetail('coat_condition') === option ? '' : option)}>{option}</button>)}</span></label>
+            <label className="grooming-handling-field"><span>Special handling</span><span className="grooming-chip-group" role="group" aria-label="Special handling">{['Nervous', 'May bite', 'Sensitive skin', 'Senior or fragile'].map(option => {
+              const selectedHandling = String(serviceDetail('handling') || '').split(',').map(value => value.trim()).filter(Boolean);
+              const isSelected = selectedHandling.includes(option);
+              return <button key={option} type="button" className={isSelected ? 'is-selected' : ''} aria-pressed={isSelected} onClick={() => updateServiceDetail('handling', [...new Set(isSelected ? selectedHandling.filter(value => value !== option) : [...selectedHandling, option])].join(', '))}>{option}</button>;
+            })}</span></label>
             {serviceTextField('Additional Grooming Preferences', 'preferences', 'Optional grooming preferences', { className: 'grooming-preferences-field' })}
-            {serviceTextField('Assigned Groomer', 'groomer', 'Optional staff member', { className: 'grooming-assigned-field' })}
+            <label className="grooming-assigned-field"><span>Assigned groomer <small>(optional)</small></span><select value={serviceDetail('groomer')} onChange={event => updateServiceDetail('groomer', event.target.value)} className="doctor-appointment-input"><option value="">Any available</option>{veterinarians.map(member => <option key={member.id} value={member.name}>{member.name}</option>)}</select></label>
             {serviceTextField('Booking Notes', 'notes', 'Notes for the grooming team', { full: true, className: 'grooming-notes-field' })}
           </>}
           {appointmentCategory === 'General' && step === 2 && <>
-            {serviceTextField('Consultation Reason', 'reason', 'Reason for consultation', { full: true, className: 'general-reason-field' })}
+            {serviceTextField('Consultation Reason', 'reason', 'Reason for consultation', { className: 'general-reason-field' })}
             {serviceTextField('Main Concern', 'concern', 'Primary concern', { className: 'general-concern-field' })}
-            {serviceTextField('Relevant Medical History', 'medical_history', 'Loading linked medical history…', { full: true, readOnly: true, className: 'general-history-field', value: clinicalHistory?.medicalHistory?.length ? clinicalHistory.medicalHistory.join('\n') : 'No linked medical history recorded.' })}
+            <label className="general-history-field"><span>Relevant medical history</span><div className="general-history-card">{treatmentPlans[0] || clinicalHistory?.medicalHistory?.[0] ? <><div className="general-history-card-content"><strong>{treatmentPlans[0]?.title || String(clinicalHistory?.medicalHistory?.[0] || '').split(' · ')[0]}</strong><small>{treatmentPlans[0]?.diagnosis || String(clinicalHistory?.medicalHistory?.[0] || '').split(' · ').slice(1, -1).join(' · ') || 'Previously recorded for this patient'}</small></div>{treatmentPlans[0]?.status && <span className="general-history-status">{treatmentPlans[0].status}</span>}</> : <span className="general-history-empty">No linked medical history recorded.</span>}</div></label>
             <label className="general-related-plan-field" style={modalStyles.doctorAppointmentLabel}><span>Related Visit / Treatment Plan</span><select value={form.related_treatment_plan_id} onChange={event => update('related_treatment_plan_id', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option value="">Select related plan (optional)</option>{treatmentPlans.map(plan => <option key={plan.id} value={plan.id}>{plan.title}</option>)}</select></label>
             {serviceTextField('Booking Notes', 'notes', 'Booking notes', { className: 'general-notes-field' })}{attendingVeterinarianField}
           </>}
           {appointmentCategory === 'Confinement' && step === 2 && <section className="appointment-confinement-workflow" style={{ gridColumn: '1 / -1', display: 'grid', gap: 12 }}>
-            <nav aria-label="Confinement admission booking steps" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{['Patient & Owner', 'Assessment', 'Treatment Plan', 'Hospitalization', 'Consent & Authorization', 'Patient Summary'].map((label, index) => <button key={label} type="button" aria-current={confinementStep === index ? 'step' : undefined} onClick={() => index <= confinementStep && setConfinementStep(index)} style={{ ...modalStyles.cancel, padding: '6px 8px', background: confinementStep === index ? '#e4f4ef' : '#fff', color: confinementStep === index ? '#005447' : '#64748b' }}>{index + 1}. {label}</button>)}</nav>
-            {confinementStep === 0 && <div style={{ display: 'grid', gap: 8 }}><strong>Patient &amp; Owner</strong><span>{selectedPet?.name || 'Patient'} · {selectedOwner?.name || 'Owner'}</span><span>{selectedOwner?.phone || selectedOwner?.phone_number || 'Phone not recorded'}</span></div>}
-            {confinementStep === 1 && <>{serviceTextField('Admission Reason', 'admission_reason', 'Reason for hospitalization')}<label style={modalStyles.doctorAppointmentLabel}><span>Urgency</span><select value={serviceDetail('urgency_level') || 'Normal'} onChange={event => updateServiceDetail('urgency_level', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option>Normal</option><option>Urgent</option><option>Emergency</option></select></label>{serviceTextField('Presenting Complaint', 'presenting_complaint', 'Presenting complaint', { full: true })}{serviceTextField('Provisional Diagnosis', 'provisional_diagnosis', 'Provisional diagnosis')}{serviceTextField('Clinical Assessment', 'initial_assessment', 'Initial clinical assessment')}{serviceTextField('Physical Examination / Notes', 'physical_notes', 'Findings and immediate care needs', { full: true })}<label style={modalStyles.doctorAppointmentLabel}><span>Weight (kg)</span><input type="number" min="0" step="any" value={serviceDetail('patient_weight')} onChange={event => updateServiceDetail('patient_weight', event.target.value)} style={modalStyles.doctorAppointmentInput} /></label><label style={modalStyles.doctorAppointmentLabel}><span>Temperature (°C)</span><input type="number" min="0" step="any" value={serviceDetail('temperature')} onChange={event => updateServiceDetail('temperature', event.target.value)} style={modalStyles.doctorAppointmentInput} /></label>{serviceTextField('Known Allergies', 'known_allergies', '', { readOnly: true, value: clinicalHistory?.allergies || 'None recorded.' })}{serviceTextField('Relevant Medical History', 'medical_history', 'Loading linked history…', { full: true, readOnly: true, value: clinicalHistory?.medicalHistory?.join('\n') || 'No linked medical history recorded.' })}</>}
+              {confinementStep === 0 && <div className="confinement-patient-overview"><strong>Patient &amp; owner</strong><div><span>Pet</span><span>{selectedPet?.name || 'Patient'} · {selectedPetSpecies}</span></div><div><span>Owner</span><span>{selectedOwner?.name || 'Owner'}</span></div><div><span>Contact</span><span>{selectedOwner?.phone || selectedOwner?.phone_number || 'Contact not recorded'}</span></div></div>}
+            {confinementStep === 1 && <>{serviceTextField('Admission Reason', 'admission_reason', 'Reason for hospitalization', { required: true, className: 'confinement-admission-reason-field' })}<label className="confinement-urgency-field" style={modalStyles.doctorAppointmentLabel}><span>Urgency</span><select value={serviceDetail('urgency_level') || 'Normal'} onChange={event => updateServiceDetail('urgency_level', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option>Normal</option><option>Urgent</option><option>Emergency</option></select></label>{serviceTextField('Presenting Complaint', 'presenting_complaint', 'Presenting complaint', { required: true, full: true, className: 'confinement-presenting-complaint-field' })}{serviceTextField('Provisional Diagnosis', 'provisional_diagnosis', 'Provisional diagnosis', { className: 'confinement-provisional-diagnosis-field' })}{serviceTextField('Clinical Assessment', 'initial_assessment', 'Initial clinical assessment', { className: 'confinement-clinical-assessment-field' })}{serviceTextField('Physical Examination / Notes', 'physical_notes', 'Findings and immediate care needs', { full: true, className: 'confinement-physical-notes-field' })}<label className="confinement-weight-field" style={modalStyles.doctorAppointmentLabel}><span>Weight (kg)</span><input type="number" min="0" step="any" value={serviceDetail('patient_weight')} onChange={event => updateServiceDetail('patient_weight', event.target.value)} style={modalStyles.doctorAppointmentInput} /></label><label className="confinement-temperature-field" style={modalStyles.doctorAppointmentLabel}><span>Temperature (°C)</span><input type="number" min="0" step="any" value={serviceDetail('temperature')} onChange={event => updateServiceDetail('temperature', event.target.value)} style={modalStyles.doctorAppointmentInput} /></label>{serviceTextField('Known Allergies', 'known_allergies', '', { readOnly: true, value: clinicalHistory?.allergies || 'None recorded.', rows: 1, className: 'confinement-known-allergies-field' })}{serviceTextField('Relevant Medical History', 'medical_history', 'Loading linked history…', { full: true, readOnly: true, value: clinicalHistory?.medicalHistory?.join('\n') || 'No linked medical history recorded.', className: 'confinement-medical-history-field' })}</>}
             {confinementStep === 2 && <><label style={{ ...modalStyles.doctorAppointmentLabel, gridColumn: '1 / -1' }}><span>Linked Treatment Plan</span><select value={form.related_treatment_plan_id} onChange={event => update('related_treatment_plan_id', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option value="">No linked plan</option>{treatmentPlans.map(plan => <option key={plan.id} value={plan.id}>{plan.title} · {plan.status}</option>)}</select></label><p style={{ gridColumn: '1 / -1', color: '#64748b', fontSize: '.75rem' }}>New treatment plans can be created in Treatment Plans; this booking will not create a duplicate plan.</p></>}
-            {confinementStep === 3 && <><label style={modalStyles.doctorAppointmentLabel}><span>Ward / Cage<span className="doctor-appointment-required">*</span></span><select required value={serviceDetail('ward')} onChange={event => updateServiceDetail('ward', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option value="">Select ward / cage</option>{['Ward A - Cage 1', 'Ward A - Cage 2', 'Ward A - Cage 3', 'Ward B - Cage 1', 'Ward B - Cage 2'].map(ward => <option key={ward}>{ward}</option>)}</select></label><label style={modalStyles.doctorAppointmentLabel}><span>Expected Discharge Date<span className="doctor-appointment-required">*</span></span><LabDateTimePicker mode="date" value={serviceDetail('expected_discharge_at')} onChange={value => updateServiceDetail('expected_discharge_at', value)} style={modalStyles.doctorAppointmentInput} /></label>{attendingVeterinarianField}</>}
-            {confinementStep === 4 && <><label style={modalStyles.doctorAppointmentLabel}><span>Consent Status<span className="doctor-appointment-required">*</span></span><select required value={serviceDetail('consent_status') || ''} onChange={event => updateServiceDetail('consent_status', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option value="">Select consent status</option><option value="obtained">Obtained</option><option value="pending">Pending</option><option value="declined">Declined</option></select></label>{serviceTextField('Authorized By', 'authorized_by', selectedOwner?.name || 'Owner / authorized representative')}{serviceTextField('Consent Scope', 'consent_scope', 'Hospital admission and inpatient care', { full: true })}{serviceTextField('Consent Notes', 'consent_notes', 'Consent documentation notes', { full: true })}</>}
-            {confinementStep === 5 && <div style={{ gridColumn: '1 / -1', padding: 14, border: '1px solid #d8e9e1', borderRadius: 9, background: '#f4faf8' }}><strong>Patient Summary</strong><p>{selectedPet?.name} · {selectedOwner?.name}</p><p>{serviceDetail('admission_reason') || 'Confinement'} · {serviceDetail('ward') || 'Ward not assigned'} · Consent: {serviceDetail('consent_status') || 'Not recorded'}</p><small>This creates a scheduled appointment only. Admit the patient through the inpatient admission workflow when the stay is confirmed.</small></div>}
+            {confinementStep === 3 && <><label className="confinement-ward-field" style={modalStyles.doctorAppointmentLabel}><span>Ward / Cage<span className="doctor-appointment-required">*</span></span><select required value={serviceDetail('ward')} onChange={event => updateServiceDetail('ward', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option value="">Select ward / cage</option>{['Ward A - Cage 1', 'Ward A - Cage 2', 'Ward A - Cage 3', 'Ward B - Cage 1', 'Ward B - Cage 2'].map(ward => <option key={ward}>{ward}</option>)}</select></label><label className="confinement-discharge-date-field" style={modalStyles.doctorAppointmentLabel}><span>Expected Discharge Date<span className="doctor-appointment-required">*</span></span><LabDateTimePicker mode="date" value={serviceDetail('expected_discharge_at')} onChange={value => updateServiceDetail('expected_discharge_at', value)} style={modalStyles.doctorAppointmentInput} /></label>{attendingVeterinarianField}</>}
+            {confinementStep === 4 && <><label className="confinement-consent-status-field" style={modalStyles.doctorAppointmentLabel}><span>Consent Status<span className="doctor-appointment-required">*</span></span><select required value={serviceDetail('consent_status') || ''} onChange={event => updateServiceDetail('consent_status', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option value="">Select consent status</option><option value="obtained">Obtained</option><option value="pending">Pending</option><option value="declined">Declined</option></select></label>{serviceTextField('Authorized By', 'authorized_by', selectedOwner?.name || 'Owner / authorized representative', { required: true, rows: 1, className: 'confinement-authorized-by-field' })}{serviceTextField('Consent Scope', 'consent_scope', 'Hospital admission and inpatient care', { required: true, full: true, className: 'confinement-consent-scope-field' })}{serviceTextField('Consent Notes', 'consent_notes', 'Consent documentation notes', { full: true, className: 'confinement-consent-notes-field' })}<div className="confinement-consent-upload-field"><span className="confinement-consent-upload-label">Signed consent paper <small>Optional · PDF, JPG, or PNG · up to 4 MB</small></span><div className="confinement-consent-upload-actions">{consentPaperFile && <span className="confinement-consent-file-name" title={consentPaperFile.name}>{consentPaperFile.name}</span>}<label className="confinement-consent-upload-button">{consentPaperFile ? 'Replace file' : 'Choose file'}<input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={handleConsentPaperChange} /></label>{consentPaperFile && <button type="button" className="confinement-consent-remove-file" onClick={() => setConsentPaperFile(null)}>Remove</button>}</div></div></>}
+            {confinementStep === 5 && <div className="confinement-final-summary" style={{ gridColumn: '1 / -1', padding: 14, border: '1px solid #d8e9e1', borderRadius: 9, background: '#f4faf8' }}><strong>Patient Summary</strong><p>{selectedPet?.name} · {selectedOwner?.name}</p><p>{serviceDetail('admission_reason') || 'Confinement'} · {serviceDetail('ward') || 'Ward not assigned'} · Consent: {serviceDetail('consent_status') || 'Not recorded'}</p><small>This creates a scheduled appointment only. Admit the patient through the inpatient admission workflow when the stay is confirmed.</small>{consentPaperFile && <ConsentDocumentView document={{ filename: consentPaperFile.name, content_type: consentPaperFile.type, data: consentPaperPreviewUrl }} />}</div>}
           </section>}
           {!isWorkflowDetailsStep && form.type !== 'Vaccination' && <label style={modalStyles.doctorAppointmentLabel}>Duration
             <span className="doctor-appointment-control"><input readOnly value={form.type ? `${durationMinutes} minutes` : 'Auto based on type'} className="doctor-appointment-input" style={{ ...modalStyles.doctorAppointmentInput, color: '#64748b' }} /></span>
@@ -6892,7 +7109,11 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
         <div className={`appointment-create-footer${isWorkflowDetailsStep && appointmentCategory === 'Surgery' ? ' surgery-appointment-footer' : ''}`} style={isWorkflowDetailsStep && appointmentCategory === 'Surgery' ? { ...modalStyles.addVaccinationFooter, justifyContent: 'flex-end', marginTop: 0 } : isWorkflowDetailsStep ? modalStyles.addVaccinationFooter : modalStyles.doctorAppointmentFooter}>
           {isWorkflowDetailsStep && appointmentCategory === 'Surgery' && !ready && !saving && <span className="surgery-form-hint">{!form.service_name.trim() ? 'Add a surgical procedure to continue.' : !serviceDetail('diagnosis').trim() ? 'Add a diagnosis or indication to continue.' : 'Complete the required surgery details to continue.'}</span>}
           {isWorkflowDetailsStep && appointmentCategory === 'Dental' && !ready && !saving && <span className="dental-form-hint">Choose a dental service to continue</span>}
+          {isWorkflowDetailsStep && appointmentCategory === 'General' && !ready && !saving && <span className="general-form-hint">Choose a service to continue</span>}
+          {isWorkflowDetailsStep && appointmentCategory === 'Grooming' && !ready && !saving && <span className="grooming-form-hint">Choose a grooming service to continue</span>}
+          {isWorkflowDetailsStep && appointmentCategory === 'Confinement' && !ready && !saving && <span className="confinement-form-hint">{confinementStep === 0 ? 'Choose a confinement service to continue' : 'Complete the required confinement details to continue'}</span>}
           {isWorkflowDetailsStep && appointmentCategory === 'Vaccination' && !ready && !saving && <span className="vaccination-form-hint">{!form.service_name.trim() ? 'Choose a planned vaccine to continue.' : !serviceDetail('reason_category').trim() ? 'Choose a reason to continue.' : 'Complete the required details to continue.'}</span>}
+          {isWorkflowDetailsStep && appointmentCategory === 'Treatment' && !ready && !saving && <span className="treatment-form-hint">Complete the required details to continue.</span>}
           <button type="button" onClick={() => isWorkflowDetailsStep ? setStep(1) : onClose()} style={modalStyles.cancel}>{isWorkflowDetailsStep ? 'Back' : 'Cancel'}</button>
           <button type="submit" disabled={!ready || saving} style={{ ...T.primaryBtn, padding: '8px 12px', fontSize: '.72rem', borderRadius: 7, ...(ready ? {} : modalStyles.doctorAppointmentDisabled) }}>{saving ? 'Saving...' : isWorkflowType && step === 1 ? 'Next' : appointmentCategory === 'Confinement' ? confinementStep < 5 ? 'Next' : 'Schedule Confinement' : appointmentCategory === 'Laboratory' && step === 2 ? 'Continue to Lab Test' : appointmentCategory === 'Treatment' && step === 2 ? 'Create Plan & Schedule' : 'Schedule Appointment'}</button>
         </div>
@@ -7136,13 +7357,18 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
       && (!dateFrom || dateValue >= dateFrom)
       && (!dateTo || dateValue <= dateTo)
       && (practitionerFilter === 'all' || v.attendingDoctor === practitionerFilter)
-      && (typeFilter === 'all' || v.type === typeFilter)
+      && (typeFilter === 'all' || String(v.type || '').trim() === typeFilter)
       && [v.id, v.pet, v.type, v.dateGiven, v.nextDue, v.attendingDoctor, v.createdBy, v.lastUpdatedBy, v.dateCreated, v.linkedPatient, v.status, v.batchNumber, v.batch_number, v.lotNumber]
       .some(value => String(value || '').toLowerCase().includes(query));
   });
   const count = status => displayedVaccinations.filter(v => Boolean(v.archived) === showArchived && (status === 'overdue' ? ['overdue', 'due'].includes(v.status) : v.status === status)).length;
   const completedCount = count('up-to-date') + count('completed');
-  const vaccinationTypeOptions = [...new Set(displayedVaccinations.filter(v => Boolean(v.archived) === showArchived).map(v => v.type).filter(type => type && type !== 'â€”'))];
+  const vaccinationTypeOptions = [...new Set(
+    displayedVaccinations
+      .filter(v => Boolean(v.archived) === showArchived)
+      .map(v => String(v.type || '').trim())
+      .filter(type => type && type !== 'â€”')
+  )];
   const vaccinationPractitioners = [...new Set([
     ...clinicVeterinarians.map(member => member.name),
     ...displayedVaccinations.filter(v => Boolean(v.archived) === showArchived).map(v => v.attendingDoctor),
@@ -7298,7 +7524,7 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
               onClick={openActions}
               onKeyDown={event => handleClinicActionRowKeyDown(event, openActions)}
             >
-              <td style={{ ...T.td, padding: '10px 8px', fontWeight: 600, fontSize: '.72rem', color: '#374151', whiteSpace: 'nowrap' }}>{v.id}</td>
+              <td style={{ ...T.td, padding: '10px 8px', fontWeight: 600, fontSize: '.72rem', color: '#374151', whiteSpace: 'nowrap' }}>{v.isScheduledAppointment && v.appointmentId != null ? v.appointmentId : v.id}</td>
               <td style={{ ...T.td, padding: '10px 8px', fontSize: '.72rem', color: '#111827', fontWeight: 600 }}>{v.pet}</td>
               <td style={{ ...T.td, padding: '10px 8px', fontSize: '.72rem', color: '#374151' }}><div style={{ whiteSpace: 'nowrap' }}>{v.type}</div>{v.isScheduledAppointment && [v.manufacturer, v.lotNumber, v.expiryDate ? `Expires ${formatClinicDate(v.expiryDate)}` : ''].filter(Boolean).length > 0 && <small style={{ display: 'block', marginTop: 3, color: '#718198', fontSize: '.62rem' }}>{[v.manufacturer, v.lotNumber, v.expiryDate ? `Expires ${formatClinicDate(v.expiryDate)}` : ''].filter(Boolean).join(' · ')}</small>}</td>
               <td style={{ ...T.tdMuted, padding: '10px 8px', fontSize: '.72rem', color: '#374151', whiteSpace: 'nowrap' }}>{v.isScheduledAppointment || v.status === 'scheduled' ? `Scheduled · ${formatClinicDate(v.dateGiven)}` : formatClinicDate(v.dateGiven)}</td>
@@ -7859,6 +8085,7 @@ export function TreatmentsTab({ treatments, user }) {
 export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard', initialInvoiceId = null }) {
   const [tab, setTab]           = useState(initialTab);
   const [inpatientPlanRequest, setInpatientPlanRequest] = useState(null);
+  const [visitCheckupRequest, setVisitCheckupRequest] = useState(null);
   const [exportReportsOpen, setExportReportsOpen] = useState(false);
   const [showBanner, setShowBanner] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -7939,7 +8166,7 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
     dashboard:    <DashboardTab clients={clients} pets={pets} appointments={appointments} alerts={dashboardAlerts} vaccinations={vaccinations} treatments={treatments} user={user} onViewAppointments={() => setTab('appointments')} onViewPets={() => setTab('pets')} onViewDiseaseIntelligence={() => onNavigate?.('disease')} onExportReports={() => setExportReportsOpen(true)} />,
     owners:       <OwnersTab owners={clients} user={user} onOwnersChange={setClients} />,
     pets:         <PetsTab pets={pets} owners={clients} user={user} onPetsChange={setPets} onOwnersChange={setClients} />,
-    appointments: <AppointmentsTab appointments={appointments} pets={pets} owners={clients} vaccinations={vaccinations} user={user} onAppointmentsChange={setAppointments} onVaccinationsChange={setVaccinations} onCreateLabRequest={async request => {
+    appointments: <AppointmentsTab appointments={appointments} pets={pets} owners={clients} vaccinations={vaccinations} user={user} createVisitRequest={visitCheckupRequest} onAppointmentsChange={setAppointments} onVaccinationsChange={setVaccinations} onCreateLabRequest={async request => {
       if (!user?.clinic_id || !user?.token) throw new Error('Your account is not assigned to a clinic.');
       const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
       const response = await fetch(`${apiUrl}/clinic-records/lab-tests?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
@@ -7951,7 +8178,7 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
       if (!response.ok) throw new Error(payload.error || 'Unable to save the lab test request.');
       return payload;
     }} />,
-    visits: <VisitCheckupTab visits={visits} loading={visitsLoading} error={visitsError} />,
+    visits: <VisitCheckupTab visits={visits} loading={visitsLoading} error={visitsError} onNewVisitCheckup={() => { setVisitCheckupRequest({ id: Date.now() }); setTab('appointments'); }} />,
     vaccinations: <VaccinationsTab vaccinations={vaccinations} appointments={appointments} pets={pets} user={user} onNavigate={onNavigate} onOpenAppointments={() => setTab('appointments')} onVaccinationsChange={setVaccinations}
       onAppointmentUpdate={(id, saved) => setAppointments(current => current.map(item => String(item.id) === String(id) ? { ...item, reason: saved.reason, notes: saved.notes } : item))}
       onAppointmentArchive={id => setAppointments(current => current.map(item => String(item.id) === String(id) ? { ...item, archived: true } : item))} />,

@@ -1,5 +1,6 @@
-const express = require('express');
 const dotenv = require('dotenv');
+dotenv.config();
+const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
 const db = require('./config/db');
@@ -7,7 +8,7 @@ const userModel = require('./models/userModel');
 const apiRoutes = require('./routes/api');
 const clinicRecords = require('./controllers/clinicRecordController');
 
-dotenv.config();
+
 
 const app = express();
 app.use(express.json({ limit: '6mb' }));

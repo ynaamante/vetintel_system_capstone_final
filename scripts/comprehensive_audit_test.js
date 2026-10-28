@@ -4,9 +4,11 @@
  * Tests all CUD operations across all controllers
  */
 
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+
 const http = require('http');
 const BASE_URL = 'http://localhost:3000/api';
-const AUTH_TOKEN = 'secret-token';
+const AUTH_TOKEN = process.env.API_TOKEN;
 const USER_ID = '1';
 
 let testsPassed = 0;

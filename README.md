@@ -1203,10 +1203,7 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-**Admin Portal Test Credentials**:
-- Owner: `owner@happypaws.com` / `owner123`
-- Doctor: `doctor@happypaws.com` / `doctor123`
-- Receptionist: `receptionist@happypaws.com` / `receptionist123`
+**Admin Portal Test Accounts**: Use accounts provisioned locally for the development database. Do not commit account passwords or other credentials to the repository.
 
 **Admin Portal Dependencies** (automatically installed):
 - React (18.3.1) - UI framework
@@ -1499,17 +1496,7 @@ For detailed setup instructions for each application, see:
 
 Added development credentials to `.env`:
 
-```env
-DEMO_PET_OWNER_EMAIL=petowner@vetintel.com
-DEMO_PET_OWNER_PASSWORD=pet123
-DEMO_CLINIC_OWNER_EMAIL=clinicowner@vetintel.com
-DEMO_CLINIC_OWNER_PASSWORD=owner123
-SUPERADMIN_EMAIL=admin@vetintel.com
-SUPERADMIN_PASSWORD=admin123
-SUPERADMIN_NAME=VetIntel Admin
-```
-
-These credentials are for local development only and must be replaced before deployment.
+Development account credentials are intentionally omitted. Configure them in the local `.env` file only, and never commit passwords or other secrets to the repository.
 
 ### Files changed for these features
 
@@ -1579,18 +1566,7 @@ Landing Page -> Sign In/Create Account -> Pet Owner or Clinic Owner
 
 #### Development accounts
 
-```env
-DEMO_PET_OWNER_EMAIL=petowner@vetintel.com
-DEMO_PET_OWNER_PASSWORD=pet123
-DEMO_CLINIC_OWNER_EMAIL=clinicowner@vetintel.com
-DEMO_CLINIC_OWNER_PASSWORD=owner123
-
-SUPERADMIN_EMAIL=admin@vetintel.com
-SUPERADMIN_PASSWORD=admin123
-SUPERADMIN_NAME=VetIntel Admin
-```
-
-These are development-only credentials and must be replaced before deployment.
+Development account credentials are intentionally omitted. Configure them in the local `.env` file only, and never commit passwords or other secrets to the repository.
 
 ### Incomplete and needs verification
 

@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 
-const authSecret = process.env.AUTH_SECRET || process.env.API_TOKEN || 'dev_auth_secret';
+const authSecret = process.env.AUTH_SECRET;
+if (!authSecret) throw new Error('AUTH_SECRET is not set in .env');
 
 function base64UrlEncode(value) {
   return Buffer.from(value, 'utf8').toString('base64url');

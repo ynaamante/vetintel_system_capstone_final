@@ -2542,6 +2542,7 @@ select.doctor-appointment-input {
 .lab-date-time-trigger > svg { width: 17px; height: 17px; flex: 0 0 17px; }
 .lab-date-time-trigger > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lab-date-time-trigger > span.placeholder { color: #111827; }
+.lab-date-time-backdrop { position: fixed; inset: 0; z-index: 2099; background: rgba(15, 23, 42, .38); backdrop-filter: blur(1px); }
 .lab-date-time-popover {
   display: grid;
   width: min(340px, calc(100vw - 16px));
@@ -2557,6 +2558,36 @@ select.doctor-appointment-input {
   box-shadow: 0 12px 32px rgba(15, 45, 48, .2);
   color: #23444b;
 }
+.lab-date-time-popover.time-only { width: min(488px, calc(100vw - 16px)); gap: 14px; }
+.lab-date-time-time-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #173f3d; font-size: 15px; font-weight: 600; }
+.lab-date-time-time-header strong { color: #007263; font-size: 19px; font-weight: 700; white-space: nowrap; }
+.lab-date-time-time-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 13px; background: #e8eeeb; }
+.lab-date-time-time-tabs button { min-height: 52px; border-radius: 10px; color: #31545a; font-size: 14px; font-weight: 500; }
+.lab-date-time-time-tabs button[aria-selected="true"] { background: #fff; color: #005b4e; font-weight: 700; box-shadow: 0 1px 4px rgba(20, 49, 43, .18); }
+.lab-date-time-period-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid #d9e3df; }
+.lab-date-time-period-tabs button { display: flex; min-width: 0; min-height: 48px; align-items: center; justify-content: center; gap: 5px; padding: 0 3px; border-bottom: 3px solid transparent; color: #24494e; font-size: 13px; white-space: nowrap; }
+.lab-date-time-period-tabs button strong { font-weight: 600; }
+.lab-date-time-period-tabs button span { color: #607b80; font-size: 12px; }
+.lab-date-time-period-tabs button[aria-selected="true"] { border-bottom-color: #007763; color: #007263; }
+.lab-date-time-slot-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.lab-date-time-slot-grid button { min-width: 0; min-height: 52px; padding: 4px; border: 1px solid #cbd9d4; border-radius: 11px; background: #fff; color: #173f48; font-size: 13px; white-space: nowrap; }
+.lab-date-time-slot-grid button:hover:not(:disabled) { border-color: #168873; background: #f1faf7; }
+.lab-date-time-slot-grid button.selected { border-color: #007763; background: #e4f2ed; color: #005b4e; font-weight: 700; box-shadow: inset 0 0 0 1px #007763; }
+.lab-date-time-slot-grid button:disabled { border-color: #e1e7e4; background: #f0f3f2; color: #9aaba7; cursor: not-allowed; text-decoration: line-through; }
+.lab-date-time-custom { display: grid; gap: 9px; padding: 4px 0 2px; }
+.lab-date-time-custom-row { display: flex; min-height: 30px; align-items: center; justify-content: space-between; gap: 12px; }
+.lab-date-time-custom-label { color: #31565b; font-size: 13px; font-weight: 600; }
+.lab-date-time-custom-label small { margin-left: 5px; color: #73898a; font-size: 11px; font-weight: 400; }
+.lab-date-time-period-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border-radius: 9px; background: #e8eeeb; }
+.lab-date-time-period-toggle button { min-width: 54px; min-height: 34px; border-radius: 7px; color: #405f61; font-size: 12px; }
+.lab-date-time-period-toggle button[aria-pressed="true"] { background: #fff; color: #006354; font-weight: 700; box-shadow: 0 1px 3px rgba(20, 49, 43, .16); }
+.lab-date-time-custom-number-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+.lab-date-time-custom-number-grid button { min-width: 0; min-height: 39px; border: 1px solid #cbd9d4; border-radius: 9px; background: #fff; color: #173f48; font-size: 13px; }
+.lab-date-time-custom-number-grid button:hover { border-color: #168873; background: #f1faf7; }
+.lab-date-time-custom-number-grid button.selected { border-color: #007763; background: #e4f2ed; color: #005b4e; font-weight: 700; box-shadow: inset 0 0 0 1px #007763; }
+.lab-date-time-minute-label { margin-top: 2px; }
+.lab-date-time-booked-note { display: flex; align-items: center; gap: 9px; padding-top: 10px; border-top: 1px solid #dfe7e3; color: #647c80; font-size: 12px; }
+.lab-date-time-booked-note > span:first-child { width: 18px; height: 18px; flex: 0 0 18px; border: 1px solid #d5e1dd; border-radius: 5px; background: #f0f4f2; }
 .lab-date-time-calendar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .lab-date-time-month-year { display: flex; min-width: 0; flex: 1; align-items: center; justify-content: center; gap: 6px; }
 .lab-date-time-month-year select { min-width: 0; min-height: 40px; padding: 0 8px; border: 1px solid #dbe6e5; border-radius: 7px; background: #fff; color: #174e4b; font: inherit; font-size: 13px; font-weight: 650; }
@@ -2573,24 +2604,29 @@ select.doctor-appointment-input {
 .lab-date-time-calendar-grid > button.selected { background: #006354; color: #fff; }
 .lab-date-time-time { display: grid; gap: 7px; }
 .lab-date-time-time > span { color: #4a666b; font-size: 12px; font-weight: 650; }
-.lab-date-time-time > div { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 6px; }
-.lab-date-time-time-input { width: 100%; min-width: 0; height: 42px; box-sizing: border-box; padding: 0 10px; border: 1px solid #d6e3e2; border-radius: 7px; background: #fff; color: #111827; font: inherit; font-size: 12px; }
-.lab-date-time-time-input:focus { border-color: #83bcae; outline: 2px solid #83bcae; outline-offset: 1px; }
-.lab-date-time-time-input::placeholder { color: #111827; opacity: 1; }
+.lab-date-time-time-controls input { width: 100%; min-width: 0; height: 42px; box-sizing: border-box; padding: 0 8px; border: 1px solid #d6e3e2; border-radius: 7px; background: #fff; color: #23444b; font: inherit; font-size: 12px; }
+.lab-date-time-time-controls input:focus { border-color: #83bcae; outline: 2px solid #83bcae; outline-offset: 1px; }
 .lab-date-time-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; padding-top: 2px; }
 .lab-date-time-actions button { min-height: 40px; padding: 0 12px; border: 1px solid #d8e4e2; border-radius: 8px; color: #35575d; font-size: 12px; font-weight: 600; touch-action: manipulation; }
 .lab-date-time-actions button:hover:not(:disabled) { background: #f1f8f6; }
 .lab-date-time-actions button.clear { margin-right: auto; border-color: transparent; color: #53777a; }
 .lab-date-time-actions button.apply { border-color: #005447; background: #005447; color: #fff; }
 .lab-date-time-actions button:disabled { cursor: not-allowed; opacity: .45; }
+.lab-date-time-popover.time-only .lab-date-time-actions { padding-top: 4px; border-top: 1px solid #dfe7e3; }
+.lab-date-time-popover.time-only .lab-date-time-actions button { min-width: 112px; min-height: 48px; border-radius: 11px; font-size: 14px; }
+.lab-date-time-popover.time-only .lab-date-time-actions button.apply { background: #087460; }
 
 @media (pointer: coarse), (max-width: 1024px) {
   .lab-date-time-trigger { min-height: 52px; padding: 0 14px; font-size: 14px; }
   .lab-date-time-month-year select { min-height: 44px; font-size: 14px; touch-action: manipulation; }
   .lab-date-time-calendar-header button { width: 44px; height: 44px; }
   .lab-date-time-calendar-grid > button { min-height: 44px; font-size: 14px; }
-  .lab-date-time-time-input { height: 48px; font-size: 14px; }
+  .lab-date-time-time-controls input { height: 48px; font-size: 14px; }
   .lab-date-time-actions button { min-height: 46px; padding: 0 14px; font-size: 13px; }
+  .lab-date-time-time-tabs button { min-height: 56px; font-size: 15px; }
+  .lab-date-time-period-tabs button { min-height: 54px; font-size: 14px; }
+  .lab-date-time-slot-grid button { min-height: 56px; font-size: 14px; }
+  .lab-date-time-custom-number-grid button { min-height: 44px; font-size: 14px; }
 }
 
 .lab-wizard-divider {
@@ -5882,7 +5918,7 @@ select.doctor-appointment-input {
   }
 }
 
-@media (max-width: 540px) {
+@media (max-width: 650px) {
   .lab-result-editor.lab-result-entry {
     width: calc(100vw - 24px) !important;
   }
@@ -8078,6 +8114,58 @@ select.doctor-appointment-input {
   transform: rotate(45deg);
   border-right: 1px solid #526b64;
   border-bottom: 1px solid #526b64;
+}
+
+.clinic-visits-tab .clinic-visits-filter-bar {
+  grid-template-columns: minmax(220px, 1.8fr) minmax(150px, 180px) minmax(145px, 1fr);
+  margin-bottom: 14px;
+}
+.clinic-visits-tab .clinic-visits-date-range { max-width: 180px; }
+.clinic-visits-tab .clinic-visits-date-range .lab-date-range-trigger,
+.clinic-visits-tab .clinic-visits-status-select .filter-select-trigger {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid #d1dbe2;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+.clinic-visits-tab .clinic-visits-date-range .lab-date-range-trigger > span:nth-child(2),
+.clinic-visits-tab .clinic-visits-status-select .filter-select-trigger > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.clinic-visits-tab .clinic-visits-status-select { width: 100%; min-width: 0; }
+.clinic-visits-tab .clinic-visits-status-select .filter-select-chevron {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  margin: -3px 1px 0 auto;
+  transform: rotate(45deg);
+  border-right: 1px solid #526b64;
+  border-bottom: 1px solid #526b64;
+}
+.clinic-visits-tab .clinic-visits-date-range .lab-date-range-trigger:hover,
+.clinic-visits-tab .clinic-visits-date-range .lab-date-range-trigger[aria-expanded="true"],
+.clinic-visits-tab .clinic-visits-status-select .filter-select-trigger:hover,
+.clinic-visits-tab .clinic-visits-status-select .filter-select-trigger[aria-expanded="true"] {
+  border-color: #8ba9a1;
+}
+.clinic-visits-tab .clinic-visits-date-range .lab-date-range-trigger:focus-visible,
+.clinic-visits-tab .clinic-visits-status-select .filter-select-trigger:focus-visible {
+  outline: 2px solid rgba(0, 84, 71, .24);
+  outline-offset: 1px;
 }
 
 .clinic-vaccinations-tab .clinic-vaccination-filter-select-menu {
@@ -10329,6 +10417,383 @@ select.doctor-appointment-input {
   .clinic-inpatient-admit-summary-tab > .clinic-inpatient-summary-note { grid-column: 1; }
 }
 
+/* Keep Inpatient dialogs at the same dimensions as the Confinement details modal. */
+.clinic-inpatient-admit-dialog,
+.clinic-inpatient-record-dialog {
+  width: min(760px, calc(100vw - 32px)) !important;
+  max-width: 760px !important;
+  height: auto !important;
+  max-height: calc(100dvh - 32px) !important;
+  box-sizing: border-box !important;
+  padding: 28px 32px 24px !important;
+  border-radius: 16px !important;
+  color: #1f2d28 !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+.clinic-inpatient-admit-dialog { overflow: hidden !important; }
+.clinic-inpatient-record-dialog { overflow-x: hidden !important; overflow-y: auto !important; }
+.clinic-inpatient-admit-dialog .vi-modal__header {
+  padding-right: 32px !important;
+}
+.clinic-inpatient-admit-dialog .vi-modal__title {
+  color: #0e6a56 !important;
+  font-size: 25px !important;
+  line-height: 1.2 !important;
+  font-weight: 700 !important;
+}
+.clinic-inpatient-admit-dialog .vi-modal__description {
+  margin: 6px 0 16px !important;
+  color: #5a6661 !important;
+  font-size: 15px !important;
+  line-height: 1.4 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs {
+  gap: 8px !important;
+  margin: 0 0 12px !important;
+  padding: 0 0 14px !important;
+  border-bottom: 1px solid #e6ece9 !important;
+  scrollbar-width: thin;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs button {
+  min-height: 40px !important;
+  gap: 8px !important;
+  padding: 7px 12px !important;
+  border: 1px solid #e6ece9 !important;
+  border-radius: 999px !important;
+  background: #f7faf8 !important;
+  color: #526b64 !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs button.is-active {
+  border-color: #c8e9df !important;
+  background: #e3f3ec !important;
+  color: #0b5d4f !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs button.is-complete {
+  border-color: #d9e3de !important;
+  background: #fff !important;
+  color: #526b64 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs button > span:first-child {
+  width: 22px !important;
+  height: 22px !important;
+  flex-basis: 22px !important;
+  background: #edf3f1 !important;
+  color: #526b64 !important;
+  font-size: 11px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs button.is-active > span:first-child,
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs button.is-complete > span:first-child {
+  background: #087260 !important;
+  color: #fff !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-body {
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: 0 2px 12px 0 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields {
+  gap: 18px 20px !important;
+  margin-top: 8px !important;
+  padding-right: 0 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields > label {
+  min-width: 0 !important;
+  gap: 7px !important;
+  color: #1f2d28 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields > strong {
+  color: #0e6a56 !important;
+  font-size: 15px !important;
+  line-height: 1.3 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields input:not([type="checkbox"]):not([type="file"]),
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields select,
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  box-sizing: border-box !important;
+  padding: 0 14px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 10px !important;
+  background-color: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-family: inherit !important;
+  font-size: 15.5px !important;
+  font-weight: 400 !important;
+  line-height: 1.4 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields textarea {
+  height: 72px !important;
+  min-height: 72px !important;
+  padding: 12px 14px !important;
+  resize: none !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields input::placeholder,
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields textarea::placeholder {
+  color: #8a9691 !important;
+  opacity: 1 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields select {
+  appearance: none !important;
+  background-image: linear-gradient(45deg, transparent 50%, #43534e 50%), linear-gradient(135deg, #43534e 50%, transparent 50%) !important;
+  background-position: calc(100% - 18px) 20px, calc(100% - 13px) 20px !important;
+  background-size: 5px 5px !important;
+  background-repeat: no-repeat !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields .lab-date-time-picker,
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields .lab-date-time-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields .lab-date-time-trigger {
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 14px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 10px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-family: inherit !important;
+  font-size: 15.5px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-selected-pet,
+.clinic-inpatient-admit-dialog .clinic-inpatient-owner-summary,
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-summary {
+  padding: 12px 14px !important;
+  border-color: #d9e3de !important;
+  border-radius: 10px !important;
+  background: #f7faf8 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-pet-summary strong,
+.clinic-inpatient-admit-dialog .clinic-inpatient-owner-summary strong {
+  color: #0e6a56 !important;
+  font-size: 14px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-pet-summary small {
+  color: #5a6661 !important;
+  font-size: 13px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-allergy {
+  max-width: min(220px, 100%);
+  font-size: 12px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-footer {
+  flex: 0 0 auto !important;
+  gap: 12px !important;
+  margin-top: 12px !important;
+  padding: 16px 0 0 !important;
+  border-top: 1px solid #e6ece9 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-footer-nav {
+  gap: 10px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-back,
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-next,
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-footer-nav > button:last-child {
+  min-width: 0 !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 18px !important;
+  border-radius: 10px !important;
+  font-family: inherit !important;
+  font-size: 15px !important;
+}
+@media (max-width: 650px) {
+  .clinic-inpatient-admit-dialog,
+  .clinic-inpatient-record-dialog {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    padding: 22px 16px 16px !important;
+  }
+  .clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields {
+    gap: 14px !important;
+  }
+  .clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs button {
+    min-height: 38px !important;
+    padding: 6px 10px !important;
+  }
+}
+
+/* Match the Confinement wizard while preserving the inpatient patient/owner step. */
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 0 0 16px !important;
+  padding: 0 0 2px !important;
+  border: 0 !important;
+  overflow: visible !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs button {
+  display: grid !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  gap: 5px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #647c75 !important;
+  font: inherit !important;
+  text-align: left !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs button > span:first-child {
+  display: block !important;
+  width: 100% !important;
+  height: 5px !important;
+  flex: none !important;
+  border-radius: 999px !important;
+  background: #d5dfdb !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs button.is-complete > span:first-child {
+  background: #087260 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs button small {
+  overflow: hidden !important;
+  color: inherit !important;
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs button.is-active {
+  color: #0e6a56 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields {
+  gap: 20px !important;
+  margin-top: 0 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields > strong {
+  padding: 0 0 4px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #0e6a56 !important;
+  font-size: 14px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields > label {
+  gap: 7px !important;
+  font-size: 14px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields input:not([type="checkbox"]):not([type="file"]),
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields select,
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields textarea {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 12px !important;
+  border-radius: 9px !important;
+  background-color: #f7faf8 !important;
+  font-size: 13px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-fields textarea {
+  height: auto !important;
+  min-height: 54px !important;
+  padding: 8px 10px !important;
+  resize: none !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-assessment-fields {
+  gap: 12px 16px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-assessment-fields > label {
+  gap: 5px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-assessment-fields input:not([type="checkbox"]):not([type="file"]),
+.clinic-inpatient-admit-dialog .clinic-inpatient-assessment-fields select {
+  min-height: 36px !important;
+  height: 36px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-assessment-fields textarea {
+  min-height: 48px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-consent-fields {
+  gap: 10px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-consent-fields > div:first-child {
+  gap: 3px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-consent-fields > div:first-child > strong {
+  font-size: 15px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-consent-fields > div:nth-child(2) {
+  gap: 8px 12px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-consent-fields > div:nth-child(2) > label {
+  gap: 5px !important;
+  font-size: 13px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-consent-fields > div:nth-child(2) select,
+.clinic-inpatient-admit-dialog .clinic-inpatient-consent-fields > label textarea {
+  min-height: 38px !important;
+  height: 38px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-consent-fields > div:nth-child(3) {
+  padding: 10px 12px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-consent-fields > div:nth-child(3) > div:first-child {
+  margin-bottom: 7px !important;
+  font-size: 13px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-consent-fields > div:nth-child(3) > div:last-child {
+  gap: 7px 12px !important;
+  font-size: 12px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-consent-fields > div:nth-child(3) input[type="checkbox"] {
+  width: 14px !important;
+  height: 14px !important;
+  flex: 0 0 14px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-consent-fields > div:last-child > label {
+  min-height: 82px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-owner-summary {
+  display: grid !important;
+  align-content: start !important;
+  gap: 7px !important;
+  min-width: 0 !important;
+  padding: 16px !important;
+  border: 1px solid #e1e8e4 !important;
+  border-radius: 10px !important;
+  background: #f4f6f5 !important;
+  font-size: 13px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-owner-summary strong {
+  margin-bottom: 1px !important;
+  font-size: 14px !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-footer {
+  gap: 10px !important;
+  margin-top: 10px !important;
+  padding: 12px 0 0 !important;
+  border-top: 1px solid #e6ece9 !important;
+}
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-back,
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-next,
+.clinic-inpatient-admit-dialog .clinic-inpatient-admit-footer-nav > button:last-child {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 14px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+}
+@media (max-width: 650px) {
+  .clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .clinic-inpatient-admit-dialog .clinic-inpatient-admit-tabs button small {
+    font-size: 11px !important;
+  }
+}
+
 @media (max-width: 900px) {
   .patient-records-page .lab-test-view-dialog { width: min(460px, 100vw); }
 }
@@ -11072,34 +11537,6 @@ button[aria-label*="close" i]::after {
 .appointment-create-dialog--follow-up .followup-instructions-field { grid-row: 4 !important; }
 .appointment-create-dialog--follow-up .followup-reason-field { grid-row: 5 !important; }
 .appointment-create-dialog--follow-up .followup-notes-field { grid-row: 6 !important; }
-.appointment-create-dialog--grooming .appointment-service-field {
-  grid-column: 1 / 8 !important;
-  grid-row: 1 !important;
-}
-.appointment-create-dialog--grooming .grooming-assigned-field {
-  grid-column: 8 / -1 !important;
-  grid-row: 1 !important;
-}
-.appointment-create-dialog--grooming .grooming-style-field {
-  grid-column: 1 / 10 !important;
-  grid-row: 2 !important;
-}
-.appointment-create-dialog--grooming .grooming-coat-field {
-  grid-column: 10 / -1 !important;
-  grid-row: 2 !important;
-}
-.appointment-create-dialog--grooming .grooming-handling-field {
-  grid-column: 1 / 7 !important;
-  grid-row: 3 !important;
-}
-.appointment-create-dialog--grooming .grooming-preferences-field {
-  grid-column: 1 / 7 !important;
-  grid-row: 4 !important;
-}
-.appointment-create-dialog--grooming .grooming-notes-field {
-  grid-column: 7 / -1 !important;
-  grid-row: 4 !important;
-}
 @media (max-width: 650px) {
   .appointment-create-dialog--details .appointment-service-field,
   .appointment-create-dialog--details .appointment-attending-veterinarian,
@@ -11213,51 +11650,6 @@ button[aria-label*="close" i]::after {
 }
 .appointment-create-dialog--check-up .doctor-appointment-grid > label:nth-child(6) {
   grid-column: 7 / -1 !important;
-}
-.appointment-create-dialog--follow-up .doctor-appointment-grid > label:nth-child(2) {
-  grid-column: 1 / -1 !important;
-}
-.appointment-create-dialog--follow-up .doctor-appointment-grid > label:nth-child(3) {
-  grid-column: 1 / 7 !important;
-}
-.appointment-create-dialog--follow-up .doctor-appointment-grid > label:nth-child(4) {
-  grid-column: 1 / -1 !important;
-}
-.appointment-create-dialog--follow-up .doctor-appointment-grid > label:nth-child(5) {
-  grid-column: 1 / 7 !important;
-}
-.appointment-create-dialog--follow-up .doctor-appointment-grid > label:nth-child(6) {
-  grid-column: 7 / -1 !important;
-}
-.appointment-create-dialog--follow-up .doctor-appointment-grid > label:nth-child(7) {
-  grid-column: 1 / 7 !important;
-}
-.appointment-create-dialog--follow-up .doctor-appointment-grid > label:nth-child(8) {
-  grid-column: 1 / -1 !important;
-}
-.appointment-create-dialog--grooming .doctor-appointment-grid > label:nth-child(2) {
-  grid-column: 1 / 7 !important;
-  grid-row: 2 !important;
-}
-.appointment-create-dialog--grooming .doctor-appointment-grid > label:nth-child(3) {
-  grid-column: span 6 !important;
-  grid-row: 2 !important;
-}
-.appointment-create-dialog--grooming .doctor-appointment-grid > label:nth-child(4) {
-  grid-column: 1 / -1 !important;
-  grid-row: 3 !important;
-}
-.appointment-create-dialog--grooming .doctor-appointment-grid > label:nth-child(5) {
-  grid-column: 1 / 7 !important;
-  grid-row: 4 !important;
-}
-.appointment-create-dialog--grooming .doctor-appointment-grid > label:nth-child(6) {
-  grid-column: 7 / -1 !important;
-  grid-row: 1 !important;
-}
-.appointment-create-dialog--grooming .doctor-appointment-grid > label:nth-child(7) {
-  grid-column: 7 / -1 !important;
-  grid-row: 4 !important;
 }
 .appointment-create-dialog--details .appointment-create-footer {
   flex: 0 0 auto;
@@ -11836,19 +12228,117 @@ button[aria-label*="close" i]::after {
 .appointment-create-dialog--follow-up .followup-instructions-field { grid-column: 1 / -1 !important; grid-row: 4 !important; }
 .appointment-create-dialog--follow-up .followup-reason-field { grid-column: 1 / -1 !important; grid-row: 5 !important; }
 .appointment-create-dialog--follow-up .followup-notes-field { grid-column: 1 / -1 !important; grid-row: 6 !important; }
-.appointment-create-dialog--grooming .appointment-service-field { grid-column: 1 / 8 !important; grid-row: 1 !important; }
-.appointment-create-dialog--grooming .grooming-assigned-field { grid-column: 8 / -1 !important; grid-row: 1 !important; }
-.appointment-create-dialog--grooming .grooming-style-field { grid-column: 1 / 10 !important; grid-row: 2 !important; }
-.appointment-create-dialog--grooming .grooming-coat-field { grid-column: 10 / -1 !important; grid-row: 2 !important; }
-.appointment-create-dialog--grooming .grooming-handling-field { grid-column: 1 / 7 !important; grid-row: 3 !important; }
-.appointment-create-dialog--grooming .grooming-preferences-field { grid-column: 1 / 7 !important; grid-row: 4 !important; }
-.appointment-create-dialog--grooming .grooming-notes-field { grid-column: 7 / -1 !important; grid-row: 4 !important; }
 .appointment-create-dialog--vaccination {
-  width: 760px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 740px !important;
   max-width: calc(100vw - 32px) !important;
-  height: auto !important;
-  max-height: none !important;
-  overflow: visible !important;
+  height: 580.1px !important;
+  max-height: calc(100dvh - 32px) !important;
+  overflow: hidden !important;
+}
+.appointment-create-dialog--vaccination .appointment-vaccination-grid {
+  width: 100% !important;
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+}
+.appointment-create-dialog--vaccination .appointment-create-footer {
+  width: 100% !important;
+  margin-top: auto !important;
+  box-sizing: border-box !important;
+}
+.appointment-create-dialog--vaccination,
+.appointment-create-dialog--vaccination .vaccination-stepper,
+.appointment-create-dialog--vaccination .vaccination-pet-field,
+.appointment-create-dialog--vaccination .vaccination-patient-card,
+.appointment-create-dialog--vaccination .vaccination-reason-label,
+.appointment-create-dialog--vaccination .vaccination-history-heading strong,
+.appointment-create-dialog--vaccination .vaccination-history-name,
+.appointment-create-dialog--vaccination .vaccination-history-date,
+.appointment-create-dialog--vaccination .vaccination-booking-notes,
+.appointment-create-dialog--vaccination .vaccination-form-hint {
+  color: #1f2d28 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-stepper .is-complete {
+  color: #5a6661 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-stepper .is-active {
+  color: #14211c !important;
+  font-weight: 700 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-patient-card,
+.appointment-create-dialog--vaccination .vaccination-history-name {
+  font-weight: 600 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-reason-label,
+.appointment-create-dialog--vaccination .vaccination-history-heading strong {
+  font-weight: 700 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-reason-chip {
+  color: #1f2d28 !important;
+  font-weight: 600 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-reason-chip.is-selected {
+  color: #0b4f3f !important;
+}
+.appointment-create-dialog--vaccination .vaccination-history-date,
+.appointment-create-dialog--vaccination .vaccination-form-hint {
+  color: #5a6661 !important;
+  font-weight: 500 !important;
+}
+.appointment-create-dialog--vaccination .doctor-appointment-grid input,
+.appointment-create-dialog--vaccination .doctor-appointment-grid select,
+.appointment-create-dialog--vaccination .doctor-appointment-grid textarea {
+  color: #1f2d28 !important;
+  font-weight: 500 !important;
+}
+.appointment-create-dialog--vaccination .doctor-appointment-grid input::placeholder,
+.appointment-create-dialog--vaccination .doctor-appointment-grid textarea::placeholder {
+  color: #6f7d77 !important;
+  opacity: 1 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-history-status {
+  color: #14513e !important;
+  font-weight: 700 !important;
+}
+.appointment-create-dialog--vaccination .appointment-create-footer button:first-of-type {
+  color: #1f2d28 !important;
+  font-weight: 600 !important;
+}
+.appointment-create-dialog--vaccination > p {
+  color: #3c4a45 !important;
+  font-weight: 500 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-pet-field > span:first-child,
+.appointment-create-dialog--vaccination .vaccination-product-field > span:first-child,
+.appointment-create-dialog--vaccination .vaccination-reason-label,
+.appointment-create-dialog--vaccination .vaccination-booking-notes > span:first-child {
+  color: #1f2d28 !important;
+  font-weight: 700 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-patient-card,
+.appointment-create-dialog--vaccination .vaccination-patient-card *,
+.appointment-create-dialog--vaccination .doctor-appointment-grid select,
+.appointment-create-dialog--vaccination .vaccination-history-name,
+.appointment-create-dialog--vaccination .vaccination-history-heading strong,
+.appointment-create-dialog--vaccination .vaccination-reason-chip,
+.appointment-create-dialog--vaccination .appointment-create-footer button {
+  color: #14211c !important;
+  font-weight: 600 !important;
+}
+.appointment-create-dialog--vaccination .doctor-appointment-grid input::placeholder,
+.appointment-create-dialog--vaccination .doctor-appointment-grid textarea::placeholder,
+.appointment-create-dialog--vaccination .vaccination-history-date {
+  color: #5a6661 !important;
+  font-weight: 500 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-history-status {
+  color: #14513e !important;
+  font-weight: 700 !important;
+}
+.appointment-create-dialog--vaccination .appointment-create-footer .vaccination-form-hint {
+  color: #3c4a45 !important;
+  font-weight: 500 !important;
 }
 .appointment-create-dialog--laboratory {
   width: 760px !important;
@@ -11888,6 +12378,8 @@ button[aria-label*="close" i]::after {
   .appointment-create-dialog--vaccination {
     width: calc(100vw - 20px) !important;
     max-width: calc(100vw - 20px) !important;
+    height: auto !important;
+    max-height: calc(100dvh - 32px) !important;
   }
   .appointment-create-dialog--laboratory {
     width: calc(100vw - 20px) !important;
@@ -11979,19 +12471,20 @@ button[aria-label*="close" i]::after {
 .vi-modal--appt.appointment-create-dialog .dental-assessment-chips {
   display: flex;
   min-width: 0;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   min-height: 48px;
 }
 .vi-modal--appt.appointment-create-dialog .dental-assessment-chips button {
-  height: 48px;
-  padding: 0 14px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 11px;
   border: 1px solid #d9e3de;
   border-radius: 999px;
   background: #fff;
   color: #1f2d28;
   font: inherit;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -12122,7 +12615,2417 @@ button[aria-label*="close" i]::after {
   border-color: #0e6a56 !important;
   background: #e3f3ec !important;
 }
+
+/* Check-up visual alignment with Dental, while preserving its existing fields. */
+.appointment-create-dialog--check-up {
+  width: calc(100vw - 32px) !important;
+  max-width: 760px !important;
+  max-height: calc(100dvh - 32px) !important;
+  padding: 28px 32px 24px !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+.appointment-create-dialog--check-up > h2,
+.appointment-create-dialog--check-up > p,
+.appointment-create-dialog--check-up .doctor-appointment-grid,
+.appointment-create-dialog--check-up .doctor-appointment-grid label,
+.appointment-create-dialog--check-up .doctor-appointment-grid input,
+.appointment-create-dialog--check-up .doctor-appointment-grid select,
+.appointment-create-dialog--check-up .doctor-appointment-grid textarea,
+.appointment-create-dialog--check-up .appointment-create-footer,
+.appointment-create-dialog--check-up .appointment-create-footer button {
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+.appointment-create-dialog--check-up > h2 {
+  font-size: 25px !important;
+  line-height: 1.2 !important;
+}
+.appointment-create-dialog--check-up > p {
+  margin: 6px 0 16px !important;
+  font-size: 15px !important;
+  line-height: 1.4 !important;
+}
+.appointment-create-dialog--check-up .doctor-appointment-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 20px !important;
+}
+.appointment-create-dialog--check-up .doctor-appointment-grid > label {
+  min-width: 0 !important;
+  gap: 7px !important;
+  color: #1f2d28 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+.appointment-create-dialog--check-up .doctor-appointment-grid input:not([type="checkbox"]):not([type="file"]),
+.appointment-create-dialog--check-up .doctor-appointment-grid select,
+.appointment-create-dialog--check-up .doctor-appointment-grid textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  box-sizing: border-box !important;
+  padding: 0 14px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 10px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-size: 15.5px !important;
+  font-weight: 400 !important;
+  line-height: 1.4 !important;
+}
+.appointment-create-dialog--check-up .doctor-appointment-grid textarea {
+  height: 72px !important;
+  min-height: 72px !important;
+  padding: 12px 14px !important;
+  resize: none !important;
+}
+.appointment-create-dialog--check-up .doctor-appointment-grid input::placeholder,
+.appointment-create-dialog--check-up .doctor-appointment-grid textarea::placeholder {
+  color: #8a9691 !important;
+  opacity: 1 !important;
+}
+.appointment-create-dialog--check-up .doctor-appointment-grid select {
+  appearance: none !important;
+  background-image: linear-gradient(45deg, transparent 50%, #43534e 50%), linear-gradient(135deg, #43534e 50%, transparent 50%) !important;
+  background-position: calc(100% - 18px) 20px, calc(100% - 13px) 20px !important;
+  background-size: 5px 5px, 5px 5px !important;
+  background-repeat: no-repeat !important;
+}
+.appointment-create-dialog--check-up .appointment-service-field {
+  grid-column: 1 / 7 !important;
+  grid-row: 1 !important;
+}
+.appointment-create-dialog--check-up .appointment-attending-veterinarian {
+  grid-column: 7 / -1 !important;
+  grid-row: 1 !important;
+}
+.appointment-create-dialog--check-up .checkup-reason-field {
+  grid-column: 1 / 7 !important;
+  grid-row: 2 !important;
+}
+.appointment-create-dialog--check-up .checkup-concerns-field {
+  grid-column: 7 / -1 !important;
+  grid-row: 2 !important;
+}
+.appointment-create-dialog--check-up .checkup-history-field {
+  grid-column: 1 / -1 !important;
+  grid-row: 3 !important;
+}
+.appointment-create-dialog--check-up .checkup-notes-field {
+  grid-column: 1 / -1 !important;
+  grid-row: 4 !important;
+}
+.appointment-create-dialog--check-up .checkup-history-card {
+  display: flex !important;
+  min-width: 0 !important;
+  min-height: 52px !important;
+  box-sizing: border-box !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 9px 12px !important;
+  border: 1px solid #e1e8e4 !important;
+  border-radius: 9px !important;
+  background: #f1f4f3 !important;
+  color: #1f2d28 !important;
+}
+.appointment-create-dialog--check-up .checkup-history-card-content {
+  display: grid !important;
+  min-width: 0 !important;
+  gap: 2px !important;
+}
+.appointment-create-dialog--check-up .checkup-history-card-content strong {
+  overflow: hidden !important;
+  color: #173b52 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.appointment-create-dialog--check-up .checkup-history-card-content small {
+  overflow: hidden !important;
+  color: #60716d !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.appointment-create-dialog--check-up .checkup-history-status {
+  flex: 0 0 auto !important;
+  padding: 3px 9px !important;
+  border-radius: 999px !important;
+  background: #dff3eb !important;
+  color: #0e6a56 !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+}
+.appointment-create-dialog--check-up .checkup-history-empty {
+  color: #60716d !important;
+  font-size: 13px !important;
+}
+
+/* Follow-up visual alignment with Dental and Check-up Details. */
+.appointment-create-dialog--follow-up {
+  width: calc(100vw - 32px) !important;
+  max-width: 760px !important;
+  max-height: calc(100dvh - 32px) !important;
+  padding: 28px 32px 24px !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+.appointment-create-dialog--follow-up > h2,
+.appointment-create-dialog--follow-up > p,
+.appointment-create-dialog--follow-up .doctor-appointment-grid,
+.appointment-create-dialog--follow-up .doctor-appointment-grid label,
+.appointment-create-dialog--follow-up .doctor-appointment-grid input,
+.appointment-create-dialog--follow-up .doctor-appointment-grid select,
+.appointment-create-dialog--follow-up .doctor-appointment-grid textarea,
+.appointment-create-dialog--follow-up .appointment-create-footer,
+.appointment-create-dialog--follow-up .appointment-create-footer button {
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+.appointment-create-dialog--follow-up > h2 {
+  font-size: 25px !important;
+  line-height: 1.2 !important;
+}
+.appointment-create-dialog--follow-up > p {
+  margin: 6px 0 16px !important;
+  font-size: 15px !important;
+  line-height: 1.4 !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 20px !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > label {
+  min-width: 0 !important;
+  gap: 7px !important;
+  color: #1f2d28 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid input:not([type="checkbox"]):not([type="file"]),
+.appointment-create-dialog--follow-up .doctor-appointment-grid select,
+.appointment-create-dialog--follow-up .doctor-appointment-grid textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  box-sizing: border-box !important;
+  padding: 0 14px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 10px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-size: 15.5px !important;
+  font-weight: 400 !important;
+  line-height: 1.4 !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid textarea {
+  height: 58px !important;
+  min-height: 58px !important;
+  padding: 12px 14px !important;
+  resize: none !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid input::placeholder,
+.appointment-create-dialog--follow-up .doctor-appointment-grid textarea::placeholder {
+  color: #8a9691 !important;
+  opacity: 1 !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid select {
+  appearance: none !important;
+  background-image: linear-gradient(45deg, transparent 50%, #43534e 50%), linear-gradient(135deg, #43534e 50%, transparent 50%) !important;
+  background-position: calc(100% - 18px) 20px, calc(100% - 13px) 20px !important;
+  background-size: 5px 5px, 5px 5px !important;
+  background-repeat: no-repeat !important;
+}
+.appointment-create-dialog--follow-up .appointment-service-field {
+  grid-column: 1 / 7 !important;
+  grid-row: 1 !important;
+}
+.appointment-create-dialog--follow-up .appointment-attending-veterinarian {
+  grid-column: 7 / -1 !important;
+  grid-row: 1 !important;
+}
+.appointment-create-dialog--follow-up .followup-original-field {
+  grid-column: 1 / -1 !important;
+  grid-row: 2 !important;
+}
+.appointment-create-dialog--follow-up .followup-related-field {
+  grid-column: 1 / 7 !important;
+  grid-row: 3 !important;
+}
+.appointment-create-dialog--follow-up .followup-date-field {
+  grid-column: 7 / -1 !important;
+  grid-row: 3 !important;
+}
+.appointment-create-dialog--follow-up .followup-instructions-field {
+  grid-column: 1 / -1 !important;
+  grid-row: 4 !important;
+}
+.appointment-create-dialog--follow-up .followup-instructions-field textarea {
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 10px 12px !important;
+  border-color: #e1e8e4 !important;
+  background: #f1f4f3 !important;
+  color: #60716d !important;
+}
+.appointment-create-dialog--follow-up .followup-reason-field {
+  grid-column: 1 / 7 !important;
+  grid-row: 5 !important;
+}
+.appointment-create-dialog--follow-up .followup-notes-field {
+  grid-column: 7 / -1 !important;
+  grid-row: 5 !important;
+}
+.appointment-create-dialog--follow-up .followup-date-input {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 14px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 10px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-size: 15.5px !important;
+  font-family: inherit !important;
+}
+.appointment-create-dialog--follow-up .appointment-create-footer {
+  gap: 12px !important;
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+}
+.appointment-create-dialog--follow-up .appointment-create-footer button {
+  height: 48px !important;
+  min-height: 48px !important;
+  padding: 0 18px !important;
+  border-radius: 10px !important;
+  font-size: 15.5px !important;
+}
+.appointment-create-dialog--follow-up .appointment-create-footer > span {
+  margin-right: auto !important;
+  color: #5a6661 !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+@media (max-width: 540px) {
+  .appointment-create-dialog--follow-up {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    padding: 22px 16px 14px !important;
+  }
+  .appointment-create-dialog--follow-up .doctor-appointment-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > label {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+}
+.appointment-create-dialog--check-up .appointment-create-footer {
+  gap: 12px !important;
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+}
+.appointment-create-dialog--check-up .appointment-create-footer button {
+  height: 48px !important;
+  min-height: 48px !important;
+  padding: 0 18px !important;
+  border-radius: 10px !important;
+  font-size: 15.5px !important;
+}
+.appointment-create-dialog--check-up .appointment-create-footer .checkup-form-hint {
+  margin-right: auto !important;
+  color: #5a6661 !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+@media (max-width: 650px) {
+  .appointment-create-dialog--check-up {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    padding: 22px 16px 14px !important;
+  }
+  .appointment-create-dialog--check-up .doctor-appointment-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .appointment-create-dialog--check-up .doctor-appointment-grid > label {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+}
 .appointment-create-dialog--new {
-  width: 700px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 670px !important;
   max-width: calc(100vw - 24px) !important;
+  height: auto !important;
+  max-height: calc(100dvh - 32px) !important;
+  overflow: hidden !important;
+  color: #1f2d28 !important;
+}
+.appointment-create-dialog--new > h2 {
+  color: #0e6a56 !important;
+  font-size: 25px !important;
+  line-height: 1.2 !important;
+  font-weight: 700 !important;
+}
+.appointment-create-dialog--new > p {
+  color: #5a6661 !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+}
+.appointment-create-dialog--new .vaccination-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  color: #5a6661;
+  font-size: 13px;
+}
+.appointment-create-dialog--new .vaccination-stepper > span:not(.vaccination-stepper-connector) {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.appointment-create-dialog--new .vaccination-stepper > span:not(.vaccination-stepper-connector) > span {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  place-items: center;
+  border-radius: 50%;
+  background: #edf3f1;
+  color: #5a6661;
+  font-size: 11px;
+  font-weight: 700;
+}
+.appointment-create-dialog--new .vaccination-stepper .is-complete > span,
+.appointment-create-dialog--new .vaccination-stepper .is-active > span {
+  background: #0e6a56 !important;
+  color: #fff !important;
+}
+.appointment-create-dialog--new .vaccination-stepper .is-complete {
+  color: #5a6661 !important;
+}
+.appointment-create-dialog--new .vaccination-stepper .is-active {
+  color: #14211c !important;
+  font-weight: 700;
+}
+.appointment-create-dialog--new .vaccination-stepper .is-pending {
+  color: #8a9691 !important;
+}
+.appointment-create-dialog--new .vaccination-stepper-connector {
+  width: 28px;
+  height: 1px;
+  background: #b8d5cc;
+}
+.appointment-create-dialog--vaccination .vaccination-reason-chips {
+  gap: 8px;
+}
+.appointment-create-dialog--vaccination .vaccination-reason-chip {
+  min-height: 34px !important;
+  padding: 7px 12px !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+/* Vaccination details use the same surface, typography, and control scale as Dental details. */
+.appointment-create-dialog--vaccination {
+  width: calc(100vw - 32px) !important;
+  max-width: 760px !important;
+  height: auto !important;
+  max-height: calc(100dvh - 32px) !important;
+  padding: 28px 32px 24px !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  color: #1f2d28 !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+.appointment-create-dialog--vaccination > h2,
+.appointment-create-dialog--vaccination > p,
+.appointment-create-dialog--vaccination .doctor-appointment-grid,
+.appointment-create-dialog--vaccination .doctor-appointment-grid label,
+.appointment-create-dialog--vaccination .doctor-appointment-grid input,
+.appointment-create-dialog--vaccination .doctor-appointment-grid select,
+.appointment-create-dialog--vaccination .doctor-appointment-grid textarea,
+.appointment-create-dialog--vaccination .appointment-create-footer,
+.appointment-create-dialog--vaccination .appointment-create-footer button {
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+.appointment-create-dialog--vaccination > h2 {
+  font-size: 25px !important;
+  line-height: 1.2 !important;
+}
+.appointment-create-dialog--vaccination > p {
+  margin: 6px 0 16px !important;
+  color: #5a6661 !important;
+  font-size: 15px !important;
+  line-height: 1.4 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-stepper {
+  font-size: 14px !important;
+}
+.appointment-create-dialog--vaccination .appointment-vaccination-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 20px !important;
+}
+.appointment-create-dialog--vaccination .vaccination-pet-field,
+.appointment-create-dialog--vaccination .vaccination-product-field {
+  grid-row: 1 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-pet-field {
+  grid-column: 1 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-product-field {
+  grid-column: 2 !important;
+}
+.appointment-create-dialog--vaccination .appointment-vaccination-grid > label,
+.appointment-create-dialog--vaccination .vaccination-reason-field {
+  gap: 7px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+.appointment-create-dialog--vaccination .appointment-vaccination-grid input,
+.appointment-create-dialog--vaccination .appointment-vaccination-grid select,
+.appointment-create-dialog--vaccination .appointment-vaccination-grid textarea {
+  min-height: 48px !important;
+  height: 48px !important;
+  box-sizing: border-box !important;
+  border-radius: 10px !important;
+  font-size: 15.5px !important;
+}
+.appointment-create-dialog--vaccination .vaccination-patient-card {
+  min-height: 50px !important;
+  height: 50px !important;
+  box-sizing: border-box !important;
+  border-radius: 10px !important;
+  font-size: 15.5px !important;
+}
+.appointment-create-dialog--vaccination .appointment-vaccination-grid input,
+.appointment-create-dialog--vaccination .appointment-vaccination-grid select,
+.appointment-create-dialog--vaccination .appointment-vaccination-grid textarea {
+  padding: 0 14px !important;
+  border-color: #d9e3de !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+}
+.appointment-create-dialog--vaccination .appointment-vaccination-grid textarea {
+  height: 72px !important;
+  min-height: 72px !important;
+  padding: 12px 14px !important;
+}
+.appointment-create-dialog--vaccination .vaccination-patient-card {
+  padding: 0 14px !important;
+  border-color: #d9e3de !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-product-field .service-picker-control,
+.appointment-create-dialog--vaccination .vaccination-product-field .service-picker-input {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+.appointment-create-dialog--vaccination .vaccination-product-field {
+  width: 100% !important;
+  min-width: 0 !important;
+  align-self: stretch !important;
+}
+.appointment-create-dialog--vaccination .vaccination-product-field .service-picker-control {
+  display: block !important;
+  flex: 1 1 auto !important;
+}
+.appointment-create-dialog--vaccination .vaccination-product-field .service-picker-input {
+  min-height: 50px !important;
+  height: 50px !important;
+  padding: 0 42px 0 14px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 10px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-size: 15.5px !important;
+}
+.appointment-create-dialog--vaccination .vaccination-product-field > .service-picker-control,
+.appointment-create-dialog--vaccination .vaccination-product-field > .service-picker-control > .service-picker-input {
+  display: block !important;
+  width: 100% !important;
+  min-height: 50px !important;
+  height: 50px !important;
+  max-height: 50px !important;
+}
+.appointment-create-dialog--vaccination .vaccination-product-field .service-picker-input {
+  border: 1px solid #d9e3de !important;
+  border-radius: 10px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-weight: 500 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-product-field .service-picker-input::placeholder {
+  color: #8a9691 !important;
+  opacity: 1 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-product-field .service-picker-input {
+  display: block !important;
+  line-height: 48px !important;
+}
+.appointment-create-dialog--vaccination .vaccination-product-field .service-picker-toggle {
+  color: #3c4a45 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-history-panel {
+  border-color: #e1e8e4 !important;
+  border-radius: 10px !important;
+  background: #f7faf8 !important;
+}
+.appointment-create-dialog--vaccination .vaccination-history-heading strong {
+  font-size: 15.5px !important;
+}
+.appointment-create-dialog--vaccination .vaccination-history-name,
+.appointment-create-dialog--vaccination .vaccination-history-date {
+  font-size: 13px !important;
+}
+.appointment-create-dialog--vaccination .vaccination-reason-chip {
+  min-height: 48px !important;
+  padding: 0 14px !important;
+  border-color: #d9e3de !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+  color: #1f2d28 !important;
+  font-size: 15px !important;
+}
+.appointment-create-dialog--vaccination .vaccination-reason-chip.is-selected {
+  border-color: #0e6a56 !important;
+  background: #e3f3ec !important;
+  color: #0b4f3f !important;
+}
+.appointment-create-dialog--vaccination .appointment-create-footer {
+  gap: 12px !important;
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+}
+.appointment-create-dialog--vaccination .appointment-create-footer button {
+  height: 48px !important;
+  min-height: 48px !important;
+  padding: 0 18px !important;
+  border-radius: 10px !important;
+  font-size: 15.5px !important;
+}
+.appointment-create-dialog--new .doctor-appointment-grid {
+  width: 100% !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 20px !important;
+  min-width: 0 !important;
+}
+.appointment-create-dialog--new .doctor-appointment-grid > label {
+  min-width: 0 !important;
+  gap: 7px !important;
+  color: #1f2d28 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+.appointment-create-dialog--new .doctor-appointment-grid > label > span:first-child {
+  color: #1f2d28 !important;
+}
+.appointment-create-dialog--new .doctor-appointment-grid input,
+.appointment-create-dialog--new .doctor-appointment-grid select,
+.appointment-create-dialog--new .doctor-appointment-grid textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 14px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 10px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-size: 15.5px !important;
+  font-weight: 500 !important;
+}
+.appointment-create-dialog--new .doctor-appointment-grid input::placeholder,
+.appointment-create-dialog--new .doctor-appointment-grid textarea::placeholder {
+  color: #6f7d77 !important;
+  opacity: 1 !important;
+}
+.appointment-create-dialog--new .doctor-appointment-grid select {
+  appearance: none !important;
+}
+.appointment-create-dialog--new .appointment-create-footer {
+  width: 100% !important;
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+  border-top: 1px solid #e6ece9 !important;
+  gap: 12px !important;
+  box-sizing: border-box !important;
+}
+.appointment-create-dialog--new .appointment-create-footer button {
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 18px !important;
+  border-radius: 10px !important;
+  font-size: 15.5px !important;
+}
+.appointment-create-dialog--new .appointment-create-footer button:first-of-type {
+  color: #1f2d28 !important;
+  font-weight: 600 !important;
+}
+.appointment-create-dialog--new .appointment-create-footer button:last-of-type {
+  color: #fff !important;
+  background: #0e6a56 !important;
+}
+.appointment-create-dialog--new .appointment-create-footer button:disabled {
+  color: #6b7580 !important;
+  background: #d3d8dc !important;
+}
+@media (max-width: 650px) {
+  .appointment-create-dialog--new {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+  }
+  .appointment-create-dialog--new .doctor-appointment-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .appointment-create-dialog--new .doctor-appointment-grid > label {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* Treatment Plan details follow the Vaccination modal proportions and control styling. */
+.appointment-create-dialog--treatment {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 760px !important;
+  max-width: calc(100vw - 32px) !important;
+  height: 700px !important;
+  max-height: calc(100dvh - 32px) !important;
+  padding: 28px 32px 24px !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  color: #1f2d28 !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+.appointment-create-dialog--treatment > h2,
+.appointment-create-dialog--treatment > p,
+.appointment-create-dialog--treatment .doctor-appointment-grid,
+.appointment-create-dialog--treatment .doctor-appointment-grid label,
+.appointment-create-dialog--treatment .doctor-appointment-grid input,
+.appointment-create-dialog--treatment .doctor-appointment-grid select,
+.appointment-create-dialog--treatment .doctor-appointment-grid textarea,
+.appointment-create-dialog--treatment .appointment-create-footer,
+.appointment-create-dialog--treatment .appointment-create-footer button {
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+.appointment-create-dialog--treatment > h2 {
+  color: #0e6a56 !important;
+  font-size: 25px !important;
+  line-height: 1.2 !important;
+}
+.appointment-create-dialog--treatment > p {
+  margin: 6px 0 16px !important;
+  color: #5a6661 !important;
+  font-size: 15px !important;
+  line-height: 1.4 !important;
+}
+.appointment-create-dialog--treatment .doctor-appointment-grid {
+  flex: 1 1 auto;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 20px !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding-right: 2px;
+}
+.appointment-create-dialog--treatment .doctor-appointment-grid > label {
+  min-width: 0 !important;
+  gap: 7px !important;
+  color: #1f2d28 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+.appointment-create-dialog--treatment .appointment-service-field,
+.appointment-create-dialog--treatment .treatment-plan-patient-field {
+  grid-column: span 6 !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-existing-field,
+.appointment-create-dialog--treatment .treatment-plan-title-field,
+.appointment-create-dialog--treatment .treatment-plan-diagnosis-field,
+.appointment-create-dialog--treatment .treatment-plan-steps-section,
+.appointment-create-dialog--treatment .treatment-plan-medication-section {
+  grid-column: 1 / -1 !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-severity-field,
+.appointment-create-dialog--treatment .treatment-plan-veterinarian-field,
+.appointment-create-dialog--treatment .treatment-plan-follow-up-field {
+  grid-column: span 4 !important;
+}
+.appointment-create-dialog--treatment .doctor-appointment-grid input:not([type="checkbox"]):not([type="file"]),
+.appointment-create-dialog--treatment .doctor-appointment-grid select,
+.appointment-create-dialog--treatment .doctor-appointment-grid textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  box-sizing: border-box !important;
+  padding: 0 14px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 10px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-size: 15.5px !important;
+}
+.appointment-create-dialog--treatment .doctor-appointment-grid input::placeholder {
+  color: #8a9691 !important;
+  opacity: 1 !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-follow-up-field .lab-date-time-picker,
+.appointment-create-dialog--treatment .treatment-plan-follow-up-field .lab-date-time-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-follow-up-field .lab-date-time-trigger {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 12px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 9px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-size: 13.5px !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-date .lab-date-time-trigger {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 17px !important;
+  grid-template-rows: 1fr !important;
+  align-items: center !important;
+  column-gap: 8px !important;
+  flex-wrap: nowrap !important;
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 12px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 8px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  line-height: 1 !important;
+  text-align: left !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-date .lab-date-time-trigger > span {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  justify-self: start !important;
+  align-self: center !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  text-align: left !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-date .lab-date-time-trigger > svg {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  width: 17px !important;
+  height: 17px !important;
+  flex: 0 0 17px !important;
+  color: #111 !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-select,
+.appointment-create-dialog--treatment .treatment-plan-select .filter-select-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-select .filter-select-trigger {
+  display: flex;
+  min-height: 40px !important;
+  height: 40px !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 9px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-size: 13.5px !important;
+  text-align: left;
+}
+.appointment-create-dialog--treatment .treatment-plan-select .filter-select-trigger:focus,
+.appointment-create-dialog--treatment .treatment-plan-select .filter-select-trigger:focus-visible,
+.appointment-create-dialog--treatment .treatment-plan-select .filter-select-trigger[aria-expanded="true"] {
+  outline: none !important;
+  outline-offset: 0 !important;
+  border-color: #d9e3de !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-select .filter-select-chevron {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-right: 2px solid #3c4a45;
+  border-bottom: 2px solid #3c4a45;
+  transform: rotate(45deg) translateY(-2px);
+}
+.appointment-create-dialog--treatment .treatment-plan-select-menu {
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid #d9e3de;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(24, 48, 36, .14);
+}
+.appointment-create-dialog--treatment .treatment-plan-select-option {
+  position: relative;
+  min-height: 38px;
+  padding: 9px 30px 9px 10px;
+  border-radius: 7px;
+  color: #0e3850;
+  font-size: 13px;
+  text-align: left;
+}
+.appointment-create-dialog--treatment .treatment-plan-select-option:hover,
+.appointment-create-dialog--treatment .treatment-plan-select-option.highlighted {
+  background: #e3f3ec;
+  color: #0e3850;
+}
+.appointment-create-dialog--treatment .treatment-plan-select-option[aria-selected="true"] {
+  background: #e3f3ec;
+  color: #0e3850;
+}
+.appointment-create-dialog--treatment .treatment-plan-select-option[aria-selected="true"]::after {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  color: #0e6a56;
+  content: '✓';
+  font-size: 15px;
+  font-weight: 700;
+  transform: translateY(-50%);
+}
+.appointment-create-dialog--treatment .treatment-plan-existing-field small {
+  color: #5a6661 !important;
+  font-size: 11px !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-steps-section {
+  gap: 10px !important;
+  margin-top: 2px !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-steps-section > div:first-child strong {
+  color: #14211c !important;
+  font-size: 15px !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-steps-section > div:first-child p {
+  color: #5a6661 !important;
+  font-size: 11px !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-steps-section > div:first-child button {
+  min-height: 48px !important;
+  padding: 8px 14px !important;
+  border-color: #d9e3de !important;
+  border-radius: 10px !important;
+  color: #0e6a56 !important;
+  font-size: 13px !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-steps-section > div:not(:first-child) {
+  gap: 8px !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-steps-section > div:not(:first-child) input {
+  min-height: 48px !important;
+  height: 48px !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-steps-section > div:not(:first-child) button {
+  min-width: 48px !important;
+  min-height: 48px !important;
+  padding: 6px !important;
+  display: grid !important;
+  place-items: center !important;
+  border: 1px solid #d9e3de !important;
+  background: #fff !important;
+  color: #a8b3af !important;
+  border-radius: 10px !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-steps-section > div:not(:first-child) button svg {
+  width: 15px !important;
+  height: 15px !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-steps-section > div:not(:first-child) button:disabled {
+  border-color: #d9e3de !important;
+  background: #fff !important;
+  color: #a8b3af !important;
+  opacity: 1 !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-medication-section {
+  gap: 10px !important;
+  margin-top: 2px !important;
+  padding: 12px !important;
+  border-color: #d9e3de !important;
+  border-radius: 9px !important;
+  background: #f7faf8 !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-medication-section > label {
+  color: #1f2d28 !important;
+  font-size: 13px !important;
+}
+.appointment-create-dialog--treatment .treatment-plan-medication-section input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+}
+.appointment-create-dialog--treatment .appointment-create-footer {
+  flex: 0 0 auto;
+  width: 100% !important;
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+  border-top: 1px solid #e6ece9 !important;
+  gap: 10px !important;
+}
+.appointment-create-dialog--treatment .appointment-create-footer button {
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 18px !important;
+  border-radius: 10px !important;
+  font-size: 15.5px !important;
+  white-space: nowrap !important;
+  width: max-content !important;
+}
+.appointment-create-dialog--treatment .treatment-form-hint {
+  order: initial;
+  width: auto;
+  margin: 0 auto 0 0;
+  color: #5a6661 !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  text-align: left;
+}
+@media (max-width: 650px) {
+  .appointment-create-dialog--treatment {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    height: calc(100dvh - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    padding: 22px 16px 14px !important;
+  }
+  .appointment-create-dialog--treatment .appointment-service-field,
+  .appointment-create-dialog--treatment .treatment-plan-patient-field,
+  .appointment-create-dialog--treatment .treatment-plan-severity-field,
+  .appointment-create-dialog--treatment .treatment-plan-veterinarian-field,
+  .appointment-create-dialog--treatment .treatment-plan-follow-up-field {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* Final Follow-up placement: keep every field in its own grid area. */
+.appointment-create-dialog--follow-up .doctor-appointment-grid {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  grid-template-areas:
+    "service service service service service service veterinarian veterinarian veterinarian veterinarian veterinarian veterinarian"
+    "original original original original original original original original original original original original"
+    "related related related related related related date date date date date date"
+    "instructions instructions instructions instructions instructions instructions instructions instructions instructions instructions instructions instructions"
+    "reason reason reason reason reason reason notes notes notes notes notes notes" !important;
+  grid-auto-flow: row !important;
+  gap: 20px !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .appointment-service-field,
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .appointment-attending-veterinarian {
+  grid-row: 1 !important;
+  min-width: 0 !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .appointment-service-field {
+  grid-area: service !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .appointment-attending-veterinarian {
+  grid-area: veterinarian !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-original-field {
+  grid-area: original !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-related-field {
+  grid-area: related !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-date-field {
+  grid-area: date !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-instructions-field {
+  grid-area: instructions !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-reason-field {
+  grid-area: reason !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-notes-field {
+  grid-area: notes !important;
+}
+.appointment-create-dialog--follow-up .appointment-service-field,
+.appointment-create-dialog--follow-up .appointment-attending-veterinarian,
+.appointment-create-dialog--follow-up .followup-original-field,
+.appointment-create-dialog--follow-up .followup-related-field,
+.appointment-create-dialog--follow-up .followup-date-field,
+.appointment-create-dialog--follow-up .followup-instructions-field,
+.appointment-create-dialog--follow-up .followup-reason-field,
+.appointment-create-dialog--follow-up .followup-notes-field {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+}
+@media (max-width: 650px) {
+  .appointment-create-dialog--follow-up .doctor-appointment-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas: none !important;
+  }
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .appointment-service-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .appointment-attending-veterinarian,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-original-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-related-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-date-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-instructions-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-reason-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-notes-field {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .appointment-service-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .appointment-attending-veterinarian,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-original-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-related-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-date-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-instructions-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-reason-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-notes-field {
+    grid-area: auto !important;
+  }
+}
+
+/* Keep follow-up labels and controls in distinct cells when inline field styles are present. */
+.appointment-create-dialog--follow-up .doctor-appointment-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-areas: none !important;
+  grid-auto-rows: min-content !important;
+  gap: 16px 20px !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .appointment-service-field {
+  grid-area: auto !important;
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .appointment-attending-veterinarian {
+  grid-area: auto !important;
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-original-field {
+  grid-area: auto !important;
+  grid-column: 1 / -1 !important;
+  grid-row: 2 !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-related-field {
+  grid-area: auto !important;
+  grid-column: 1 !important;
+  grid-row: 3 !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-date-field {
+  grid-area: auto !important;
+  grid-column: 2 !important;
+  grid-row: 3 !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-instructions-field {
+  grid-area: auto !important;
+  grid-column: 1 / -1 !important;
+  grid-row: 4 !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-reason-field {
+  grid-area: auto !important;
+  grid-column: 1 !important;
+  grid-row: 5 !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-notes-field {
+  grid-area: auto !important;
+  grid-column: 2 !important;
+  grid-row: 5 !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > label {
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  align-self: start !important;
+}
+.appointment-create-dialog--follow-up .doctor-appointment-grid > label > span:first-child {
+  display: block !important;
+  min-height: 17px !important;
+  position: static !important;
+  width: auto !important;
+}
+.appointment-create-dialog--follow-up .appointment-service-field > .doctor-appointment-control,
+.appointment-create-dialog--follow-up .appointment-attending-veterinarian > .doctor-appointment-control,
+.appointment-create-dialog--follow-up .followup-reason-field > textarea,
+.appointment-create-dialog--follow-up .followup-notes-field > textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 650px) {
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .appointment-service-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .appointment-attending-veterinarian,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-original-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-related-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-date-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-instructions-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-reason-field,
+  .appointment-create-dialog--follow-up .doctor-appointment-grid > .followup-notes-field {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+}
+
+/* Match the Dental Details visual treatment without changing confinement workflow behavior. */
+.appointment-create-dialog--confinement {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  width: 760px !important;
+  max-width: calc(100vw - 32px) !important;
+  height: auto !important;
+  max-height: calc(100dvh - 32px) !important;
+  box-sizing: border-box !important;
+  padding: 28px 32px 24px !important;
+  border-radius: 16px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  color: #1f2d28 !important;
+}
+.appointment-create-dialog--confinement > h2 {
+  color: #0e6a56 !important;
+  font-size: 22px !important;
+  line-height: 1.2 !important;
+  font-weight: 700 !important;
+}
+.appointment-create-dialog--confinement > p {
+  margin: 6px 0 14px !important;
+  color: #5a6661 !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+.appointment-create-dialog--confinement .confinement-step-progress {
+  display: grid;
+  width: 100%;
+  box-sizing: border-box;
+  align-self: stretch;
+  gap: 8px;
+  margin: 0 0 16px;
+  color: #1f2d28;
+  font-size: 11px;
+}
+.appointment-create-dialog--confinement .confinement-step-progress-items {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+.appointment-create-dialog--confinement .confinement-step-progress-items > button {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #647c75;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.appointment-create-dialog--confinement .confinement-step-progress-items > button:disabled {
+  cursor: default;
+}
+.appointment-create-dialog--confinement .confinement-step-progress-items > button > span {
+  height: 5px;
+  border-radius: 999px;
+  background: #d5dfdb;
+}
+.appointment-create-dialog--confinement .confinement-step-progress-items > button.is-complete > span {
+  background: #087260;
+}
+.appointment-create-dialog--confinement .confinement-step-progress-items small {
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.appointment-create-dialog--confinement .doctor-appointment-grid {
+  display: grid !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  align-self: stretch !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-rows: auto !important;
+  gap: 10px 16px !important;
+  min-width: 0 !important;
+  min-height: auto !important;
+  overflow: visible !important;
+}
+.appointment-create-dialog--confinement .doctor-appointment-grid > label {
+  display: flex !important;
+  min-width: 0 !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  color: #1f2d28 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+.appointment-create-dialog--confinement .doctor-appointment-grid > label > span:first-child {
+  display: block !important;
+  position: static !important;
+  width: auto !important;
+  min-height: 15px;
+  line-height: 1.2 !important;
+}
+.appointment-create-dialog--confinement .doctor-appointment-grid input:not([type="checkbox"]):not([type="file"]),
+.appointment-create-dialog--confinement .doctor-appointment-grid select,
+.appointment-create-dialog--confinement .doctor-appointment-grid textarea,
+.appointment-create-dialog--confinement .confinement-pet-card {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 38px !important;
+  height: 38px !important;
+  box-sizing: border-box !important;
+  padding: 0 12px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 9px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+.appointment-create-dialog--confinement .doctor-appointment-grid textarea {
+  height: auto !important;
+  min-height: 54px !important;
+  padding: 8px 10px !important;
+  resize: none !important;
+}
+.appointment-create-dialog--confinement .doctor-appointment-grid select {
+  appearance: none !important;
+  background-image: linear-gradient(45deg, transparent 50%, #43534e 50%), linear-gradient(135deg, #43534e 50%, transparent 50%) !important;
+  background-position: calc(100% - 18px) 16px, calc(100% - 13px) 16px !important;
+  background-size: 5px 5px !important;
+  background-repeat: no-repeat !important;
+}
+.appointment-create-dialog--confinement .doctor-appointment-grid > .confinement-pet-field {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+}
+.appointment-create-dialog--confinement .doctor-appointment-grid > .appointment-service-field {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+}
+.appointment-create-dialog--confinement .confinement-pet-card {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-color: #e1e8e4 !important;
+  background: #f1f4f3 !important;
+}
+.appointment-create-dialog--confinement .confinement-pet-avatar {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e2f3ed;
+  color: #087260;
+  font-size: 11px;
+  font-weight: 700;
+}
+.appointment-create-dialog--confinement .confinement-pet-species {
+  color: #647c75;
+}
+.appointment-create-dialog--confinement .appointment-confinement-workflow {
+  grid-column: 1 / -1 !important;
+  display: grid !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-content: start !important;
+  gap: 8px 12px !important;
+  min-width: 0 !important;
+  min-height: auto !important;
+  overflow: visible !important;
+}
+.appointment-create-dialog--confinement .confinement-patient-overview,
+.appointment-create-dialog--confinement .appointment-confinement-workflow > div[style*="padding"] {
+  grid-column: 1 / -1 !important;
+  min-width: 0;
+  padding: 12px 14px !important;
+  border: 1px solid #e1e8e4;
+  border-radius: 10px;
+  background: #f1f4f3;
+}
+.appointment-create-dialog--confinement .confinement-patient-overview > strong,
+.appointment-create-dialog--confinement .appointment-confinement-workflow > div[style*="padding"] > strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #00695c !important;
+  font-size: 12px !important;
+}
+.appointment-create-dialog--confinement .confinement-patient-overview > div {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid #e1e8e4;
+  font-size: 12px;
+}
+.appointment-create-dialog--confinement .confinement-patient-overview > div > span:first-child {
+  color: #647c75;
+}
+.appointment-create-dialog--confinement .appointment-confinement-workflow > label {
+  display: flex !important;
+  grid-column: auto !important;
+  min-width: 0 !important;
+  flex-direction: column !important;
+  gap: 7px !important;
+  color: #1f2d28 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+.appointment-create-dialog--confinement .appointment-confinement-workflow > label > span:first-child {
+  min-height: 15px;
+  line-height: 1.2 !important;
+}
+.appointment-create-dialog--confinement .appointment-confinement-workflow input:not([type="checkbox"]):not([type="file"]),
+.appointment-create-dialog--confinement .appointment-confinement-workflow select,
+.appointment-create-dialog--confinement .appointment-confinement-workflow textarea,
+.appointment-create-dialog--confinement .appointment-confinement-workflow .lab-date-time-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 40px !important;
+  height: 40px !important;
+  box-sizing: border-box !important;
+  padding: 0 12px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 9px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+.appointment-create-dialog--confinement .appointment-confinement-workflow textarea {
+  height: auto !important;
+  min-height: 54px !important;
+  padding: 8px 10px !important;
+  resize: none !important;
+}
+.appointment-create-dialog--confinement .appointment-confinement-workflow > label[style*="grid-column: 1 / -1"] {
+  grid-column: 1 / -1 !important;
+}
+.appointment-create-dialog--confinement .appointment-create-footer {
+  flex: 0 0 auto !important;
+  gap: 10px !important;
+  margin-top: 10px !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}
+.appointment-create-dialog--confinement .appointment-create-footer button {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 18px !important;
+  border-radius: 9px !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+}
+.appointment-create-dialog--confinement .confinement-form-hint {
+  margin-right: auto;
+  color: #5a6661;
+  font-size: 11px;
+}
+@media (max-width: 650px) {
+  .appointment-create-dialog--confinement {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    padding: 18px 16px 14px !important;
+  }
+}
+@media (max-width: 540px) {
+  .appointment-create-dialog--confinement .doctor-appointment-grid,
+  .appointment-create-dialog--confinement .appointment-confinement-workflow {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .appointment-create-dialog--confinement .doctor-appointment-grid {
+    grid-template-rows: auto !important;
+  }
+  .appointment-create-dialog--confinement .doctor-appointment-grid > .confinement-pet-field,
+  .appointment-create-dialog--confinement .doctor-appointment-grid > .appointment-service-field,
+  .appointment-create-dialog--confinement .appointment-confinement-workflow > label {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+  .appointment-create-dialog--confinement .confinement-step-progress-items {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Surgery visual alignment with Dental, without changing Surgery field placement. */
+.appointment-create-dialog--surgery {
+  padding: 28px 32px 24px !important;
+  border-radius: 16px !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+.appointment-create-dialog--surgery > h2,
+.appointment-create-dialog--surgery > p,
+.appointment-create-dialog--surgery .doctor-appointment-grid,
+.appointment-create-dialog--surgery .doctor-appointment-grid label,
+.appointment-create-dialog--surgery .doctor-appointment-grid input,
+.appointment-create-dialog--surgery .doctor-appointment-grid select,
+.appointment-create-dialog--surgery .doctor-appointment-grid textarea,
+.appointment-create-dialog--surgery .appointment-create-footer,
+.appointment-create-dialog--surgery .appointment-create-footer button {
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+.appointment-create-dialog--surgery > h2 {
+  font-size: 25px !important;
+  line-height: 1.2 !important;
+}
+.appointment-create-dialog--surgery > p {
+  margin: 6px 0 16px !important;
+  font-size: 15px !important;
+  line-height: 1.4 !important;
+}
+.appointment-create-dialog--surgery .doctor-appointment-grid > label {
+  gap: 7px !important;
+  color: #1f2d28 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+.appointment-create-dialog--surgery .doctor-appointment-grid input:not([type="checkbox"]):not([type="file"]),
+.appointment-create-dialog--surgery .doctor-appointment-grid select {
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 14px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 10px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-size: 15.5px !important;
+  font-weight: 400 !important;
+}
+.appointment-create-dialog--surgery .doctor-appointment-grid textarea {
+  min-height: 72px !important;
+  height: 72px !important;
+  padding: 12px 14px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 10px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-size: 15.5px !important;
+  font-weight: 400 !important;
+  resize: none !important;
+}
+.appointment-create-dialog--surgery .doctor-appointment-grid input::placeholder,
+.appointment-create-dialog--surgery .doctor-appointment-grid textarea::placeholder {
+  color: #8a9691 !important;
+  opacity: 1 !important;
+}
+.appointment-create-dialog--surgery .doctor-appointment-grid select {
+  appearance: none !important;
+  background-image: linear-gradient(45deg, transparent 50%, #43534e 50%), linear-gradient(135deg, #43534e 50%, transparent 50%) !important;
+  background-position: calc(100% - 18px) 20px, calc(100% - 13px) 20px !important;
+  background-size: 5px 5px, 5px 5px !important;
+  background-repeat: no-repeat !important;
+}
+.appointment-create-dialog--surgery .surgery-status-options {
+  gap: 6px !important;
+}
+.appointment-create-dialog--surgery .surgery-status-options button {
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 11px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+  color: #1f2d28 !important;
+  font-size: 13px !important;
+}
+.appointment-create-dialog--surgery .surgery-status-options button[aria-pressed="true"] {
+  border-color: #0e6a56 !important;
+  background: #e3f3ec !important;
+  color: #0b4f3f !important;
+}
+.appointment-create-dialog--surgery .surgery-appointment-footer {
+  gap: 12px !important;
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+}
+.appointment-create-dialog--surgery .appointment-create-footer button {
+  height: 48px !important;
+  min-height: 48px !important;
+  padding: 0 18px !important;
+  border-radius: 10px !important;
+  font-size: 15.5px !important;
+}
+.appointment-create-dialog--surgery .surgery-form-hint {
+  color: #5a6661 !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+
+html body .appointment-create-dialog--confinement {
+  width: min(760px, calc(100vw - 32px)) !important;
+  max-width: 760px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: calc(100dvh - 32px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  margin: auto !important;
+  overflow: hidden !important;
+  padding: 28px 32px 24px !important;
+  box-sizing: border-box !important;
+}
+html body .appointment-create-dialog--confinement > h2,
+html body .appointment-create-dialog--confinement > p,
+html body .appointment-create-dialog--confinement > .appointment-create-footer,
+html body .appointment-create-dialog--confinement > .confinement-step-progress {
+  flex: none !important;
+}
+html body .appointment-create-dialog--confinement > h2 {
+  color: #0e6a56 !important;
+  font-size: 25px !important;
+  line-height: 1.2 !important;
+}
+html body .appointment-create-dialog--confinement > p {
+  margin: 6px 0 14px !important;
+  font-size: 15px !important;
+  line-height: 1.4 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-step-progress {
+  flex: none !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-step-progress > strong {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-step-progress-items small {
+  font-size: 13px !important;
+}
+html body .appointment-create-dialog--confinement .doctor-appointment-grid {
+  display: grid !important;
+  flex: 1 1 auto !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  grid-template-rows: auto auto !important;
+  align-items: start !important;
+  align-content: start !important;
+  gap: 20px !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+}
+html body .appointment-create-dialog--confinement .doctor-appointment-grid > label {
+  min-width: 0 !important;
+  margin: 0 !important;
+  gap: 7px !important;
+  color: #1f2d28 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+html body .appointment-create-dialog--confinement .doctor-appointment-grid > .confinement-pet-field,
+html body .appointment-create-dialog--confinement .doctor-appointment-grid > .appointment-service-field {
+  grid-column: span 6 !important;
+  grid-row: 1 !important;
+}
+html body .appointment-create-dialog--confinement .doctor-appointment-grid > .confinement-pet-field {
+  grid-column: 1 / span 6 !important;
+}
+html body .appointment-create-dialog--confinement .doctor-appointment-grid > .appointment-service-field {
+  grid-column: 7 / span 6 !important;
+}
+html body .appointment-create-dialog--confinement .doctor-appointment-grid > section {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  grid-column: 1 / -1 !important;
+  grid-row: 2 !important;
+  align-self: start !important;
+  gap: 20px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 20px !important;
+  align-self: stretch !important;
+  align-items: start !important;
+  align-content: start !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  flex: none !important;
+  height: auto !important;
+  max-height: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow * {
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+}
+html body .appointment-create-dialog--confinement .confinement-patient-overview {
+  grid-column: 1 / -1 !important;
+  padding: 16px !important;
+  border: 1px solid #e1e8e4 !important;
+  border-radius: 10px !important;
+  background: #f4f6f5 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-patient-overview > strong {
+  margin-bottom: 8px !important;
+}
+html body .appointment-create-dialog--confinement .confinement-patient-overview > div {
+  padding: 8px 0 !important;
+}
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow > label {
+  display: flex !important;
+  grid-column: span 6 !important;
+  min-width: 0 !important;
+  flex-direction: column !important;
+  gap: 7px !important;
+  margin: 0 !important;
+  color: #1f2d28 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow > label[style*="grid-column: 1 / -1"],
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow > .appointment-attending-veterinarian,
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow > .confinement-consent-scope-field,
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow > .confinement-consent-notes-field {
+  grid-column: 1 / -1 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-ward-field,
+html body .appointment-create-dialog--confinement .confinement-discharge-date-field,
+html body .appointment-create-dialog--confinement .confinement-consent-status-field,
+html body .appointment-create-dialog--confinement .confinement-authorized-by-field {
+  grid-column: span 6 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-discharge-date-field .lab-date-time-picker {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-consent-upload-field {
+  display: grid !important;
+  grid-column: 1 / -1 !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+  padding: 14px !important;
+  border: 1px dashed #c5d6d0 !important;
+  border-radius: 10px !important;
+  background: #f9fbfa !important;
+}
+html body .appointment-create-dialog--confinement .confinement-consent-upload-label {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  color: #1f2d28 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-consent-upload-label small {
+  color: #6b7d78 !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-consent-upload-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-consent-upload-button,
+html body .appointment-create-dialog--confinement .confinement-consent-remove-file {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  border: 1px solid #c5d6d0 !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  color: #0e6a56 !important;
+  cursor: pointer !important;
+  font: 600 13px 'Inter', system-ui, sans-serif !important;
+}
+html body .appointment-create-dialog--confinement .confinement-consent-upload-button input {
+  display: none !important;
+}
+html body .appointment-create-dialog--confinement .confinement-consent-file-name {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  color: #43534e !important;
+  font-size: 13px !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+html body .appointment-create-dialog--confinement .confinement-consent-preview,
+.clinic-appointment-details .confinement-consent-preview {
+  display: grid !important;
+  justify-items: start !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  margin-top: 12px !important;
+}
+html body .appointment-create-dialog--confinement .confinement-consent-preview img,
+.clinic-appointment-details .confinement-consent-preview img {
+  display: block !important;
+  width: auto !important;
+  max-width: min(100%, 360px) !important;
+  max-height: 180px !important;
+  object-fit: contain !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+}
+html body .appointment-create-dialog--confinement .confinement-consent-pdf,
+.clinic-appointment-details .confinement-consent-pdf {
+  display: grid !important;
+  min-width: 180px !important;
+  min-height: 60px !important;
+  place-items: center !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  color: #526b64 !important;
+  font-size: 13px !important;
+}
+html body .appointment-create-dialog--confinement .confinement-consent-preview a,
+.clinic-appointment-details .confinement-consent-preview a {
+  display: inline-flex !important;
+  min-height: 36px !important;
+  align-items: center !important;
+  padding: 0 12px !important;
+  border: 1px solid #c5d6d0 !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  color: #0e6a56 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+}
+html body .appointment-create-dialog--confinement .confinement-consent-preview-filename,
+.clinic-appointment-details .confinement-consent-preview-filename {
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+  color: #526b64 !important;
+  font-size: 12px !important;
+}
+html body .appointment-create-dialog--confinement .confinement-admission-reason-field {
+  grid-column: span 6 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-urgency-field {
+  grid-column: span 6 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-presenting-complaint-field,
+html body .appointment-create-dialog--confinement .confinement-physical-notes-field,
+html body .appointment-create-dialog--confinement .confinement-medical-history-field {
+  grid-column: 1 / -1 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-provisional-diagnosis-field,
+html body .appointment-create-dialog--confinement .confinement-clinical-assessment-field {
+  grid-column: span 6 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-weight-field,
+html body .appointment-create-dialog--confinement .confinement-temperature-field,
+html body .appointment-create-dialog--confinement .confinement-known-allergies-field {
+  grid-column: span 4 !important;
+}
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow input:not([type="checkbox"]):not([type="file"]),
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow select,
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow textarea,
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow .lab-date-time-trigger,
+html body .appointment-create-dialog--confinement .doctor-appointment-grid > .appointment-service-field select,
+html body .appointment-create-dialog--confinement .confinement-pet-card {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 14px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 10px !important;
+  background-color: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 15.5px !important;
+  font-weight: 400 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-pet-card {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  background-color: #f4f6f5 !important;
+}
+html body .appointment-create-dialog--confinement .confinement-pet-card > span:last-child {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+html body .appointment-create-dialog--confinement .confinement-pet-species {
+  font-size: 13px !important;
+}
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow textarea {
+  min-height: 72px !important;
+  height: 72px !important;
+  padding: 12px 14px !important;
+  resize: none !important;
+}
+html body .appointment-create-dialog--confinement .confinement-known-allergies-field input {
+  min-height: 48px !important;
+  height: 48px !important;
+}
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow input::placeholder,
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow textarea::placeholder {
+  color: #8a9691 !important;
+  opacity: 1 !important;
+}
+html body .appointment-create-dialog--confinement .appointment-confinement-workflow select {
+  appearance: none !important;
+  background-image: linear-gradient(45deg, transparent 50%, #43534e 50%), linear-gradient(135deg, #43534e 50%, transparent 50%) !important;
+  background-position: calc(100% - 18px) 20px, calc(100% - 13px) 20px !important;
+  background-size: 5px 5px, 5px 5px !important;
+  background-repeat: no-repeat !important;
+}
+html body .appointment-create-dialog--confinement .appointment-create-footer {
+  flex: none !important;
+  margin-top: 10px !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}
+html body .appointment-create-dialog--confinement .appointment-create-footer button {
+  height: 48px !important;
+  min-height: 48px !important;
+  padding: 0 18px !important;
+  border-radius: 10px !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 15.5px !important;
+}
+html body .appointment-create-dialog--confinement-assessment {
+  max-height: min(680px, calc(100dvh - 32px)) !important;
+}
+
+html body .appointment-create-dialog--grooming {
+  display: flex !important;
+  flex-direction: column !important;
+  width: min(720px, calc(100vw - 32px)) !important;
+  max-width: 720px !important;
+  height: auto !important;
+  min-height: 630px !important;
+  max-height: calc(100dvh - 32px) !important;
+  box-sizing: border-box !important;
+  padding: 26px 30px 24px !important;
+  overflow: hidden !important;
+}
+html body .appointment-create-dialog--grooming .doctor-appointment-grid {
+  flex: 1 1 auto !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-content: start !important;
+  gap: 18px 20px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+html body .appointment-create-dialog--grooming .doctor-appointment-grid > label {
+  display: grid !important;
+  min-width: 0 !important;
+  align-content: start !important;
+  gap: 7px !important;
+  color: #1f2d28 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+html body .appointment-create-dialog--grooming .appointment-service-field > .doctor-appointment-control {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+html body .appointment-create-dialog--grooming .doctor-appointment-grid input,
+html body .appointment-create-dialog--grooming .doctor-appointment-grid select,
+html body .appointment-create-dialog--grooming .doctor-appointment-grid textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 12px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 8px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+html body .appointment-create-dialog--grooming .doctor-appointment-grid textarea {
+  height: 72px !important;
+  min-height: 72px !important;
+  padding: 12px 14px !important;
+  resize: none !important;
+}
+html body .appointment-create-dialog--grooming .doctor-appointment-grid select {
+  appearance: none !important;
+  background-image: linear-gradient(45deg, transparent 50%, #43534e 50%), linear-gradient(135deg, #43534e 50%, transparent 50%) !important;
+  background-position: calc(100% - 18px) 19px, calc(100% - 13px) 19px !important;
+  background-size: 5px 5px, 5px 5px !important;
+  background-repeat: no-repeat !important;
+}
+html body .appointment-create-dialog--grooming .doctor-appointment-grid input::placeholder,
+html body .appointment-create-dialog--grooming .doctor-appointment-grid textarea::placeholder {
+  color: #8a9691 !important;
+  opacity: 1 !important;
+}
+html body .appointment-create-dialog--grooming .doctor-appointment-grid > .appointment-service-field {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+}
+html body .appointment-create-dialog--grooming .grooming-assigned-field {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+}
+html body .appointment-create-dialog--grooming .grooming-style-field {
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+}
+html body .appointment-create-dialog--grooming .grooming-coat-field {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+}
+html body .appointment-create-dialog--grooming .grooming-handling-field {
+  grid-column: 1 / -1 !important;
+  grid-row: 3 !important;
+}
+html body .appointment-create-dialog--grooming .grooming-preferences-field {
+  grid-column: 1 !important;
+  grid-row: 4 !important;
+}
+html body .appointment-create-dialog--grooming .grooming-notes-field {
+  grid-column: 2 !important;
+  grid-row: 4 !important;
+}
+html body .appointment-create-dialog--grooming .grooming-chip-group {
+  display: flex !important;
+  min-width: 0 !important;
+  min-height: 48px !important;
+  flex-wrap: wrap !important;
+  align-content: flex-start !important;
+  align-items: flex-start !important;
+  gap: 6px !important;
+}
+html body .appointment-create-dialog--grooming .grooming-chip-group button {
+  display: inline-flex !important;
+  min-height: 42px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 12px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+  color: #1f2d28 !important;
+  font: inherit !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+}
+html body .appointment-create-dialog--grooming .grooming-chip-group button.is-selected {
+  border-color: #0e6a56 !important;
+  background: #e3f3ec !important;
+  color: #0b4f3f !important;
+}
+html body .appointment-create-dialog--grooming .appointment-create-footer {
+  flex: 0 0 auto !important;
+  margin-top: 14px !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}
+html body .appointment-create-dialog--grooming .grooming-form-hint {
+  margin-right: auto !important;
+  color: #5a6661 !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+html body .appointment-create-dialog--grooming .appointment-create-footer button {
+  min-height: 46px !important;
+  height: 46px !important;
+  padding: 0 16px !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+}
+@media (max-width: 650px) {
+  html body .appointment-create-dialog--grooming {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 20px !important;
+  }
+  html body .appointment-create-dialog--grooming .doctor-appointment-grid > label,
+  html body .appointment-create-dialog--grooming .doctor-appointment-grid > label:nth-child(n) {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+}
+
+html body .appointment-create-dialog--general {
+  display: flex !important;
+  flex-direction: column !important;
+  width: min(620px, calc(100vw - 32px)) !important;
+  max-width: 620px !important;
+  height: auto !important;
+  min-height: 610px !important;
+  max-height: calc(100dvh - 32px) !important;
+  box-sizing: border-box !important;
+  padding: 24px 26px 20px !important;
+  overflow: hidden !important;
+}
+html body .appointment-create-dialog--general > h2 {
+  color: #0e6a56 !important;
+  font-size: 21px !important;
+  line-height: 1.2 !important;
+}
+html body .appointment-create-dialog--general > p {
+  margin: 6px 0 14px !important;
+  color: #5a6661 !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+html body .appointment-create-dialog--general .doctor-appointment-grid {
+  flex: 1 1 auto !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-content: start !important;
+  gap: 14px 16px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+html body .appointment-create-dialog--general .doctor-appointment-grid > label {
+  display: grid !important;
+  min-width: 0 !important;
+  align-content: start !important;
+  gap: 6px !important;
+  color: #1f2d28 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+html body .appointment-create-dialog--general .doctor-appointment-grid > .appointment-service-field {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+}
+html body .appointment-create-dialog--general .doctor-appointment-grid > .appointment-attending-veterinarian {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+}
+html body .appointment-create-dialog--general .general-reason-field {
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+}
+html body .appointment-create-dialog--general .general-concern-field {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+}
+html body .appointment-create-dialog--general .general-history-field,
+html body .appointment-create-dialog--general .general-related-plan-field,
+html body .appointment-create-dialog--general .general-notes-field {
+  grid-column: 1 / -1 !important;
+}
+html body .appointment-create-dialog--general .general-history-field {
+  grid-row: 3 !important;
+}
+html body .appointment-create-dialog--general .general-related-plan-field {
+  grid-row: 4 !important;
+}
+html body .appointment-create-dialog--general .general-notes-field {
+  grid-row: 5 !important;
+}
+html body .appointment-create-dialog--general .doctor-appointment-grid > .general-reason-field {
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+}
+html body .appointment-create-dialog--general .doctor-appointment-grid > .general-concern-field {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+}
+html body .appointment-create-dialog--general .doctor-appointment-grid > .general-history-field {
+  grid-column: 1 / -1 !important;
+  grid-row: 3 !important;
+}
+html body .appointment-create-dialog--general .doctor-appointment-grid > .general-related-plan-field {
+  grid-column: 1 / -1 !important;
+  grid-row: 4 !important;
+}
+html body .appointment-create-dialog--general .doctor-appointment-grid > .general-notes-field {
+  grid-column: 1 / -1 !important;
+  grid-row: 5 !important;
+}
+html body .appointment-create-dialog--general .doctor-appointment-grid input,
+html body .appointment-create-dialog--general .doctor-appointment-grid select,
+html body .appointment-create-dialog--general .doctor-appointment-grid textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  min-height: 46px !important;
+  height: 46px !important;
+  padding: 0 12px !important;
+  border: 1px solid #d9e3de !important;
+  border-radius: 9px !important;
+  background: #f7faf8 !important;
+  color: #1f2d28 !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+html body .appointment-create-dialog--general .doctor-appointment-grid textarea {
+  height: 60px !important;
+  min-height: 60px !important;
+  padding: 10px 12px !important;
+  resize: none !important;
+}
+html body .appointment-create-dialog--general .appointment-service-field > .doctor-appointment-control {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+html body .appointment-create-dialog--general .doctor-appointment-grid select {
+  appearance: none !important;
+  background-image: linear-gradient(45deg, transparent 50%, #43534e 50%), linear-gradient(135deg, #43534e 50%, transparent 50%) !important;
+  background-position: calc(100% - 18px) 18px, calc(100% - 13px) 18px !important;
+  background-size: 5px 5px, 5px 5px !important;
+  background-repeat: no-repeat !important;
+}
+html body .appointment-create-dialog--general .general-history-card {
+  display: flex !important;
+  min-width: 0 !important;
+  min-height: 52px !important;
+  box-sizing: border-box !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 9px 12px !important;
+  border: 1px solid #e1e8e4 !important;
+  border-radius: 9px !important;
+  background: #f1f4f3 !important;
+  color: #1f2d28 !important;
+}
+html body .appointment-create-dialog--general .general-history-card-content {
+  display: grid !important;
+  min-width: 0 !important;
+  gap: 2px !important;
+}
+html body .appointment-create-dialog--general .general-history-card-content strong {
+  overflow: hidden !important;
+  color: #173b52 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+html body .appointment-create-dialog--general .general-history-card-content small {
+  overflow: hidden !important;
+  color: #60716d !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+html body .appointment-create-dialog--general .general-history-status {
+  flex: 0 0 auto !important;
+  padding: 3px 9px !important;
+  border-radius: 999px !important;
+  background: #dff3eb !important;
+  color: #14513e !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+html body .appointment-create-dialog--general .general-history-empty {
+  color: #60716d !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+}
+html body .appointment-create-dialog--general .appointment-create-footer {
+  flex: 0 0 auto !important;
+  gap: 12px !important;
+  margin-top: 14px !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}
+html body .appointment-create-dialog--general .appointment-create-footer .general-form-hint {
+  margin-right: auto !important;
+  color: #5a6661 !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+}
+html body .appointment-create-dialog--general .appointment-create-footer button {
+  min-height: 42px !important;
+  height: 42px !important;
+  padding: 0 16px !important;
+  border-radius: 9px !important;
+  font-size: 13px !important;
+}
+@media (max-width: 650px) {
+  html body .appointment-create-dialog--general {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 20px) !important;
+    padding: 20px 16px 14px !important;
+  }
+  html body .appointment-create-dialog--general .doctor-appointment-grid > label,
+  html body .appointment-create-dialog--general .doctor-appointment-grid > label:nth-child(n) {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+}
+
+/* Keep General Consultation on the same modal scale and control styling as Dental. */
+html body .vi-modal--appt.appointment-create-dialog--general {
+  width: calc(100vw - 32px) !important;
+  max-width: 760px !important;
+  max-height: calc(100dvh - 32px) !important;
+  min-height: 0 !important;
+  padding: 28px 32px 24px !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general > h2 {
+  font-size: 25px !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general > p {
+  margin: 6px 0 16px !important;
+  font-size: 15px !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .doctor-appointment-grid {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  align-content: start !important;
+  gap: 20px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .doctor-appointment-grid > label {
+  display: grid !important;
+  min-width: 0 !important;
+  gap: 7px !important;
+  align-content: start !important;
+  color: #1f2d28 !important;
+  font-size: 14px !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .appointment-service-field {
+  grid-column: 1 / 7 !important;
+  grid-row: 1 !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .appointment-attending-veterinarian {
+  grid-column: 7 / -1 !important;
+  grid-row: 1 !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .general-reason-field {
+  grid-column: 1 / 7 !important;
+  grid-row: 2 !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .general-concern-field {
+  grid-column: 7 / -1 !important;
+  grid-row: 2 !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .general-history-field,
+html body .vi-modal--appt.appointment-create-dialog--general .general-related-plan-field,
+html body .vi-modal--appt.appointment-create-dialog--general .general-notes-field {
+  grid-column: 1 / -1 !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .general-history-field { grid-row: 3 !important; }
+html body .vi-modal--appt.appointment-create-dialog--general .general-related-plan-field { grid-row: 4 !important; }
+html body .vi-modal--appt.appointment-create-dialog--general .general-notes-field { grid-row: 5 !important; }
+html body .vi-modal--appt.appointment-create-dialog--general .doctor-appointment-grid input,
+html body .vi-modal--appt.appointment-create-dialog--general .doctor-appointment-grid select,
+html body .vi-modal--appt.appointment-create-dialog--general .doctor-appointment-grid textarea {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 14px !important;
+  border-radius: 10px !important;
+  font-size: 15.5px !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .doctor-appointment-grid textarea {
+  height: 72px !important;
+  min-height: 72px !important;
+  padding: 12px 14px !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .general-history-card {
+  display: flex !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  min-height: 52px !important;
+  padding: 9px 12px !important;
+  border-radius: 9px !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .general-related-plan-field,
+html body .vi-modal--appt.appointment-create-dialog--general .general-notes-field {
+  min-width: 0 !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .general-form-hint {
+  margin-right: auto !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .appointment-create-footer {
+  gap: 12px !important;
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .appointment-create-footer button {
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 18px !important;
+  border-radius: 10px !important;
+  font-size: 15.5px !important;
+}
+html body .vi-modal--appt.appointment-create-dialog--general .appointment-create-footer .general-form-hint {
+  font-size: 14px !important;
+}
+@media (max-width: 650px) {
+  html body .vi-modal--appt.appointment-create-dialog--general {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    padding: 22px 16px 14px !important;
+  }
+  html body .vi-modal--appt.appointment-create-dialog--general .doctor-appointment-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  html body .vi-modal--appt.appointment-create-dialog--general .doctor-appointment-grid > label {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
 }
