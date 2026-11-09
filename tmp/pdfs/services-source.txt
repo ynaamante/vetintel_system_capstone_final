@@ -1,0 +1,113 @@
+
+PAGE 1
+
+VetIntel • Sample pricing only |   | Page 1 | 
+ | VetIntel | Veterinary Clinic Services & Pricing | 
+ | Philippines • Mock service catalog for a dog-and-cat clinic | 
+ | All prices are illustrative demo amounts in Philippine pesos (PHP), not official clinic quotations or regulated prices. | 
+ | Adjust for location, patient weight, product, clinical complexity, and service inclusions. | 
+ | Consultation and Checkups | 
+ | Service |   | Mock price | 
+ | General Consultation |   | PHP 500 | 
+Follow-up Consultation |   | PHP 350 | 
+Emergency Consultation |   | PHP 1,000 | 
+Wellness Checkup |   | PHP 650 | 
+Puppy/Kitten Checkup |   | PHP 450 | 
+Senior Pet Checkup |   | PHP 750 | 
+Dermatology Consultation |   | PHP 700 | 
+Pre-surgical Examination |   | PHP 600 | 
+Medical Certificate |   | PHP 350 | 
+ | Vaccination Services | 
+ | Service |   | Mock price | 
+ | Anti-Rabies Vaccination |   | PHP 350 | 
+5-in-1 Canine Vaccination (product-dependent) |   | PHP 850 | 
+6-in-1 Canine Vaccination (product-dependent) |   | PHP 950 | 
+8-in-1 Canine Vaccination (product-dependent) |   | PHP 1,100 | 
+Puppy DP Vaccination |   | PHP 650 | 
+Leptospirosis Vaccination |   | PHP 650 | 
+Kennel Cough Vaccination |   | PHP 950 | 
+Feline 3-in-1 (FVRCP) |   | PHP 950 | 
+Feline 4-in-1 (product-dependent) |   | PHP 1,150 | 
+Feline Leukemia Vaccination |   | PHP 1,200 | 
+Combination Vaccine Booster (same as selected vaccine) |   | Same as vaccine | 
+Rabies Booster |   | PHP 350 | 
+ | Deworming and Parasite Control | 
+PAGE 2
+
+VetIntel • Sample pricing only |   | Page 2 | 
+ | Service |   | Mock price | 
+ | Puppy/Kitten Deworming |   | PHP 250 | 
+Adult Dog Deworming |   | PHP 400 | 
+Adult Cat Deworming |   | PHP 350 | 
+Flea and Tick Treatment |   | PHP 650 | 
+Ear Mite Treatment |   | PHP 500 | 
+Mange Treatment |   | PHP 800 | 
+Heartworm Preventive Administration |   | PHP 700 | 
+Tick Removal |   | PHP 300 | 
+ | Laboratory and Diagnostic Services | 
+ | Service |   | Mock price | 
+ | Complete Blood Count (CBC) |   | PHP 850 | 
+Blood Chemistry Panel |   | PHP 1,800 | 
+Urinalysis |   | PHP 450 | 
+Fecalysis |   | PHP 350 | 
+Blood Glucose Test |   | PHP 300 | 
+Parvovirus Antigen Test |   | PHP 950 | 
+Distemper Test |   | PHP 1,200 | 
+Ehrlichia/Anaplasma Test |   | PHP 1,100 | 
+Heartworm Antigen Test |   | PHP 1,000 | 
+FIV/FeLV Test |   | PHP 1,400 | 
+Skin Scraping Examination |   | PHP 500 | 
+Ear Cytology |   | PHP 550 | 
+Radiography (X-ray) |   | PHP 1,500 | 
+Ultrasound |   | PHP 1,800 | 
+ | Surgery and Procedures | 
+ | Service |   | Mock price | 
+ | Male Cat Castration |   | PHP 1,500 | 
+Female Cat Spay |   | PHP 2,800 | 
+Male Dog Castration |   | PHP 3,500 | 
+Female Dog Spay |   | PHP 5,000 | 
+PAGE 3
+
+VetIntel • Sample pricing only |   | Page 3 | 
+ | Service |   | Mock price | 
+ | Wound Suturing - Minor |   | PHP 1,500 | 
+Wound Suturing - Major |   | PHP 3,500 | 
+Abscess Drainage |   | PHP 1,800 | 
+Foreign Body Removal |   | PHP 6,000 | 
+Cesarean Section |   | PHP 10,000 | 
+Pyometra Surgery |   | PHP 9,000 | 
+Minor Mass Removal |   | PHP 4,000 | 
+Major Soft Tissue Surgery |   | PHP 12,000 | 
+ | Dental, Grooming and Hospitalization | 
+ | Service |   | Mock price | 
+ | Dental Consultation |   | PHP 500 | 
+Dental Scaling and Polishing |   | PHP 3,000 | 
+Simple Tooth Extraction |   | PHP 1,000 | 
+Complex Tooth Extraction |   | PHP 2,500 | 
+Basic Bath - Small Dog |   | PHP 450 | 
+Basic Bath - Medium Dog |   | PHP 600 | 
+Basic Bath - Large Dog |   | PHP 850 | 
+Full Grooming - Small Dog |   | PHP 800 | 
+Full Grooming - Medium Dog |   | PHP 1,000 | 
+Full Grooming - Large Dog |   | PHP 1,400 | 
+Cat Grooming |   | PHP 900 | 
+Nail Trimming |   | PHP 150 | 
+Ear Cleaning |   | PHP 200 | 
+Anal Gland Expression |   | PHP 300 | 
+Hospitalization - Standard Cage / Day |   | PHP 1,200 | 
+Hospitalization - Intensive Monitoring / Day |   | PHP 2,500 | 
+IV Catheter Placement |   | PHP 350 | 
+Fluid Administration Service |   | PHP 500 | 
+Wound Dressing Change |   | PHP 350 | 
+Injection Administration |   | PHP 200 | 
+PAGE 4
+
+VetIntel • Sample pricing only |   | Page 4 | 
+ | Recommended VetIntel Service Fields | 
+ | Service code • Service name • Category • Base price • Pricing type (fixed, starting, weight-based, per-day, per-unit) • Species | 
+• Estimated duration • Linked inventory product(s) • Active status. | 
+Billing notes: A vaccination service may include the vaccine dose; avoid charging it twice. A booster is a dose event, not a | 
+separate vaccine inventory product. Surgery and hospitalization often require additional itemized charges. Labels such as | 
+5-in-1, 6-in-1, and 8-in-1 must be linked to the actual vaccine product and antigen coverage. | 
+Public pricing references (for comparison, not as a guarantee of current prices): Pet Express Veterinary — | 
+https://www.petexpress.com.ph/pages/veterinary ; Nose to Tail — https://nosetotailpetshop.com/services | 

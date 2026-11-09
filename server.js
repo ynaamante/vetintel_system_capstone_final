@@ -9,9 +9,28 @@ const apiRoutes = require('./routes/api');
 const clinicRecords = require('./controllers/clinicRecordController');
 
 
+async function sendEmail(to, subject, html) {
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': process.env.BREVO_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: 'VetIntel', email: process.env.SENDER_EMAIL },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(JSON.stringify(data));
+  return data;
+}
 
 const app = express();
-app.use(express.json({ limit: '6mb' }));
+app.use(express.json({ limit: '16mb' }));
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
@@ -20,9 +39,10 @@ app.use((req, res, next) => {
     const isPetPhotoUpload = /^\/api\/clinic-records\/pets\/\d+\/photo(?:\?|$)/.test(req.originalUrl);
     const isLabReportUpload = /^\/api\/clinic-records\/lab-tests\/[^/]+\/report(?:\?|$)/.test(req.originalUrl);
     const isClinicalConsultation = /^\/api\/clinic-records\/appointments\/\d+\/consultation(?:\?|$)/.test(req.originalUrl);
+    const isPatientRegistration = req.originalUrl.includes('/clinic-records/registration-intakes');
     const bodyPreview = ['POST', 'PUT', 'PATCH'].includes(req.method) && req.body && Object.keys(req.body).length
-      ? isOwnerRecordShare || isPetPhotoUpload || isLabReportUpload || isClinicalConsultation
-        ? ` body=[${isPetPhotoUpload ? 'pet photo' : isLabReportUpload ? 'lab report file' : isClinicalConsultation ? 'clinical consultation data' : 'owner record-sharing content'} omitted]`
+      ? isOwnerRecordShare || isPetPhotoUpload || isLabReportUpload || isClinicalConsultation || isPatientRegistration
+        ? ` body=[${isPetPhotoUpload ? 'pet photo' : isLabReportUpload ? 'lab report file' : isClinicalConsultation ? 'clinical consultation data' : isPatientRegistration ? 'patient registration data' : 'owner record-sharing content'} omitted]`
         : ` body=${JSON.stringify(req.body)}`
       : '';
     console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms${bodyPreview}`);
@@ -283,6 +303,46 @@ async function ensureClinicRecordArchiveSchema() {
   }
 }
 
+async function ensurePatientRegistrationSchema() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS patient_registration_intakes (
+      id SERIAL PRIMARY KEY,
+      clinic_id INTEGER NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
+      submitted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      assigned_doctor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+      pet_id INTEGER REFERENCES pets(id) ON DELETE SET NULL,
+      owner_data JSONB NOT NULL,
+      pet_data JSONB NOT NULL,
+      status TEXT NOT NULL DEFAULT 'Needs review'
+        CHECK (status IN ('Needs review', 'Waiting on reception', 'Approved', 'Rejected')),
+      correction_note TEXT,
+      activity JSONB NOT NULL DEFAULT '[]'::jsonb,
+      submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    ALTER TABLE patient_registration_intakes ADD COLUMN IF NOT EXISTS client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL;
+    ALTER TABLE patient_registration_intakes ADD COLUMN IF NOT EXISTS pet_id INTEGER REFERENCES pets(id) ON DELETE SET NULL;
+    CREATE INDEX IF NOT EXISTS patient_registration_intakes_submitted_idx
+      ON patient_registration_intakes (clinic_id, submitted_by, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS patient_registration_intakes_doctor_idx
+      ON patient_registration_intakes (clinic_id, assigned_doctor_id, status, updated_at DESC);
+    CREATE TABLE IF NOT EXISTS clinic_notifications (
+      id SERIAL PRIMARY KEY,
+      clinic_id INTEGER NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
+      recipient_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      text TEXT NOT NULL,
+      related_intake_id INTEGER REFERENCES patient_registration_intakes(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      read_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS clinic_notifications_recipient_idx
+      ON clinic_notifications (clinic_id, recipient_user_id, created_at DESC);
+  `);
+}
+
 async function ensureVaccinationSchema() {
   await db.query(`
     ALTER TABLE vaccinations ADD COLUMN IF NOT EXISTS manufacturer TEXT;
@@ -408,14 +468,18 @@ async function ensureBillingCatalogSchema() {
       recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
       observed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       temperature NUMERIC(5,2),
+      weight NUMERIC(8,2),
       heart_rate INTEGER,
       respiratory_rate INTEGER,
       hydration TEXT,
       appetite TEXT,
       pain_assessment TEXT,
       clinical_progress TEXT NOT NULL,
+      follow_up_action TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+    ALTER TABLE clinic_inpatient_observations ADD COLUMN IF NOT EXISTS weight NUMERIC(8,2);
+    ALTER TABLE clinic_inpatient_observations ADD COLUMN IF NOT EXISTS follow_up_action TEXT;
     CREATE INDEX IF NOT EXISTS clinic_inpatient_observations_stay_idx
       ON clinic_inpatient_observations (stay_id, observed_at DESC);
     CREATE TABLE IF NOT EXISTS clinic_inpatient_medication_administrations (
@@ -474,6 +538,7 @@ async function ensureTreatmentPlanSchema() {
       id SERIAL PRIMARY KEY,
       clinic_id INTEGER NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
       pet_id INTEGER NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+      appointment_id INTEGER REFERENCES appointments(id) ON DELETE SET NULL,
       treatment_plan_id INTEGER REFERENCES treatment_plans(id) ON DELETE SET NULL,
       diagnosis TEXT NOT NULL,
       procedure TEXT NOT NULL,
@@ -490,6 +555,7 @@ async function ensureTreatmentPlanSchema() {
     ALTER TABLE treatment_records ADD COLUMN IF NOT EXISTS cost NUMERIC(10, 2);
     ALTER TABLE treatment_records ADD COLUMN IF NOT EXISTS follow_up_instructions TEXT;
     ALTER TABLE treatment_records ADD COLUMN IF NOT EXISTS treatment_plan_id INTEGER REFERENCES treatment_plans(id) ON DELETE SET NULL;
+    ALTER TABLE treatment_records ADD COLUMN IF NOT EXISTS appointment_id INTEGER REFERENCES appointments(id) ON DELETE SET NULL;
     CREATE TABLE IF NOT EXISTS treatment_record_prescriptions (
       treatment_record_id INTEGER NOT NULL REFERENCES treatment_records(id) ON DELETE CASCADE,
       prescription_id INTEGER NOT NULL REFERENCES prescriptions(id) ON DELETE CASCADE,
@@ -502,7 +568,10 @@ async function ensureTreatmentPlanSchema() {
     ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS end_date DATE;
     ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS treatment_plan_id INTEGER
       REFERENCES treatment_plans(id) ON DELETE SET NULL;
+    ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS inpatient_stay_id INTEGER
+      REFERENCES clinic_inpatient_stays(id) ON DELETE SET NULL;
     CREATE INDEX IF NOT EXISTS prescriptions_pet_clinic_idx ON prescriptions(clinic_id, pet_id, issued_at DESC);
+    CREATE INDEX IF NOT EXISTS prescriptions_inpatient_stay_idx ON prescriptions(inpatient_stay_id) WHERE inpatient_stay_id IS NOT NULL;
     CREATE INDEX IF NOT EXISTS treatment_plans_pet_clinic_idx ON treatment_plans(clinic_id, pet_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS treatment_records_pet_clinic_idx ON treatment_records(clinic_id, pet_id, performed_at DESC);
   `);
@@ -654,13 +723,16 @@ async function seedSuperAdmin() {
     console.log('Created super_admin role with id', roleId);
   }
 
-  const existing = await db.query('SELECT id, role_id, name FROM users WHERE email = $1', [adminEmail]);
+  const existing = await db.query(
+    'SELECT id, role_id, name FROM users WHERE lower(trim(email)) = lower(trim($1))',
+    [adminEmail]
+  );
   if (existing.rows.length === 0) {
     await userModel.create({ name: adminName, email: adminEmail, password: adminPassword, role_id: roleId });
     console.log(`Created superadmin account: ${adminEmail}`);
   } else {
     const existingUser = existing.rows[0];
-    if (!existingUser.role_id) {
+    if (Number(existingUser.role_id) !== Number(roleId)) {
       await db.query('UPDATE users SET role_id = $1 WHERE id = $2', [roleId, existingUser.id]);
       console.log(`Assigned super_admin role to existing superadmin account: ${adminEmail}`);
     }
@@ -673,7 +745,26 @@ async function seedSuperAdmin() {
   console.log('super_admin seeding succeeded');
 }
 
+
+// TEMPORARY test route: delete after you confirm emails work
+app.get('/api/test-email', async (req, res) => {
+  try {
+    await sendEmail(
+      process.env.SENDER_EMAIL,
+      'Test email from VetIntel',
+      '<p>It works!</p>'
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Email failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.use('/api', apiRoutes);
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found. Check that the backend is running the latest version.', code: 'API_ROUTE_NOT_FOUND' });
+});
 
 app.use((err, req, res, next) => {
   console.error(err);
@@ -691,10 +782,17 @@ const port = process.env.PORT || 3000;
     await ensureAuditSchema();
     await ensureClinicsSchema();
     await ensureClinicRecordArchiveSchema();
+    await ensurePatientRegistrationSchema();
     await ensureVaccinationSchema();
     await ensureConsultationSchema();
+    await require('./controllers/patientDiagnosisController').ensureSchema();
+    await require('./controllers/diagnosisObservationController').ensureSchema();
     await ensureBillingCatalogSchema();
+    await require('./controllers/vaccineInventoryController').ensureSchema();
+    await require('./controllers/inventoryController').ensureSchema();
+    await require('./controllers/catalogConnections').ensureSchema();
     await ensureTreatmentPlanSchema();
+    await require('./controllers/reminderDetailsController').ensureSchema();
     await ensureTransferSchema();
     await ensureAppointmentWorkflowSchema();
     await ensureAdminSurfaceSchema();

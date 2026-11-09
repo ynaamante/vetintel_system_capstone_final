@@ -183,7 +183,7 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   editProfileBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: tc.border, borderRadius: radius.full, paddingHorizontal: 16, paddingVertical: 7 },
   editProfileText: { fontSize: 13, color: colors.primary, fontWeight: '500' },
   clinicCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF', borderRadius: radius.md, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: isDark ? '#2563EB' : '#BFDBFE' },
-  clinicLabel: { fontSize: 12, color: isDark ? '#93C5FD' : '#3B82F6' },
+  clinicLabel: { fontSize: 12, color: isDark ? '#D2E5DC' : '#087A70' },
   clinicName: { fontSize: 14, fontWeight: '600', color: isDark ? '#BFDBFE' : '#1E40AF' },
   changeText: { fontSize: 13, color: colors.primary, fontWeight: '500' },
   sectionTitle: { fontSize: 13, fontWeight: '600', color: tc.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },

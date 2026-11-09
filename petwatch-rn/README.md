@@ -4,10 +4,10 @@ A comprehensive React Native application (built with Expo and TypeScript) for ma
 
 ## Prerequisites
 
-- Node.js (v16 or higher)
+- Node.js 22.13+ or 24.3+ (the project includes a local Node 22 runtime for Expo commands)
 - npm or yarn
 - Expo CLI (optional globally) — or use `npx expo` / `npm run` scripts
-- A physical device or simulator (Android Studio / Xcode) to run the app
+- Google Chrome for the PC browser preview, or a physical device or simulator (Android Studio / Xcode) for the mobile app
 
 ## Installation & Setup
 
@@ -18,42 +18,48 @@ cd petwatch-rn
 npm install
 ```
 
-**PetWatch Dependencies:**
-
-**Production Dependencies:**
-- `expo` (v54.0.35) - Expo framework
-- `react` (19.1.0) - React library
-- `react-native` (0.81.5) - React Native framework
-- `@react-navigation/native` (v6.1.17) - Navigation library
-- `@react-navigation/native-stack` (v6.9.26) - Stack navigator
-- `@react-navigation/bottom-tabs` (v6.5.20) - Tab navigator
-- `@react-native-async-storage/async-storage` (2.2.0) - Local storage
-- `expo-linear-gradient` (v15.0.8) - Linear gradient support
-- `expo-status-bar` (v3.0.9) - Status bar management
-- `react-native-reanimated` (v4.1.1) - Animation library
-- `react-native-screens` (v4.16.0) - Screen management
-- `react-native-safe-area-context` (v5.6.0) - Safe area handling
-- `react-native-svg` (15.12.1) - SVG support
-- `react-native-qrcode-svg` (v6.3.1) - QR code generation
-- `react-native-toast-message` (v2.2.0) - Toast notifications
-- `@expo/vector-icons` (v15.0.3) - Icon library
-- `date-fns` (v3.6.0) - Date utilities
-- `typescript` (v5.9.2) - Type checking
-
-**Development Dependencies:**
-- `@babel/core` (v7.24.0) - Babel transpiler
-- `babel-preset-expo` (v54.0.10) - Expo Babel preset
-- `@types/react` (v19.1.10) - React type definitions
+The application targets Expo SDK 58, React Native 0.88, and React 19.3. Native package versions are aligned with Expo; see `package.json` for exact versions.
 
 ## Running the Application
 
-### Start Development Server
+### Open PetWatch on Your PC (Windows)
+
+If the preview server is already running:
+
+1. Open **Google Chrome** on your PC.
+2. Click the address bar at the top.
+3. Type **http://localhost:8081** and press **Enter**.
+4. Wait for PetWatch to load.
+
+If Chrome says **"This site can't be reached"**, start the preview server:
+
+1. Open the project in **VS Code**.
+2. Select **Terminal > New Terminal**.
+3. Paste this command and press **Enter**:
+
+   ```powershell
+   cd C:\Users\User\Desktop\capstone_vet\vetintel_system_capstone_final\petwatch-rn
+   ```
+
+   If your project is in a different location, use its `petwatch-rn` folder path instead.
+
+4. Run:
+
+   ```powershell
+   npm.cmd run web
+   ```
+
+5. Keep the terminal open. If Chrome does not open automatically, open the **localhost address printed in the terminal**. Expo may use another port if `8081` is already occupied.
+
+For a first-time setup, run `npm.cmd install` in the same folder before starting the preview. No phone, QR code, or Android emulator is needed for the browser preview. Sign-in and live data require the backend server to be running; the default local API address is `http://localhost:3000/api`.
+
+### Start Development Server (SDK 58)
 
 ```bash
 npm start
 ```
 
-This will launch the Expo CLI with a QR code for your mobile device.
+This launches Expo SDK 58 and displays a QR code. On Android, open the SDK 58-compatible Expo Go app and scan the code. Keep the phone and computer on the same Wi-Fi, or use the tunnel command below. The npm scripts use the project-local Node runtime, so no system-wide Node change is needed.
 
 ### Connect a Physical Device to the Backend
 
@@ -73,7 +79,7 @@ EXPO_PUBLIC_API_URL=https://your-backend-tunnel.ngrok-free.app/api
 Replace the example URL with your actual ngrok URL and keep the `/api` suffix. Restart Expo after changing the environment file, then start the app tunnel:
 
 ```bash
-npx expo start --tunnel
+npm.cmd start -- --tunnel
 ```
 
 For local web or iOS simulator development, the API URL defaults to `http://localhost:3000/api`. Android emulators typically need `http://10.0.2.2:3000/api`. A physical phone cannot use the computer's `localhost` address to reach the backend.

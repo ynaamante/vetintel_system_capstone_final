@@ -40,7 +40,7 @@ export default function LocalAuditTrailPage({ user }) {
       <div style={styles.page}>
         <div style={styles.statsGrid}>
           {[
-            ['Active Users', new Set(logs.map(log => log.user).filter(Boolean)).size, 'users', '#d8f4e8', '#005447'],
+            ['Active Users', new Set(logs.map(log => log.user).filter(Boolean)).size, 'users', '#d8f4e8', '#013826'],
             ['Total Actions', logs.length, 'file', '#dcfce7', '#16a34a'],
             ["Today's Activity", todayCount, 'calendar', '#fef3c7', '#d97706'],
             ['Critical Actions', criticalCount, 'info', '#f3e8ff', '#9333ea'],
@@ -82,7 +82,7 @@ export default function LocalAuditTrailPage({ user }) {
 }
 
 const styles = {
-  main: { flex: 1, overflowY: 'auto', background: '#f4f6f9' },
+  main: { flex: 1, overflowY: 'auto', background: '#f1f6ef' },
   page: { padding: '22px 28px 36px' },
   statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14, marginBottom: 18 },
   statCard: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 11, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 13 },
@@ -104,7 +104,7 @@ const styles = {
   th: { textAlign: 'left', padding: '0 7px 9px', borderBottom: '1px solid #e5e7eb', color: '#374151', fontSize: '.7rem' },
   td: { padding: '9px 7px', borderBottom: '1px solid #f1f5f9', color: '#475569', fontSize: '.72rem', verticalAlign: 'top' },
   mono: { padding: '9px 7px', borderBottom: '1px solid #f1f5f9', color: '#64748b', fontSize: '.69rem', fontFamily: 'monospace', whiteSpace: 'nowrap' },
-  badge: { display: 'inline-flex', padding: '3px 9px', borderRadius: 20, background: '#e7f5f2', border: '1px solid #b7e4d7', color: '#005447', fontSize: '.68rem', fontWeight: 600 },
+  badge: { display: 'inline-flex', padding: '3px 9px', borderRadius: 20, background: '#e7f4ec', border: '1px solid #b7e4d7', color: '#013826', fontSize: '.68rem', fontWeight: 600 },
   detailsButton: { border: '1px solid #dbe3ed', borderRadius: 7, background: '#fff', color: '#334155', padding: '5px 9px', fontSize: '.68rem', cursor: 'pointer', whiteSpace: 'nowrap' },
   overlay: { position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   modal: { width: 460, maxWidth: 'calc(100vw - 32px)', background: '#fff', borderRadius: 12, padding: 20, boxShadow: '0 18px 45px rgba(15,23,42,.2)' },

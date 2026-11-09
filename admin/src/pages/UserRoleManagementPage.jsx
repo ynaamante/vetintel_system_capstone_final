@@ -6,7 +6,7 @@ import { canViewFeature } from '../utils/permissionUtils';
 
 const ROLE_META = {
   owner: { color: '#d97706', bg: '#fffbeb', border: '#fde68a', icon: Icons.shield },
-  doctor: { color: '#005447', bg: '#e7f5f2', border: '#b7e4d7', icon: Icons.activity },
+  doctor: { color: '#013826', bg: '#e7f4ec', border: '#b7e4d7', icon: Icons.activity },
   assistant_doctor: { color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff', icon: Icons.activity },
   receptionist: { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', icon: Icons.users },
 };
@@ -284,7 +284,7 @@ export default function UserRoleManagementPage({ user }) {
         {/* STAT CARDS */}
         <div style={s.statsGrid}>
           {[
-          { iconBg: '#e7f5f2', label: 'Total Staff', value: users.length, sub: 'Total Staff' },
+          { iconBg: '#e7f4ec', label: 'Total Staff', value: users.length, sub: 'Total Staff' },
           { iconBg: '#f0fdf4', label: 'Active Staff', value: counts.active, sub: 'Active Staff' },
           { iconBg: '#fffbeb', label: 'Pending Activation', value: pendingActivation, sub: 'Pending Activation' },
           { iconBg: '#faf5ff', label: 'Approved Roles', value: 3, sub: 'Approved Roles' },
@@ -491,10 +491,10 @@ const s = {
   statLabel: { fontSize: '.72rem', color: '#64748b', marginTop: 2 },
   statValue: { fontFamily: "'DM Sans', sans-serif", fontSize: '1.55rem', fontWeight: 700, color: '#0f1117', letterSpacing: '-.03em', lineHeight: 1 },
   filterBar: { display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid #dfe4ea', borderRadius: 12, padding: '16px 20px', marginBottom: 20 },
-  searchWrap: { flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: '#f4f6f9', border: '1px solid #e8ecf0', borderRadius: 8, padding: '8px 12px' },
+  searchWrap: { flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: '#f1f6ef', border: '1px solid #e8ecf0', borderRadius: 8, padding: '8px 12px' },
   searchIcon: { width: 15, height: 15, display: 'flex', color: '#64748b', flexShrink: 0, fontSize: 14 },
   searchInput: { border: 'none', background: 'transparent', outline: 'none', fontSize: '.82rem', color: '#0f1117', width: '100%' },
-  select: { padding: '8px 12px', border: '1px solid #e8ecf0', borderRadius: 8, fontSize: '.82rem', color: '#0f1117', background: '#f4f6f9', outline: 'none', cursor: 'pointer' },
+  select: { padding: '8px 12px', border: '1px solid #e8ecf0', borderRadius: 8, fontSize: '.82rem', color: '#0f1117', background: '#f1f6ef', outline: 'none', cursor: 'pointer' },
   addBtn: { padding: '9px 18px', background: '#0f1117', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.82rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' },
   card: { background: '#fff', border: '1px solid #dfe4ea', borderRadius: 12, padding: '20px 0' },
   cardTitle: { fontSize: '.88rem', fontWeight: 600, color: '#0f1117' },
@@ -511,7 +511,7 @@ const m = {
   panel: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: '#fff', borderRadius: 16, width: 440, maxWidth: '90vw', maxHeight: '92vh', overflowY: 'auto', zIndex: 101, boxShadow: '0 20px 60px rgba(0,0,0,.15)' },
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 22px 16px' },
   headerTitle: { display: 'flex', alignItems: 'center', gap: 8, fontSize: '1rem', fontWeight: 600, color: '#0f1117' },
-  headerIcon: { width: 18, height: 18, display: 'flex', color: '#005447' },
+  headerIcon: { width: 18, height: 18, display: 'flex', color: '#013826' },
   closeBtn: { background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, display: 'flex' },
   divider: { height: 1, background: '#f1f5f9' },
   body: { padding: '18px 24px 8px' },
@@ -539,11 +539,11 @@ const m = {
   permissionCount: { border: '1px solid #e2e8f0', borderRadius: 8, padding: '3px 9px', fontWeight: 500, fontSize: '.68rem' },
   permissionGroup: { border: '1px solid #dbe4ee', borderRadius: 10, overflow: 'hidden', marginBottom: 6 },
   permissionRow: { width: '100%', display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', border: 0, padding: '10px 16px', fontSize: '.75rem', fontWeight: 600, color: '#0f2747', textAlign: 'left', cursor: 'pointer' },
-  permissionValue: { marginLeft: 'auto', color: '#005447', background: '#d8f4e8', borderRadius: 12, padding: '3px 9px', fontSize: '.68rem', fontWeight: 500 },
+  permissionValue: { marginLeft: 'auto', color: '#013826', background: '#d8f4e8', borderRadius: 12, padding: '3px 9px', fontSize: '.68rem', fontWeight: 500 },
   chevron: { color: '#94a3b8', fontSize: '1rem', lineHeight: 1, transition: 'transform .15s ease' },
   permissionItems: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px 18px', padding: '10px 16px 12px', background: '#fff' },
   permissionItem: { display: 'flex', alignItems: 'center', gap: 7, fontSize: '.69rem', lineHeight: 1.2 },
-  rolePill: { display: 'inline-block', color: '#005447', background: '#e7f5f2', border: '1px solid #b7e4d7', borderRadius: 7, padding: '3px 9px', marginBottom: 14 },
+  rolePill: { display: 'inline-block', color: '#013826', background: '#e7f4ec', border: '1px solid #b7e4d7', borderRadius: 7, padding: '3px 9px', marginBottom: 14 },
   profileFooter: { display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0, padding: '10px 24px 16px', borderTop: '1px solid #f1f5f9' },
   profileSecondaryBtn: { padding: '8px 14px', background: '#fff', color: '#0f1117', border: '1px solid #dfe4ea', borderRadius: 8, fontSize: '.76rem', fontWeight: 500, cursor: 'pointer' },
   profilePrimaryBtn: { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', background: '#0f0b22', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.76rem', fontWeight: 600, cursor: 'pointer' },

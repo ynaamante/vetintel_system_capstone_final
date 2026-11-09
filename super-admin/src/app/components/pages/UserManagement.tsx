@@ -115,7 +115,7 @@ export function UserManagement() {
   }
 
   return (
-    <div className="min-h-full bg-[#eef3ff] p-5 text-[#102956]">
+    <div className="min-h-full bg-[#fafbf8] p-5 text-[#172b24]">
       {toast && (
         <div
           role="status"
@@ -132,14 +132,14 @@ export function UserManagement() {
         </div>
       )}
 
-      <section className="mb-3 flex min-h-[78px] items-center justify-between rounded-xl border border-[#cbdcfb] bg-white px-4 py-3">
+      <section className="mb-3 flex min-h-[78px] items-center justify-between rounded-xl border border-[#d4e3d7] bg-white px-4 py-3">
         <div>
-          <label htmlFor="clinic-filter" className="mb-1 block text-[11px] text-[#5274b8]">Filter by Clinic</label>
+          <label htmlFor="clinic-filter" className="mb-1 block text-[11px] text-[#526B62]">Filter by Clinic</label>
           <select
             id="clinic-filter"
             value={selectedClinic}
             onChange={event => setSelectedClinic(event.target.value)}
-            className="h-8 w-48 rounded-lg border border-[#bfd4fa] bg-white px-3 text-xs text-[#102956] outline-none focus:ring-2 focus:ring-[#8eb5ff]"
+            className="h-8 w-48 rounded-lg border border-[#bfd4fa] bg-white px-3 text-xs text-[#172b24] outline-none focus:ring-2 focus:ring-[#8eb5ff]"
           >
             <option value="All">All</option>
             {clinics.map(clinic => <option key={clinic} value={clinic}>{clinic}</option>)}
@@ -151,13 +151,13 @@ export function UserManagement() {
         </p>
       </section>
 
-      <section className="overflow-hidden rounded-xl border border-[#cbdcfb] bg-white">
+      <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[850px] text-left">
             <thead className="bg-[#eef4ff]">
               <tr>
                 {['Clinic', 'Owner', 'Requested Role', 'Users', 'Request Date', 'Status', 'Action'].map(heading => (
-                  <th key={heading} className="px-4 py-3 text-[11px] font-semibold text-[#5274b8]">{heading}</th>
+                  <th key={heading} className="px-4 py-3 text-[11px] font-semibold text-[#526B62]">{heading}</th>
                 ))}
               </tr>
             </thead>
@@ -165,15 +165,15 @@ export function UserManagement() {
               {filteredRequests.map(request => (
                 <tr key={request.id} className="border-t border-[#e3ecfb]">
                   <td className="px-4 py-3 text-sm font-medium">{request.clinic}</td>
-                  <td className="px-4 py-3 text-sm text-[#5274b8]">{request.owner}</td>
+                  <td className="px-4 py-3 text-sm text-[#526B62]">{request.owner}</td>
                   <td className="px-4 py-3 text-sm">{request.role}</td>
-                  <td className="px-4 py-3 text-sm text-[#5274b8]">{request.users}</td>
-                  <td className="px-4 py-3 text-sm text-[#5274b8]">{request.requestDate}</td>
+                  <td className="px-4 py-3 text-sm text-[#526B62]">{request.users}</td>
+                  <td className="px-4 py-3 text-sm text-[#526B62]">{request.requestDate}</td>
                   <td className={`px-4 py-3 text-xs font-medium ${statusClass(request.status)}`}>{request.status}</td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => setViewingRequest(request)}
-                      className="flex items-center gap-1 rounded-lg bg-[#e8f0ff] px-3 py-1.5 text-xs font-medium text-[#2161e8] hover:bg-[#dbe8ff]"
+                      className="flex items-center gap-1 rounded-lg bg-[#e7f4ec] px-3 py-1.5 text-xs font-medium text-[#086b50] hover:bg-[#dbe8ff]"
                     >
                       <Eye className="h-3.5 w-3.5" /> View
                     </button>
@@ -188,26 +188,26 @@ export function UserManagement() {
       {viewingRequest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#152744]/60 p-4">
           <div className="w-full max-w-[512px] rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-start justify-between border-b border-[#cbdcfb] px-6 py-5">
+            <div className="flex items-start justify-between border-b border-[#d4e3d7] px-6 py-5">
               <div>
                 <h2 className="text-lg font-bold">Role Request Details</h2>
-                <p className="mt-1 text-xs text-[#5274b8]">{viewingRequest.clinic}</p>
+                <p className="mt-1 text-xs text-[#526B62]">{viewingRequest.clinic}</p>
               </div>
-              <button onClick={() => setViewingRequest(null)} aria-label="Close details" className="text-[#2161e8]">
+              <button onClick={() => setViewingRequest(null)} aria-label="Close details" className="text-[#086b50]">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="space-y-4 px-6 py-5">
               <div className="grid grid-cols-2 gap-x-5 gap-y-3 rounded-xl bg-[#eef4ff] p-4 text-sm">
-                <p>Requested Role: <span className="text-[#5274b8]">{viewingRequest.role}</span></p>
-                <p>Number of Users: <span className="text-[#5274b8]">{viewingRequest.users} {viewingRequest.users === 1 ? 'user' : 'users'}</span></p>
-                <p>Clinic: <span className="text-[#5274b8]">{viewingRequest.clinic}</span></p>
-                <p>Owner: <span className="text-[#5274b8]">{viewingRequest.owner}</span></p>
-                <p>Request Date: <span className="text-[#5274b8]">{viewingRequest.requestDate}</span></p>
+                <p>Requested Role: <span className="text-[#526B62]">{viewingRequest.role}</span></p>
+                <p>Number of Users: <span className="text-[#526B62]">{viewingRequest.users} {viewingRequest.users === 1 ? 'user' : 'users'}</span></p>
+                <p>Clinic: <span className="text-[#526B62]">{viewingRequest.clinic}</span></p>
+                <p>Owner: <span className="text-[#526B62]">{viewingRequest.owner}</span></p>
+                <p>Request Date: <span className="text-[#526B62]">{viewingRequest.requestDate}</span></p>
                 <p>Status: <span className={statusClass(viewingRequest.status)}>{viewingRequest.status}</span></p>
               </div>
-              <p className="rounded-xl bg-[#eef4ff] p-4 text-sm">Notes: <span className="text-[#5274b8]">{viewingRequest.notes}</span></p>
-              <p className="rounded-xl border border-[#82b5ff] bg-[#f0f7ff] p-4 text-xs text-[#2161e8]">
+              <p className="rounded-xl bg-[#eef4ff] p-4 text-sm">Notes: <span className="text-[#526B62]">{viewingRequest.notes}</span></p>
+              <p className="rounded-xl border border-[#82b5ff] bg-[#f0f7ff] p-4 text-xs text-[#086b50]">
                 <strong>Note:</strong> As Super Admin, you are only responsible for reviewing and assigning the requested role to the clinic owner. The clinic owner will manage role permissions on their end.
               </p>
             </div>
@@ -217,7 +217,7 @@ export function UserManagement() {
                 <button onClick={() => rejectRequest(viewingRequest)} className="rounded-lg bg-[#e52d2d] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#c92222]">Reject</button>
               </div>
             ) : (
-              <button onClick={() => setViewingRequest(null)} className="w-full px-6 pb-5 text-sm text-[#2161e8]">Close</button>
+              <button onClick={() => setViewingRequest(null)} className="w-full px-6 pb-5 text-sm text-[#086b50]">Close</button>
             )}
           </div>
         </div>
@@ -227,12 +227,12 @@ export function UserManagement() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#152744]/60 p-4">
           <div className="w-full max-w-[448px] rounded-2xl bg-white p-8 shadow-2xl">
             <h2 className="text-lg font-bold">Assign Role?</h2>
-            <p className="mt-3 text-sm leading-5 text-[#5274b8]">
-              Assign the <strong className="text-[#2161e8]">{assignmentRequest.role}</strong> role to <strong className="text-[#2161e8]">{assignmentRequest.clinic}</strong>? The clinic owner will be able to create staff accounts using this role.
+            <p className="mt-3 text-sm leading-5 text-[#526B62]">
+              Assign the <strong className="text-[#086b50]">{assignmentRequest.role}</strong> role to <strong className="text-[#086b50]">{assignmentRequest.clinic}</strong>? The clinic owner will be able to create staff accounts using this role.
             </p>
             <div className="mt-6 flex gap-3">
               <button onClick={confirmAssignment} className="flex-1 rounded-lg bg-[#079669] px-4 py-3 text-sm font-semibold text-white hover:bg-[#05845b]">Confirm Assignment</button>
-              <button onClick={() => setAssignmentRequest(null)} className="flex-1 rounded-lg bg-[#e8f0ff] px-4 py-3 text-sm text-[#2161e8] hover:bg-[#dbe8ff]">Back</button>
+              <button onClick={() => setAssignmentRequest(null)} className="flex-1 rounded-lg bg-[#e7f4ec] px-4 py-3 text-sm text-[#086b50] hover:bg-[#dbe8ff]">Back</button>
             </div>
           </div>
         </div>

@@ -1,0 +1,17 @@
+.visit-screening-fields { grid-column:1/-1; border:1px solid #cfe5dc; background:#f2f9f5; border-radius:12px; padding:16px; margin:0 0 16px; }
+.visit-screening-fields h3 { margin:0 0 12px; color:#07543e; font-size:16px; }
+.visit-screening-columns { display:grid; grid-template-columns:1.7fr 1fr; gap:24px; }
+.visit-screening-fields fieldset { border:0; padding:0; margin:0; min-width:0; }
+.visit-screening-fields fieldset+fieldset { border-left:1px solid #ccdad5; padding-left:24px; }
+.visit-screening-fields legend { padding:0; margin-bottom:10px; font-size:12px; font-weight:700; }
+.visit-screening-fields legend span { font-weight:400; }
+.visit-screening-fields label { display:flex; align-items:center; gap:8px; font-size:12px; margin:0 0 8px; line-height:1.4; cursor:pointer; }
+.visit-screening-fields input[type=checkbox] { flex-shrink:0; width:14px; height:14px; accent-color:#087052; }
+.visit-screening-symptoms { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.visit-screening-symptoms label { border:1px solid #dce7e1; border-radius:7px; background:white; padding:7px; margin:0; }
+.visit-screening-fields .visit-screening-other { margin-top:10px; }
+.visit-screening-other input { min-width:0; width:100%; padding:7px; border:1px solid #cddad5; border-radius:6px; }
+.visit-screening-fields .visit-screening-routine { margin-top:12px; }
+.visit-screening-preview { display:flex; flex-wrap:wrap; gap:12px; border-top:1px solid #d9e7df; padding-top:10px; margin-top:10px; font-size:12px; color:#174b3b; }
+.visit-screening-fields p { font-size:11px; line-height:1.5; color:#53675e; margin:10px 0 0; }
+@media(max-width:800px){.visit-screening-columns{grid-template-columns:1fr}.visit-screening-fields fieldset+fieldset{border:0;border-top:1px solid #ccdad5;padding:16px 0 0}.visit-screening-symptoms{grid-template-columns:repeat(2,minmax(0,1fr))}}

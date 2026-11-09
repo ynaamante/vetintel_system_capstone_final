@@ -1,65 +1,60 @@
-// theme/colors.ts
-// Tokens derived from the Vetintel mark: teal heartbeat → blue → violet.
-// `primary` is preserved so existing screens that already reference
-// colors.primary keep working unchanged.
-
+// Shared veterinary palette used across VetIntel and Petwatch.
 export const colors = {
-  // Brand gradient (logo-accurate)
-  teal: '#2DD4BF', // heartbeat line
-  blue: '#3B82F6', // dog / hand
-  violet: '#8B5CF6', // cat / wordmark
-  deepSpace: '#0B1221', // logo backdrop / splash background
-
-  // Primary stays blue — the dominant brand color used for buttons,
-  // links, and active states throughout the rest of the app.
-  primary: '#3B82F6',
-
-  // Neutrals
-  ink: '#1E293B',
-  slate: '#475569',
-  slateLight: '#64748B',
-  mist: '#94A3B8',
-  fog: '#E2E8F0',
-  cloud: '#F1F5F9',
-  paper: '#F8FAFC',
+  deepForest: '#075F4F',
+  botanicalTeal: '#087A70',
+  eucalyptus: '#6F9D8D',
+  paleSage: '#E1EFE8',
+  warmIvory: '#F7F8F5',
   white: '#FFFFFF',
 
-  // Semantic
-  success: '#16A34A',
-  successBg: '#F0FDF4',
-  warning: '#F59E0B',
-  warningBg: '#FEF3C7',
-  danger: '#DC2626',
-  dangerBg: '#FEE2E2',
-  secondary: '#8B5CF6',
-  secondaryBg: '#F3E8FF',
+  // Compatibility aliases used throughout existing Petwatch screens.
+  teal: '#087A70',
+  blue: '#087A70',
+  violet: '#6F9D8D',
+  deepSpace: '#12352D',
+  primary: '#087A70',
+  ink: '#1F2D28',
+  slate: '#526B62',
+  slateLight: '#6F8178',
+  mist: '#91A79C',
+  fog: '#D5E3DB',
+  cloud: '#E1EFE8',
+  paper: '#F7F8F5',
 
-  // Light theme
+  // Semantic colors remain distinct from the brand palette.
+  success: '#16845B',
+  successBg: '#E1EFE8',
+  warning: '#B7791F',
+  warningBg: '#FFF4D6',
+  danger: '#C53E3E',
+  dangerBg: '#FCE9E7',
+  secondary: '#6F9D8D',
+  secondaryBg: '#E1EFE8',
+
   light: {
-    background: '#FFFFFF',
-    surface: '#F8FAFC',
-    border: '#E2E8F0',
-    inputBg: '#F1F5F9',
-    text: '#1E293B',
-    textSecondary: '#475569',
-    textMuted: '#94A3B8',
+    background: '#F7F8F5',
+    surface: '#FFFFFF',
+    border: '#D5E3DB',
+    inputBg: '#F7F8F5',
+    text: '#1F2D28',
+    textSecondary: '#526B62',
+    textMuted: '#71877C',
   },
 
-  // Dark theme
   dark: {
-    background: '#0F172A',
-    surface: '#1E293B',
-    border: '#334155',
-    inputBg: '#1E293B',
-    text: '#F1F5F9',
-    textSecondary: '#CBD5E1',
-    textMuted: '#94A3B8',
+    background: '#10251F',
+    surface: '#18362E',
+    border: '#3D6859',
+    inputBg: '#18362E',
+    text: '#F7F8F5',
+    textSecondary: '#D2E5DC',
+    textMuted: '#A9C3B7',
   },
 };
 
 export const gradients = {
-  brand: ['#2DD4BF', '#3B82F6', '#8B5CF6'] as const,
-  brandSubtle: ['#2DD4BF22', '#3B82F622', '#8B5CF622'] as const,
+  brand: ['#075F4F', '#087A70', '#6F9D8D'] as const,
+  brandSubtle: ['#075F4F22', '#087A7022', '#6F9D8D22'] as const,
 };
 
 export const spacing = {

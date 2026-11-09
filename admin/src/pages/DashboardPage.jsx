@@ -1,220 +1,93 @@
-import {
-  LineChart, Line, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip,
-  ReferenceLine, ResponsiveContainer, Cell,
-} from 'recharts';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import Topbar from '../components/Topbar';
 import { Icons } from '../icons';
-import { LINE_DATA, BAR_DATA, RISK_DATA, ALERTS } from '../data/mockData';
-import { formatDateText } from '../utils/dateFormatting';
+import { canViewFeature } from '../utils/permissionUtils';
+import './dashboardPage.css';
 
-const CustomTooltip = ({ active, payload, label }) => {
+const api = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+const palette = ['#00731c', '#69bd17', '#94d76d', '#b6e883', '#e3f5d0'];
+const dateTime = value => value ? new Date(value).toLocaleString('en-PH', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not recorded';
+
+function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
-  return (
-    <div style={{
-      background: '#fff', border: '1px solid #e8ecf0',
-      borderRadius: 8, padding: '8px 12px',
-      fontSize: '.75rem', boxShadow: '0 2px 8px rgba(0,0,0,.08)',
-    }}>
-      <div style={{ color: '#64748b', marginBottom: 3 }}>{label || payload[0].name}</div>
-      <div style={{ fontWeight: 600, color: '#0f1117' }}>{payload[0].value} cases</div>
-    </div>
-  );
-};
-
-function StatCard({ label, value, valueRed, icon, iconBg, iconColor, sub, subType, isAlert, extra }) {
-  return (
-    <div style={{
-      ...s.stat,
-      ...(isAlert ? s.statAlert : {}),
-    }}>
-      <div style={s.statLabel}>{label}</div>
-      <div style={s.statRow}>
-        <div style={{ ...s.statVal, ...(valueRed ? { color: '#dc2626' } : {}) }}>{value}</div>
-        <div style={{ ...s.statMarker, background: iconBg }}>
-          <span style={{ color: iconColor, display: 'flex', width: 16, height: 16 }}>{icon}</span>
-        </div>
-      </div>
-      {sub && (
-        <div style={{
-          ...s.statSub,
-          color: subType === 'up' ? '#16a34a' : subType === 'down' ? '#dc2626' : '#64748b',
-        }}>
-          {sub}
-        </div>
-      )}
-      {extra}
-    </div>
-  );
+  return <div className="surveillance-tooltip"><strong>{label}</strong>{payload.map(item => <p key={item.dataKey} style={{ color: item.color }}>{item.name}: {item.value} cases</p>)}</div>;
+}
+function Stat({ title, value, children, alert }) {
+  return <section className="surveillance-stat"><h2>{title}</h2><strong className={alert ? 'is-alert' : ''}>{value}</strong><div>{children}</div></section>;
+}
+function AlertReview({ alert, days, user, onClose, onNavigate }) {
+  const ref = useRef(null);
+  useEffect(() => { const previous = document.activeElement; ref.current.showModal(); return () => previous?.focus(); }, []);
+  return <dialog ref={ref} className="surveillance-review" onCancel={event => { event.preventDefault(); onClose(); }} aria-labelledby="surveillance-review-title"><header><div><h2 id="surveillance-review-title">{alert.disease}</h2><p>Potential disease alert</p></div><button type="button" onClick={onClose} aria-label="Close alert review">{Icons.close}</button></header><span className="surveillance-status"><i />Pending Review</span><dl>{[['Current period', `${alert.cases} cases in the last ${days} days`], ['Previous period', `${alert.previous_cases} cases`], ['Reporting clinics', alert.reporting_clinics], ['Reporting area', alert.reporting_area || 'Not recorded'], ['Last reported', dateTime(alert.last_reported)]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><p className="surveillance-review-note">This increase is detected from recorded diagnoses. It requires review before it can be considered a verified alert.</p><footer><button type="button" onClick={onClose}>Close</button>{onNavigate && canViewFeature(user.permissions, user.role, 'Disease Monitoring') && <button type="button" className="surveillance-primary" onClick={() => { onClose(); onNavigate('disease'); }}>Open Disease Monitoring</button>}</footer></dialog>;
 }
 
-export default function DashboardPage({ user }) {
-  return (
-    <div style={s.main}>
-      <Topbar user={user} title="Intelligence Dashboard" subtitle="Community-wide disease surveillance and analytics" />
-      <div style={s.page}>
-
-        {/* STATS */}
-        <div style={s.statsGrid}>
-          <StatCard
-            label="Total Clinics Connected"
-            value="6"
-            icon={Icons.building}
-            iconBg="#e7f5f2" iconColor="#005447"
-            sub="6 of 8 clinics reporting"
-          />
-          <StatCard
-            label="Active Outbreak Alerts"
-            value="3" valueRed
-            icon={Icons.activity}
-            iconBg="#fef2f2" iconColor="#dc2626"
-            isAlert
-            extra={<div style={s.viewAllLink}>View all <span style={{ width: 12, height: 12, display: 'inline-flex' }}>{Icons.arrowRight}</span></div>}
-          />
-          <StatCard
-            label="Total Disease Cases"
-            value="547"
-            icon={Icons.trendUp}
-            iconBg="#fffbeb" iconColor="#d97706"
-            sub="+8% from last month" subType="up"
-          />
-          <StatCard
-            label="High Risk Cases"
-            value="79"
-            icon={Icons.shield}
-            iconBg="#fef2f2" iconColor="#dc2626"
-            sub="+12 since last week" subType="down"
-          />
-        </div>
-
-        {/* CHARTS */}
-        <div style={s.chartsRow}>
-          <div style={s.card}>
-            <div style={s.cardHd}>
-              <div>
-                <div style={s.cardTitle}>Monthly disease growth</div>
-                <div style={s.cardDesc}>Reported cases over time — identifies emerging trends and seasonal patterns</div>
-              </div>
-              <select style={s.select}><option>All diseases</option></select>
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={LINE_DATA}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#b8c4d3" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <ReferenceLine y={80} stroke="#fca5a5" strokeDasharray="4 4"
-                  label={{ value: 'Threshold', position: 'insideTopRight', fontSize: 10, fill: '#dc2626' }} />
-                <Line type="monotone" dataKey="cases" stroke="#005447" strokeWidth={2}
-                  dot={{ r: 3, fill: '#005447', strokeWidth: 0 }} activeDot={{ r: 5 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div style={s.card}>
-            <div style={s.cardHd}>
-              <div>
-                <div style={s.cardTitle}>Top 5 diseases</div>
-                <div style={s.cardDesc}>Most prevalent — red bars indicate cases above the alert threshold</div>
-              </div>
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={BAR_DATA} barSize={28}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#b8c4d3" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <ReferenceLine y={100} stroke="#fca5a5" strokeDasharray="4 4" />
-                <Bar dataKey="cases" radius={[4, 4, 0, 0]}>
-                  {BAR_DATA.map((d, i) => (
-                    <Cell key={i} fill={d.cases >= 100 ? '#dc2626' : '#139b76'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* RISK DISTRIBUTION */}
-        <div style={{ ...s.card, marginBottom: 14 }}>
-          <div style={s.cardTitle}>Risk Distribution</div>
-          <div style={{ ...s.cardDesc, marginBottom: 20 }}>
-            Proportion of cases by risk level — assesses overall network health
-          </div>
-          {RISK_DATA.map(r => (
-            <div key={r.label} style={s.riskRow}>
-              <div style={s.riskLabel}>
-                <div style={{ ...s.riskCircle, background: r.color }} />
-                {r.label}
-              </div>
-              <div style={s.riskTrack}>
-                <div style={{ ...s.riskFill, width: r.pct + '%' }} />
-              </div>
-              <span style={s.riskPct}>{r.pct}% · {r.cases}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* ALERTS */}
-        <div style={s.card}>
-          <div style={{ ...s.cardTitle, marginBottom: 16 }}>Active alerts</div>
-          {ALERTS.map(a => (
-            <div key={a.name} style={s.alertItem}>
-              <div style={s.alertTop}>
-                <div style={s.alertName}>
-                  <div style={{ ...s.alertPip, background: a.color }} />
-                  {a.name}
-                </div>
-                <span style={{
-                  ...s.pill,
-                  background: a.level === 'HIGH' ? '#e11d48' : '#f59e0b',
-                  color: '#fff',
-                }}>
-                  {a.level}
-                </span>
-              </div>
-              <div style={s.alertDesc}>{a.desc}</div>
-              <div style={s.alertDate}>{formatDateText(a.date, undefined, a.date)}</div>
-            </div>
-          ))}
-          <button style={s.viewAllBtn}>View all alerts</button>
-        </div>
-
+export default function DashboardPage({ user, onNavigate }) {
+  const [summary, setSummary] = useState(null);
+  const [days, setDays] = useState(30);
+  const [clinic, setClinic] = useState('all');
+  const [clinicOptions, setClinicOptions] = useState([]);
+  const [search, setSearch] = useState('');
+  const [selectedAlert, setSelectedAlert] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refresh, setRefresh] = useState(0);
+  useEffect(() => {
+    if (!user?.token) { setError('Sign in to load disease surveillance.'); setLoading(false); return; }
+    const controller = new AbortController();
+    setLoading(true); setError('');
+    const query = new URLSearchParams({ days: String(days) });
+    if (clinic !== 'all') query.set('clinic_id', clinic);
+    fetch(`${api}/disease-intelligence/summary?${query}`, { headers: { Authorization: `Bearer ${user.token}` }, signal: controller.signal, cache: 'no-store' })
+      .then(async response => { const data = await response.json(); if (!response.ok) throw Error(data.error || 'Unable to load dashboard data.'); setSummary(data); if (Array.isArray(data.clinic_options) && clinic === 'all') setClinicOptions(data.clinic_options); })
+      .catch(error => { if (error.name !== 'AbortError') { setError(error.message); setSummary(null); } })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [user?.token, user?.clinic_id, days, clinic, refresh]);
+  useEffect(() => {
+    const reload = () => setRefresh(value => value + 1);
+    window.addEventListener('vetintel:appointment-updated', reload);
+    window.addEventListener('focus', reload);
+    return () => { window.removeEventListener('vetintel:appointment-updated', reload); window.removeEventListener('focus', reload); };
+  }, []);
+  const diseases = useMemo(() => [...(summary?.diseases || [])].filter(item => Number(item.cases) > 0).sort((a, b) => Number(b.cases) - Number(a.cases)), [summary]);
+  const alerts = diseases.filter(item => Number(item.cases) >= 3 && Number(item.cases) > Number(item.previous_cases) * 1.4);
+  const alertRows = alerts.filter(item => `${item.disease} ${item.reporting_area || ''}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const cases = Number(summary?.total_cases) || 0;
+  const previous = Number(summary?.previous_cases) || 0;
+  const change = previous ? Math.round((cases - previous) / previous * 100) : null;
+  const topDiseases = diseases.slice(0, 5).map(item => ({ name: item.disease, cases: Number(item.cases) }));
+  const trend = useMemo(() => {
+    const raw = summary?.monthly_disease_trend || [];
+    const totals = new Map();
+    raw.forEach(item => totals.set(item.disease, (totals.get(item.disease) || 0) + Number(item.cases)));
+    const names = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([name]) => name);
+    const now = new Date(summary?.checked_at || Date.now());
+    const points = Array.from({ length: 6 }, (_, index) => { const date = new Date(now.getFullYear(), now.getMonth() - 5 + index, 1); return { key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`, month: date.toLocaleDateString('en-US', { month: 'short' }), a: 0, b: 0 }; });
+    raw.forEach(item => { const point = points.find(point => point.key === String(item.month).slice(0, 7)); const index = names.indexOf(item.disease); if (point && index >= 0) point[index === 0 ? 'a' : 'b'] += Number(item.cases); });
+    return { points, names };
+  }, [summary]);
+  const value = number => loading ? '—' : error ? '—' : number;
+  return <main className="surveillance-dashboard">
+    <Topbar user={user} title="Dashboard" subtitle="Community-wide veterinary disease surveillance" className="surveillance-topbar" actions={<label className="surveillance-search">{Icons.search}<input aria-label="Search disease alerts" placeholder="Search diseases or reporting clinics..." value={search} onChange={event => setSearch(event.target.value)} /></label>} />
+    <div className="surveillance-body">
+      <div className="surveillance-filters"><label>{Icons.calendar}<select aria-label="Reporting period" value={days} onChange={event => setDays(Number(event.target.value))}>{[30, 60, 90].map(value => <option key={value} value={value}>Last {value} Days</option>)}</select><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg></label><label>{Icons.building}<select aria-label="Reporting clinic" value={clinic} onChange={event => setClinic(event.target.value)}><option value="all">All Clinics</option>{clinicOptions.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg></label></div>
+      {error && <div role="alert" className="surveillance-error">{error}<button type="button" onClick={() => setRefresh(value => value + 1)}>Retry</button></div>}
+      {loading && <p role="status" className="surveillance-loading">Loading disease surveillance…</p>}
+      <div className="surveillance-stats">
+        <Stat title="Connected Clinics" value={value(summary?.active_clinics ?? 0)}>Participating veterinary clinics</Stat>
+        <Stat title="Reported Disease Cases" value={value(cases)}>{change !== null ? <span className="surveillance-change">{change >= 0 ? '↑ +' : '↓ '}{change}% from previous {days} days</span> : `Reported in the last ${days} days`}</Stat>
+        <Stat title="Potential Disease Alerts" value={value(alerts.length)} alert>Unusual increase in cases</Stat>
+        <Stat title="Verified Alerts" value={value(summary?.verified_alerts ?? 0)}>No verified alerts recorded</Stat>
       </div>
+      {alerts.length > 0 ? <section className="surveillance-banner"><div><h2>Unusual {alerts[0].disease} Activity</h2><p>Cases above recent baseline · {alerts[0].reporting_clinics || 1} reporting clinic{Number(alerts[0].reporting_clinics) === 1 ? '' : 's'}</p></div><button type="button" className="surveillance-primary" onClick={() => setSelectedAlert(alerts[0])}>Review Alert</button></section> : <section className="surveillance-banner is-clear"><div><h2>{loading ? 'Checking disease activity' : 'No unusual disease activity detected'}</h2><p>{loading ? 'Reviewing recorded cases in the selected period.' : 'No case increases meet the alert threshold in the selected period.'}</p></div>{Icons.shield}</section>}
+      <div className="surveillance-charts">
+        <section className="surveillance-card"><h2>Reported Disease Trends</h2><p>Monthly reported cases for selected common diseases over time.</p><div className="surveillance-chart">{trend.names.length ? <ResponsiveContainer width="100%" height="100%"><LineChart data={trend.points} margin={{ top: 15, right: 18, left: -15, bottom: 0 }}><CartesianGrid stroke="#e8eee9" strokeDasharray="2 2" vertical /><XAxis dataKey="month" tick={{ fontSize: 11, fill: '#29483c' }} axisLine={{ stroke: '#bcc9c0' }} tickLine={false} /><YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#40564b' }} axisLine={{ stroke: '#bcc9c0' }} tickLine={false} /><Tooltip content={<ChartTooltip />} />{trend.names.map((name, index) => <Line key={name} name={name} dataKey={index === 0 ? 'a' : 'b'} type="linear" stroke={palette[index]} strokeWidth={2.4} dot={{ r: 3, fill: '#fff', strokeWidth: 2 }} activeDot={{ r: 5 }} />)}</LineChart></ResponsiveContainer> : <div className="surveillance-chart-empty">{loading ? 'Loading trends…' : 'No disease trends recorded yet.'}</div>}</div><div className="surveillance-legend">{trend.names.map((name, index) => <span key={name}><i style={{ background: palette[index] }} />{name}</span>)}</div></section>
+        <section className="surveillance-card"><h2>Most Reported Diseases</h2><p>Number of reported cases in the last {days} days.</p><div className="surveillance-chart">{topDiseases.length ? <ResponsiveContainer width="100%" height="100%"><BarChart data={topDiseases} layout="vertical" margin={{ top: 14, right: 34, left: 0, bottom: 0 }} barSize={17}><CartesianGrid stroke="#e8eee9" horizontal={false} /><XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: '#40564b' }} axisLine={{ stroke: '#bcc9c0' }} tickLine={false} /><YAxis type="category" dataKey="name" width={135} tick={{ fontSize: 10, fill: '#193a2a' }} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltip />} /><Bar dataKey="cases" name="Cases">{topDiseases.map((item, index) => <Cell key={item.name} fill={palette[index]} />)}<LabelList dataKey="cases" position="right" fill="#193a2a" fontSize={11} fontWeight={700} /></Bar></BarChart></ResponsiveContainer> : <div className="surveillance-chart-empty">{loading ? 'Loading diseases…' : 'No diseases reported in this period.'}</div>}</div></section>
+      </div>
+      <section className="surveillance-card surveillance-alerts"><h2>Recent Disease Alerts</h2><p>Latest disease alerts from across the clinic network.</p><div className="surveillance-table-wrap"><table><thead><tr><th>Disease</th><th>Reporting Area</th><th>Status</th><th>Last Updated</th><th>Action</th></tr></thead><tbody>{alertRows.map(alert => <tr key={alert.disease}><td><strong>{alert.disease}</strong></td><td>{alert.reporting_area || 'Not recorded'}</td><td><span className="surveillance-status"><i />Pending Review</span></td><td>{dateTime(alert.last_reported)}</td><td><button type="button" onClick={() => setSelectedAlert(alert)}>Review {Icons.chevronRight}</button></td></tr>)}{!alertRows.length && <tr><td colSpan="5" className="surveillance-table-empty">{loading ? 'Checking recorded cases…' : search ? 'No disease alerts match your search.' : 'No recent disease alerts in the selected period.'}</td></tr>}</tbody></table></div></section>
+      <footer className="surveillance-footer"><span>{Icons.info}Aggregated surveillance data only · Individual patient records remain private</span><span>Last updated {summary?.checked_at ? new Date(summary.checked_at).toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' }) : '—'}</span></footer>
     </div>
-  );
+    {selectedAlert && <AlertReview alert={selectedAlert} days={days} user={user} onClose={() => setSelectedAlert(null)} onNavigate={onNavigate} />}
+  </main>;
 }
-
-const s = {
-  main:       { flex: 1, overflowY: 'auto', background: '#f5f7fa' },
-  page:       { padding: '24px 28px 36px' },
-  statsGrid:  { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14, marginBottom: 20 },
-  stat:       { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '20px 22px', minHeight: 118 },
-  statAlert:  { borderTop: '3px solid #f43f4c', paddingTop: 17 },
-  statLabel:  { fontSize: '.82rem', fontWeight: 500, color: '#64748b', marginBottom: 12 },
-  statRow:    { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' },
-  statVal:    { fontFamily: "'DM Sans', sans-serif", fontSize: '2rem', fontWeight: 600, lineHeight: 1, letterSpacing: '-.03em' },
-  statMarker: { width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  statSub:    { fontSize: '.78rem', marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 },
-  viewAllLink:{ fontSize: '.78rem', color: '#005447', fontWeight: 600, marginTop: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 },
-  chartsRow:  { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 },
-  card:       { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '20px 22px', marginBottom: 14 },
-  cardHd:     { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 },
-  cardTitle:  { fontSize: '1rem', fontWeight: 600, color: '#0f1117', letterSpacing: '-.01em' },
-  cardDesc:   { fontSize: '.82rem', color: '#64748b', marginTop: 4, lineHeight: 1.45, maxWidth: 620 },
-  select:     { padding: '7px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '.8rem', color: '#334155', background: '#f8fafc', outline: 'none' },
-  riskRow:   { display: 'grid', gridTemplateColumns: '150px 1fr 120px', alignItems: 'center', gap: 12, marginBottom: 14 },
-  riskLabel:  { display: 'flex', alignItems: 'center', gap: 7, fontSize: '.84rem', color: '#0f1117', flexShrink: 0 },
-  riskCircle: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
-  riskTrack:  { height: 10, background: '#e2e8f0', borderRadius: 10, overflow: 'hidden' },
-  riskFill:   { height: '100%', borderRadius: 10, background: '#090817' },
-  riskPct:    { fontSize: '.82rem', color: '#334155', minWidth: 100, textAlign: 'right', fontWeight: 600 },
-  alertItem:  { padding: '16px 18px', border: '1px solid #dbe3ee', borderRadius: 10, marginBottom: 10 },
-  alertTop:   { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  alertName:  { display: 'flex', alignItems: 'center', gap: 9, fontSize: '.95rem', fontWeight: 600 },
-  alertPip:   { width: 7, height: 7, borderRadius: '50%', flexShrink: 0 },
-  pill:       { padding: '2px 9px', borderRadius: 20, fontSize: '.65rem', fontWeight: 600, letterSpacing: '.04em' },
-  alertDesc:  { fontSize: '.82rem', color: '#64748b', marginTop: 6, paddingLeft: 16 },
-  alertDate:  { fontSize: '.78rem', color: '#64748b', marginTop: 5, paddingLeft: 16 },
-  viewAllBtn: { width: '100%', padding: 11, border: '1px solid #dbe3ee', borderRadius: 8, fontSize: '.82rem', color: '#334155', background: '#fff', cursor: 'pointer', fontWeight: 600 },
-};

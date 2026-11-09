@@ -1,87 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  LineChart, Line, AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip,
-  ReferenceLine, ResponsiveContainer,
+  LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import Topbar from '../components/Topbar';
-import { Icons } from '../icons';
 import { canViewFeature } from '../utils/permissionUtils';
 
-/* ── DATA ── */
-const VACC_TREND = [
-  { month: 'Sep', rate: 80 },
-  { month: 'Oct', rate: 78 },
-  { month: 'Nov', rate: 72 },
-  { month: 'Dec', rate: 69 },
-  { month: 'Jan', rate: 66 },
-  { month: 'Feb', rate: 63 },
-];
-
-const SPREAD_COEFF = [
-  { month: 'Sep', value: 2.0 },
-  { month: 'Oct', value: 2.3 },
-  { month: 'Nov', value: 2.6 },
-  { month: 'Dec', value: 2.9 },
-  { month: 'Jan', value: 3.1 },
-  { month: 'Feb', value: 3.5 },
-];
-
-const AVG_RISK = [
-  { month: 'Sep', score: 32 },
-  { month: 'Oct', score: 35 },
-  { month: 'Nov', score: 40 },
-  { month: 'Dec', score: 44 },
-  { month: 'Jan', score: 48 },
-  { month: 'Feb', score: 51 },
-];
-
-const MONTHLY_REPORTS = [
-  {
-    month: 'February',
-    items: [
-      { label: 'New Cases Reported',         value: '234',  change: '+28%',  up: true  },
-      { label: 'Vaccination Rate',            value: '63%',  change: '−5%',   up: false },
-      { label: 'High Risk Cases Resolved',    value: '89',   change: '+12%',  up: true  },
-      { label: 'Avg Days to Resolution',      value: '4.2',  change: '−0.8',  up: true  },
-    ],
-  },
-  {
-    month: 'January',
-    items: [
-      { label: 'New Cases Reported',         value: '189',  change: '+14%',  up: true  },
-      { label: 'Vaccination Rate',            value: '66%',  change: '−3%',   up: false },
-      { label: 'High Risk Cases Resolved',    value: '74',   change: '+6%',   up: true  },
-      { label: 'Avg Days to Resolution',      value: '5.0',  change: '+0.4',  up: false },
-    ],
-  },
-];
-
-const INSIGHTS = [
-  {
-    title: 'Declining Vaccination Rates',
-    desc: 'Vaccination coverage has dropped 15% over 6 months, correlating with rising disease spread.',
-    action: 'Coordinate community vaccination drives across all clinics.',
-    color: '#dc2626', bgColor: '#fef2f2', borderColor: '#fca5a5',
-    icon: 'activity',
-  },
-  {
-    title: 'Rising Disease Transmission',
-    desc: 'Spread coefficient increased 66.7%, indicating higher transmission across the network.',
-    action: 'Increase surveillance frequency and alert connected clinics.',
-    color: '#d97706', bgColor: '#fffbeb', borderColor: '#fde68a',
-    icon: 'activity',
-  },
-  {
-    title: 'Community Risk Escalating',
-    desc: 'Average risk score rose 59% community-wide — early intervention window is narrowing.',
-    action: 'Prioritize high-risk case follow-ups across all clinics.',
-    color: '#f97316', bgColor: '#fff7ed', borderColor: '#fed7aa',
-    icon: 'shield',
-  },
-];
-
-/* ── TOOLTIP ── */
+/* â”€â”€ DATA â”€â”€ */
 const ChartTooltip = ({ active, payload, label, suffix = '' }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -92,244 +17,127 @@ const ChartTooltip = ({ active, payload, label, suffix = '' }) => {
   );
 };
 
-/* ── MAIN PAGE ── */
+/* â”€â”€ MAIN PAGE â”€â”€ */
 export function CommunityAnalyticsPage({ user }) {
-  const [openMonth, setOpenMonth] = useState('February');
-
+  const [summary, setSummary] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const canView = canViewFeature(user.permissions, user.role, 'Community Analytics');
 
+  useEffect(() => {
+    if (!user?.token) { setError('Sign in to load community analytics.'); setLoading(false); return undefined; }
+    const controller = new AbortController();
+    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+    fetch(`${apiUrl}/disease-intelligence/summary?days=90`, { headers: { Authorization: `Bearer ${user.token}` }, signal: controller.signal })
+      .then(async response => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || `Unable to load community analytics (HTTP ${response.status}).`);
+        setSummary(payload); setError('');
+      }).catch(loadError => { if (loadError.name !== 'AbortError') setError(loadError.message || 'Unable to load community analytics.'); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [user?.token]);
+
+  const monthlyCases = useMemo(() => {
+    const grouped = new Map();
+    (summary?.trend || []).forEach(item => {
+      const date = new Date(item.case_date);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      grouped.set(key, { month: label, cases: (grouped.get(key)?.cases || 0) + Number(item.cases || 0) });
+    });
+    return [...grouped.entries()].sort(([first], [second]) => first.localeCompare(second)).map(([, item]) => item);
+  }, [summary?.trend]);
+  const vaccinationData = useMemo(() => (summary?.vaccination_trend || []).map(item => ({
+    month: new Date(item.month).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+    records: Number(item.records) || 0,
+  })), [summary?.vaccination_trend]);
+  const diseaseData = (summary?.diseases || []).slice(0, 10).map(item => ({ disease: item.disease, cases: Number(item.cases) || 0 }));
+  const severityData = (summary?.risk_distribution || []).map(item => ({ level: item.risk_level, cases: Number(item.cases) || 0 }));
+  const activePets = Number(summary?.active_pets) || 0;
+  const currentVaccinePets = Number(summary?.pets_with_current_vaccine_record) || 0;
+  const coverage = activePets ? Math.round(currentVaccinePets * 100 / activePets) : 0;
+  const highCritical = severityData.filter(item => ['High', 'Critical'].includes(item.level)).reduce((total, item) => total + item.cases, 0);
+  const cases = Number(summary?.total_cases) || 0;
+  const previousCases = Number(summary?.previous_cases) || 0;
+  const caseChange = previousCases ? Math.round((cases - previousCases) * 100 / previousCases) : 0;
+  const leadingDisease = diseaseData[0];
+
   if (!canView) {
-    return (
-      <div style={s.main}>
-        <Topbar user={user} title="Community Analytics" subtitle="Population-level health trends and insights" />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', color: '#64748b' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔒</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>Access Denied</div>
-          <div style={{ fontSize: '0.95rem' }}>You don't have permission to view this feature</div>
-        </div>
-      </div>
-    );
+    return <div style={s.main}><Topbar user={user} title="Community Analytics" subtitle="Aggregated disease and vaccination records" />
+      <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh', color: '#64748b' }}>You don't have permission to view this feature.</div>
+    </div>;
   }
 
-  return (
-    <div style={s.main}>
-      <Topbar
-        user={user}
-        title="Community Analytics"
-        subtitle="Population-level health trends and insights"
-      />
-      <div style={s.page}>
-
-        {/* TOP STATS */}
-        <div style={s.statsRow}>
-          <StatCard
-            label="Vaccination Coverage"
-            value="63%"
-            change="−15% decrease"
-            changeUp={false}
-          />
-          <StatCard
-            label="Disease Spread Rate"
-            value="3.5"
-            change="+66.7% increase"
-            changeUp={false}
-          />
-          <StatCard
-            label="Average Risk Score"
-            value="51"
-            change="+59% increase"
-            changeUp={false}
-          />
-        </div>
-
-        {/* VACCINATION COVERAGE TREND */}
+  return <div style={s.main}>
+    <Topbar user={user} title="Community Analytics" subtitle="Aggregated diagnoses and vaccination records from connected clinics" />
+    <div style={s.page}>
+      {error && <div role="alert" style={{ ...s.card, color: '#b42318' }}>{error}</div>}
+      {loading && <div role="status" style={{ ...s.card, color: '#64748b' }}>Loading clinic reports…</div>}
+      <div style={s.statsRow}>
+        <StatCard label="Patients with current vaccine record" value={`${coverage}%`} detail={`${currentVaccinePets} of ${activePets} active patients have a recorded administered vaccine that is not past its due date.`} />
+        <StatCard label="Diagnosed cases · 90 days" value={cases} detail={`${caseChange > 0 ? '+' : ''}${caseChange}% compared with the previous 90-day period.`} />
+        <StatCard label="High / critical severity" value={highCritical} detail="Based on severity or inpatient urgency explicitly saved by clinic staff." />
+      </div>
+      <div style={s.card}>
+        <div style={s.cardHd}><div><div style={s.cardTitle}>Monthly Diagnosed Cases</div><div style={s.cardDesc}>Diagnosis entries deduplicated by patient, diagnosis, clinic, and day.</div></div><span style={s.cardDesc}>{summary?.affected_clinics || 0} clinics reporting</span></div>
+        {monthlyCases.length ? <ResponsiveContainer width="100%" height={220}><LineChart data={monthlyCases}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#b8c4d3" /><XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltip suffix=" cases" />} />
+          <Line type="monotone" dataKey="cases" stroke="#139b76" strokeWidth={2.5} dot={{ r: 4, fill: '#139b76' }} />
+        </LineChart></ResponsiveContainer> : <p style={{ color: '#64748b', fontSize: '.8rem' }}>No diagnoses were recorded in the last 90 days.</p>}
+      </div>
+      <div style={s.chartsRow}>
         <div style={s.card}>
-          <div style={s.cardHd}>
-            <div>
-              <div style={s.cardTitle}>Vaccination Coverage Trend</div>
-              <div style={s.cardDesc}>
-                Monitors the percentage of vaccinated animals over time, with the herd immunity threshold highlighted to assess community protection.
-              </div>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={VACC_TREND}>
-              <defs>
-                <linearGradient id="vaccGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#139b76" stopOpacity={0.18} />
-                  <stop offset="95%" stopColor="#139b76" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#b8c4d3" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<ChartTooltip suffix="%" />} />
-              <ReferenceLine
-                y={70} stroke="#fca5a5" strokeDasharray="5 4"
-                label={{ value: 'Herd Immunity Threshold', position: 'insideTopRight', fontSize: 10, fill: '#dc2626' }}
-              />
-              <Area
-                type="monotone" dataKey="rate"
-                stroke="#139b76" strokeWidth={2}
-                fill="url(#vaccGrad)"
-                dot={{ r: 4, fill: '#139b76', strokeWidth: 0 }}
-                activeDot={{ r: 6 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-          <div style={s.warningBanner}>
-            <span style={{ width: 14, height: 14, display: 'flex', color: '#d97706', flexShrink: 0 }}>{Icons.activity}</span>
-            <span style={{ fontSize: '.78rem', color: '#92400e' }}>
-              <strong>Dropped below herd immunity threshold</strong> — November 2025
-            </span>
-          </div>
+          <div style={s.cardHd}><div><div style={s.cardTitle}>Vaccination Records Added</div><div style={s.cardDesc}>Administered vaccination records by month.</div></div></div>
+          {vaccinationData.length ? <ResponsiveContainer width="100%" height={210}><LineChart data={vaccinationData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#b8c4d3" /><XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltip suffix=" records" />} />
+            <Line type="monotone" dataKey="records" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 4, fill: '#2563eb' }} />
+          </LineChart></ResponsiveContainer> : <p style={{ color: '#64748b', fontSize: '.8rem' }}>No administered vaccination records in the last six months.</p>}
         </div>
-
-        {/* DISEASE SPREAD COEFFICIENT */}
         <div style={s.card}>
-          <div style={s.cardHd}>
-            <div>
-              <div style={s.cardTitle}>Disease Spread Coefficient</div>
-              <div style={s.cardDesc}>
-                Tracks the rate at which diseases spread across the network, where values above 2.0 indicate elevated transmission risk.
-              </div>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={SPREAD_COEFF}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#b8c4d3" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 4]} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<ChartTooltip />} />
-              <ReferenceLine
-                y={2} stroke="#4ade80" strokeDasharray="5 4"
-                label={{ value: 'Safe below 2.0', position: 'insideTopLeft', fontSize: 10, fill: '#16a34a' }}
-              />
-              <Line
-                type="monotone" dataKey="value"
-                stroke="#f59e0b" strokeWidth={2.5}
-                dot={{ r: 4, fill: '#f59e0b', strokeWidth: 0 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-          <div style={s.currentBadge}>
-            Current: <strong>3.5</strong>
-            <span style={{ width: 14, height: 14, display: 'flex', color: '#dc2626', marginLeft: 4 }}>{Icons.activity}</span>
-          </div>
+          <div style={s.cardHd}><div><div style={s.cardTitle}>Cases by Disease</div><div style={s.cardDesc}>Most frequently recorded diagnosis names in the selected period.</div></div></div>
+          {diseaseData.length ? <ResponsiveContainer width="100%" height={210}><BarChart data={diseaseData} layout="vertical" barSize={18}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#b8c4d3" /><XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+            <YAxis type="category" dataKey="disease" width={130} tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltip suffix=" cases" />} />
+            <Bar dataKey="cases" radius={[0, 5, 5, 0]}>{diseaseData.map((item, index) => <Cell key={index} fill="#139b76" />)}</Bar>
+          </BarChart></ResponsiveContainer> : <p style={{ color: '#64748b', fontSize: '.8rem' }}>No diagnosis records to compare.</p>}
         </div>
-
-        {/* AVERAGE RISK SCORE TREND */}
-        <div style={s.card}>
-          <div style={s.cardHd}>
-            <div>
-              <div style={s.cardTitle}>Average Risk Score Trend</div>
-              <div style={s.cardDesc}>
-                Displays the community-wide average risk score over time, showing whether overall health conditions are improving or deteriorating.
-              </div>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={AVG_RISK}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#b8c4d3" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<ChartTooltip />} />
-              <Line
-                type="monotone" dataKey="score"
-                stroke="#dc2626" strokeWidth={2}
-                dot={{ r: 4, fill: '#dc2626', strokeWidth: 0 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* KEY INSIGHTS */}
-        <div style={s.insightsRow}>
-          {INSIGHTS.map((ins, i) => (
-            <div key={i} style={{
-              ...s.insightCard,
-              borderTop: `3px solid ${ins.color}`,
-            }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 9,
-                background: ins.bgColor, border: `1px solid ${ins.borderColor}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginBottom: 12, flexShrink: 0,
-              }}>
-                <span style={{ width: 16, height: 16, display: 'flex', color: ins.color }}>
-                  {Icons[ins.icon]}
-                </span>
-              </div>
-              <div style={s.insightTitle}>{ins.title}</div>
-              <div style={s.insightDesc}>{ins.desc}</div>
-              <div style={s.insightActionLabel}>Recommended Action:</div>
-              <div style={s.insightAction}>{ins.action}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* MONTHLY REPORTS ACCORDION */}
-        {MONTHLY_REPORTS.map(report => (
-          <div key={report.month} style={s.accordion}>
-            <div style={s.accordionHd} onClick={() => setOpenMonth(openMonth === report.month ? null : report.month)}>
-              <span style={s.accordionTitle}>{report.month}</span>
-              <span style={{
-                width: 16, height: 16, display: 'flex', color: '#64748b',
-                transform: openMonth === report.month ? 'rotate(180deg)' : 'none',
-                transition: 'transform .2s',
-              }}>
-                {Icons.arrowRight /* repurposed as chevron */}
-              </span>
-            </div>
-            {openMonth === report.month && (
-              <div style={s.accordionBody}>
-                <div style={s.metricsGrid}>
-                  {report.items.map((item, i) => (
-                    <div key={i} style={s.metricItem}>
-                      <div style={s.metricLabel}>{item.label}</div>
-                      <div style={s.metricVal}>{item.value}</div>
-                      <div style={{
-                        ...s.metricChange,
-                        color: item.up ? '#16a34a' : '#dc2626',
-                      }}>
-                        {item.up ? '↑' : '↓'} {item.change}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-
+      </div>
+      <div style={s.card}>
+        <div style={s.cardHd}><div><div style={s.cardTitle}>Recorded Severity Summary</div><div style={s.cardDesc}>Counts reflect only recorded severity and urgency, with unrated diagnoses kept visible.</div></div></div>
+        {severityData.length ? <ResponsiveContainer width="100%" height={190}><BarChart data={severityData} barSize={42}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#b8c4d3" /><XAxis dataKey="level" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltip suffix=" cases" />} />
+          <Bar dataKey="cases" radius={[4, 4, 0, 0]}>{severityData.map((item, index) => <Cell key={index} fill={({ Critical: '#dc2626', High: '#f97316', Moderate: '#f59e0b', Low: '#16a34a', Unrated: '#94a3b8' })[item.level]} />)}</Bar>
+        </BarChart></ResponsiveContainer> : <p style={{ color: '#64748b', fontSize: '.8rem' }}>No saved diagnosis records to summarize.</p>}
+      </div>
+      <div style={s.insightsRow}>
+        <Insight title="Leading recorded diagnosis" description={leadingDisease ? `${leadingDisease.disease} has ${leadingDisease.cases} deduplicated cases in the last 90 days.` : 'No diagnoses are available in this period.'} />
+        <Insight title="Severity data coverage" description={`${highCritical} cases have an explicitly recorded high or critical severity. Other diagnoses remain unrated unless the clinic records a severity.`} />
+        <Insight title="Vaccination record coverage" description={`${coverage}% of active patients have at least one administered vaccination record with a future due date. This is a record-based indicator, not a complete vaccine schedule assessment.`} />
+      </div>
+      <div style={s.card}>
+        <div style={{ ...s.cardTitle, marginBottom: 12 }}>Monthly Case Summary</div>
+        {monthlyCases.length ? <div style={{ display: 'grid', gap: 8 }}>{monthlyCases.map(item => <div key={item.month} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, borderBottom: '1px solid #f1f5f9', padding: '8px 0', fontSize: '.8rem' }}><span>{item.month}</span><strong>{item.cases} diagnoses</strong></div>)}</div> : <div style={{ color: '#64748b', fontSize: '.8rem' }}>No monthly case data is available.</div>}
       </div>
     </div>
-  );
+  </div>;
 }
 
-/* ── STAT CARD ── */
-function StatCard({ label, value, change, changeUp }) {
-  return (
-    <div style={s.statCard}>
-      <div style={s.statLabel}>{label}</div>
-      <div style={{ ...s.statVal, color: changeUp ? '#0f1117' : '#dc2626' }}>{value}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6 }}>
-        <span style={{ fontSize: '.72rem', color: changeUp ? '#16a34a' : '#dc2626' }}>
-          {changeUp ? '↑' : '↓'} {change}
-        </span>
-      </div>
-    </div>
-  );
+function Insight({ title, description }) {
+  return <article style={s.insightCard}><div style={s.insightTitle}>{title}</div><p style={s.insightDesc}>{description}</p></article>;
 }
-
-/* ── STYLES ── */
+function StatCard({ label, value, detail }) {
+  return <div style={s.statCard}><div style={s.statLabel}>{label}</div><div style={s.statVal}>{value}</div><div style={{ fontSize: '.72rem', color: '#64748b', marginTop: 6, lineHeight: 1.45 }}>{detail}</div></div>;
+}
 const s = {
-  main: { flex: 1, overflowY: 'auto', background: '#f4f6f9' },
+  main: { flex: 1, overflowY: 'auto', background: '#f1f6ef' },
   page: { padding: '24px 28px' },
 
   statsRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 16 },
+  chartsRow: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14, alignItems: 'start' },
   statCard: {
     background: '#fff', border: '1px solid #e8ecf0',
     borderRadius: 14, padding: '20px 22px',
@@ -396,3 +204,7 @@ const tt = {
   label: { color: '#64748b', marginBottom: 3 },
   val:   { fontWeight: 600, color: '#0f1117' },
 };
+
+
+
+

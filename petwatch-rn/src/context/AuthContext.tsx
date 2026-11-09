@@ -4,6 +4,7 @@ import { authApi } from '../services/api';
 
 interface User {
   id: string;
+  name?: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -13,6 +14,8 @@ interface User {
 interface AuthCtx {
   isLoggedIn: boolean;
   user: User | null;
+  userEmail: string;
+  userName: string;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -99,6 +102,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         isLoggedIn,
         user,
+        userEmail: user?.email || '',
+        userName: user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' '),
         token,
         login,
         logout,

@@ -237,6 +237,24 @@ export const alertsApi = {
 };
 
 // ==================== USERS ====================
+export interface OwnerNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  severity: string;
+  date: string;
+  read: boolean;
+  received: boolean;
+  petId: number;
+  clinicName: string;
+}
+export const ownerNotificationsApi = {
+  list: (token: string): Promise<OwnerNotification[]> => apiCall('/owner/notifications', { token }),
+  acknowledge: (token: string, ids: string[]) => apiCall('/owner/notifications/acknowledge', { method: 'POST', token, body: { ids } }),
+  markRead: (token: string, id: string) => apiCall(`/owner/notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH', token }),
+  markAllRead: (token: string) => apiCall('/owner/notifications/read-all', { method: 'PATCH', token }),
+};
 
 export const usersApi = {
   create: async (data: any) => {
@@ -268,5 +286,6 @@ export default {
   healthRecordsApi,
   ownerSharedRecordsApi,
   alertsApi,
+  ownerNotificationsApi,
   usersApi,
 };

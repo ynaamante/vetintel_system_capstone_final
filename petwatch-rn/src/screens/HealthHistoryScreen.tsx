@@ -101,7 +101,7 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   navTitle: { fontSize: 17, fontWeight: '600', color: tc.text },
   petBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF', padding: 12, margin: spacing.md, marginBottom: 0, borderRadius: radius.md, borderWidth: 1, borderColor: isDark ? '#2563EB' : '#BFDBFE' },
   petBadgeText: { fontSize: 14, color: isDark ? '#93C5FD' : '#1E40AF', fontWeight: '500', flex: 1 },
-  histCount: { fontSize: 13, color: isDark ? '#93C5FD' : '#3B82F6', fontWeight: '600' },
+  histCount: { fontSize: 13, color: isDark ? '#D2E5DC' : '#087A70', fontWeight: '600' },
   filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: spacing.md, paddingVertical: 14 },
   filterBtn: { borderWidth: 1, borderColor: tc.border, borderRadius: radius.full, paddingHorizontal: 12, paddingVertical: 6 },
   filterBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },

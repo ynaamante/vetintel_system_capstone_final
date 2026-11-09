@@ -18,7 +18,7 @@ export default function NearbyClinicsScreen({ navigation }: any) {
   const sorted = [...mockClinics].sort((a, b) => {
     if (sort === 'rating') return b.rating - a.rating;
     if (sort === 'name') return a.name.localeCompare(b.name);
-    return parseFloat(a.distance) - parseFloat(b.distance);
+    return a.distance - b.distance;
   });
 
   const call = (phone: string) => {
@@ -59,12 +59,12 @@ export default function NearbyClinicsScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      {item.services && (
+      {item.specialties && (
         <View style={s.servicesRow}>
-          {item.services.slice(0, 3).map(sv => (
+          {item.specialties.slice(0, 3).map(sv => (
             <View key={sv} style={s.serviceTag}><Text style={s.serviceText}>{sv}</Text></View>
           ))}
-          {item.services.length > 3 && <Text style={s.moreServices}>+{item.services.length - 3} more</Text>}
+          {item.specialties.length > 3 && <Text style={s.moreServices}>+{item.specialties.length - 3} more</Text>}
         </View>
       )}
 

@@ -1,88 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icons } from '../icons';
 
-const INITIAL_CONVERSATIONS = [
-  {
-    id: 1,
-    initials: 'JS',
-    name: 'John Smith',
-    phone: '+63 917 555 0133',
-    pet: 'Max',
-    species: 'Dog',
-    breed: 'Golden Retriever',
-    age: '6 yrs',
-    sex: 'Female',
-    weight: '27 kg',
-    staff: 'Dr. Torres',
-    assignedTo: 'Dr. Torres',
-    time: '10:32 AM',
-    tag: 'Medical',
-    tags: ['Medical', 'Vomiting', 'Follow up'],
-    status: 'Open',
-    unread: true,
-    preview: 'He vomited 3 times this morning and is not eating his food. Should I bring him in?',
-    nextAppointment: 'Today · 2:00 PM',
-    messages: [
-      { text: 'Hi, my dog Max has been vomiting since yesterday afternoon. He seems lethargic too.', time: '10:30 AM', source: 'Mobile App' },
-      { text: 'He vomited 3 times this morning and is not eating his food. Should I bring him in?', time: '10:32 AM', source: 'Mobile App' },
-    ],
-    history: [
-      { type: 'Mobile App message', time: 'July 22, 10:32 AM', text: 'He vomited 3 times this morning and is not eating his food...' },
-      { type: 'Phone call', time: 'July 22, 10:45 AM', text: 'Reached owner — “Discussed bringing Max in today.”' },
-      { type: 'Appointment confirmed', time: 'July 21, 3:12 PM', text: 'Appointment at 2:00 PM · Today.' },
-    ],
-  },
-  {
-    id: 2, initials: 'SJ', name: 'Sarah Johnson', phone: '+63 917 555 0184', pet: 'Luna',
-    species: 'Cat', breed: 'Domestic Shorthair', age: '2 yrs', sex: 'Female', weight: '4.5 kg',
-    staff: 'Dr. Torres', assignedTo: 'Dr. Torres', time: 'Yesterday', tag: 'Appointment',
-    tags: ['Appointment'], status: 'Open', unread: true,
-    preview: 'Please confirm my 2PM appointment tomorrow.',
-    nextAppointment: 'Tomorrow · 2:00 PM',
-    messages: [{ text: 'Please confirm my 2PM appointment tomorrow.', time: 'Yesterday, 4:18 PM', source: 'Mobile App' }],
-    history: [{ type: 'Mobile App message', time: 'Yesterday, 4:18 PM', text: 'Please confirm my 2PM appointment tomorrow.' }],
-  },
-  {
-    id: 3, initials: 'MD', name: 'Mike Davis', phone: '+63 917 555 0172', pet: 'Charlie',
-    species: 'Dog', breed: 'Labrador Retriever', age: '4 yrs', sex: 'Male', weight: '31 kg',
-    staff: 'Dr. Chen', assignedTo: 'Dr. Chen', time: 'July 21', tag: 'Medical',
-    tags: ['Medical', 'Follow up'], status: 'In Progress', unread: false,
-    preview: 'Is slight swelling around the incision normal?',
-    nextAppointment: 'Not scheduled',
-    messages: [{ text: 'Is slight swelling around the incision normal?', time: 'July 21, 1:06 PM', source: 'Mobile App' }],
-    history: [{ type: 'Mobile App message', time: 'July 21, 1:06 PM', text: 'Is slight swelling around the incision normal?' }],
-  },
-  {
-    id: 4, initials: 'EW', name: 'Emma Wilson', phone: '+63 917 555 0140', pet: 'Bella',
-    species: 'Dog', breed: 'Beagle', age: '6 yrs', sex: 'Female', weight: '12 kg',
-    staff: 'Dr. Torres', assignedTo: 'Dr. Torres', time: 'July 20', tag: 'Appointment',
-    tags: ['Appointment'], status: 'Resolved', unread: false,
-    preview: 'Thank you, we will come on Saturday!',
-    nextAppointment: 'Saturday · 9:30 AM',
-    messages: [{ text: 'Thank you, we will come on Saturday!', time: 'July 20, 3:40 PM', source: 'Mobile App' }],
-    history: [{ type: 'Mobile App message', time: 'July 20, 3:40 PM', text: 'Thank you, we will come on Saturday!' }],
-  },
-  {
-    id: 5, initials: 'DB', name: 'David Brown', phone: '+63 917 555 0192', pet: 'Rocky',
-    species: 'Dog', breed: 'Mixed Breed', age: '3 yrs', sex: 'Male', weight: '19 kg',
-    staff: 'Dr. Chen', assignedTo: 'Dr. Chen', time: 'July 22', tag: 'Billing',
-    tags: ['Billing'], status: 'Open', unread: false,
-    preview: 'When will the lab results be ready?',
-    nextAppointment: 'Not scheduled',
-    messages: [{ text: 'When will the lab results be ready?', time: 'July 22, 11:14 AM', source: 'Mobile App' }],
-    history: [{ type: 'Mobile App message', time: 'July 22, 11:14 AM', text: 'When will the lab results be ready?' }],
-  },
-  {
-    id: 6, initials: 'LT', name: 'Lisa Taylor', phone: '+63 917 555 0116', pet: 'Daisy',
-    species: 'Dog', breed: 'Shih Tzu', age: '4 yrs', sex: 'Female', weight: '6 kg',
-    staff: 'Dr. Smith', assignedTo: 'Dr. Torres', time: 'July 22', tag: 'Medical',
-    tags: ['Medical'], status: 'Open', unread: true,
-    preview: 'Can you advise about Daisy’s medication?',
-    nextAppointment: 'Not scheduled',
-    messages: [{ text: 'Can you advise about Daisy’s medication?', time: 'July 22, 9:18 AM', source: 'Mobile App' }],
-    history: [{ type: 'Mobile App message', time: 'July 22, 9:18 AM', text: 'Can you advise about Daisy’s medication?' }],
-  },
-];
+const INITIAL_CONVERSATIONS = [];
 
 const QUICK_REPLIES = [
   "I'll check and get back to you...",
@@ -110,7 +29,7 @@ function StatusDot({ status }) {
 
 export default function SharedInboxPage({ user, onNavigate, initialConversationRequest }) {
   const [conversations, setConversations] = useState(INITIAL_CONVERSATIONS);
-  const [selectedId, setSelectedId] = useState(1);
+  const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('All Status');
   const [tag, setTag] = useState('All Tags');
@@ -118,41 +37,32 @@ export default function SharedInboxPage({ user, onNavigate, initialConversationR
   const [reply, setReply] = useState('');
   const [mobileThreadOpen, setMobileThreadOpen] = useState(false);
   const replyRef = useRef(null);
+  const [staff, setStaff] = useState([]);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const api = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+  const request = async (path = '', options = {}) => {
+    const response = await fetch(api + '/clinic-records/inbox' + path, { ...options, headers: { Authorization: 'Bearer ' + user.token, 'Content-Type': 'application/json' } });
+    const body = await response.json(); if (!response.ok) throw new Error(body.error || 'Unable to load clinic conversations.'); return body;
+  };
+  useEffect(() => {
+    let active = true;
+    const load = () => request().then(data => { if (active) { setConversations(data.conversations); setStaff(data.staff); setError(''); } }).catch(failure => { if (active) setError(failure.message); });
+    load(); const timer = window.setInterval(load, 15000);
+    window.addEventListener('vetintel:appointment-updated', load);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener('vetintel:appointment-updated', load); };
+  }, [user.token, user.clinic_id]);
 
   useEffect(() => {
     if (!initialConversationRequest) return;
-    const requestedOwner = initialConversationRequest.name.trim().toLowerCase();
-    const existing = conversations.find((item) => item.name.trim().toLowerCase() === requestedOwner);
-    const conversationId = existing?.id || `patient-${initialConversationRequest.id}`;
-    const newConversation = {
-      ...initialConversationRequest,
-      id: conversationId,
-      initials: initialConversationRequest.name
-        .split(/\s+/)
-        .map((part) => part[0] || '')
-        .join('')
-        .slice(0, 2)
-        .toUpperCase(),
-      time: 'New',
-      tag: 'Medical',
-      tags: ['Medical'],
-      status: 'Open',
-      unread: false,
-      preview: `Start a conversation with ${initialConversationRequest.name} about ${initialConversationRequest.pet}.`,
-      nextAppointment: 'Not scheduled',
-      messages: [],
-      history: [],
-    };
-    setConversations((items) => existing
-      ? items.map((item) => item.id === existing.id ? { ...item, unread: false } : item)
-      : items.some((item) => item.id === conversationId) ? items : [newConversation, ...items]);
-    setSearch('');
-    setStatus('All Status');
-    setTag('All Tags');
-    setActiveTab('All');
-    setSelectedId(conversationId);
-    setMobileThreadOpen(true);
-  }, [initialConversationRequest]);
+    let active = true;
+    request('', { method: 'POST', body: JSON.stringify({ pet_id: initialConversationRequest.pet_id || initialConversationRequest.id }) }).then(thread => {
+      if (!active) return;
+      setConversations(items => [thread, ...items.filter(item => item.id !== thread.id)]);
+      setSelectedId(thread.id); setMobileThreadOpen(true); setSearch(''); setStatus('All Status'); setTag('All Tags'); setActiveTab('All');
+    }).catch(failure => { if (active) setError(failure.message); });
+    return () => { active = false; };
+  }, [initialConversationRequest, user.token]);
 
   const selected = conversations.find((item) => item.id === selectedId) || conversations[0];
   const unreadCount = conversations.filter((item) => item.unread).length;
@@ -162,34 +72,21 @@ export default function SharedInboxPage({ user, onNavigate, initialConversationR
     const tagMatch = tag === 'All Tags' || item.tags.includes(tag);
     const tabMatch = activeTab === 'All'
       || (activeTab === 'Unread' && item.unread)
-      || (activeTab === 'My Conversations' && item.assignedTo === (user?.name || 'Dr. Torres'));
+      || (activeTab === 'My Conversations' && item.assignedTo === (user?.name || 'Clinic team'));
     return textMatch && statusMatch && tagMatch && tabMatch;
   }), [conversations, search, status, tag, activeTab, user]);
 
-  const selectConversation = (id) => {
-    setSelectedId(id);
-    setMobileThreadOpen(true);
-    setConversations((items) => items.map((item) => item.id === id ? { ...item, unread: false } : item));
+  const persist = async (id, updates) => {
+    const thread = await request('/' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify(updates) });
+    setConversations(items => items.map(item => item.id === thread.id ? thread : item)); return thread;
   };
-
-  const sendReply = () => {
-    if (!reply.trim() || !selected) return;
-    const sentAt = new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit' }).format(new Date());
-    setConversations((items) => items.map((item) => item.id === selected.id
-      ? {
-        ...item,
-        preview: reply.trim(),
-        time: sentAt,
-        messages: [...item.messages, { text: reply.trim(), time: sentAt, source: 'Clinic', outgoing: true }],
-        history: [{ type: 'Message sent', time: `Today, ${sentAt}`, text: reply.trim() }, ...item.history],
-      }
-      : item));
-    setReply('');
+  const selectConversation = id => { setSelectedId(id); setMobileThreadOpen(true); persist(id, { unread: false }).catch(failure => setError(failure.message)); };
+  const sendReply = async () => {
+    if (!reply.trim() || !selected || busy) return;
+    setBusy(true); setError('');
+    try { await persist(selected.id, { text: reply.trim() }); setReply(''); } catch (failure) { setError(failure.message); } finally { setBusy(false); }
   };
-
-  const updateSelected = (updates) => {
-    setConversations((items) => items.map((item) => item.id === selected.id ? { ...item, ...updates } : item));
-  };
+  const updateSelected = updates => { if (selected) persist(selected.id, updates).catch(failure => setError(failure.message)); };
 
   const handleReplyKeyDown = (event) => {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
@@ -202,8 +99,8 @@ export default function SharedInboxPage({ user, onNavigate, initialConversationR
     <div className={`shared-inbox-page${mobileThreadOpen ? ' mobile-thread-open' : ''}`}>
       <aside className="shared-inbox-list-pane">
         <div className="shared-inbox-brand">
-          <h1>Shared Inbox</h1>
-          <p>Centralized messaging from pet owners via mobile app</p>
+          <h1>Shared Inbox</h1>{error && <p role="alert">{error}</p>}
+          <p>Shared clinic conversations and recorded messages</p>
         </div>
 
         <div className="shared-inbox-tabs" role="tablist" aria-label="Conversation views">
@@ -256,7 +153,7 @@ export default function SharedInboxPage({ user, onNavigate, initialConversationR
               className={`shared-inbox-conversation${selected?.id === item.id ? ' is-selected' : ''}`}
               aria-current={selected?.id === item.id ? 'true' : undefined}
             >
-              {item.id === 1 ? <PetAvatar /> : <span className="shared-inbox-initial-avatar">{item.initials}</span>}
+              {<span className="shared-inbox-initial-avatar">{item.initials}</span>}
               <span className="shared-inbox-conversation-body">
                 <span className="shared-inbox-conversation-top"><strong>{item.name}</strong><time>{item.time}</time></span>
                 <span className="shared-inbox-pet-line">{item.pet} · {item.breed.split(' ')[0]} · {item.age}</span>
@@ -280,7 +177,7 @@ export default function SharedInboxPage({ user, onNavigate, initialConversationR
             <div className="shared-inbox-thread-person">
               <strong>{selected.name}</strong>
               <span>{selected.pet} <i>·</i> {selected.breed} <i>·</i> {selected.age}</span>
-              <small>Owner&nbsp; {selected.name} &nbsp;·&nbsp; {selected.staff} &nbsp;·&nbsp; Mobile App</small>
+              <small>Owner&nbsp; {selected.name} &nbsp;·&nbsp; {selected.staff} &nbsp;·&nbsp; Clinic inbox</small>
             </div>
             <div className="shared-inbox-thread-actions">
               <a href={`tel:${selected.phone.replace(/[^\d+]/g, '')}`}><span>{Icons.phone}</span>Call owner</a>
@@ -293,11 +190,11 @@ export default function SharedInboxPage({ user, onNavigate, initialConversationR
                 {!message.outgoing && <span className="shared-inbox-message-avatar">{selected.initials}</span>}
                 <div className="shared-inbox-message-content">
                   <div className="shared-inbox-message-meta">
-                    <strong>{message.outgoing ? (user?.name || 'Dr. Torres') : selected.name}</strong>
+                    <strong>{message.outgoing ? (message.author || 'Clinic team') : selected.name}</strong>
                     <time>{message.time}</time>
                   </div>
                   <p>{message.text}</p>
-                  <small>{message.outgoing ? 'Sent from clinic' : 'from mobile app'}</small>
+                  <small>{message.outgoing ? 'Recorded by clinic staff' : 'Received message'}</small>
                 </div>
               </article>
             ))}
@@ -312,7 +209,7 @@ export default function SharedInboxPage({ user, onNavigate, initialConversationR
             </div>
             <label className="shared-inbox-reply-as">Reply as:
               <select aria-label="Reply as">
-                <option>{user?.name || 'Dr. Torres'}</option>
+                <option>{user?.name || 'Clinic team'}</option>
                 <option>Clinic team</option>
               </select>
             </label>
@@ -325,7 +222,7 @@ export default function SharedInboxPage({ user, onNavigate, initialConversationR
                 placeholder="Type a message..."
                 aria-label="Type a message"
               />
-              <button type="button" disabled={!reply.trim()} onClick={sendReply}><span>{Icons.send}</span>Send</button>
+              <button type="button" disabled={!reply.trim() || busy} onClick={sendReply}><span>{Icons.send}</span>{busy ? "Saving..." : "Record message"}</button>
             </div>
           </footer>
         </section>
@@ -346,7 +243,7 @@ export default function SharedInboxPage({ user, onNavigate, initialConversationR
               <span className="shared-inbox-detail-icon">{Icons.stethoscope}</span>
               <div><strong>Assigned to</strong>
                 <select aria-label="Assign conversation" value={selected.assignedTo} onChange={(event) => updateSelected({ assignedTo: event.target.value })}>
-                  <option>Dr. Torres</option><option>Dr. Chen</option><option>Dr. Smith</option>
+                  {staff.map(person => <option key={person.id}>{person.name}</option>)}
                 </select>
                 </div>
             </div>

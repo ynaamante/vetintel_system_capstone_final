@@ -1,0 +1,32 @@
+const assert=require('node:assert/strict');
+const {evaluate}=require('../utils/intakeScreening');
+const controller=require('../controllers/patientRegistrationController');
+const db=require('../config/db');
+const expect=(input,triage,infection)=>{const result=evaluate(input);assert.equal(result.suggested.triage_priority,triage);assert.equal(result.suggested.infection_risk,infection);assert.equal(result.preliminary,true);return result;};
+expect({},'not_assessed','not_assessed');
+expect({routine_visit:true},'not_assessed','not_assessed');
+expect({symptoms:['none']},'not_assessed','not_assessed');
+expect({symptoms:['none'],exposures:['unknown']},'not_assessed','not_assessed');
+expect({routine_visit:true,symptoms:['none'],exposures:['none']},'routine','not_indicated');
+expect({symptoms:['vomiting','loss_of_appetite']},'priority','needs_assessment');
+expect({symptoms:['bloody_stool','vomiting']},'urgent','possible_infection');
+expect({symptoms:['coughing'],exposures:['sick_animal']},'priority','possible_infection');
+expect({symptoms:['difficulty_breathing']},'urgent','needs_assessment');
+expect({symptoms:['none'],exposures:['sick_animal']},'priority','possible_exposure');
+expect({symptoms:['difficulty_breathing'],exposures:['pet_facility']},'urgent','possible_exposure');
+expect({symptoms:['other'],other_symptom:'owner mentions parvo'},'priority','needs_assessment');
+for(const input of [{symptoms:['none','vomiting']},{exposures:['unknown','sick_animal']},{symptoms:['other']},{symptoms:['vomiting','vomiting']},{exposures:['made_up']},{symptoms:'vomiting'},{routine_visit:'yes'}])assert.throws(()=>evaluate(input));
+const original=db.pool.connect;let stored,notification;
+db.pool.connect=async()=>({release(){},async query(sql,args){if(sql.includes('SELECT u.id'))return{rows:[{id:2}]};if(sql.includes('INSERT INTO patient_registration_intakes')){stored=JSON.parse(args[4]);return {rows:[{id:1}]};}if(sql.includes('INSERT INTO clinic_notifications'))notification=args;return{rows:[]};}});
+async function invoke(method,body,role='receptionist'){let status=200,result;await controller[method]({user:{id:1,clinic_id:11,role},body},{status(code){status=code;return this;},json(value){result=value;return this;}},error=>{throw error;});return{status,result};}
+(async()=>{try{
+ const body={assigned_doctor_id:2,owner:{name:'Test Owner',phone:'09123456789',email:'test@example.com'},pet:{name:'Test Pet',species:'Dog',sex:'male',age_value:'2',reason_for_visit:'difficulty breathing / rabies words',triage_priority:'routine',infection_risk:'not_indicated',screening:{effective:{triage_priority:'routine'}},screening_inputs:{symptoms:['bloody_stool','vomiting']}}};
+ assert.equal((await invoke('submitIntake',body)).status,201);
+ assert.equal(stored.triage_priority,'urgent');assert.equal(stored.infection_risk,'possible_infection');assert.equal(stored.screening.rule_version,'intake-screening-v1');assert.ok(notification[3].includes('Urgent'));
+ body.pet.screening_inputs={};await invoke('submitIntake',body);assert.equal(stored.triage_priority,'not_assessed');assert.equal(stored.infection_risk,'not_assessed');
+ assert.equal((await invoke('previewScreening',{screening_inputs:{symptoms:['difficulty_breathing']}})).result.suggested.triage_priority,'urgent');
+ assert.equal((await invoke('previewScreening',{screening_inputs:{symptoms:['invalid']}})).status,422);
+ assert.equal((await invoke('previewScreening',{},'pet_owner')).status,403);
+ assert.equal((await invoke('screeningConfig',{})).result.version,'intake-screening-v1');
+ console.log('PASS: illustrative rules, explicit negatives, missing/unknown information, urgent precedence, contradictory inputs, server-calculated flags, tamper resistance, no free-text inference, preview/config authorization.');
+}finally{db.pool.connect=original;await db.pool.end();}})().catch(error=>{console.error(error);process.exitCode=1;});

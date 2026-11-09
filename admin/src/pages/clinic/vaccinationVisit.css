@@ -1,0 +1,113 @@
+.vaccination-visit-editor { position: fixed; inset: 0; margin: auto; padding: 0; width: min(720px,calc(100vw - 32px)); max-height: min(700px,calc(100dvh - 48px)); border: 1px solid #d6e6e0; border-radius: 12px; background: #fff; color: #172b25; font-family: 'DM Sans',sans-serif; box-shadow: 0 20px 55px #0f172a40; }
+.vaccination-visit-editor[open] { display: flex; flex-direction: column; }
+.vaccination-visit-editor::backdrop { background: #0f172a80; }
+.vve-heading { display: flex; flex-shrink: 0; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 14px 18px 8px; }
+.vve-heading h2 { margin: 0; font-size: 18px; color: #064c3f; }
+.vve-heading p { margin: 5px 0; font-size: 12px; }
+.vve-heading > div:last-child { display: grid; justify-items: end; gap: 12px; }
+.vaccination-visit-editor button,.vaccine-batch-inventory button { cursor: pointer; padding: 8px 13px; border: 1px solid #bdd4ca; border-radius: 7px; background: #fff; color: #075443; font: inherit; font-size: 12px; font-weight: 600; }
+.vaccination-visit-editor button:disabled { opacity: .45; cursor: default; }
+.vaccination-visit-editor .vve-close { border: 0; padding: 0 4px; font-size: 25px; }
+.vve-patient { display: flex; gap: 9px; align-items: center; margin-top: 8px; }
+.vve-avatar { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #e7f4ec; color: #075443; font-size: 22px; }
+.vve-patient strong { display: block; font-size: 15px; }
+.vve-patient div > span { display: block; font-size: 11px; margin-top: 3px; }
+.vve-tabs { display: flex; flex-shrink: 0; gap: 6px; padding: 0 18px 9px; }
+.vaccination-visit-editor .vve-tabs button.active,.vaccination-visit-editor button.primary { background: #086b50; color: white; border-color: #086b50; }
+.vve-content { display: grid; flex: 1; min-height: 0; gap: 10px; padding: 0 18px 12px; overflow: auto; }
+.vve-section { padding: 10px; border: 1px solid #cce5da; border-radius: 8px; background: linear-gradient(120deg,#f3faf6,#fbfdfc); }
+.vve-section h3,.vaccine-batch-inventory h3 { font-size: 16px; color: #074f3e; margin: 0; }
+.vve-section p,.vaccine-batch-inventory p { font-size: 11px; margin: 4px 0 10px; line-height: 1.5; }
+.vve-visit-info { display: grid; grid-template-columns: 1.2fr 1fr 1.4fr .8fr .7fr; background: #fff; border: 1px solid #e0e8ed; border-radius: 7px; margin-top: 9px; padding: 10px 0; }
+.vve-visit-info > div,.vve-service > div { padding: 0 10px; border-right: 1px solid #dbe3ee; }
+.vve-visit-info > div:last-child,.vve-service > div:last-child { border: 0; }
+.vve-visit-info span,.vve-service span { display: block; font-size: 10px; color: #475569; }
+.vve-visit-info strong,.vve-service strong { display: block; font-size: 11px; margin-top: 5px; }
+.vve-service { display: grid; grid-template-columns: 1.5fr 1fr; padding: 10px 0; background: white; border: 1px solid #e0e8ed; border-radius: 7px; margin-top: 7px; }
+.vve-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.vve-form-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+.vaccination-visit-editor .vve-form-grid { grid-template-columns: 2fr 1fr 1fr 1.1fr; }
+.vaccination-visit-editor label,.vaccine-batch-inventory label { display: grid; gap: 5px; font-size: 11px; font-weight: 600; }
+.vaccination-visit-editor input:not([type=checkbox]),.vaccination-visit-editor select,.vaccine-batch-inventory input,.vaccine-batch-inventory select { box-sizing: border-box; padding: 8px 9px; border: 1px solid #ccd9e3; background: white; border-radius: 6px; min-width: 0; width: 100%; font: inherit; font-size: 11px; color: #263841; }
+.vaccination-visit-editor input[readonly] { background: #eef1f4; }
+.vve-proof { padding: 12px; border: 1px solid #d7e6e8; border-radius: 8px; background: #fff; margin-top: 12px; }
+.vve-proof h4 { margin: 0; font-size: 12px; color: #075443; }
+.vve-proof-grid { display: grid; grid-template-columns: 155px 1fr; gap: 10px; }
+.vve-sticker { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 125px; border: 1px dashed #ccd9d5; border-radius: 8px; overflow: hidden; }
+.vve-sticker img { max-width: 100%; }
+.vve-inventory-details { padding: 10px; background: #f1faf6; border: 1px solid #c8e7db; border-radius: 8px; }
+.vve-inventory-details dl { display: grid; grid-template-columns: 1fr 1.4fr; gap: 7px 10px; margin: 10px 0 0; font-size: 11px; }
+.vve-inventory-details dt { color: #526b64; }
+.vve-inventory-details dd { margin: 0; overflow-wrap: anywhere; }
+.vve-completion { display: grid; grid-template-columns: 1fr 1.2fr; gap: 18px; align-items: center; }
+.vve-completion label { display: flex; align-items: flex-start; gap: 7px; font-weight: 400; margin: 7px 0; }
+.vve-completion p { background: #e5f5ec; padding: 11px; border-radius: 7px; }
+.vaccination-visit-editor footer { display: flex; flex-shrink: 0; gap: 8px; justify-content: flex-end; padding: 10px 18px; border-top: 1px solid #dbe3ee; }
+.vaccination-visit-editor button { padding: 7px 10px; font-size: 11px; }
+.vve-error { padding: 10px; background: #fff0ee; color: #b42318; border-radius: 7px; font-size: 12px; }
+.vve-audit { display: grid; gap: 12px; padding-left: 22px; }
+.vve-audit span { display: block; font-size: 12px; margin-top: 4px; color: #64748b; }
+.vaccine-batch-inventory { padding: 18px; margin: 16px 0; background: white; border: 1px solid #dbe3ee; border-radius: 10px; }
+.vaccine-batch-inventory header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.vaccine-batch-inventory form { margin: 12px 0; }
+.vaccine-batch-inventory form > button { margin: 12px 0; background: #086b50; color: #fff; }
+.vaccination-visit-editor.vve-reference { width: min(740px,calc(100vw - 24px)); max-height: min(800px,calc(100dvh - 24px)); border-radius: 13px; font-size: 11px; }
+.vve-reference .vve-heading { padding: 14px 24px 10px; }
+.vve-reference .vve-heading h2 { color: #074c3e; font-size: 21px; line-height: 1.2; font-weight: 750; letter-spacing: -.4px; }
+.vve-reference .vve-heading p { margin: 4px 0; font-size: 11px; }
+.vve-reference .vve-heading .vve-header-status { position: absolute; right: 24px; top: 14px; gap: 14px; }
+.vve-reference .vve-heading .vve-close { border: 0; background: none; width: 20px; height: 20px; min-height: 0; padding: 0; display: grid; place-items: center; }
+.vve-reference .vve-close svg { width: 18px; height: 18px; }
+.vve-reference .vve-patient { margin-top: 9px; gap: 11px; }
+.vve-reference .vve-patient strong { font-size: 18px; line-height: 1.3; color: #103c32; }
+.vve-reference .vve-patient div > span { font-size: 11px; }
+.vve-reference .vve-tabs { padding: 3px 20px 11px; gap: 7px; }
+.vve-reference .vve-tabs button { padding: 5px 13px; min-height: 0; font-size: 11px; line-height: 1.3; }
+.vve-reference .vve-content { gap: 8px; padding: 0 22px 12px; }
+.vve-reference .vve-section { padding: 10px 12px; border-radius: 8px; background: linear-gradient(110deg,#f0f8f4,#f9fcfb); }
+.vve-reference .vve-section h3 { font-size: 15px; line-height: 1.2; font-weight: 750; color: #0a4f40; }
+.vve-reference .vve-section p { font-size: 11px; margin: 3px 0 7px; line-height: 1.35; }
+.vve-reference .vve-visit-info { grid-template-columns: 1.2fr 1fr 1.15fr .7fr .6fr; padding: 9px 0; margin-top: 9px; }
+.vve-reference .vve-visit-info > div { padding: 0 8px; }
+.vve-reference .vve-visit-info span,.vve-reference .vve-service span { font-size: 11px; }
+.vve-reference .vve-visit-info strong,.vve-reference .vve-service strong { font-size: 11px; margin-top: 3px; line-height: 1.25; }
+.vve-reference .vve-service { padding: 9px 0; margin-top: 7px; grid-template-columns: 1fr 1fr; }
+.vve-reference .vve-status-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 650; border-radius: 99px; padding: 4px 10px; white-space: nowrap; }
+.vve-reference .vve-status-chip.is-active { background: #def6e9; color: #07643d !important; }
+.vve-reference .vve-status-chip.is-active .status-indicator-dot { background: #079b60 !important; }
+.vve-reference .vve-status-chip.is-pending { background: #fff1d4; color: #9a5700 !important; }
+.vve-reference .vve-status-chip.is-pending .status-indicator-dot { background: #cf8a00 !important; }
+.vve-reference .vve-section-heading { gap: 8px; }
+.vve-reference .vve-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; margin-top: 10px; }
+.vve-reference .vve-fields label { gap: 3px; font-size: 11px; color: #172c25; font-weight: 600; min-width: 0; }
+.vve-required { color: #b42318; font-style: normal; }
+.vve-reference .vve-fields input:not([type=checkbox]),.vve-reference .vve-fields select { height: 30px !important; min-height: 30px !important; padding: 6px 9px !important; font-size: 11px !important; line-height: 15px; border-radius: 6px; font-weight: 400; }
+.vve-reference .vve-fields input[readonly] { background: #eceff3; }
+.vve-reference .vve-route-due { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-width: 0; }
+.vve-reference .vve-date .lab-date-time-trigger { min-height: 30px !important; height: 30px !important; padding: 4px 8px !important; gap: 5px; font-size: 11px !important; border-radius: 6px; border: 1px solid #ccd9e3; flex-direction: row-reverse; justify-content: space-between; background: #fff; }
+.vve-reference .vve-date .lab-date-time-trigger svg { width: 13px; height: 13px; flex-shrink: 0; }
+.vve-reference .vve-date .lab-date-time-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
+.vve-reference .vve-proof-compact { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 11px; padding: 7px 9px; background: #f1faf6; }
+.vve-reference .vve-proof-compact h4 { font-size: 11px; }
+.vve-reference .vve-proof-compact p { margin: 3px 0 0; font-size: 11px; }
+.vve-reference .vve-proof-compact .vve-upload { display: grid; gap: 3px; width: 215px; min-width: 160px; min-height: 44px; padding: 5px 10px; border: 1px dashed #95cabb; background: #f9fdfb; border-radius: 7px; }
+.vve-reference .vve-upload strong { font-size: 11px; }
+.vve-reference .vve-upload small { font-size: 11px; color: #66756e; font-weight: 400; }
+.vve-reference .vve-proof-filename { display: block; margin-top: 3px; color: #086b50; font-size: 11px; overflow-wrap: anywhere; }
+.vve-reference .vve-proof-preview { margin-top: 7px; }
+.vve-reference .vve-proof-preview img { width: 140px; max-height: 90px; object-fit: contain; border-radius: 6px; }
+.vve-reference .vve-scan-status { color: #526b64; margin: 5px 0 0; }
+.vve-reference .vve-completion { gap: 7px; grid-template-columns: 1fr 1fr; margin-top: 7px; }
+.vve-reference .vve-completion > div:first-child { padding: 1px 3px; background: #ffffff8a; border-radius: 6px; }
+.vve-reference .vve-completion label { gap: 6px; font-size: 11px; line-height: 1.4; margin: 5px 0; }
+.vve-reference .vve-completion input[type=checkbox] { width: 15px; height: 15px; flex: 0 0 15px; margin: 0; accent-color: #086b50; }
+.vve-reference .vve-completion-note { display: flex; align-items: flex-start; gap: 7px; padding: 8px; border-radius: 6px; background: #e5f5ee; }
+.vve-reference .vve-completion-note > span { color: #087457; font-size: 15px; line-height: 1; }
+.vve-reference .vve-completion-note p { background: none; padding: 0; margin: 0; font-size: 11px; }
+.vve-reference footer { gap: 8px; padding: 11px 20px; }
+.vve-reference footer button { font-size: 12px; height: 36px; padding: 8px 16px; font-weight: 650; }
+.vve-reference footer button.primary:disabled { opacity: 1; background: #e0e2e6; color: #9299a4; border-color: #e0e2e6; }
+.vve-reference footer .vve-end { min-width: 132px; }
+@media(max-width:560px) { .vve-reference .vve-fields { grid-template-columns: 1fr; } .vve-reference .vve-visit-info { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; } .vve-reference .vve-completion { grid-template-columns: 1fr; } .vve-reference .vve-proof-compact { flex-wrap: wrap; } .vve-reference .vve-heading h2 { max-width: calc(100% - 22px); font-size: 17px; } .vve-reference .vve-header-status .vve-status-chip { margin-top: 42px; } }
+@media(max-width:700px) { .vaccination-visit-editor .vve-form-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width:700px) { .vve-visit-info { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; } .vve-form-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .vve-proof-grid,.vve-completion { grid-template-columns: 1fr; } .vve-heading h2 { font-size: 17px; } .vve-content { padding: 0 14px 14px; } .vve-heading { padding: 14px; } .vaccination-visit-editor footer { flex-wrap: wrap; padding: 12px; } }

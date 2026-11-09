@@ -1,0 +1,91 @@
+.reception-workflow-dialog { width: min(720px, calc(100vw - 32px)); max-height: 90vh; padding: 0; border: 1px solid #dce5df; border-radius: 22px; color: #122a24; background: #fff; box-shadow: 0 24px 80px #10251b40; }
+.reception-workflow-dialog::backdrop { background: #10251b66; }
+dialog.reception-workflow-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 32px);
+}
+.reception-workflow-dialog header, .reception-workflow-dialog footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 24px; }
+.reception-workflow-dialog h2 { margin: 0; color: #064d35; font-size: 1.6rem; }
+.reception-workflow-dialog p { margin: 8px 0; line-height: 1.5; }
+.reception-workflow-dialog button { border: 1px solid #c5d1cc; border-radius: 9px; padding: 10px 16px; background: white; color: #172b25; font: inherit; cursor: pointer; }
+.reception-workflow-dialog button:disabled { opacity: .5; cursor: wait; }
+.reception-workflow-body { padding: 0 24px 24px; }
+.reception-workflow-dialog footer { border-top: 1px solid #dce5df; justify-content: flex-end; }
+.reception-workflow-body label { display: grid; gap: 8px; margin: 12px 0; }
+.reception-workflow-body textarea { min-height: 85px; border: 1px solid #bcd5c9; border-radius: 9px; padding: 12px; font: inherit; width: 100%; box-sizing: border-box; }
+.reception-workflow-body .reception-checkbox { display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; }
+.reception-schedule-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.reception-workflow-body dt { color: #62736d; font-size: .8rem; margin-top: 12px; }
+.reception-workflow-body dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.reception-audit-list { display: grid; gap: 16px; padding-left: 20px; }
+.reception-audit-list span { display: block; margin-top: 4px; font-size: .85rem; }
+.reception-action-error { color: #b42318; background: #fff0ee; padding: 12px; border-radius: 9px; }
+.reception-workflow-dialog .is-save { background: #086b50; color: white; }
+.reception-workflow-dialog .is-danger { background: #b42318; color: white; }
+.reception-action-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding: 16px; background: #f0f3fb; border-radius: 16px; margin-bottom: 18px; }
+.reception-action-summary .patient-icon { width: 58px; height: 58px; border-radius: 50%; background: #e3eee5; display: grid; place-items: center; flex-shrink: 0; }
+.reception-action-summary .patient-icon svg { width: 30px; height: 30px; }
+.reception-action-summary strong { display: block; font-size: 1.3rem; color: #075333; }
+.reception-action-summary p { font-size: .85rem; }
+.reception-action-menu { display: grid; gap: 12px; }
+.reception-action-menu button { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #edf6f1; border-color: #c8e4d6; color: #075333; text-align: left; padding: 13px 20px; border-radius: 15px; }
+.reception-action-menu button strong { display: block; font-size: 1.15rem; }
+.reception-action-menu button small { display: block; color: #14271e; margin-top: 3px; line-height: 1.4; }
+.reception-action-menu button.danger { background: #fff0f1; color: #b00000; border-color: #ffc8cd; }
+@media (max-width: 520px) { .reception-schedule-fields { grid-template-columns: 1fr; } .reception-workflow-dialog header, .reception-workflow-dialog footer { padding: 16px; } .reception-workflow-body { padding: 0 16px 16px; } }
+
+/* Action destinations share the Local Clinic Records detail surface. */
+.visit-workflow-panel { padding: 14px; border: 1px solid #c8e4d6; border-radius: 10px; background: #f2fbf8; }
+.visit-workflow-panel dl { margin: 12px 0 !important; }
+.visit-workflow-buttons { display: flex; gap: 10px; margin-top: 14px; }
+.visit-workflow-buttons button { flex: 1; }
+.visit-workflow-panel select { width: 100%; padding: 9px 10px; border: 1px solid #cfdce9; border-radius: 7px; background: #fff; font: inherit; }
+.reception-workflow-dialog.clinic-record-details-modal {
+  border: 1px solid #dbe3ee;
+  color: #111827;
+  box-shadow: 0 20px 55px rgba(15, 23, 42, .25);
+}
+.reception-workflow-dialog.clinic-record-details-modal::backdrop { background: rgba(15, 23, 42, .5); }
+.reception-workflow-dialog .clinic-record-details-header {
+  border-bottom: 1px solid #dbe3ee;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.reception-workflow-dialog .clinic-record-details-header h2 { color: #111827; font-weight: 600; line-height: 1.25; }
+.reception-workflow-dialog .clinic-record-details-header p { color: #64748b; font-size: 12px; margin: 5px 0 0; }
+.reception-workflow-dialog.clinic-record-details-modal button {
+  border-color: #cfdce9;
+  border-radius: 7px;
+  padding: 8px 15px;
+  font-size: .78rem;
+}
+.reception-workflow-dialog .clinic-record-details-header > button { flex-shrink: 0; }
+.reception-workflow-dialog .record-details-content { padding: 0 24px 18px; font-size: 13px; }
+.reception-workflow-dialog .record-details-content dl { margin: 0; }
+.reception-workflow-dialog .record-details-content dl:has(> div) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+}
+.reception-workflow-dialog .record-details-content dl:not(:has(> div)) {
+  display: grid;
+  grid-template-columns: minmax(100px, .6fr) minmax(0, 1fr);
+  gap: 14px 20px;
+  align-items: baseline;
+}
+.reception-workflow-dialog .record-details-content dt { margin: 0; color: #64748b; font-size: 11px; font-weight: 600; }
+.reception-workflow-dialog .record-details-content dd { color: #111827; margin: 5px 0 0; font-size: 13px; line-height: 1.5; }
+.reception-workflow-dialog .record-details-content h3 { color: #111827; font-size: 14px; margin: 0; }
+.reception-workflow-dialog.clinic-record-details-modal footer { border-top: 1px solid #dbe3ee; padding: 14px 24px; }
+.reception-workflow-dialog .reception-audit-list { margin: 0; padding-left: 22px; }
+.reception-workflow-dialog .reception-audit-list li { padding: 10px 12px; border: 1px solid #dbe3ee; border-radius: 9px; }
+.reception-workflow-dialog .reception-audit-list span { color: #64748b; font-size: 12px; }
+.reception-workflow-dialog .reception-schedule-fields label { font-size: 12px; font-weight: 600; }
+.reception-workflow-dialog .record-details-content textarea { border-color: #dbe3ee; background: #f8fafc; font-size: 13px; }
+@media (max-width: 520px) {
+  .reception-workflow-dialog .record-details-content { padding: 0 16px 16px; }
+  .reception-workflow-dialog .record-details-content dl:has(> div) { grid-template-columns: 1fr; }
+}

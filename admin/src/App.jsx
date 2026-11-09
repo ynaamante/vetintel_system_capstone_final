@@ -1,3 +1,4 @@
+import { watchClinicEvents } from './utils/clinicEvents';
 import { useEffect, useState } from 'react';
 import './styles/global.css';
 import Sidebar from './components/Sidebar';
@@ -16,15 +17,13 @@ import BillingPage from './pages/receptionist/BillingPage';
 import ClientManagementPage from './pages/receptionist/ClientManagementPage';
 import RemindersPage from './pages/receptionist/RemindersPage';
 import { RiskMonitoringPage } from './pages/RiskMonitoringPage';
-import { CommunityAnalyticsPage } from './pages/CommunityAnalyticsPage';
+import SettingsPage from './pages/SettingsPage';
 import { ReportsPage } from './pages/ReportsPage';
-import { DataSyncPage } from './pages/DataSyncPage';
 import ClinicOverviewPage from './pages/ClinicOverviewPage';
 import UserRoleManagementPage from './pages/UserRoleManagementPage';
 import RolesPermissionsPage from './pages/RolesPermissionsPage';
 import FinancialMonitoringPage from './pages/FinancialMonitoringPage';
 import AuditTrailPage from './pages/AuditTrailPage';
-import InventoryManagementPage from './pages/InventoryManagementPage';
 import ServicesManagementPage from './pages/ServicesManagementPage';
 import SharedInboxPage from './pages/SharedInboxPage';
 import { Icons } from './icons';
@@ -32,6 +31,7 @@ import { canViewFeature } from './utils/permissionUtils';
 import { subscribeToNotifications } from './utils/notifications';
 
 const DEDICATED = [
+  'payment-qr-settings',
   'dashboard',
   'disease',
   'clinic',
@@ -45,9 +45,8 @@ const DEDICATED = [
   'client-mgmt',
   'reminders',
   'risk',
-  'analytics',
+  'settings',
   'reports',
-  'sync',
   'clinics',
   'users',
   'roles',
@@ -72,9 +71,7 @@ const PAGE_FEATURE_MAP = {
   'client-mgmt': 'Client Management',
   reminders: 'Due Dates & Reminders',
   risk: 'Risk Monitoring',
-  analytics: 'Community Analytics',
   reports: 'Reports',
-  sync: 'Data Sync Status',
   clinics: 'Clinic Overview',
   users: 'User & Role Management',
   roles: 'User & Role Management',
@@ -103,10 +100,12 @@ const getFirstAllowedPage = (permissions, role) => {
     }
   }
 
-  return 'dashboard';
+  return 'settings';
 };
 
 const canAccessPage = (pageKey, permissions, role) => {
+  if (pageKey === 'settings') return true;
+  if (pageKey === 'payment-qr-settings') return ['owner', 'clinic_owner'].includes(normalizeRoleName(role));
   const normalizedRole = normalizeRoleName(role);
   if (normalizedRole === 'owner' && ['inventory', 'services'].includes(pageKey)) return true;
   if (pageKey === 'schedule') return isDoctorRole(role);
@@ -149,6 +148,7 @@ const loadRolePermissions = async (roleName, token) => {
 
 export default function App() {
   const [user, setUser] = useState(null);
+  useEffect(() => { if (user?.token && user?.clinic_id) return watchClinicEvents(user); return undefined; }, [user?.token, user?.clinic_id]);
   const [page, setPage] = useState('dashboard');
   const [clinicInitialTab, setClinicInitialTab] = useState('dashboard');
   const [clinicInitialInvoiceId, setClinicInitialInvoiceId] = useState(null);
@@ -347,9 +347,9 @@ export default function App() {
       />
 
       <main className={`admin-content ${page === 'inbox' ? 'inbox-content' : ''}`}>
-        {page === 'dashboard' && <DashboardPage user={user} />}
+        {page === 'dashboard' && <DashboardPage user={user} onNavigate={setPage} />}
         {page === 'disease' && <DiseaseMonitoringPage user={user} />}
-        {page === 'clinic' && <ClinicLayout user={user} initialTab={clinicInitialTab} initialInvoiceId={clinicInitialInvoiceId} onNavigate={setPage} />}
+        {page === 'clinic' && <ClinicLayout user={user} initialTab={clinicInitialTab} initialInvoiceId={clinicInitialInvoiceId} onNavigate={(nextPage, context) => { if (nextPage === 'patient-records') setInboxPatientRequest(context); if (nextPage === 'clinic') { setClinicInitialTab(context?.tab || 'dashboard'); setClinicInitialInvoiceId(context?.invoiceId || null); } setPage(nextPage); }} />}
         {page === 'schedule' && <MySchedulePage user={user} />}
         {page === 'patient-intakes' && <PatientIntakesPage user={user} />}
 
@@ -358,7 +358,7 @@ export default function App() {
         {page === 'patient-registration' && <PatientRegistrationPage user={user} />}
         {page === 'billing' && <BillingPage user={user} />}
         {page === 'client-mgmt' && <ClientManagementPage user={user} />}
-        {page === 'reminders' && <RemindersPage user={user} />}
+        {page === 'reminders' && <RemindersPage user={user} onNavigate={(nextPage, context) => { if (nextPage === 'patient-records') setInboxPatientRequest(context); setPage(nextPage); }} />}
         {page === 'patient-records' && <PatientRecordsPage
           user={user}
           onNavigate={(nextPage, conversation) => {
@@ -373,16 +373,20 @@ export default function App() {
         />}
 
         {page === 'risk' && <RiskMonitoringPage user={user} />}
-        {page === 'analytics' && <CommunityAnalyticsPage user={user} />}
+        {page === 'settings' && <SettingsPage user={user} />}
         {page === 'reports' && <ReportsPage user={user} />}
-        {page === 'sync' && <DataSyncPage user={user} />}
 
         {page === 'clinics' && <ClinicOverviewPage user={user} onNavigate={setPage} />}
         {page === 'users' && <UserRoleManagementPage user={user} />}
         {page === 'roles' && <RolesPermissionsPage user={user} />}
         {page === 'financial' && <FinancialMonitoringPage user={user} />}
-        {page === 'inventory' && <InventoryManagementPage user={user} />}
-        {page === 'services' && <ServicesManagementPage user={user} />}
+        {['services', 'inventory'].includes(page) && (
+          <ServicesManagementPage
+            user={user}
+            initialTab={page === 'inventory' ? 'inventory' : 'services'}
+            setPage={setPage}
+          />
+        )}
         {page === 'audit' && <AuditTrailPage user={user} />}
         {page === 'inbox' && <SharedInboxPage
           user={user}

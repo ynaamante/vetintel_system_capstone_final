@@ -1,0 +1,1 @@
+const db=require('../config/db');require('../controllers/patientDiagnosisController').ensureSchema().then(()=>console.log('Patient diagnoses table and index ready; existing records unchanged.')).catch(error=>{console.error(error.code||error.message);process.exitCode=1;}).finally(()=>db.pool.end());

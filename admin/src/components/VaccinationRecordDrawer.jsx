@@ -7,7 +7,7 @@ const styles = {
   backdrop: { position: 'fixed', inset: 0, zIndex: 39, background: 'rgba(15, 38, 42, .18)' },
   panel: { position: 'fixed', zIndex: 40, inset: '0 0 0 auto', display: 'flex', width: 'min(560px, 100vw)', flexDirection: 'column', borderLeft: '1px solid #dce8e5', background: '#fff', color: '#173d37', boxShadow: '-10px 0 32px rgba(20, 48, 43, .12)' },
   header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '16px 22px 14px', borderBottom: '1px solid #e1ebe8' },
-  back: { display: 'inline-flex', minHeight: 32, alignItems: 'center', gap: 7, margin: '-4px 0 8px', padding: 0, border: 0, background: 'transparent', color: '#087967', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  back: { display: 'inline-flex', minHeight: 32, alignItems: 'center', gap: 7, margin: '-4px 0 8px', padding: 0, border: 0, background: 'transparent', color: '#086b50', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   title: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 9 },
   h2: { margin: 0, color: '#183b36', fontSize: 21, lineHeight: 1.3, letterSpacing: '-.02em' },
   meta: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 6, color: '#334155', fontSize: 13 },
@@ -35,14 +35,14 @@ const styles = {
   sampleStickerValue: { overflowWrap: 'anywhere', color: '#234b3e', fontSize: 13, fontWeight: 700 },
   sampleStickerFoot: { marginTop: 15, paddingTop: 10, borderTop: '1px dashed #9db9a4', color: '#334155', fontSize: 11, lineHeight: 1.45 },
   verified: { display: 'flex', gap: 10, margin: '2px 0 14px', padding: '13px 14px', border: '1px solid #c5e5dc', borderRadius: 11, background: '#f0f8f5', color: '#334155', fontSize: 13, lineHeight: 1.5 },
-  proofEmpty: { display: 'grid', justifyItems: 'center', gap: 9, marginTop: 2, padding: '32px 18px', border: '1px dashed #b5cbc5', borderRadius: 12, background: '#f8fbfa', textAlign: 'center' },
+  proofEmpty: { display: 'grid', justifyItems: 'center', gap: 9, marginTop: 2, padding: '32px 18px', border: '1px dashed #b5cbc5', borderRadius: 12, background: '#fafbf8', textAlign: 'center' },
   proofTitle: { margin: 0, color: '#203b37', fontSize: 14, fontWeight: 700 },
   statusBadge: { display: 'inline-flex', alignItems: 'center', gap: 5, minHeight: 24, padding: '0 9px', borderRadius: 999, background: '#dcf8e7', color: '#087b43', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' },
   dueBadge: { display: 'inline-flex', alignItems: 'center', minHeight: 21, padding: '0 8px', borderRadius: 999, background: '#e2f8e9', color: '#087b43', fontSize: 11, fontWeight: 650, whiteSpace: 'nowrap' },
   dueText: { marginLeft: 6, color: '#334155', fontSize: 12, fontWeight: 450 },
   footer: { display: 'flex', flexWrap: 'wrap', gap: 8, padding: '13px 20px', borderTop: '1px solid #e1ebe8', background: '#fff' },
   button: { minHeight: 40, padding: '0 14px', border: '1px solid #d4e2de', borderRadius: 9, background: '#fff', color: '#28544b', font: 'inherit', fontSize: 13, fontWeight: 650, cursor: 'pointer' },
-  primary: { borderColor: '#087967', background: '#087967', color: '#fff' },
+  primary: { borderColor: '#086b50', background: '#086b50', color: '#fff' },
   disabled: { opacity: .55, cursor: 'not-allowed' },
   timeline: { position: 'relative', display: 'grid', gap: 0, padding: '4px 0 0' },
   timelineItem: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minHeight: 62 },
@@ -69,8 +69,8 @@ const verificationDialogStyles = {
   uploadButton: { display: 'inline-flex', minHeight: 36, alignItems: 'center', padding: '0 12px', border: '1px solid #b8d8cf', borderRadius: 7, background: '#f4faf8', color: '#087568', font: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
   uploadFileName: { minWidth: 0, color: '#526b70', fontSize: 12, overflowWrap: 'anywhere' },
   uploadInput: { position: 'absolute', width: 1, height: 1, padding: 0, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', clipPath: 'inset(50%)' },
-  attestation: { display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: 12, border: '1px solid #dce9e6', borderRadius: 9, background: '#f8fbfa', color: '#38555a', fontSize: 13, lineHeight: 1.5, cursor: 'pointer' },
-  checkbox: { width: 18, height: 18, flex: '0 0 18px', margin: '1px 0 0', accentColor: '#005447' },
+  attestation: { display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: 12, border: '1px solid #dce9e6', borderRadius: 9, background: '#fafbf8', color: '#38555a', fontSize: 13, lineHeight: 1.5, cursor: 'pointer' },
+  checkbox: { width: 18, height: 18, flex: '0 0 18px', margin: '1px 0 0', accentColor: '#013826' },
   audit: { margin: '12px 0 0', color: '#61777d', fontSize: 12, lineHeight: 1.5 },
   error: { marginTop: 11, color: '#b42318', fontSize: 13 },
   footer: { display: 'flex', justifyContent: 'flex-end', gap: 9, padding: '12px 20px 16px', borderTop: '1px solid #e6eef1' },
@@ -259,7 +259,7 @@ export default function VaccinationRecordDrawer({ record, sourceLabel = 'Vaccina
         <button type="button" aria-label="Close vaccination details" onClick={onClose} style={styles.close}>×</button>
       </header>
       <nav aria-label="Vaccination detail sections" style={styles.tabs}>
-        {['Details', 'Proof / Sticker', 'History'].map(tab => <button key={tab} type="button" onClick={() => setActiveTab(tab === 'History' ? 'History' : tab)} aria-current={activeTab === (tab === 'History' ? 'History' : tab) ? 'page' : undefined} style={{ ...styles.tab, ...(activeTab === (tab === 'History' ? 'History' : tab) ? { borderBottomColor: '#087967', color: '#004f43', fontWeight: 700 } : {}) }}>{tab}{tab === 'Proof / Sticker' ? ` (${stickerUrl ? 1 : 0})` : tab === 'History' ? ` (${audit.length})` : ''}</button>)}
+        {['Details', 'Proof / Sticker', 'History'].map(tab => <button key={tab} type="button" onClick={() => setActiveTab(tab === 'History' ? 'History' : tab)} aria-current={activeTab === (tab === 'History' ? 'History' : tab) ? 'page' : undefined} style={{ ...styles.tab, ...(activeTab === (tab === 'History' ? 'History' : tab) ? { borderBottomColor: '#086b50', color: '#004f43', fontWeight: 700 } : {}) }}>{tab}{tab === 'Proof / Sticker' ? ` (${stickerUrl ? 1 : 0})` : tab === 'History' ? ` (${audit.length})` : ''}</button>)}
       </nav>
       <div style={styles.body}>
         {isMock && <div style={styles.warning}><span>i</span><span><strong>Prototype sample.</strong> This record is for demonstration only and is not saved to the clinic database.</span></div>}

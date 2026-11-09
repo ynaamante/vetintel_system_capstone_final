@@ -1,0 +1,53 @@
+.patient-records-page:has(.records-detail) { background: var(--color-warm-ivory); }
+.patient-records-page .records-detail-topbar.records-topbar { min-height: 58px; background: radial-gradient(ellipse at 58% -170%,var(--color-botanical-teal) 0 45%,var(--color-eucalyptus) 46% 57%,transparent 58%),var(--color-warm-ivory); border-bottom: 0; }
+.patient-records-page .records-detail { padding: 16px 20px 26px; }
+.patient-records-page .records-detail .detail-hero { gap: 16px; margin-bottom: 20px; }
+.patient-records-page .records-detail .detail-avatar { width: 84px; height: 84px; flex-basis: 84px; border-radius: 24px; border-color: var(--border); }
+.patient-records-page .records-detail .detail-title h1 { color: var(--color-deep-forest); font-size: 28px; letter-spacing: -.5px; }
+.patient-records-page .records-detail .detail-title .records-status-system { padding: 4px 10px; border-radius: 999px; background: var(--color-pale-sage); }
+.patient-records-page .records-detail .detail-meta,.patient-records-page .records-detail .detail-meta-row { color: var(--ink); font-size: 13px; }
+.patient-records-page .records-detail .detail-meta-row { max-width: 540px; }
+.patient-records-page .records-detail .detail-meta-row > span:last-child { flex-basis: 100%; }
+.patient-records-page .records-detail .detail-actions { max-width: 680px; gap: 8px; }
+.patient-records-page .records-detail .detail-action { min-height: 33px; border-color: var(--border); border-radius: 8px; color: var(--color-deep-forest); font-weight: 650; font-size: 11px; background: #fff; }
+.patient-records-page .records-detail .detail-action.primary { color: white; border-color: var(--color-botanical-teal); background: linear-gradient(135deg, var(--color-deep-forest), var(--color-botanical-teal)); }
+.patient-records-page .records-detail .detail-action.archive { color: #a62d30; border-color: #dc9298; }
+.patient-records-page .records-detail .detail-summary { gap: 12px; margin: 16px 0; }
+.patient-records-page .records-detail .detail-summary-card { display: flex; align-items: center; gap: 12px; min-height: 74px; padding: 12px; border: 1px solid var(--border); border-radius: 13px; background: var(--color-warm-ivory); }
+.patient-records-page .records-detail .detail-summary-icon { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; border-radius: 12px; background: var(--color-pale-sage); color: var(--color-botanical-teal); }
+.patient-records-page .records-detail .detail-summary-icon svg { width: 24px; height: 24px; }
+.patient-records-page .records-detail .detail-summary-text { min-width: 0; }
+.patient-records-page .records-detail .detail-summary-label { color: var(--color-botanical-teal); font-size: 11px; }
+.patient-records-page .records-detail .detail-summary-value { margin-top: 4px; color: var(--ink); font-size: 14px; }
+.patient-records-page .records-detail .detail-summary-note { color: var(--muted); line-height: 1.4; }
+.patient-records-page .records-detail .detail-tabs { margin-bottom: 22px; border-radius: 12px; }
+.patient-records-page .records-detail .detail-tab { height: 38px; font-size: clamp(10px,.72vw,12px); padding: 8px; }
+.patient-records-page .detail-overview-columns { grid-template-columns: 1.02fr 1fr; gap: 18px; }
+.patient-records-page .detail-overview-columns .detail-column { gap: 22px; }
+.patient-records-page .detail-overview-columns .detail-panel { padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: #fff; }
+.patient-records-page .detail-overview-columns .detail-panel-heading { min-height: 36px; margin: 0; padding: 7px 16px; color: #fff; font-size: 16px; line-height: 1.3; background: linear-gradient(135deg, var(--color-deep-forest), var(--color-botanical-teal)); }
+.patient-records-page .detail-overview-columns .detail-panel-heading > .detail-edit { padding: 4px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--color-pale-sage); color: var(--color-deep-forest); font-weight: 700; font-size: 10px; }
+.patient-records-page .detail-overview-columns .detail-information { gap: 0 24px; padding: 12px 16px 18px; }
+.patient-records-page .detail-overview-columns .detail-information > div { display: grid; grid-template-columns: minmax(95px,.85fr) minmax(0,1.15fr); align-items: stretch; border-bottom: 1px solid var(--color-pale-sage); }
+.patient-records-page .detail-overview-columns .detail-field-label { display: flex; align-items: center; color: var(--ink); font-size: 11px; font-weight: 650; background: var(--color-pale-sage); padding: 7px 10px; }
+.patient-records-page .detail-overview-columns .detail-field-value { margin: 0; padding: 7px 12px; color: var(--ink); font-size: 11px; font-weight: 400; overflow-wrap: anywhere; }
+.patient-records-page .detail-overview-columns .detail-owner { grid-template-columns: 50px 1fr 1fr; gap: 12px; padding: 16px; }
+.patient-records-page .detail-overview-columns .detail-owner-avatar { background: linear-gradient(135deg, var(--color-deep-forest), var(--color-botanical-teal)); }
+.patient-records-page .detail-overview-columns .detail-owner-info { min-width: 0; font-size: 11px; overflow-wrap: anywhere; }
+.patient-records-page .detail-overview-columns .detail-owner-info .detail-edit { margin-top: 4px; border-color: var(--border); border-radius: 9px; color: var(--color-botanical-teal); font-weight: 650; }
+.patient-records-page .detail-overview-columns .detail-panel > .detail-summary-note { margin: 0; padding: 10px 16px; }
+.patient-records-page .detail-overview-columns .detail-visits { min-height: 32px; padding: 0 12px; }
+.patient-records-page .detail-overview-columns .detail-appointment { margin: 10px; }
+.patient-records-page .detail-overview-columns .patient-intake-summary { padding: 0; background: #fff; }
+.patient-records-page .detail-overview-columns .patient-intake-summary > header { margin: 0; padding: 7px 16px; min-height: 36px; background: linear-gradient(135deg, var(--color-deep-forest), var(--color-botanical-teal)); }
+.patient-records-page .detail-overview-columns .patient-intake-summary h2 { color: #fff; font-size: 16px; }
+.patient-records-page .detail-overview-columns .patient-intake-origin { font-size: 9px; padding: 4px 7px; background: var(--color-pale-sage); }
+.patient-records-page .detail-overview-columns .patient-intake-card-content { padding: 10px; }
+.patient-records-page .detail-overview-columns .patient-intake-card-trigger { padding: 12px; gap: 12px; box-shadow: none; }
+.patient-records-page .detail-overview-columns .patient-intake-submission strong { font-size: 11px; }
+.patient-records-page .detail-overview-columns .patient-intake-submission small { font-size: 10px; }
+.patient-records-page .detail-overview-columns .patient-intake-metric { min-width: 70px; padding-left: 12px; }
+.patient-records-page .detail-overview-columns .patient-intake-indicator { font-size: 10px; }
+@media(max-width:1100px) { .patient-records-page .records-detail .detail-hero { flex-wrap: wrap; }.patient-records-page .records-detail .detail-actions { margin-left: 0; max-width: none; }.patient-records-page .detail-overview-columns .detail-information { gap: 0 12px; }.patient-records-page .detail-overview-columns .detail-information > div { grid-template-columns: 1fr; }.patient-records-page .detail-overview-columns .detail-owner { grid-template-columns: 44px 1fr; }.patient-records-page .detail-overview-columns .detail-owner-info:last-child { grid-column: 2; } }
+@media(max-width:850px) { .patient-records-page .detail-overview-columns { grid-template-columns: 1fr; }.patient-records-page .records-detail .detail-summary { grid-template-columns: 1fr 1fr; }.patient-records-page .detail-overview-columns .detail-information > div { grid-template-columns: minmax(95px,.85fr) minmax(0,1.15fr); } }
+@media(max-width:500px) { .patient-records-page .records-detail { padding: 12px; }.patient-records-page .records-detail .detail-summary { grid-template-columns: 1fr; }.patient-records-page .detail-overview-columns .detail-information { grid-template-columns: 1fr; }.patient-records-page .records-detail .detail-actions { justify-content: flex-start; } }

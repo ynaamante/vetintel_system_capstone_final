@@ -1,3 +1,5 @@
+import useOwnerMonitoring from '../utils/useOwnerMonitoring';
+import { financialData, money, clinicDay } from '../utils/ownerMonitoring';
 import { useState } from 'react';
 import {
   LineChart, Line, BarChart, Bar,
@@ -9,60 +11,15 @@ import { Icons } from '../icons';
 import { formatDateText } from '../utils/dateFormatting';
 import { canViewFeature } from '../utils/permissionUtils';
 
-const APPT_TREND = [
-  { month: 'January', appointments: 242 },
-  { month: 'February', appointments: 278 },
-  { month: 'March', appointments: 312 },
-  { month: 'April', appointments: 295 },
-];
-
-const REVENUE_DATA = [
-  { month: 'Jan', revenue: 18500 },
-  { month: 'Feb', revenue: 21200 },
-  { month: 'Mar', revenue: 25800 },
-  { month: 'Apr', revenue: 19800 },
-];
-
-const RECENT_ACTIVITY = [
-  { name: 'Dr. Michael Torres', action: 'Completed consultation', time: '10 mins ago' },
-  { name: 'Emily Rodriguez', action: 'Scheduled new appointment', time: '25 mins ago' },
-  { name: 'Dr. Sarah Chen', action: 'Updated vaccination record', time: '1 hour ago' },
-  { name: 'Dr. Michael Torres', action: 'Generated monthly report', time: '2 hours ago' },
-];
-
-const RESTOCK_REQUESTS = [
-  { name: 'Doxycycline 100mg', requestedBy: 'Dr. Torres', time: '1 hour ago', remaining: '18 tablets remaining', level: 'Low', color: '#f59e0b' },
-  { name: 'Metronidazole 250mg', requestedBy: 'Dr. Chen', time: '2 hours ago', remaining: '0 tablets remaining', level: 'Out of Stock', color: '#ef4444' },
-  { name: 'DHPP Vaccine', requestedBy: 'Dr. Torres', time: '3 hours ago', remaining: '8 vials remaining', level: 'Critical', color: '#f97316' },
-];
-
-const TODAY_APPOINTMENTS = [
-  { time: '09:00 AM', pet: 'Max', owner: 'John Smith', type: 'Checkup', doctor: 'Dr. Torres' },
-  { time: '10:30 AM', pet: 'Luna', owner: 'Sarah Johnson', type: 'Vaccination', doctor: 'Dr. Torres' },
-  { time: '11:00 AM', pet: 'Charlie', owner: 'Mike Davis', type: 'Surgery', doctor: 'Dr. Chen' },
-  { time: '02:00 PM', pet: 'Bella', owner: 'Emma Wilson', type: 'Dental', doctor: 'Dr. Torres' },
-  { time: '03:30 PM', pet: 'Rocky', owner: 'David Brown', type: 'Checkup', doctor: 'Dr. Chen' },
-];
-
-const TODAY_REVENUE = [
-  { name: 'Consultations', amount: '₱850', percent: '35%' },
-  { name: 'Vaccinations', amount: '₱520', percent: '21%' },
-  { name: 'Surgeries', amount: '₱680', percent: '28%' },
-  { name: 'Dental Services', amount: '₱400', percent: '16%' },
-];
-
-const NEW_PATIENTS = [
-  { name: 'Buddy', species: 'Dog', breed: 'Beagle', owner: 'Alice Green', registered: '2026-04-27' },
-  { name: 'Whiskers', species: 'Cat', breed: 'Siamese', owner: 'Bob White', registered: '2026-04-27' },
-  { name: 'Rex', species: 'Dog', breed: 'German Shepherd', owner: 'Carol Black', registered: '2026-04-26' },
-];
-
-function OverviewModal({ type, onClose }) {
+function OverviewModal({ type, onClose, data }) {
   if (!type) return null;
+  const TODAY_APPOINTMENTS = data.todayAppointments;
+  const TODAY_REVENUE = data.todayRevenue;
+  const NEW_PATIENTS = data.newPatients;
   const titles = {
-    schedule: ["Today's Appointment Schedule", 'Complete schedule for today (5 appointments)'],
-    revenue: ["Today's Revenue Breakdown", 'Total revenue: ₱2,450'],
-    patients: ['New Patients', 'Recently registered patients (3 total)'],
+    schedule: ["Today's Appointment Schedule", `Complete schedule for today (${TODAY_APPOINTMENTS.length} appointments)`],
+    revenue: ["Today's Revenue Breakdown", `Total revenue: ${money(data.todayIncome)}`],
+    patients: ['New Patients', `Recently registered patients (${NEW_PATIENTS.length} total)`],
   };
   const [title, subtitle] = titles[type];
   return (
@@ -119,7 +76,7 @@ const StatCard = ({ icon, iconBg, label, value, sub, subColor, compact = false }
   <div style={{ ...s.statCard, ...(compact ? s.compactStatCard : {}) }}>
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
       <div style={{ ...s.statIcon, ...(compact ? s.compactStatIcon : {}), background: iconBg }}>
-        <span style={{ width: compact ? 16 : 20, height: compact ? 16 : 20, display: 'flex', color: subColor || '#005447' }}>{icon}</span>
+        <span style={{ width: compact ? 16 : 20, height: compact ? 16 : 20, display: 'flex', color: subColor || '#013826' }}>{icon}</span>
       </div>
       <div>
         <div style={s.statLabel}>{label}</div>
@@ -135,7 +92,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   return (
     <div style={{ background: '#fff', border: '1px solid #e8ecf0', borderRadius: 8, padding: '8px 12px', fontSize: '.75rem', boxShadow: '0 2px 8px rgba(0,0,0,.08)' }}>
       <div style={{ color: '#64748b', marginBottom: 3 }}>{label}</div>
-      <div style={{ fontWeight: 600, color: '#005447' }}>{payload[0].name} : {payload[0].value}</div>
+      <div style={{ fontWeight: 600, color: '#013826' }}>{payload[0].name} : {payload[0].value}</div>
     </div>
   );
 };
@@ -145,21 +102,38 @@ const RevenueTooltip = ({ active, payload, label }) => {
   return (
     <div style={{ background: '#fff', border: '1px solid #e8ecf0', borderRadius: 8, padding: '8px 12px', fontSize: '.75rem', boxShadow: '0 2px 8px rgba(0,0,0,.08)' }}>
       <div style={{ color: '#64748b', marginBottom: 3 }}>{label}</div>
-      <div style={{ fontWeight: 600, color: '#0f1117' }}>${payload[0].value.toLocaleString()}</div>
+      <div style={{ fontWeight: 600, color: '#0f1117' }}>{money(payload[0].value)}</div>
     </div>
   );
 };
 
 export default function ClinicOverviewPage({ user, onNavigate }) {
-  const [restockRequests, setRestockRequests] = useState(RESTOCK_REQUESTS);
+
   const [overviewModal, setOverviewModal] = useState(null);
   const canView = canViewFeature(user.permissions, user.role, 'Clinic Overview');
+  const { data, error, loading } = useOwnerMonitoring(user, canView);
+  const financial = financialData(data, 'Yearly');
+  const today = clinicDay(new Date());
+  const patients = data?.pets || [];
+  const appointments = data?.appointments || [];
+  const staff = (data?.staff || []).filter(row => row.is_active !== false);
+  const inventory = data?.inventory || [];
+  const lowStock = inventory.filter(row => Number(row.quantity) <= Number(row.reorder_level));
+  const restockRequests = lowStock.map(row => ({ name: row.name, remaining: row.quantity + ' ' + row.unit + ' remaining', level: Number(row.quantity) ? 'Low' : 'Out of Stock', color: Number(row.quantity) ? '#d97706' : '#dc2626' }));
+  const todayAppointments = appointments.filter(row => clinicDay(row.start_time) === today && !['cancelled','canceled'].includes(String(row.status).toLowerCase())).map(row => ({ ...row, time: new Date(row.start_time).toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' }), type: row.reason || row.type || 'Visit', doctor: row.practitioner || row.doctor || 'Unassigned' }));
+  const newPatients = patients.filter(row => clinicDay(row.created_at) === today).map(row => ({ ...row, registered: row.created_at }));
+  const todayPayments = (data?.payments || []).filter(row => clinicDay(row.paid_at) === today);
+  const todayRevenue = todayPayments.map(row => ({ name: 'Payment #' + row.id + ' - ' + (row.pet || 'Invoice #' + row.invoice_id), amount: money(row.amount), percent: financial.today ? (Number(row.amount) / financial.today * 100).toFixed(1) + '%' : '0%' }));
+  const RECENT_ACTIVITY = (data?.activity || []).slice(0, 8).map(row => ({ name: row.user || 'System', action: row.action, time: new Date(row.timestamp).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) }));
+  const REVENUE_DATA = financial.trend;
+  const pendingVaccinations = (data?.vaccinations || []).filter(row => row.next_due && clinicDay(row.next_due) >= today && clinicDay(row.next_due) <= clinicDay(Date.now() + 7 * 86400000)).length;
 
   if (!canView) {
     return (
       <div style={s.main}>
         <Topbar user={user} title="Clinic Overview" subtitle="Comprehensive clinic performance and activity dashboard" />
         <div style={s.page}>
+        {loading && <p role="status">Loading clinic overview...</p>}{error && <p role="alert">{error}</p>}
           <div style={s.accessDenied}>
             <div style={s.accessDeniedTitle}>Access Denied</div>
             <div style={s.accessDeniedMessage}>You do not have permission to view Clinic Overview.</div>
@@ -174,52 +148,53 @@ export default function ClinicOverviewPage({ user, onNavigate }) {
       <Topbar user={user} title="Clinic Overview" subtitle="Comprehensive clinic performance and activity dashboard" />
       <div style={s.page}>
 
+        {loading && <p role="status">Loading clinic overview...</p>}{error && <p role="alert">{error}</p>}
         {/* STAT CARDS */}
         <div style={s.statsGrid}>
           <StatCard
-            iconBg="#e7f5f2" icon={Icons.users}
-            label="Total Patients" value="1,247"
-            sub="↗ +12% this month" subColor="#16a34a"
+            iconBg="#e7f4ec" icon={Icons.users}
+            label="Total Patients" value={data ? patients.length : "-"}
+            sub="Registered clinic patients" subColor="#16a34a"
           />
           <StatCard
             iconBg="#f0fdf4" icon={Icons.calendar}
-            label="Appointments" value="298"
-            sub="↘ -5% vs last month" subColor="#dc2626"
+            label="Appointments" value={data ? appointments.length : "-"}
+            sub="Recorded appointments" subColor="#dc2626"
           />
           <StatCard
             iconBg="#faf5ff" icon={Icons.users}
-            label="Active Users" value="4"
-            sub="2 Doctors, 2 Staff" subColor="#64748b"
+            label="Active Users" value={data ? staff.length : "-"}
+            sub="Active clinic staff" subColor="#64748b"
           />
           <StatCard
             iconBg="#fffbeb" icon={Icons.bell}
-            label="Pending Vaccinations" value="43"
+            label="Pending Vaccinations" value={data ? pendingVaccinations : "-"}
             sub="Due within 7 days" subColor="#d97706"
           />
         </div>
 
         <div style={s.inventoryStats}>
-          <StatCard compact iconBg="#e7f5f2" icon={Icons.archive} label="Inventory Value" value="₱286,450" sub="" subColor="#005447" />
-          <StatCard compact iconBg="#fffbeb" icon={Icons.archive} label="Low Stock Items" value="6" sub="" subColor="#d97706" />
-          <StatCard compact iconBg="#fff1f2" icon={Icons.xCircle} label="Out of Stock" value="1" sub="" subColor="#dc2626" />
-          <StatCard compact iconBg="#fff7ed" icon={Icons.clock} label="Expiring Medicines" value="4" sub="" subColor="#ea580c" />
-          <StatCard compact iconBg="#faf5ff" icon={Icons.archive} label="Pending Restock" value="3" sub="" subColor="#9333ea" />
+          <StatCard compact iconBg="#e7f4ec" icon={Icons.archive} label="Inventory Value" value={data ? money(inventory.reduce((sum, row) => sum + Number(row.quantity || 0) * Number(row.unit_price || 0), 0)) : "-"} sub="" subColor="#013826" />
+          <StatCard compact iconBg="#fffbeb" icon={Icons.archive} label="Low Stock Items" value={data ? lowStock.filter(row => Number(row.quantity) > 0).length : "-"} sub="" subColor="#d97706" />
+          <StatCard compact iconBg="#fff1f2" icon={Icons.xCircle} label="Out of Stock" value={data ? inventory.filter(row => Number(row.quantity) === 0).length : "-"} sub="" subColor="#dc2626" />
+          <StatCard compact iconBg="#fff7ed" icon={Icons.clock} label="Expiring Medicines" value={data ? inventory.filter(row => row.expiry_date && clinicDay(row.expiry_date) >= today && clinicDay(row.expiry_date) <= clinicDay(Date.now() + 30 * 86400000)).length : "-"} sub="" subColor="#ea580c" />
+          <StatCard compact iconBg="#faf5ff" icon={Icons.archive} label="Stock Alerts" value={data ? lowStock.length : "-"} sub="" subColor="#9333ea" />
         </div>
 
         <section style={s.restockPanel}>
           <div style={s.restockHeader}>
-            <div style={s.restockTitle}><span style={s.restockIcon}>{Icons.archive}</span><strong>Pending Restock Requests</strong><span style={s.countBadge}>{restockRequests.length}</span></div>
+            <div style={s.restockTitle}><span style={s.restockIcon}>{Icons.archive}</span><strong>Low Stock Alerts</strong><span style={s.countBadge}>{restockRequests.length}</span></div>
             <button type="button" style={s.manageButton} onClick={() => onNavigate?.('inventory')}>Manage Inventory</button>
           </div>
           <div style={s.restockList}>
             {restockRequests.map((request) => (
               <div key={request.name} style={s.restockRow}>
                 <span style={{ ...s.requestDot, background: request.color }} />
-                <div style={s.requestInfo}><strong style={s.requestName}>{request.name}</strong><span style={s.requestMeta}>Requested by {request.requestedBy} · {request.time} · {request.remaining}</span></div>
+                <div style={s.requestInfo}><strong style={s.requestName}>{request.name}</strong><span style={s.requestMeta}>{request.remaining}</span></div>
                 <span style={{ ...s.levelBadge, color: request.color, background: `${request.color}18` }}>{request.level}</span>
               </div>
             ))}
-            {!restockRequests.length && <div style={s.noRequests}>No pending restock requests.</div>}
+            {data && !restockRequests.length && <div style={s.noRequests}>No stock alerts.</div>}
           </div>
         </section>
 
@@ -246,15 +221,15 @@ export default function ClinicOverviewPage({ user, onNavigate }) {
             <div style={{ ...s.cardTitle, marginBottom: 16 }}>Today's Overview</div>
             <div style={{ ...s.todayItem, ...s.todayAppointments }}>
               <div style={s.todayLeft}>
-                <div style={{ ...s.todayIcon, background: '#e7f5f2' }}>
-                  <span style={{ width: 16, height: 16, display: 'flex', color: '#005447' }}>{Icons.calendar}</span>
+                <div style={{ ...s.todayIcon, background: '#e7f4ec' }}>
+                  <span style={{ width: 16, height: 16, display: 'flex', color: '#013826' }}>{Icons.calendar}</span>
                 </div>
                 <div>
                   <div style={s.todayLabel}>Today's Appointments</div>
-                  <div style={s.todayVal}>12</div>
+                  <div style={s.todayVal}>{data ? todayAppointments.length : "-"}</div>
                 </div>
               </div>
-              <button type="button" style={s.todayBtn} onClick={() => setOverviewModal('schedule')}>View Schedule</button>
+              <button type="button" style={s.todayBtn} disabled={!data} onClick={() => setOverviewModal('schedule')}>View Schedule</button>
             </div>
             <div style={{ ...s.todayItem, ...s.todayRevenue }}>
               <div style={s.todayLeft}>
@@ -263,7 +238,7 @@ export default function ClinicOverviewPage({ user, onNavigate }) {
                 </div>
                 <div>
                   <div style={s.todayLabel}>Today's Revenue</div>
-                  <div style={s.todayVal}>₱2,450</div>
+                  <div style={s.todayVal}>{data ? money(financial.today) : "-"}</div>
                 </div>
               </div>
               <button type="button" style={s.todayBtn} onClick={() => setOverviewModal('revenue')}>View Details</button>
@@ -275,12 +250,12 @@ export default function ClinicOverviewPage({ user, onNavigate }) {
                 </div>
                 <div>
                   <div style={s.todayLabel}>New Patients</div>
-                  <div style={s.todayVal}>3</div>
+                  <div style={s.todayVal}>{data ? newPatients.length : "-"}</div>
                 </div>
               </div>
               <button type="button" style={s.todayBtn} onClick={() => setOverviewModal('patients')}>View List</button>
             </div>
-            <OverviewModal type={overviewModal} onClose={() => setOverviewModal(null)} />
+            <OverviewModal data={{ todayAppointments, todayRevenue, newPatients, todayIncome: financial.today }} type={overviewModal} onClose={() => setOverviewModal(null)} />
           </div>
 
           {/* Recent Activity */}
@@ -342,7 +317,7 @@ const s = {
   noRequests: { padding: 16, textAlign: 'center', color: '#64748b', fontSize: '.8rem' },
   cardTitle: { fontSize: '.88rem', fontWeight: 600, color: '#0f1117', letterSpacing: '-.01em', marginBottom: 16 },
   todayItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', marginBottom: 16, borderRadius: 10, borderBottom: 'none' },
-  todayAppointments: { background: '#e7f5f2' },
+  todayAppointments: { background: '#e7f4ec' },
   todayRevenue: { background: '#f0fdf4' },
   todayPatients: { background: '#faf5ff', marginBottom: 0 },
   todayLeft: { display: 'flex', alignItems: 'center', gap: 12 },
@@ -351,7 +326,7 @@ const s = {
   todayVal: { fontSize: '1.1rem', fontWeight: 600, color: '#0f1117', marginTop: 1 },
   todayBtn: { padding: '7px 14px', background: '#fff', border: '1px solid #e8ecf0', borderRadius: 8, fontSize: '.78rem', fontWeight: 500, color: '#0f1117', cursor: 'pointer' },
   activityItem: { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 0' },
-  activityIcon: { width: 28, height: 28, borderRadius: 7, background: '#f4f6f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
+  activityIcon: { width: 28, height: 28, borderRadius: 7, background: '#f1f6ef', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
   activityName: { fontSize: '.82rem', fontWeight: 500, color: '#0f1117' },
   activityAction: { fontSize: '.75rem', color: '#64748b', marginTop: 1 },
   activityTime: { fontSize: '.68rem', color: '#64748b', marginTop: 2 },

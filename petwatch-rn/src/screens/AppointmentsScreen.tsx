@@ -125,7 +125,7 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   primaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   ctaBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF', borderWidth: 1, borderColor: isDark ? '#2563EB' : '#BFDBFE', borderRadius: radius.lg, padding: 16, marginTop: 4 },
   ctaTitle: { fontSize: 15, fontWeight: '600', color: isDark ? '#BFDBFE' : '#1E40AF' },
-  ctaSub: { fontSize: 13, color: isDark ? '#93C5FD' : '#3B82F6' },
+  ctaSub: { fontSize: 13, color: isDark ? '#D2E5DC' : '#087A70' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalBox: { backgroundColor: tc.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: tc.text, marginBottom: 4 },

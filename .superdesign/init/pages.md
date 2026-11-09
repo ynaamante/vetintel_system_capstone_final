@@ -1,0 +1,23 @@
+## DashboardPage
+- admin/src/pages/DashboardPage.jsx
+  - admin\src\components\Topbar.jsx
+    - admin\src\icons\index.jsx
+    - admin\src\utils\notifications.js
+  - admin\src\utils\dateFormatting.js
+## DiseaseMonitoringPage
+- admin/src/pages/DiseaseMonitoringPage.jsx
+  - admin\src\components\Topbar.jsx
+    - admin\src\icons\index.jsx
+    - admin\src\utils\notifications.js
+  - admin\src\utils\permissionUtils.js
+  - admin\src\utils\dateFormatting.js
+## SettingsPage
+- admin/src/pages/SettingsPage.jsx
+  - admin\src\components\Topbar.jsx
+    - admin\src\icons\index.jsx
+    - admin\src\utils\notifications.js
+  - admin\src\utils\permissionUtils.js
+  - admin\src\pages\DataSyncPage.jsx
+    - admin\src\utils\dateFormatting.js
+    - admin\src\utils\useOwnerMonitoring.js
+      - admin\src\utils\apiResponse.js

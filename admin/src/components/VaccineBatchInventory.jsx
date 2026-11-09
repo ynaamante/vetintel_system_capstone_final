@@ -1,0 +1,14 @@
+import '../pages/clinic/vaccinationVisit.css';
+import { useEffect, useState } from 'react';
+const api=(import.meta.env.VITE_API_URL||'http://localhost:3000/api').replace(/\/+$/,'');
+export default function VaccineBatchInventory({user}){
+  const [rows,setRows]=useState([]),[error,setError]=useState(''),[open,setOpen]=useState(false),[saving,setSaving]=useState(false);
+  const request=async(body)=>{const response=await fetch(`${api}/clinic-records/vaccine-inventory`,{method:body?'POST':'GET',headers:{Authorization:`Bearer ${user.token}`,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const result=await response.json();if(!response.ok)throw new Error(result.error||'Unable to load vaccine inventory.');return result;};
+  const load=async()=>{try{setRows(await request());setError('');}catch(e){setError(e.message);}};
+  useEffect(()=>{load();},[user.token]);
+  return <section className="vaccine-batch-inventory"><header><div><h3>Vaccine Batch Inventory</h3><p>Saved vaccine lots used to match sticker proof and record administration.</p></div><button type="button" onClick={()=>setOpen(value=>!value)}>{open?'Cancel':'Add Vaccine Batch'}</button></header>
+    {error&&<p role="alert" className="vve-error">{error}</p>}
+    {open&&<form onSubmit={async event=>{event.preventDefault();const form=event.currentTarget;const body=Object.fromEntries(new FormData(form));setSaving(true);try{await request(body);setOpen(false);await load();}catch(e){setError(e.message);}finally{setSaving(false);}}}><div className="vve-form-grid">{[['product_name','Product name','text'],['manufacturer','Manufacturer','text'],['batch_number','Lot / Batch Number','text'],['expiry_date','Expiry date','date'],['quantity','Quantity in doses','number'],['default_dose','Default dose (optional)','text']].map(([name,label,type])=><label key={name}>{label}<input name={name} type={type} min={type==='number'?0:undefined} step={type==='number'?1:undefined} required={name!=='default_dose'}/></label>)}<label>Default route<select name="default_route"><option value="">Select route</option>{['Subcutaneous','Intramuscular','Intranasal','Oral'].map(v=><option key={v}>{v}</option>)}</select></label></div><button type="submit" disabled={saving}>{saving?'Saving…':'Save Batch'}</button></form>}
+    <div className="lab-results-table-wrap"><table className="lab-results-table"><thead><tr>{['Product','Manufacturer','Lot / Batch','Expiry','Doses Available'].map(label=><th key={label}>{label}</th>)}</tr></thead><tbody>{rows.map(row=><tr key={row.id}><td>{row.product_name}</td><td>{row.manufacturer}</td><td>{row.batch_number}</td><td>{row.expiry_date}</td><td>{row.quantity}</td></tr>)}{!rows.length&&<tr><td colSpan={5}>No saved vaccine batches. Add the actual received vaccine stock to enable sticker matching.</td></tr>}</tbody></table></div>
+  </section>;
+}

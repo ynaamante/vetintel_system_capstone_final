@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Activity, Eye, EyeOff } from 'lucide-react';
+import { isSystemAdmin } from '../../../utils/permissionUtils';
 
 export function Login() {
   const navigate = useNavigate();
@@ -20,8 +21,8 @@ export function Login() {
 
     try {
       const response = await axios.post('/api/login', { email, password });
-      const userRole = response.data.role || 'super_admin';
-      if (userRole.trim().toLowerCase() !== 'super_admin') {
+      const userRole = response.data.role;
+      if (!isSystemAdmin(userRole)) {
         setError('You do not have System Administrator access.');
         return;
       }
@@ -31,9 +32,7 @@ export function Login() {
         name: response.data.name,
         role: userRole,
       }));
-      if (response.data.token) {
-        localStorage.setItem('vetintel_token', response.data.token);
-      }
+      localStorage.setItem('vetintel_token', response.data.token);
       navigate('/');
     } catch (error: any) {
       setError(error.response?.data?.error || 'Invalid email or password');
@@ -46,11 +45,11 @@ export function Login() {
         {/* Logo and Header */}
         <div className="bg-white rounded-xl shadow-2xl px-8 py-7">
           <div className="flex items-center justify-center gap-2 mb-6">
-            <div className="flex items-center justify-center w-9 h-9 bg-[#2161e8] rounded-lg">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#086b50] rounded-lg">
               <Activity className="w-5 h-5 text-white" />
             </div>
             <div className="text-left">
-              <div className="text-base font-semibold text-[#102956]">VetIntel</div>
+              <div className="text-base font-semibold text-[#172b24]">VetIntel</div>
               <div className="text-[11px] text-[#7995c9]">Super Admin Portal</div>
             </div>
           </div>
@@ -72,7 +71,7 @@ export function Login() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2.5 border border-[#cbdcfb] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 border border-[#d4e3d7] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="admin@vetintel.com"
               />
             </div>
@@ -86,7 +85,7 @@ export function Login() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-[#cbdcfb] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                  className="w-full px-3 py-2.5 border border-[#d4e3d7] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
                   placeholder="Enter your password"
                 />
                 <button
@@ -109,16 +108,16 @@ export function Login() {
                   type="checkbox"
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
-                <span className="ml-2 text-xs text-[#6684b9]">Remember me</span>
+                <span className="ml-2 text-xs text-[#526B62]">Remember me</span>
               </label>
-              <a href="#" className="text-xs text-[#2161e8] hover:text-blue-700">
+              <a href="#" className="text-xs text-[#086b50] hover:text-blue-700">
                 Forgot password?
               </a>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-[#2161e8] text-white py-2.5 rounded-lg hover:bg-blue-700 text-xs font-semibold transition-colors shadow-[0_8px_18px_-10px_rgba(33,97,232,.9)]"
+              className="w-full bg-[#086b50] text-white py-2.5 rounded-lg hover:bg-blue-700 text-xs font-semibold transition-colors shadow-[0_8px_18px_-10px_rgba(33,97,232,.9)]"
             >
               Sign In
             </button>

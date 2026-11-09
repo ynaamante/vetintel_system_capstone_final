@@ -1,0 +1,18 @@
+.payment-qr-settings { padding: 30px; color: var(--ink); }
+.payment-qr-settings form { max-width: 720px; padding: 26px; background: var(--surface, white); border: 1px solid var(--border); border-radius: 16px; }
+.payment-qr-settings h2 { margin: 0 0 10px; }
+.payment-qr-settings p { margin: 12px 0; }
+.payment-qr-settings fieldset { border: 0; padding: 0; margin-top: 22px; min-width: 0; }
+.payment-qr-settings label { display: grid; gap: 8px; margin-bottom: 18px; font-weight: 600; }
+.payment-qr-settings input, .payment-qr-settings select { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid var(--border); border-radius: 9px; background: white; color: var(--ink); font: inherit; }
+.payment-qr-preview { display: block; width: min(280px, 100%); height: 280px; object-fit: contain; margin: 20px auto; background: white; }
+.payment-qr-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+.payment-qr-actions button { border: 1px solid var(--color-botanical-teal); border-radius: 9px; padding: 12px 18px; font: inherit; cursor: pointer; background: white; color: var(--color-botanical-teal); }
+.payment-qr-actions button:first-child { background: var(--color-botanical-teal); color: white; }
+.payment-qr-actions button:disabled { opacity: .5; cursor: default; }
+.payment-qr-settings [role="alert"] { color: var(--red, #b42318); }
+
+.financial-payment-qr { margin-bottom: 20px; border: 1px solid var(--border); border-radius: 12px; background: white; }
+.financial-payment-qr > summary { padding: 18px; cursor: pointer; color: var(--color-botanical-teal); font-weight: 600; }
+.financial-payment-qr .payment-qr-settings { padding: 0 18px 18px; }
+.financial-payment-qr .payment-qr-settings form { max-width: none; border: 0; padding: 8px 0; }

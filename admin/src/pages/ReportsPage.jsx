@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { jsPDF } from 'jspdf';
+import { csvCell } from '../utils/billingView';
+import { useEffect, useState } from 'react';
 import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
 import { Icons } from '../icons';
 import { canViewFeature } from '../utils/permissionUtils';
-import { canExportFeature, canInteractWithFeature } from '../utils/permissionUtils';
+import { canInteractWithFeature } from '../utils/permissionUtils';
 
 /* ── DATA ── */
 const REPORT_CARDS = [
@@ -11,62 +13,58 @@ const REPORT_CARDS = [
     category: 'Disease Intelligence',
     title: 'Monthly Disease Summary',
     desc: 'Comprehensive overview of disease trends and patterns',
-    lastGen: 'March 1, 2026',
-    size: '2.4 MB',
-    status: 'fresh',   // fresh | stale | outdated
+    lastGen: 'Not generated this session',
+    size: '-',
+    status: 'Ready',   // fresh | stale | outdated
   },
   {
     category: 'Risk Analysis',
     title: 'Risk Assessment Report',
     desc: 'Community-wide risk analysis and contributing factors',
-    lastGen: 'February 20, 2026',
-    size: '1.8 MB',
-    status: 'stale',
+    lastGen: 'Not generated this session',
+    size: '-',
+    status: 'Ready',
   },
   {
     category: 'Prevention',
     title: 'Vaccination Coverage Report',
     desc: 'Network vaccination rates and coverage gaps',
-    lastGen: 'February 28, 2026',
-    size: '1.2 MB',
-    status: 'fresh',
+    lastGen: 'Not generated this session',
+    size: '-',
+    status: 'Ready',
   },
   {
     category: 'Surveillance',
     title: 'Outbreak Alert Summary',
     desc: 'All active and resolved outbreak alerts',
-    lastGen: 'January 15, 2026',
-    size: '3.1 MB',
-    status: 'outdated',
+    lastGen: 'Not generated this session',
+    size: '-',
+    status: 'Ready',
   },
   {
     category: 'Network Health',
     title: 'Clinic Network Analysis',
     desc: 'Performance and participation metrics across network',
-    lastGen: 'February 15, 2026',
-    size: '2.7 MB',
-    status: 'stale',
+    lastGen: 'Not generated this session',
+    size: '-',
+    status: 'Ready',
   },
   {
     category: 'Executive',
     title: 'Quarterly Intelligence Brief',
     desc: 'Executive summary of key trends and insights',
-    lastGen: 'March 1, 2026',
-    size: '4.5 MB',
-    status: 'fresh',
+    lastGen: 'Not generated this session',
+    size: '-',
+    status: 'Ready',
   },
 ];
 
 const REPORT_TYPES  = ['Disease Summary', 'Risk Assessment', 'Vaccination Coverage', 'Outbreak Alert', 'Clinic Network', 'Quarterly Brief'];
-const DISEASE_OPTS  = ['All Diseases', 'Parvovirus', 'Kennel Cough', 'Distemper', 'Giardia', 'Leptospirosis'];
-const TIME_OPTS     = ['Last 30 Days', 'Last 60 Days', 'Last 90 Days', 'Last 6 Months', 'Last Year'];
-const FORMAT_OPTS   = ['PDF', 'CSV', 'Excel'];
 
-const RECENT_REPORTS = [
-  { name: 'Monthly Disease Summary - February 2026', type: 'PDF',  date: 'March 1, 2026',    size: '2.4 MB' },
-  { name: 'Vaccination Coverage Report - Q1 2026',   type: 'CSV',  date: 'February 28, 2026', size: '1.2 MB' },
-  { name: 'Quarterly Intelligence Brief - Q1 2026',  type: 'PDF',  date: 'March 1, 2026',    size: '4.5 MB' },
-];
+const TIME_OPTS = ['Last 30 Days', 'Last 60 Days', 'Last 90 Days'];
+const FORMAT_OPTS = ['PDF', 'CSV'];
+
+
 
 /* ── MAIN PAGE ── */
 export function ReportsPage({ user }) {
@@ -75,16 +73,62 @@ export function ReportsPage({ user }) {
   const [timeRange,  setTimeRange]  = useState('Last 30 Days');
   const [format,     setFormat]     = useState('PDF');
   const [generating, setGenerating] = useState(null);
+  const [RECENT_REPORTS, setReports] = useState([]);
+  const [error, setError] = useState('');
+  const [DISEASE_OPTS, setDiseaseOptions] = useState(['All Diseases']);
 
   const canView = canViewFeature(user.permissions, user.role, 'Reports');
   const canGenerateReport = canInteractWithFeature(user.permissions, user.role, 'Reports');
   const canBuildCustomReport = canInteractWithFeature(user.permissions, user.role, 'Reports');
   const canManageReportActions = canInteractWithFeature(user.permissions, user.role, 'Reports');
 
-  function handleGenerate(title) {
-    if (!canGenerateReport) return;
-    setGenerating(title);
-    setTimeout(() => setGenerating(null), 1800);
+  useEffect(() => {
+    if (!canView) return;
+    const controller = new AbortController();
+    const api = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+    fetch(api + '/owner-monitoring/report?days=90', { headers: { Authorization: 'Bearer ' + user.token }, signal: controller.signal })
+      .then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Unable to load report options.'); if (!controller.signal.aborted) setDiseaseOptions(['All Diseases', ...(data.disease_options || []).map(row => row.disease)]); })
+      .catch(failure => { if (!controller.signal.aborted) setError(failure.message); });
+    return () => controller.abort();
+  }, [canView, user.token, user.clinic_id]);
+  const download = (blob, filename) => {
+    const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  async function handleGenerate(title) {
+    if (!canGenerateReport || generating) return;
+    setGenerating(title); setError('');
+    try {
+      const api = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+      const query = new URLSearchParams({ days: String(parseInt(timeRange.match(/\d+/)?.[0] || '30', 10)) });
+      if (disease !== 'All Diseases') query.set('disease', disease);
+      const response = await fetch(api + '/owner-monitoring/report?' + query, { headers: { Authorization: 'Bearer ' + user.token } });
+      const summary = await response.json();
+      if (!response.ok) throw new Error(summary.error || 'Unable to load report data.');
+      const riskReport = /risk/i.test(title);
+      const vaccineReport = /vaccin/i.test(title);
+      const clinicReport = /clinic|network/i.test(title);
+      const alertReport = /outbreak|alert/i.test(title);
+      const source = riskReport ? summary.risk_distribution : vaccineReport ? summary.vaccination_trend : clinicReport ? summary.clinics : alertReport ? (summary.diseases || []).filter(row => Number(row.cases) >= 3 && Number(row.cases) > Number(row.previous_cases) * 1.4) : summary.diseases;
+      const entries = source || [];
+      const columns = [...new Set(entries.flatMap(row => Object.keys(row)))];
+      const rows = [[title], ['Clinic', summary.clinic_id], ['Generated', summary.generated_at], ['Period', timeRange], ['Disease', disease], [], columns, ...entries.map(row => columns.map(key => row[key]))];
+      if (!entries.length) rows.push(['No recorded data for these filters.']);
+      if (alertReport) rows.push(['Alerts are calculated from recorded case increases, not confirmed outbreaks.']);
+      let blob;
+      if (format === 'CSV') blob = new Blob([rows.map(row => row.map(csvCell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      else {
+        const doc = new jsPDF({ orientation: 'landscape' }); let y = 16;
+        doc.setFontSize(9);
+        for (const row of rows) {
+          const lines = doc.splitTextToSize(row.join(' | '), 265);
+          for (const line of lines) { if (y > 190) { doc.addPage(); y = 16; } doc.text(line, 14, y); y += 6; }
+        }
+        blob = doc.output('blob');
+      }
+      const filename = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.' + format.toLowerCase();
+      download(blob, filename);
+      setReports(previous => [{ name: title, type: format, date: new Date(summary.generated_at).toLocaleString('en-PH'), size: (blob.size / 1024).toFixed(1) + ' KB', blob, filename }, ...previous]);
+    } catch (failure) { setError(failure.message); } finally { setGenerating(null); }
   }
 
   if (!canView) {
@@ -100,7 +144,7 @@ export function ReportsPage({ user }) {
     );
   }
 
-  const previewText = `${reportType} report for ${disease} across network - ${timeRange} (${format})`;
+  const previewText = `${reportType} report for ${disease} for your clinic - ${timeRange} (${format})`;
 
   return (
     <div style={s.main}>
@@ -110,6 +154,7 @@ export function ReportsPage({ user }) {
         subtitle="Generate and manage intelligence reports"
       />
       <div style={s.page}>
+        {error && <p role="alert">{error}</p>}
 
         {/* REPORT CARDS GRID */}
         <div style={s.grid}>
@@ -121,10 +166,10 @@ export function ReportsPage({ user }) {
               <div style={s.reportTitle}>{r.title}</div>
               <div style={s.reportDesc}>{r.desc}</div>
               <div style={s.reportMeta}>
-                <StatusIndicator status={r.status} />
-                <span style={s.metaText}>Last generated: {r.lastGen}</span>
+                <StatusIndicator status={RECENT_REPORTS.some(row => row.name === r.title) ? 'Generated' : 'Ready'} />
+                <span style={s.metaText}>Last generated: {RECENT_REPORTS.find(row => row.name === r.title)?.date || 'Not generated this session'}</span>
               </div>
-              <div style={s.reportSize}>Size: {r.size}</div>
+              <div style={s.reportSize}>Size: {RECENT_REPORTS.find(row => row.name === r.title)?.size || '-'}</div>
               <button
                 style={{
                   ...s.generateBtn,
@@ -132,7 +177,7 @@ export function ReportsPage({ user }) {
                   cursor: canGenerateReport ? 'pointer' : 'not-allowed',
                 }}
                 onClick={() => handleGenerate(r.title)}
-                disabled={!canGenerateReport}
+                disabled={!canGenerateReport || !!generating}
               >
                 <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.file}</span>
                 {generating === r.title ? 'Generating…' : 'Generate Report'}
@@ -151,7 +196,7 @@ export function ReportsPage({ user }) {
               disabled={!canBuildCustomReport}
               style={{
                 ...s.select,
-                background: canBuildCustomReport ? '#f4f6f9' : '#f8fafc',
+                background: canBuildCustomReport ? '#f1f6ef' : '#f8fafc',
                 color: canBuildCustomReport ? '#0f1117' : '#64748b',
                 cursor: canBuildCustomReport ? 'pointer' : 'not-allowed',
               }}
@@ -164,7 +209,7 @@ export function ReportsPage({ user }) {
               disabled={!canBuildCustomReport}
               style={{
                 ...s.select,
-                background: canBuildCustomReport ? '#f4f6f9' : '#f8fafc',
+                background: canBuildCustomReport ? '#f1f6ef' : '#f8fafc',
                 color: canBuildCustomReport ? '#0f1117' : '#64748b',
                 cursor: canBuildCustomReport ? 'pointer' : 'not-allowed',
               }}
@@ -177,7 +222,7 @@ export function ReportsPage({ user }) {
               disabled={!canBuildCustomReport}
               style={{
                 ...s.select,
-                background: canBuildCustomReport ? '#f4f6f9' : '#f8fafc',
+                background: canBuildCustomReport ? '#f1f6ef' : '#f8fafc',
                 color: canBuildCustomReport ? '#0f1117' : '#64748b',
                 cursor: canBuildCustomReport ? 'pointer' : 'not-allowed',
               }}
@@ -190,7 +235,7 @@ export function ReportsPage({ user }) {
               disabled={!canBuildCustomReport}
               style={{
                 ...s.select,
-                background: canBuildCustomReport ? '#f4f6f9' : '#f8fafc',
+                background: canBuildCustomReport ? '#f1f6ef' : '#f8fafc',
                 color: canBuildCustomReport ? '#0f1117' : '#64748b',
                 cursor: canBuildCustomReport ? 'pointer' : 'not-allowed',
               }}
@@ -215,7 +260,7 @@ export function ReportsPage({ user }) {
               border: canBuildCustomReport ? 'none' : '1px solid #cbd5e1',
               cursor: canBuildCustomReport ? 'pointer' : 'not-allowed',
             }}
-            disabled={!canBuildCustomReport}
+            disabled={!canBuildCustomReport || !!generating} onClick={() => handleGenerate(reportType)}
           >
             Build Custom Report
           </button>
@@ -223,12 +268,13 @@ export function ReportsPage({ user }) {
 
         {/* RECENT REPORTS */}
         <div style={s.card}>
-          <div style={{ ...s.cardTitle, marginBottom: 16 }}>Recent Reports</div>
+          <div style={{ ...s.cardTitle, marginBottom: 16 }}>Recent Reports (this session)</div>
           <div style={s.tableHead}>
             {['Report Name', 'Type', 'Generated Date', 'File Size', 'Actions'].map(h => (
               <div key={h} style={s.th}>{h}</div>
             ))}
           </div>
+          {!RECENT_REPORTS.length && <p>No reports generated this session.</p>}
           {RECENT_REPORTS.map((r, i) => (
             <div key={i} style={{
               ...s.tableRow,
@@ -246,9 +292,9 @@ export function ReportsPage({ user }) {
               <div style={{ ...s.td, color: '#64748b', fontSize: '.78rem' }}>{r.date}</div>
               <div style={{ ...s.td, color: '#64748b', fontSize: '.78rem' }}>{r.size}</div>
               <div style={{ ...s.td, gap: 12 }}>
-                <ActionIcon disabled={!canManageReportActions} icon="download" />
-                <ActionIcon disabled={!canManageReportActions} icon="share" />
-                <ActionIcon disabled={!canManageReportActions} icon="trash" color="#dc2626" />
+                <button type="button" onClick={() => download(r.blob, r.filename)} disabled={!canManageReportActions}>Download</button>
+                
+                <button type="button" onClick={() => setReports(rows => rows.filter(item => item !== r))} disabled={!canManageReportActions}>Remove</button>
               </div>
             </div>
           ))}
@@ -259,43 +305,8 @@ export function ReportsPage({ user }) {
   );
 }
 
-function ActionIcon({ icon, color = '#64748b', disabled = false }) {
-  const ICONS = {
-    download: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-      </svg>
-    ),
-    share: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-      </svg>
-    ),
-    trash: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
-        <path d="M9 6V4h6v2"/>
-      </svg>
-    ),
-  };
-  return (
-    <span
-      style={{
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        display: 'flex',
-        opacity: disabled ? 0.35 : 0.75,
-        pointerEvents: disabled ? 'none' : 'auto',
-      }}
-    >
-      {ICONS[icon]}
-    </span>
-  );
-}
-
-/* ── STYLES ── */
 const s = {
-  main: { flex: 1, overflowY: 'auto', background: '#f4f6f9' },
+  main: { flex: 1, overflowY: 'auto', background: '#f1f6ef' },
   page: { padding: '24px 28px' },
 
   grid: {
@@ -310,7 +321,7 @@ const s = {
   reportTop:    { marginBottom: 10 },
   categoryTag: {
     display: 'inline-block', fontSize: '.67rem', fontWeight: 600,
-    color: '#64748b', background: '#f4f6f9',
+    color: '#64748b', background: '#f1f6ef',
     border: '1px solid #e8ecf0', borderRadius: 6,
     padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '.05em',
   },
@@ -339,11 +350,11 @@ const s = {
   select: {
     flex: 1, minWidth: 140,
     padding: '9px 12px', border: '1px solid #e8ecf0', borderRadius: 8,
-    fontSize: '.82rem', color: '#0f1117', background: '#f4f6f9',
+    fontSize: '.82rem', color: '#0f1117', background: '#f1f6ef',
     outline: 'none', cursor: 'pointer',
   },
   previewBox: {
-    background: '#f4f6f9', border: '1px solid #e8ecf0',
+    background: '#f1f6ef', border: '1px solid #e8ecf0',
     borderRadius: 8, padding: '12px 16px', marginBottom: 14,
   },
   previewLabel: { fontSize: '.7rem', fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.05em' },

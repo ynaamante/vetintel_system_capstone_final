@@ -1,88 +1,12 @@
-import { useMemo, useState } from 'react';
+import IntakeScreeningReview from '../components/IntakeScreeningReview';
+import screening from '../../../data/intakeScreening.json';
+import { useEffect, useMemo, useState } from 'react';
 import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
 import { Icons } from '../icons';
 import { notifySuccess } from '../utils/notifications';
 import { formatDateText } from '../utils/dateFormatting';
-
-const INITIAL_INTAKES = [
-  {
-    id: 'INT-001',
-    tag: 'NEW',
-    pet: 'Coco',
-    owner: 'Maria Santos',
-    email: 'maria.santos@email.com',
-    species: 'Dog',
-    breed: 'Shih Tzu',
-    phone: '+63 917 888 1234',
-    received: 'September 30, 2026',
-    receivedMeta: '9:18 AM',
-    submittedBy: 'Emily Rodriguez',
-    status: 'Needs review',
-    reason: 'First-time visit. Owner reports puppy has been sneezing frequently.',
-    ownerAddress: '123 Mabini St, Quezon City',
-    age: '5 months',
-    gender: 'Male',
-    dateOfBirth: '2023-04-10',
-    weight: '5 kg',
-    color: 'White & Brown',
-    allergies: 'None reported',
-    attachmentName: 'Coco_Vaccine_Card.jpg',
-    attachmentMeta: 'Vaccine card · uploaded by Emily Rodriguez',
-    activity: ['Intake submitted by Emily Rodriguez', 'Vaccine card attached'],
-  },
-  {
-    id: 'INT-002',
-    tag: 'UPDATED',
-    pet: 'Pepper',
-    owner: 'Luis Fernandez',
-    email: 'luis.fernandez@email.com',
-    species: 'Cat',
-    breed: 'Scottish Fold',
-    phone: '+63 920 777 5678',
-    received: 'September 28, 2026',
-    receivedMeta: '2:30 PM · by Emily',
-    submittedBy: 'Emily Rodriguez',
-    status: 'Waiting on reception',
-    alert: true,
-    reason: 'Updated patient registration submitted for reception review.',
-    ownerAddress: 'Makati City, Metro Manila',
-    age: '2 years',
-    gender: 'Female',
-    dateOfBirth: '2024-02-16',
-    weight: '4 kg',
-    color: 'Gray',
-    allergies: 'Not recorded',
-    attachmentName: '',
-    attachmentMeta: '',
-    activity: ['Updated intake submitted by Emily Rodriguez'],
-  },
-  {
-    id: 'INT-003',
-    tag: 'APPROVED',
-    pet: 'Nala',
-    owner: 'Grace Villanueva',
-    email: 'grace.villanueva@email.com',
-    species: 'Dog',
-    breed: 'Golden Retriever',
-    phone: '+63 912 333 9999',
-    received: 'September 26, 2026',
-    receivedMeta: '10:05 AM · by Emily',
-    submittedBy: 'Emily Rodriguez',
-    status: 'Approved',
-    reason: 'Routine wellness visit.',
-    ownerAddress: 'Pasig City, Metro Manila',
-    age: '4 years',
-    gender: 'Female',
-    dateOfBirth: '2022-01-09',
-    weight: '28 kg',
-    color: 'Golden',
-    allergies: 'None reported',
-    attachmentName: '',
-    attachmentMeta: '',
-    activity: ['Intake submitted by Emily Rodriguez', 'Registration approved'],
-  },
-];
+import { announceRegistrationUpdate, watchRegistrationUpdates } from '../utils/registrationSync';
 
 const FILTERS = ['All', 'Needs review', 'Waiting on reception', 'Approved', 'Rejected'];
 const CORRECTION_REASONS = [
@@ -92,7 +16,53 @@ const CORRECTION_REASONS = [
   'Owner contact',
   'Other',
 ];
-const DOCTORS = ['Dr. Yna Amante', 'Dr. Emily Rodriguez', 'Dr. Marco Santos'];
+const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+
+function mapServerIntake(row) {
+  const owner = row.owner_data || {};
+  const pet = row.pet_data || {};
+  const attachments = Array.isArray(row.attachments) ? row.attachments : [];
+  const timestamp = new Date(row.submitted_at || row.created_at);
+  return {
+    registrationIntakeId: row.id,
+    assignedDoctorId: row.assigned_doctor_id,
+    clientId: row.client_id,
+    petId: row.pet_id,
+    id: `INT-${String(row.id).padStart(3, '0')}`,
+    tag: row.status === 'Waiting on reception' ? 'UPDATED' : 'NEW',
+    pet: pet.name || '',
+    owner: owner.name || '',
+    email: owner.email || '',
+    species: pet.species || '',
+    breed: pet.breed || '',
+    phone: owner.phone || '',
+    received: formatDateText(timestamp),
+    receivedMeta: Number.isNaN(timestamp.getTime()) ? '' : timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+    submittedBy: row.submitted_by_name || 'Reception',
+    assignedDoctor: row.assigned_doctor_name || '',
+    status: row.status,
+    reason: row.correction_note || 'Registration submitted for doctor review.',
+    ownerAddress: owner.address || '',
+    age: pet.age_value ? `${pet.age_value} ${pet.age_unit || 'Months'}` : '',
+    gender: pet.sex ? `${pet.sex[0].toUpperCase()}${pet.sex.slice(1)}` : '',
+    dateOfBirth: pet.birth_date || '',
+    color: pet.color || '',
+    reasonForVisit: pet.reason_for_visit || '',
+    triagePriority: pet.screening?.effective?.triage_priority || 'not_assessed',
+    infectionRisk: pet.screening?.effective?.infection_risk || 'not_assessed',
+    screening: pet.screening || null,
+    attachmentName: attachments[0]?.filename || '',
+    attachmentMeta: attachments.length ? `${attachments.length} attached file${attachments.length === 1 ? '' : 's'}` : '',
+    attachments,
+    activity: Array.isArray(row.activity) ? row.activity : [],
+    alert: row.status === 'Waiting on reception',
+  };
+}
+
+function ScreeningBadge({kind,value}) {
+  const item=screening[kind].find(option=>option.value===value);
+  return <span className={`intake-screening-badge is-${item?.tone || 'unassessed'}`} title={item?.meaning || 'Insufficient information for screening'}><span aria-hidden="true">{item?.tone==='urgent'?'\u26a0':item?.tone==='priority'?'!':item?.tone==='routine'?'\u2713':'?'}</span>{item?.label || 'Not assessed'}</span>;
+}
 
 function IntakeStatus({ status }) {
   return <StatusIndicator status={status} style={{ fontSize: '12px', fontWeight: 600 }} />;
@@ -111,7 +81,12 @@ function AlertIcon() {
 }
 
 export default function PatientIntakesPage({ user }) {
-  const [intakes, setIntakes] = useState(INITIAL_INTAKES);
+  const [intakes, setIntakes] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [correctionSubmitting, setCorrectionSubmitting] = useState(false);
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [sortOrder, setSortOrder] = useState('Newest');
@@ -120,7 +95,10 @@ export default function PatientIntakesPage({ user }) {
   const [selectedId, setSelectedId] = useState(null);
   const [showMoreActions, setShowMoreActions] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
-  const [previewAttachment, setPreviewAttachment] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [correctionReasons, setCorrectionReasons] = useState([]);
   const [correctionNote, setCorrectionNote] = useState('');
@@ -130,52 +108,200 @@ export default function PatientIntakesPage({ user }) {
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
 
+  useEffect(() => {
+    let active = true;
+    let refreshing = false;
+    const load = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const response = await fetch(`${apiBase}/clinic-records/registration-intakes`, {
+          headers: user?.token ? { Authorization: `Bearer ${user.token}` } : {},
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'Unable to load patient registrations.');
+        if (active) {
+          setIntakes(result.map(mapServerIntake));
+          setLoadError('');
+        }
+      } catch (error) {
+        if (active) setLoadError(error.message || 'Unable to load patient registrations.');
+      } finally {
+        refreshing = false;
+      }
+    };
+    load();
+    const stopWatching = watchRegistrationUpdates(load);
+    return () => { active = false; stopWatching(); };
+  }, [user?.token]);
+
+  useEffect(() => {
+    let active = true;
+    fetch(`${apiBase}/clinic-records/registration-doctors`, {
+      headers: user?.token ? { Authorization: `Bearer ${user.token}` } : {},
+    })
+      .then(async response => {
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'Unable to load clinic veterinarians.');
+        return result;
+      })
+      .then(result => { if (active) setDoctors(result); })
+      .catch(error => { if (active) setLoadError(error.message || 'Unable to load clinic veterinarians.'); });
+    return () => { active = false; };
+  }, [user?.token]);
+
   const selected = intakes.find(item => item.id === selectedId);
+
+  useEffect(() => {
+    if (!previewAttachment) return undefined;
+    const controller = new AbortController();
+    let objectUrl = '';
+    setPreviewUrl('');
+    setPreviewError('');
+    setPreviewLoading(true);
+
+    const loadAttachment = async () => {
+      try {
+        if (!user?.token) throw new Error('Your session is unavailable. Sign in again to view this attachment.');
+        const response = await fetch(
+          `${apiBase}/clinic-records/attachments/${encodeURIComponent(previewAttachment.id)}/content`,
+          { headers: { Authorization: `Bearer ${user.token}` }, signal: controller.signal },
+        );
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          throw new Error(result.error || 'Unable to load this attachment.');
+        }
+        objectUrl = URL.createObjectURL(await response.blob());
+        setPreviewUrl(objectUrl);
+      } catch (error) {
+        if (error.name !== 'AbortError') setPreviewError(error.message || 'Unable to load this attachment.');
+      } finally {
+        if (!controller.signal.aborted) setPreviewLoading(false);
+      }
+    };
+
+    loadAttachment();
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [previewAttachment, user?.token]);
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return intakes
       .filter(item => activeFilter === 'All'
         || (activeFilter === 'Rejected' ? ['Rejected', 'Duplicated'].includes(item.status) : item.status === activeFilter))
       .filter(item => speciesFilter === 'All species' || item.species === speciesFilter)
-      .filter(item => !query || [item.id, item.pet, item.owner, item.species, item.breed, item.status]
+      .filter(item => !query || [item.id, item.pet, item.owner, item.species, item.breed, item.status, item.reasonForVisit]
         .some(value => value.toLowerCase().includes(query)))
-      .sort((first, second) => sortOrder === 'Newest'
-        ? intakes.indexOf(first) - intakes.indexOf(second)
-        : intakes.indexOf(second) - intakes.indexOf(first));
+      .sort((first, second) => {
+        if (sortOrder === 'Priority first') {
+          const rank = { urgent: 0, priority: 1, routine: 2 };
+          const difference = (rank[first.triagePriority] ?? 3) - (rank[second.triagePriority] ?? 3);
+          if (difference) return difference;
+        }
+        return sortOrder === 'Oldest' ? intakes.indexOf(second) - intakes.indexOf(first) : intakes.indexOf(first) - intakes.indexOf(second);
+      });
   }, [activeFilter, intakes, search, sortOrder, speciesFilter]);
 
   const countFor = status => intakes.filter(item => status === 'Rejected'
     ? ['Rejected', 'Duplicated'].includes(item.status)
     : item.status === status).length;
-  const updateStatus = (intake, status, message, sendNotification = true) => {
-    setIntakes(current => current.map(item => item.id === intake.id
-      ? { ...item, status, activity: [message, ...item.activity] }
-      : item));
-    setShowMoreActions(false);
-    if (sendNotification) {
-      notifySuccess(message, `${intake.pet}'s registration status is now ${status.toLowerCase()}.`);
+  const runReviewAction = async (intake, action, reason = '', assignedDoctorId = null) => {
+    setReviewSubmitting(true);
+    setActionError('');
+    try {
+      const response = await fetch(`${apiBase}/clinic-records/registration-intakes/${intake.registrationIntakeId}/review`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(user?.token ? { Authorization: `Bearer ${user.token}` } : {}),
+        },
+        body: JSON.stringify({ action, reason, assigned_doctor_id: assignedDoctorId }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Unable to update this registration.');
+      if (result.notification_sent !== true) throw new Error('The system did not confirm delivery of the receptionist notification.');
+      announceRegistrationUpdate();
+
+      const doctorName = doctors.find(doctor => Number(doctor.id) === Number(result.assigned_doctor_id))?.name;
+      const messages = {
+        approve: 'Registration approved; patient record created.',
+        reject: `Registration rejected: ${reason}`,
+        duplicate: `Registration marked as duplicate: ${reason}`,
+        reassign: `Intake reassigned to ${doctorName || 'another veterinarian'}: ${reason}`,
+      };
+      setIntakes(current => action === 'reassign'
+        ? current.filter(item => item.id !== intake.id)
+        : current.map(item => item.id === intake.id
+          ? {
+            ...item,
+            status: result.status,
+            assignedDoctorId: result.assigned_doctor_id ?? item.assignedDoctorId,
+            assignedDoctor: doctorName || item.assignedDoctor,
+            clientId: result.client_id || item.clientId,
+            petId: result.pet_id || item.petId,
+            reason: action === 'reject' || action === 'duplicate' ? reason : item.reason,
+            alert: false,
+            tag: action === 'duplicate' ? 'DUPLICATE' : item.tag,
+            activity: [messages[action], ...item.activity],
+          }
+          : item));
+      setShowMoreActions(false);
+      notifySuccess(
+        action === 'approve' ? 'Registration approved'
+          : action === 'reject' ? 'Registration rejected'
+            : action === 'duplicate' ? 'Duplicate intake reported to reception' : 'Intake reassigned',
+        action === 'approve' ? `${intake.pet}'s patient record was created and reception was notified.`
+          : action === 'reassign' ? `${intake.pet}'s intake was assigned to ${doctorName || 'another veterinarian'}.`
+            : `${intake.pet}'s registration was updated and reception was notified.`,
+      );
+      return true;
+    } catch (error) {
+      setActionError(error.message || 'Unable to update this registration.');
+      return false;
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
-  const submitCorrectionRequest = () => {
+  const submitCorrectionRequest = async () => {
     if (!selected || correctionReasons.length === 0) return;
     const detail = correctionNote.trim();
-    const message = `Correction requested: ${correctionReasons.join(', ')}${detail ? ` — ${detail}` : ''}`;
-    updateStatus(selected, 'Waiting on reception', message, false);
-    notifySuccess('Correction request sent to reception', `${selected.pet}'s intake was returned to reception. Reason: ${correctionReasons.join(', ')}${detail ? ` — ${detail}` : ''}`);
-    setCorrectionReasons([]);
-    setCorrectionNote('');
-    setShowCorrectionModal(false);
+    const reason = `${correctionReasons.join(', ')}${detail ? ` — ${detail}` : ''}`;
+    setCorrectionSubmitting(true);
+    setActionError('');
+    try {
+      const response = await fetch(`${apiBase}/clinic-records/registration-intakes/${selected.registrationIntakeId}/return`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(user?.token ? { Authorization: `Bearer ${user.token}` } : {}),
+        },
+        body: JSON.stringify({ reason }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Unable to return this registration.');
+      if (result.notification_sent !== true) throw new Error('The system did not confirm delivery of the receptionist notification.');
+      announceRegistrationUpdate();
+      const message = `Correction requested: ${reason}`;
+      setIntakes(current => current.map(item => item.id === selected.id
+        ? { ...item, status: 'Waiting on reception', reason, alert: true, activity: [message, ...item.activity] }
+        : item));
+      notifySuccess('Correction request sent to reception', `${selected.pet}'s intake was returned to reception. Reason: ${reason}`);
+      setCorrectionReasons([]);
+      setCorrectionNote('');
+      setShowCorrectionModal(false);
+    } catch (error) {
+      setActionError(error.message || 'Unable to return this registration.');
+    } finally {
+      setCorrectionSubmitting(false);
+    }
   };
 
   const markDuplicate = () => {
     if (!selected) return;
-    const message = 'Registration marked as duplicate';
-    setIntakes(current => current.map(item => item.id === selected.id
-      ? { ...item, status: 'Duplicated', tag: 'DUPLICATE', activity: [message, ...item.activity] }
-      : item));
-    notifySuccess('Duplicate intake reported to reception', `${selected.pet}'s registration (${selected.id}) was marked as duplicated. Reception was notified.`);
-    setShowMoreActions(false);
+    runReviewAction(selected, 'duplicate', 'Marked as a duplicate by the reviewing veterinarian.');
   };
 
   const toggleCorrectionReason = reason => {
@@ -184,43 +310,23 @@ export default function PatientIntakesPage({ user }) {
       : [...current, reason]);
   };
 
-  const reassignIntake = () => {
+  const reassignIntake = async () => {
     const reason = reassignReason.trim();
     if (!selected || !assignedDoctor || !reason) return;
-    const message = `Intake reassigned to ${assignedDoctor}: ${reason}`;
-    setIntakes(current => current.map(item => item.id === selected.id
-      ? { ...item, assignedDoctor, activity: [message, ...item.activity] }
-      : item));
-    notifySuccess('Intake reassigned', `${selected.pet}'s intake was assigned to ${assignedDoctor}. Reason: ${reason}`);
+    const saved = await runReviewAction(selected, 'reassign', reason, Number(assignedDoctor));
+    if (!saved) return;
     setAssignedDoctor('');
     setReassignReason('');
     setShowReassignModal(false);
     setShowMoreActions(false);
   };
 
-  const submitRejection = () => {
+  const submitRejection = async () => {
     if (!selected) return;
     const reason = rejectionReason.trim();
-    if (!reason || !rejectionType) return;
-    const isDuplicate = rejectionType === 'duplicate';
-    const actionText = isDuplicate ? 'marked as a duplicate' : 'rejected';
-    const message = isDuplicate
-      ? `Registration marked as duplicate: ${reason}`
-      : `Registration rejected: ${reason}`;
-    setIntakes(current => current.map(item => item.id === selected.id
-      ? {
-        ...item,
-        status: 'Rejected',
-        tag: isDuplicate ? 'DUPLICATE' : item.tag,
-        rejectionReason: reason,
-        activity: [message, ...item.activity],
-      }
-      : item));
-    notifySuccess(
-      isDuplicate ? 'Duplicate intake reported to reception' : 'Rejected intake reported to reception',
-      `${selected.pet}'s registration was ${actionText}. Reception was notified. Reason: ${reason}`,
-    );
-    setRejectionType('');
+    if (!reason) return;
+    const saved = await runReviewAction(selected, 'reject', reason);
+    if (!saved) return;
     setRejectionReason('');
     setShowRejectionModal(false);
     setShowMoreActions(false);
@@ -238,6 +344,7 @@ export default function PatientIntakesPage({ user }) {
       <style>{responsiveStyles}</style>
       <Topbar className="intake-topbar" user={user} title="New Patient Intakes" subtitle="Review and approve new patient registrations submitted by receptionists." actions={searchControl} />
       <main className="intake-content" style={styles.content}>
+        {loadError && <div className="intake-load-error" role="alert">{loadError}</div>}
         <section className="intake-summary" aria-label="Intake summary">
           {[
             ['Needs review', countFor('Needs review'), 'Waiting for your review', '#3d78ff', '#eff4ff', Icons.clock],
@@ -279,7 +386,7 @@ export default function PatientIntakesPage({ user }) {
               <span className="sr-only">Sort intakes</span>
               <select value={sortOrder} onChange={event => setSortOrder(event.target.value)}>
                 <option value="Newest">Sort: Newest</option>
-                <option value="Oldest">Sort: Oldest</option>
+                <option value="Oldest">Sort: Oldest</option><option value="Priority first">Sort: Priority first</option>
               </select>
             </label>
             <div className="intake-filter-wrap">
@@ -298,10 +405,10 @@ export default function PatientIntakesPage({ user }) {
 
         <div className="intake-table-wrap">
           <table className="intake-table">
-            <thead><tr><th>ID</th><th>Pet</th><th>Owner</th><th>Received</th><th>Status</th><th><span className="sr-only">View details</span></th></tr></thead>
+            <thead><tr><th>ID</th><th>Pet</th><th>Owner</th><th>Reason for Visit</th><th>Triage Priority <span tabIndex={0} aria-label="Preliminary urgency from receptionist screening" title="Urgent: immediate veterinary assessment. Priority: prompt veterinary review. Routine: standard registration review.">&#9432;</span></th><th>Infection Risk <span tabIndex={0} aria-label="Preliminary infection or exposure indicator" title="Possible infection: reported infectious symptoms. Possible exposure: reported contact or contaminated environment. Not indicated: none reported. Not assessed: insufficient information.">&#9432;</span></th><th>Received</th><th>Status</th><th><span className="sr-only">View details</span></th></tr></thead>
             <tbody>
               {filtered.map(item => (
-                <tr key={item.id} onClick={() => { setSelectedId(item.id); setShowMoreActions(false); setShowActivity(false); setPreviewAttachment(false); }} className={selectedId === item.id ? 'intake-row-selected' : ''}>
+                <tr key={item.id} onClick={() => { setSelectedId(item.id); setShowMoreActions(false); setShowActivity(false); setPreviewAttachment(null); setActionError(''); }} className={selectedId === item.id ? 'intake-row-selected' : ''}>
                   <td><span className="intake-id">{item.id}</span></td>
                   <td>
                     <div className="intake-pet-name">
@@ -317,19 +424,23 @@ export default function PatientIntakesPage({ user }) {
                     <div className="intake-phone">{item.phone}</div>
                     {item.email && <div className="intake-phone">{item.email}</div>}
                   </td>
+                  <td className="intake-reported-reason">{item.reasonForVisit || 'Not provided'}</td>
+                  <td><ScreeningBadge kind="triage" value={item.triagePriority}/></td>
+                  <td><ScreeningBadge kind="infection" value={item.infectionRisk}/></td>
                   <td><span className="intake-date">{item.received}</span><span className="intake-received-meta">{item.receivedMeta}</span><span className="intake-received-meta">Submitted by {item.submittedBy || '—'}</span></td>
                   <td><IntakeStatus status={item.status} /></td>
                   <td><button type="button" aria-label={`View ${item.pet} intake details`} className="intake-open" onClick={event => { event.stopPropagation(); setSelectedId(item.id); }}>›</button></td>
                 </tr>
               ))}
-              {!filtered.length && <tr><td colSpan="6" className="intake-empty">No patient intakes match your search or filters.</td></tr>}
+              {!filtered.length && <tr><td colSpan="9" className="intake-empty">No patient intakes match your search or filters.</td></tr>}
             </tbody>
           </table>
         </div>
+        <section className="intake-screening-note"><span aria-hidden="true">&#9432;</span><div><strong>How priority and infection risk are determined</strong><p>These are preliminary screening indicators calculated from structured symptoms and exposure selections recorded by reception. They are not confirmed diagnoses. Illustrative rules require veterinary approval before clinical use. The veterinarian reviews or overrides these indicators.</p></div></section>
       </main>
 
       {selected && (
-        <div className="intake-detail-backdrop" aria-hidden="true" onClick={() => { setSelectedId(null); setShowMoreActions(false); setShowActivity(false); setPreviewAttachment(false); }} />
+        <div className="intake-detail-backdrop" aria-hidden="true" onClick={() => { setSelectedId(null); setShowMoreActions(false); setShowActivity(false); setPreviewAttachment(null); }} />
       )}
       {selected && (
         <aside className="intake-detail-panel" role="dialog" aria-modal="false" aria-label={`${selected.pet} intake details`}>
@@ -339,15 +450,22 @@ export default function PatientIntakesPage({ user }) {
               <p>Submitted by {selected.submittedBy} · {selected.received} · {selected.receivedMeta.split(' · ')[0]}</p>
               <IntakeStatus status={selected.status} />
             </div>
-            <button type="button" aria-label="Close details" onClick={() => { setSelectedId(null); setShowMoreActions(false); setPreviewAttachment(false); }}>{Icons.close}</button>
+            <button type="button" aria-label="Close details" onClick={() => { setSelectedId(null); setShowMoreActions(false); setPreviewAttachment(null); }}>Close</button>
           </header>
           <div className="intake-detail-body">
-            <section className="intake-reason">
-              <span>Reason for visit</span>
+            <section className="intake-screening-details"><div><strong>Triage Priority</strong><ScreeningBadge kind="triage" value={selected.triagePriority}/></div><div><strong>Infection Risk</strong><ScreeningBadge kind="infection" value={selected.infectionRisk}/></div><p>Preliminary receptionist screening; requires veterinary assessment.</p></section>
+            <IntakeScreeningReview key={selected.id+(selected.screening?.review?.reviewed_at||'')} intake={selected} user={user}/>
+            {selected.reasonForVisit && <section className="intake-reason" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+              <span>Reason for Visit / Reported Symptoms</span>
+              <p>{selected.reasonForVisit}</p>
+              <small>Reported by the owner through reception; awaiting veterinary assessment.</small>
+            </section>}
+            {selected.status !== 'Approved' && <section className="intake-reason">
+              <span>{selected.status === 'Waiting on reception' ? 'Correction requested' : 'Registration summary'}</span>
               <p>{selected.reason}</p>
-            </section>
+            </section>}
             <section className="intake-detail-section">
-              <h3><span>{Icons.user}</span> Owner information</h3>
+              <h3>Owner information</h3>
               <div className="intake-detail-grid">
                 <Detail label="Full name" value={selected.owner} />
                 <Detail label="Phone" value={selected.phone} link />
@@ -356,7 +474,7 @@ export default function PatientIntakesPage({ user }) {
               </div>
             </section>
             <section className="intake-detail-section">
-              <h3><span>{Icons.pet}</span> Pet information</h3>
+              <h3>Pet information</h3>
               <div className="intake-detail-grid">
                 <Detail label="Pet name" value={selected.pet} />
                 <Detail label="Species" value={selected.species} />
@@ -369,43 +487,56 @@ export default function PatientIntakesPage({ user }) {
               </div>
             </section>
             <section className="intake-detail-section">
-              <h3><span>{Icons.file}</span> Attached files</h3>
-              {selected.attachmentName
-                ? <>
-                  <div className="intake-attachment"><span>{Icons.file}</span><div><strong>{selected.attachmentName}</strong><small>{selected.attachmentMeta}</small></div><button type="button" aria-expanded={previewAttachment} onClick={() => setPreviewAttachment(current => !current)}>{previewAttachment ? 'Hide' : 'Preview'}</button></div>
-                  {previewAttachment && <div className="intake-file-preview" role="region" aria-label={`Preview of ${selected.attachmentName}`}>Preview of {selected.attachmentName} opens here</div>}
-                </>
+              <h3>Attached files</h3>
+              {selected.attachments?.length
+                ? selected.attachments.map(attachment => <div className="intake-attachment" key={attachment.id}><div><strong>{attachment.filename}</strong><small>{attachment.content_type} · {selected.attachmentMeta}</small></div><button type="button" onClick={() => setPreviewAttachment(attachment)}>View</button></div>)
                 : <p className="intake-no-attachment">No files attached.</p>}
             </section>
             <section className="intake-detail-section intake-activity">
               <button type="button" className="intake-activity-toggle" aria-expanded={showActivity} onClick={() => setShowActivity(current => !current)}>
-                <h3><span>{Icons.clock}</span> Activity ({selected.activity.length})</h3>
+                <h3>Activity ({selected.activity.length})</h3>
                 {showActivity ? '−' : '+'}
               </button>
               {showActivity && selected.activity.map((entry, index) => <p key={`${entry}-${index}`}><i />{entry}</p>)}
             </section>
           </div>
-          <footer className={`intake-detail-actions${selected.status === 'Approved' ? ' intake-detail-actions-approved' : ''}`}>
-            {selected.status === 'Approved' ? (
-              <button type="button" className="intake-approve-button" onClick={() => notifySuccess('Patient record opened', `${selected.pet}'s patient record is ready to view.`)}>Open patient record</button>
-            ) : (
+          {actionError && <div className="intake-load-error" role="alert">{actionError}</div>}
+          {selected.status !== 'Approved' && <footer className="intake-detail-actions">
+            {selected.status === 'Needs review' ? (
               <>
                 <div className="intake-more-wrap">
                   <button type="button" className="intake-more-button" onClick={() => setShowMoreActions(current => !current)}>More</button>
                   {showMoreActions && (
                     <div className="intake-more-menu">
-                      <button type="button" onClick={() => { setAssignedDoctor(selected.assignedDoctor || ''); setReassignReason(''); setShowReassignModal(true); setShowMoreActions(false); }}>Reassign to another doctor</button>
+                      <button type="button" onClick={() => { setAssignedDoctor(String(selected.assignedDoctorId || '')); setReassignReason(''); setActionError(''); setShowReassignModal(true); setShowMoreActions(false); }}>Reassign to another doctor</button>
                       <button type="button" onClick={markDuplicate}>Mark as duplicate</button>
                       <button type="button" className="intake-more-reject" onClick={() => { setRejectionReason(''); setShowRejectionModal(true); setShowMoreActions(false); }}>Reject registration</button>
                     </div>
                   )}
                 </div>
                 <button type="button" className="intake-correction-button" onClick={() => { setCorrectionReasons([]); setCorrectionNote(''); setShowCorrectionModal(true); }}>Request correction</button>
-                <button type="button" className="intake-approve-button" onClick={() => updateStatus(selected, 'Approved', 'Registration approved; patient record created')}><span>{Icons.check}</span> Approve registration</button>
+                <button type="button" className="intake-approve-button" disabled={reviewSubmitting} onClick={() => runReviewAction(selected, 'approve')}>{reviewSubmitting ? 'Saving…' : 'Approve registration'}</button>
               </>
+            ) : (
+              <p>{selected.status === 'Waiting on reception' ? 'This registration is with reception for correction.' : 'This registration is closed.'}</p>
             )}
-          </footer>
+          </footer>}
         </aside>
+      )}
+      {previewAttachment && (
+        <div className="intake-preview-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setPreviewAttachment(null); }}>
+          <section className="intake-preview-dialog" role="dialog" aria-modal="true" aria-label={`Attachment preview: ${previewAttachment.filename}`}>
+            <header><h2>{previewAttachment.filename}</h2><button type="button" onClick={() => setPreviewAttachment(null)}>Close</button></header>
+            <div className="intake-preview-content">
+              {previewLoading && <p>Loading attachment…</p>}
+              {previewError && <p className="intake-preview-error" role="alert">{previewError}</p>}
+              {previewUrl && previewAttachment.content_type?.startsWith('image/')
+                && <img src={previewUrl} alt={previewAttachment.filename} />}
+              {previewUrl && previewAttachment.content_type === 'application/pdf'
+                && <iframe src={previewUrl} title={previewAttachment.filename} />}
+            </div>
+          </section>
+        </div>
       )}
       {showCorrectionModal && selected && (
         <div className="correction-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setShowCorrectionModal(false); }}>
@@ -440,9 +571,10 @@ export default function PatientIntakesPage({ user }) {
             <textarea id="correction-note" className="correction-note" maxLength={500} value={correctionNote} onChange={event => setCorrectionNote(event.target.value)} placeholder="Add a note (optional)" />
             <div className="correction-note-count">{correctionNote.length}/500</div>
             <div className="correction-notification"><span>{Icons.info}</span> Reception will be notified immediately.</div>
+            {actionError && <div className="intake-load-error" role="alert">{actionError}</div>}
             <div className="correction-modal-actions">
               <button type="button" className="correction-cancel" onClick={() => setShowCorrectionModal(false)}>Cancel</button>
-              <button type="button" className="correction-submit" disabled={correctionReasons.length === 0} onClick={submitCorrectionRequest}>Send to reception</button>
+              <button type="button" className="correction-submit" disabled={correctionReasons.length === 0 || correctionSubmitting} onClick={submitCorrectionRequest}>{correctionSubmitting ? 'Sending…' : 'Send to reception'}</button>
             </div>
           </section>
         </div>
@@ -461,14 +593,14 @@ export default function PatientIntakesPage({ user }) {
             <label className="reassign-label" htmlFor="reassign-doctor">Transfer To<span className="system-required-star">*</span></label>
             <select id="reassign-doctor" className="reassign-select" value={assignedDoctor} onChange={event => setAssignedDoctor(event.target.value)}>
               <option value="">Select doctor</option>
-              {DOCTORS.map(doctor => <option key={doctor}>{doctor}</option>)}
+              {doctors.map(doctor => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}
             </select>
             <label className="reassign-label" htmlFor="reassign-reason">Reason for Reassignment<span className="system-required-star">*</span></label>
             <textarea id="reassign-reason" className="reassign-reason" value={reassignReason} onChange={event => setReassignReason(event.target.value)} placeholder="e.g. Outside my specialty area, conflict of interest..." />
             <p className="reassign-audit">{Icons.info}<span>This action will be recorded in the audit log.</span></p>
             <div className="correction-modal-actions">
               <button type="button" className="correction-cancel" onClick={() => setShowReassignModal(false)}>Cancel</button>
-              <button type="button" className="reassign-submit" disabled={!assignedDoctor || !reassignReason.trim()} onClick={reassignIntake}><span>{Icons.refresh}</span> Reassign</button>
+              <button type="button" className="reassign-submit" disabled={!assignedDoctor || !reassignReason.trim() || reviewSubmitting} onClick={reassignIntake}><span>{Icons.refresh}</span> {reviewSubmitting ? 'Saving…' : 'Reassign'}</button>
             </div>
           </section>
         </div>
@@ -495,7 +627,7 @@ export default function PatientIntakesPage({ user }) {
             />
             <div className="correction-modal-actions">
               <button type="button" className="correction-cancel" onClick={() => setShowRejectionModal(false)}>Cancel</button>
-              <button type="button" className="rejection-submit" disabled={!rejectionReason.trim()} onClick={submitRejection}><span>{Icons.xCircle}</span> Reject Intake</button>
+              <button type="button" className="rejection-submit" disabled={!rejectionReason.trim() || reviewSubmitting} onClick={submitRejection}><span>{Icons.xCircle}</span> {reviewSubmitting ? 'Saving…' : 'Reject Intake'}</button>
             </div>
           </section>
         </div>
@@ -537,13 +669,27 @@ const responsiveStyles = `
   .intake-filter-button { display: grid; place-items: center; width: 37px; height: 37px; border: 1px solid #dce5e3; border-radius: 9px; background: #fff; color: #34433e; cursor: pointer; }
   .intake-filter-menu { position: absolute; z-index: 15; top: 44px; right: 0; display: grid; gap: 7px; width: 160px; padding: 12px; border: 1px solid #dce5e3; border-radius: 9px; background: #fff; color: #62716c; box-shadow: 0 8px 22px #1c32251c; font-size: 11px; }
   .intake-filter-menu select { padding: 7px; border: 1px solid #dce5e3; border-radius: 6px; background: #fff; color: #26332f; font: inherit; }
+  .intake-screening-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 9px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .intake-screening-badge > span { display: inline-grid; place-items: center; width: 15px; height: 15px; border: 1px solid currentColor; border-radius: 50%; font-size: 10px; }
+  .intake-screening-badge.is-urgent { background: #ffe3e5; color: #b51d2b; }
+  .intake-screening-badge.is-priority { background: #fff0d5; color: #914900; }
+  .intake-screening-badge.is-routine { background: #e0f7eb; color: #146044; }
+  .intake-screening-badge.is-unassessed { background: #eef2f6; color: #526477; }
+  .intake-reported-reason { min-width: 180px; max-width: 260px; overflow-wrap: anywhere; white-space: pre-wrap; line-height: 1.5; }
+  .intake-screening-note { display: flex; gap: 16px; align-items: flex-start; margin-top: 20px; padding: 18px 20px; background: #f1f8f6; border: 1px solid #d9eae4; border-radius: 12px; color: #07553f; }
+  .intake-screening-note > span { font-size: 22px; }
+  .intake-screening-note strong { font-size: 14px; }
+  .intake-screening-note p { margin: 5px 0 0; color: #526477; font-size: 12px; line-height: 1.5; }
+  .intake-screening-details { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px 0; }
+  .intake-screening-details > div { display: grid; gap: 6px; font-size: 12px; }
+  .intake-screening-details > p { flex-basis: 100%; margin: 0; font-size: 12px; color: #62716c; }
   .intake-table-wrap { overflow-x: auto; border: 1px solid #e2e9e7; border-radius: 12px; background: #fff; }
-  .intake-table { width: 100%; min-width: 850px; border-collapse: collapse; text-align: left; }
+  .intake-table { width: 100%; min-width: 1250px; border-collapse: collapse; text-align: left; }
   .intake-table th { height: 39px; padding: 0 15px; border-bottom: 1px solid #e3eae8; background: #f8faf9; color: #111; font-size: 12px; font-weight: 650; }
   .intake-table th:first-child { width: 90px; }
-  .intake-table th:nth-child(2), .intake-table th:nth-child(3) { width: 21%; }
+  .intake-table th:nth-child(2), .intake-table th:nth-child(3) { width: 14%; }
   .intake-table th:nth-child(4) { width: 19%; }
-  .intake-table th:nth-child(5) { width: 15%; }
+  .intake-table th:nth-child(5), .intake-table th:nth-child(6) { width: 12%; }
   .intake-table td { height: 84px; padding: 9px 15px; border-bottom: 1px solid #e4eae8; color: #26332f; font-size: 12px; vertical-align: middle; }
   .intake-table th:last-child, .intake-table td:last-child { width: 42px; padding-right: 10px; padding-left: 4px; text-align: right; }
   .intake-table tbody tr:last-child td { border-bottom: 0; }
@@ -567,49 +713,48 @@ const responsiveStyles = `
   .intake-row-selected td { background: #e8f6f1; }
   .intake-row-selected td:first-child { box-shadow: inset 3px 0 #139675; }
   .intake-detail-backdrop { position: fixed; z-index: 39; inset: 0; background: rgba(15, 38, 42, .18); }
-  .intake-detail-panel { position: fixed; z-index: 40; inset: 0 0 0 auto; display: flex; flex-direction: column; width: min(560px, 100vw); box-sizing: border-box; border-left: 1px solid #e2e9e7; background: #fff; color: #111; box-shadow: -10px 0 32px rgba(20, 48, 43, .12); }
+  .intake-detail-panel { position: fixed; z-index: 40; inset: 0 0 0 auto; display: flex; flex-direction: column; width: min(560px, 100vw); box-sizing: border-box; border-left: 1px solid #e2e9e7; background: #fff; color: #111827; font-family: 'DM Sans', sans-serif; box-shadow: -10px 0 32px rgba(20, 48, 43, .12); }
   .intake-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; min-height: 84px; box-sizing: border-box; padding: 17px 17px 12px; border-bottom: 1px solid #e7ecea; }
   .intake-detail-heading { min-width: 0; }
-  .intake-detail-heading h2 { margin: 0 0 6px; color: #17221e; font-size: 19px; font-weight: 750; }
-  .intake-detail-heading p { margin: 0 0 8px; color: #303b36; font-size: 13px; line-height: 1.45; }
+  .intake-detail-heading h2 { margin: 0 0 6px; color: #111827; font-size: 19px; font-weight: 700; }
+  .intake-detail-heading p { margin: 0 0 8px; color: #374151; font-size: 13px; line-height: 1.45; }
   .intake-detail-heading .status-indicator { padding: 5px 10px; border-radius: 20px; background: #edf3ff; color: #2867ee !important; font-size: 13px !important; }
-  .intake-detail-heading .status-indicator-dot { width: 6px; height: 6px; flex-basis: 6px; background: #2867ee !important; }
-  .intake-detail-head > button { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 auto; border: 1px solid #e2e9e6; border-radius: 9px; background: #fff; color: #34423c; cursor: pointer; }
-  .intake-detail-head > button svg { width: 15px; height: 15px; }
+  .intake-detail-heading .status-indicator-dot { display: none; }
+  .intake-detail-head > button { min-height: 36px; flex: 0 0 auto; padding: 8px 13px; border: 1px solid #b9d9ce; border-radius: 8px; background: #fff; color: #086b57; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
   .intake-detail-body { flex: 1; overflow-y: auto; padding: 13px 17px 7px; }
   .intake-reason { margin-bottom: 17px; padding: 12px 13px; border-left: 3px solid #149477; border-radius: 9px; background: #f3f8f6; }
   .intake-reason > span { color: #485650; font-size: 12px; }
   .intake-reason p { margin: 4px 0 0; color: #111; font-size: 15px; font-weight: 550; line-height: 1.45; }
   .intake-detail-section { padding: 0 0 14px; margin-bottom: 14px; border-bottom: 1px solid #e8edeb; }
-  .intake-detail-section h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 13px; color: #202d27; font-size: 14px; font-weight: 750; }
-  .intake-detail-section h3 > span { display: inline-flex; width: 14px; height: 14px; color: #5e7069; }
-  .intake-detail-section h3 svg { width: 100%; height: 100%; }
+  .intake-detail-section h3 { margin: 0 0 8px; color: #111827; font-size: 15px; font-weight: 700; }
   .intake-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; row-gap: 12px; }
   .intake-detail-field { display: grid; gap: 4px; min-width: 0; }
-  .intake-detail-field > span { color: #414e48; font-size: 12px; }
-  .intake-detail-field > strong { color: #111; font-size: 14px; font-weight: 550; overflow-wrap: anywhere; line-height: 1.3; }
+  .intake-detail-field > span { color: #374151; font-size: 10px; font-weight: 700; letter-spacing: .055em; line-height: 1.35; text-transform: uppercase; }
+  .intake-detail-field > strong { color: #111827; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; line-height: 1.4; }
   .intake-detail-field > strong.intake-detail-link { color: #2769e9; }
-  .intake-attachment { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 10px; border: 1px solid #e4ebe8; border-radius: 10px; background: #f8faf9; }
-  .intake-attachment > span { display: flex; width: 17px; height: 17px; flex: 0 0 auto; color: #72827c; }
-  .intake-attachment > span svg { width: 100%; height: 100%; }
+  .intake-attachment { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 10px; border: 1px solid #dce5e3; border-radius: 9px; background: #f8faf9; }
   .intake-attachment > div { display: grid; flex: 1; min-width: 0; gap: 3px; }
-  .intake-attachment strong { overflow: hidden; color: #26342f; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-  .intake-attachment small { color: #394741; font-size: 11px; }
-  .intake-attachment button { padding: 4px; border: 0; background: transparent; color: #2867ee; cursor: pointer; font-size: 12px; font-weight: 650; }
-  .intake-file-preview { display: grid; place-items: center; min-height: 168px; box-sizing: border-box; margin-top: 9px; padding: 16px; border: 1px dashed #bdcfe5; border-radius: 11px; background: #f8fafc; color: #5d7fae; text-align: center; font-size: 13px; }
-  .intake-no-attachment { margin: 0; color: #394741; font-size: 13px; }
+  .intake-attachment strong { overflow: hidden; color: #111827; font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+  .intake-attachment small { color: #374151; font-size: 12px; }
+  .intake-attachment button { min-height: 36px; padding: 8px 13px; border: 1px solid #b9d9ce; border-radius: 8px; background: #fff; color: #086b57; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
+  .intake-no-attachment { margin: 0; color: #374151; font-size: 13px; }
   .intake-activity-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0; border: 0; background: transparent; color: #394741; cursor: pointer; font: inherit; font-size: 16px; }
   .intake-activity-toggle h3 { margin: 0; }
   .intake-activity p { display: flex; align-items: flex-start; gap: 8px; margin: 8px 0 0; color: #303b36; font-size: 13px; line-height: 1.45; }
-  .intake-activity p i { width: 6px; height: 6px; flex: 0 0 auto; margin-top: 4px; border-radius: 50%; background: #169473; }
+  .intake-activity p i { display: none; }
   .intake-detail-actions { display: grid; grid-template-columns: 60px minmax(95px, 1fr) minmax(116px, 1fr); gap: 7px; padding: 11px 17px 13px; border-top: 1px solid #e7ecea; background: #fff; }
-  .intake-detail-actions-approved { display: block; padding: 12px; }
-  .intake-detail-actions-approved .intake-approve-button { width: 100%; min-height: 50px; border-color: #16a34a; border-radius: 10px; background: #16a34a; color: #fff; font-size: 14px; font-weight: 700; }
   .intake-detail-actions button { min-height: 48px; padding: 7px 8px; border: 1px solid #d9e2df; border-radius: 10px; background: #fff; color: #273630; cursor: pointer; font: inherit; font-size: 12px; font-weight: 650; line-height: 1.3; }
   .intake-detail-actions .intake-correction-button { border-color: #efa33a; color: #b96905; }
-  .intake-detail-actions .intake-approve-button { display: flex; align-items: center; justify-content: center; gap: 5px; border-color: #139474; background: #139474; color: #fff; }
-  .intake-approve-button span { display: flex; width: 12px; height: 12px; }
-  .intake-approve-button svg { width: 100%; height: 100%; }
+  .intake-detail-actions .intake-approve-button { display: flex; align-items: center; justify-content: center; border-color: #139474; background: #139474; color: #fff; }
+  .intake-preview-backdrop { position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(15, 23, 42, .55); }
+  .intake-preview-dialog { display: flex; flex-direction: column; width: min(900px, 100%); max-height: min(90vh, 900px); overflow: hidden; border: 1px solid #d1d5db; border-radius: 12px; background: #fff; color: #111827; font-family: 'DM Sans', sans-serif; box-shadow: 0 18px 55px rgba(15, 23, 42, .25); }
+  .intake-preview-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #cbd5d1; }
+  .intake-preview-dialog h2 { min-width: 0; margin: 0; overflow: hidden; font-size: 15px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+  .intake-preview-dialog header button { min-height: 36px; padding: 8px 13px; border: 1px solid #b9d9ce; border-radius: 8px; background: #fff; color: #086b57; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .intake-preview-content { display: grid; place-items: center; min-height: 240px; overflow: auto; padding: 16px; background: #f8faf9; }
+  .intake-preview-content img { display: block; max-width: 100%; max-height: 72vh; object-fit: contain; }
+  .intake-preview-content iframe { display: block; width: 100%; height: min(72vh, 760px); border: 0; background: #fff; }
+  .intake-preview-error { color: #b42318; font-size: 13px; }
   .intake-more-wrap { position: relative; }
   .intake-more-wrap > button { width: 100%; }
   .intake-more-menu { position: absolute; z-index: 35; left: 0; bottom: calc(100% + 8px); min-width: 224px; padding: 7px 0; border: 1px solid #e0e7e4; border-radius: 12px; background: #fff; box-shadow: 0 8px 24px #18302420; }

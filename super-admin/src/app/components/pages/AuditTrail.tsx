@@ -33,15 +33,15 @@ export function AuditTrail() {
   };
 
   return (
-    <div className="min-h-full bg-[#eef3ff] p-5 text-[#102956]">
-      <section className="overflow-hidden rounded-xl border border-[#cbdcfb] bg-white">
-        <div className="flex items-center justify-between border-b border-[#d4e1fb] px-5 py-4">
+    <div className="min-h-full bg-[#fafbf8] p-5 text-[#172b24]">
+      <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
+        <div className="flex items-center justify-between border-b border-[#d4e3d7] px-5 py-4">
           <div className="flex gap-2">
-            <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-[#8ba6d3]" /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search actions..." className="w-48 rounded-lg border border-[#cbdcfb] bg-[#f5f8ff] py-2 pl-9 pr-3 text-xs outline-none" /></div>
-            <button onClick={exportLogs} className="rounded-lg bg-[#2161e8] px-4 py-2 text-xs font-semibold text-white"><Download className="mr-1 inline h-3.5 w-3.5" />Export</button>
+            <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-[#a9d6b7]" /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search actions..." className="w-48 rounded-lg border border-[#d4e3d7] bg-[#fafbf8] py-2 pl-9 pr-3 text-xs outline-none" /></div>
+            <button onClick={exportLogs} className="rounded-lg bg-[#086b50] px-4 py-2 text-xs font-semibold text-white"><Download className="mr-1 inline h-3.5 w-3.5" />Export</button>
           </div>
         </div>
-        <div className="overflow-x-auto"><table className="w-full min-w-[1000px] text-left"><thead className="bg-[#f0f5ff]"><tr>{['Date & Time', 'Super Admin', 'Action', 'Clinic', 'Target', 'Description'].map(heading => <th className="px-4 py-3 text-xs font-semibold text-[#5274b8]" key={heading}>{heading}</th>)}</tr></thead><tbody>{filtered.map(entry => <tr className="border-t border-[#e3ecfb]" key={`${entry.date}-${entry.action}`}><td className="px-4 py-3 text-xs text-[#5274b8]">{entry.date}</td><td className="px-4 py-3 text-xs font-semibold">Super Admin</td><td className="px-4 py-3 text-xs"><span className="rounded-full bg-[#e8f0ff] px-2 py-1 text-[#2161e8]">{entry.action}</span></td><td className="px-4 py-3 text-xs text-[#5274b8]">{entry.clinic}</td><td className="px-4 py-3 text-xs text-[#5274b8]">{entry.target}</td><td className="px-4 py-3 text-xs text-[#5274b8]">{entry.description}</td></tr>)}</tbody></table></div>
+        <div className="overflow-x-auto"><table className="w-full min-w-[1000px] text-left"><thead className="bg-[#e7f4ec]"><tr>{['Date & Time', 'Super Admin', 'Action', 'Clinic', 'Target', 'Description'].map(heading => <th className="px-4 py-3 text-xs font-semibold text-[#526B62]" key={heading}>{heading}</th>)}</tr></thead><tbody>{filtered.map(entry => <tr className="border-t border-[#e3ecfb]" key={`${entry.date}-${entry.action}`}><td className="px-4 py-3 text-xs text-[#526B62]">{entry.date}</td><td className="px-4 py-3 text-xs font-semibold">Super Admin</td><td className="px-4 py-3 text-xs"><span className="rounded-full bg-[#e7f4ec] px-2 py-1 text-[#086b50]">{entry.action}</span></td><td className="px-4 py-3 text-xs text-[#526B62]">{entry.clinic}</td><td className="px-4 py-3 text-xs text-[#526B62]">{entry.target}</td><td className="px-4 py-3 text-xs text-[#526B62]">{entry.description}</td></tr>)}</tbody></table></div>
       </section>
     </div>
   );

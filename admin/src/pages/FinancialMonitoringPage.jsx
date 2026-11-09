@@ -1,3 +1,6 @@
+import useOwnerMonitoring from '../utils/useOwnerMonitoring';
+import { financialData, money } from '../utils/ownerMonitoring';
+import PaymentQrSettings from './PaymentQrSettings';
 import { useState } from 'react';
 import { jsPDF } from 'jspdf';
 import {
@@ -11,36 +14,13 @@ import { Icons } from '../icons';
 import { canViewFeature } from '../utils/permissionUtils';
 import { formatDateText } from '../utils/dateFormatting';
 
-const TREND_DATA = [
-  { month: 'Sep', revenue: 20200, expenses: 12400, profit: 7800 },
-  { month: 'Oct', revenue: 21000, expenses: 12800, profit: 8200 },
-  { month: 'Nov', revenue: 20600, expenses: 12200, profit: 8400 },
-  { month: 'Dec', revenue: 21400, expenses: 13100, profit: 8300 },
-  { month: 'Jan', revenue: 23100, expenses: 13500, profit: 9600 },
-  { month: 'Feb', revenue: 26300, expenses: 14200, profit: 12100 },
-];
 
-const SERVICE_DATA = [
-  { service: 'Checkups', revenue: 8200 },
-  { service: 'Vaccinations', revenue: 6400 },
-  { service: 'Surgeries', revenue: 13500 },
-  { service: 'Dental', revenue: 4100 },
-  { service: 'Emergency', revenue: 3800 },
-];
-
-const TRANSACTIONS = [
-  { id: 'TXN-1245', date: '2026-04-27', service: 'Surgery - Max', amount: 450, status: 'Completed' },
-  { id: 'TXN-1244', date: '2026-04-27', service: 'Vaccination - Luna', amount: 85, status: 'Completed' },
-  { id: 'TXN-1243', date: '2026-04-26', service: 'Checkup - Charlie', amount: 120, status: 'Completed' },
-  { id: 'TXN-1242', date: '2026-04-26', service: 'Dental - Bella', amount: 280, status: 'Completed' },
-  { id: 'TXN-1241', date: '2026-04-25', service: 'Emergency - Rocky', amount: 520, status: 'Completed' },
-];
 
 const pesoFormatter = new Intl.NumberFormat('en-PH', {
   style: 'currency',
   currency: 'PHP',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 });
 
 const TrendTooltip = ({ active, payload, label }) => {
@@ -72,10 +52,15 @@ export default function FinancialMonitoringPage({ user }) {
   const [exportFormat, setExportFormat] = useState('csv');
 
   const canView = canViewFeature(user.permissions, user.role, 'Financial Monitoring');
+  const { data, error, loading } = useOwnerMonitoring(user, canView);
+  const financial = financialData(data, period);
+  const TREND_DATA = financial.trend;
+  const SERVICE_DATA = financial.services;
+  const TRANSACTIONS = financial.transactions;
   const reportFileName = `financial-monitoring-${period.toLowerCase()}`;
   const pdfPesoFormatter = value => `PHP ${Number(value).toLocaleString('en-PH', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   })}`;
 
   const exportCsv = () => {
@@ -84,8 +69,8 @@ export default function FinancialMonitoringPage({ user }) {
       ['Period', period],
       [''],
       ['Revenue Trend', '', '', ''],
-      ['Month', 'Revenue', 'Expenses', 'Profit'],
-      ...TREND_DATA.map(row => [row.month, row.revenue, row.expenses, row.profit]),
+      ['Period', 'Revenue'],
+      ...TREND_DATA.map(row => [row.month, row.revenue]),
       [''],
       ['Revenue by Service Type', ''],
       ['Service', 'Revenue'],
@@ -196,8 +181,8 @@ export default function FinancialMonitoringPage({ user }) {
 
     sectionTitle('Financial Summary');
     const summary = [
-      ['Today\'s Income', pdfPesoFormatter(2450), 'Monthly Income', pdfPesoFormatter(26300)],
-      ['Yearly Income', pdfPesoFormatter(142700), 'Profit Margin', '63.9%'],
+      ['Today\'s Income', pdfPesoFormatter(financial.today), 'Monthly Income', pdfPesoFormatter(financial.monthly)],
+      ['Yearly Income', pdfPesoFormatter(financial.yearly), 'Outstanding', pdfPesoFormatter(financial.outstanding)],
     ];
     summary.forEach((row) => {
       ensureSpace(16);
@@ -219,11 +204,11 @@ export default function FinancialMonitoringPage({ user }) {
       y += 18;
     });
 
-    sectionTitle('Revenue, Expenses & Profit Trend');
+    sectionTitle('Recorded Payment Trend');
     drawTable(
-      ['Month', 'Revenue', 'Expenses', 'Profit'],
-      TREND_DATA.map(row => [row.month, pdfPesoFormatter(row.revenue), pdfPesoFormatter(row.expenses), pdfPesoFormatter(row.profit)]),
-      [35, 47, 47, 47],
+      ['Period', 'Revenue'],
+      TREND_DATA.map(row => [row.month, pdfPesoFormatter(row.revenue)]),
+      [88, 88],
     );
     sectionTitle('Revenue by Service Type');
     drawTable(
@@ -277,6 +262,8 @@ export default function FinancialMonitoringPage({ user }) {
     <div style={s.main}>
       <Topbar user={user} title="Financial Monitoring" subtitle="Track income, expenses, and revenue analytics" />
       <div style={s.page}>
+        {loading && <p role="status">Loading clinic financial data...</p>}{error && <p role="alert">{error}</p>}
+        <p>Income is based on payments recorded by receptionists. Expenses and profit are unavailable because expenses are not recorded in this system.</p>
 
         {/* PERIOD + EXPORT */}
         <div style={s.toolbar}>
@@ -297,20 +284,21 @@ export default function FinancialMonitoringPage({ user }) {
               <option value="csv">CSV</option>
               <option value="pdf">PDF</option>
             </select>
-            <button type="button" style={s.exportBtn} onClick={exportReport}>
+            <button type="button" style={s.exportBtn} onClick={exportReport} disabled={loading || !!error || !data}>
               <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.file}</span>
               Export {exportFormat.toUpperCase()}
             </button>
           </div>
         </div>
 
+        {['owner', 'clinic_owner'].includes(String(user.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_')) && <details className="financial-payment-qr"><summary>Manage payment QR codes</summary><PaymentQrSettings user={user} /></details>}
         {/* STAT CARDS */}
         <div style={s.statsGrid}>
           {[
-            ['Today\'s Income', '₱2,450', '↗ +15% vs yesterday', '#f0fdf4', '#16a34a', Icons.dollar],
-            ['Monthly Income', '₱26,300', '↗ +19% vs last month', '#e7f5f2', '#005447', Icons.calendar],
-            ['Yearly Income', '₱142,700', '↗ +12% vs last year', '#faf5ff', '#7c3aed', Icons.file],
-            ['Profit Margin', '63.9%', '↗ +2.1% this month', '#fffbeb', '#d97706', Icons.dollar],
+            ["Today's Income", data ? money(financial.today) : '-', 'Recorded payments today', '#f0fdf4', '#16a34a', Icons.dollar],
+            ['Monthly Income', data ? money(financial.monthly) : '-', 'Recorded payments this month', '#e7f4ec', '#013826', Icons.calendar],
+            ['Yearly Income', data ? money(financial.yearly) : '-', 'Recorded payments this year', '#faf5ff', '#7c3aed', Icons.file],
+            ['Outstanding', data ? money(financial.outstanding) : '-', 'Unpaid invoice balances', '#fffbeb', '#d97706', Icons.dollar],
           ].map(([label, value, sub, iconBg, color, icon]) => (
             <div style={s.statCard} key={label}>
               <div style={{ ...s.statIcon, background: iconBg, color }}>
@@ -330,8 +318,8 @@ export default function FinancialMonitoringPage({ user }) {
           <div style={{ ...s.card, marginBottom: 0 }}>
             <div style={s.cardHeader}>
               <div>
-                <div style={s.cardTitle}>Revenue, Expenses & Profit Trend</div>
-                <div style={s.cardDescription}>Monthly financial performance</div>
+                <div style={s.cardTitle}>Recorded Payment Trend</div>
+                <div style={s.cardDescription}>Payments for the selected calendar period</div>
               </div>
               <span style={s.periodBadge}>{period}</span>
             </div>
@@ -343,8 +331,6 @@ export default function FinancialMonitoringPage({ user }) {
                 <Tooltip content={<TrendTooltip />} />
                 <Legend iconType="circle" iconSize={8} formatter={v => <span style={{ fontSize: '.72rem', color: '#64748b' }}>{v.charAt(0).toUpperCase() + v.slice(1)}</span>} />
                 <Line type="monotone" dataKey="revenue" stroke="#139b76" strokeWidth={2} dot={{ r: 3, fill: '#139b76', strokeWidth: 0 }} activeDot={{ r: 5 }} name="revenue" />
-                <Line type="monotone" dataKey="expenses" stroke="#f87171" strokeWidth={2} dot={{ r: 3, fill: '#f87171', strokeWidth: 0 }} activeDot={{ r: 5 }} name="expenses" />
-                <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }} activeDot={{ r: 5 }} name="profit" />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -385,6 +371,7 @@ export default function FinancialMonitoringPage({ user }) {
               </tr>
             </thead>
             <tbody>
+              {!loading && !TRANSACTIONS.length && <tr><td colSpan="5" style={s.td}>No payments recorded for this period.</td></tr>}
               {TRANSACTIONS.map((t, i) => (
                 <tr key={t.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
                   <td style={{ ...s.td, fontFamily: 'monospace', color: '#64748b', fontSize: '.78rem' }}>{t.id}</td>
@@ -418,14 +405,14 @@ const s = {
   toolbarSubtitle: { color: '#64748b', fontSize: '.74rem', marginTop: 3 },
   select: { padding: '8px 12px', border: '1px solid #dbe3ee', borderRadius: 8, fontSize: '.78rem', color: '#0f1117', background: '#f8fafc', outline: 'none', cursor: 'pointer' },
   exportGroup: { display: 'flex', alignItems: 'stretch', gap: 6 },
-  exportSelect: { padding: '0 8px', border: '1px solid #dbe3ee', borderRadius: 8, fontSize: '.78rem', color: '#005447', background: '#e7f5f2', outline: 'none', cursor: 'pointer', fontWeight: 600 },
+  exportSelect: { padding: '0 8px', border: '1px solid #dbe3ee', borderRadius: 8, fontSize: '.78rem', color: '#013826', background: '#e7f4ec', outline: 'none', cursor: 'pointer', fontWeight: 600 },
   exportBtn: { display: 'flex', alignItems: 'center', gap: 7, padding: '9px 15px', background: '#0f1117', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer' },
   chartGrid: { display: 'grid', gridTemplateColumns: 'minmax(0, 1.55fr) minmax(320px, 1fr)', gap: 20, marginBottom: 20 },
   card: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '20px 22px', marginBottom: 20 },
   cardHeader: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 },
   cardTitle: { fontSize: '.88rem', fontWeight: 600, color: '#0f1117', letterSpacing: '-.01em' },
   cardDescription: { fontSize: '.72rem', color: '#94a3b8', marginTop: 4 },
-  periodBadge: { padding: '4px 9px', borderRadius: 6, background: '#e7f5f2', color: '#005447', fontSize: '.68rem', fontWeight: 600 },
+  periodBadge: { padding: '4px 9px', borderRadius: 6, background: '#e7f4ec', color: '#013826', fontSize: '.68rem', fontWeight: 600 },
   transactionCount: { color: '#64748b', fontSize: '.72rem', paddingTop: 2 },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: { textAlign: 'left', padding: '10px 12px', fontSize: '.7rem', fontWeight: 600, color: '#64748b', borderBottom: '1px solid #e2e8f0' },

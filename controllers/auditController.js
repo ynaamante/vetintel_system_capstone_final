@@ -1,6 +1,7 @@
 const db = require('../config/db');
 
 exports.list = async (req, res, next) => {
+  if (req.user?.role !== 'super_admin') return exports.getByFilter(req, res, next);
   try {
     // Join users to include a friendly user display name for the frontend
     const result = await db.query(`
@@ -51,7 +52,9 @@ exports.list = async (req, res, next) => {
 
 exports.getByFilter = async (req, res, next) => {
   try {
-    const { user_id, action, table_name, record_id, days, clinic_id } = req.query;
+    const { user_id, action, table_name, record_id, days } = req.query;
+    const clinic_id = req.user?.role === 'super_admin' ? req.query.clinic_id : req.user?.clinic_id;
+    if (req.user?.role !== 'super_admin' && !clinic_id) return res.status(400).json({ error: 'Your account must be assigned to a clinic.' });
         let query = `
           SELECT a.id, a.user_id, a.action, a.table_name, a.record_id, a.old_data, a.new_data, a.ip_address, a.created_at,
             u.name, u.email
@@ -90,6 +93,8 @@ exports.getByFilter = async (req, res, next) => {
       query += ` AND (
         a.new_data->>'clinic_id' = $${paramCount}
         OR a.old_data->>'clinic_id' = $${paramCount}
+        OR (COALESCE(a.new_data->>'clinic_id', a.old_data->>'clinic_id') IS NULL
+            AND u.clinic_id::text = $${paramCount})
         OR (
           a.table_name = 'appointments'
           AND EXISTS (

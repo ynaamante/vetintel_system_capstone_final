@@ -7,7 +7,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { colors } from '../theme/colors';
-import { mockAlerts } from '../data/mockData';
+import { useOwnerNotifications } from '../context/OwnerNotificationsContext';
 
 import SplashScreen from '../screens/SplashScreen';
 import WelcomeScreen from '../screens/WelcomeScreen';
@@ -35,11 +35,11 @@ const Tab = createBottomTabNavigator();
 
 function TabNav() {
   const { colors: tc } = useTheme();
-  const unread = mockAlerts.filter(a => !a.read).length;
+  const { unreadCount: unread } = useOwnerNotifications();
   return (
-    <Tab.Navigator screenOptions={({ route }) => ({
+    <Tab.Navigator id="MainTabs" screenOptions={({ route }) => ({
       headerShown: false,
-      tabBarStyle: { backgroundColor: tc.tabBar, borderTopColor: tc.border, height: 60, paddingBottom: 8 },
+      tabBarStyle: { backgroundColor: tc.surface, borderTopColor: tc.border, height: 60, paddingBottom: 8 },
       tabBarActiveTintColor: colors.primary,
       tabBarInactiveTintColor: tc.textMuted,
       tabBarIcon: ({ focused, color, size }) => {
@@ -65,7 +65,7 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator id="RootStack" screenOptions={{ headerShown: false }}>
         {!hasSeenOnboarding ? (
           // Onboarding flow
           <>

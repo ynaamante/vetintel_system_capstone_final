@@ -1,0 +1,131 @@
+.shared-catalog-panel { display: grid; gap: 18px; color: #172b25; font-family: 'DM Sans',sans-serif; }
+.shared-catalog-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; }
+.shared-catalog-stats article { padding: 17px 20px; background: #fff; border: 1px solid #dce7e2; border-radius: 11px; }
+.shared-catalog-stats span { display: block; color: #62756c; font-size: 12px; }
+.shared-catalog-stats strong { display: block; color: #075443; font-size: 27px; margin-top: 6px; }
+.shared-catalog-card { padding: 18px; border: 1px solid #dce7e2; border-radius: 12px; background: #fff; min-width: 0; }
+.shared-catalog-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.shared-catalog-card h2 { margin: 0; font-size: 17px; color: #123f32; }
+.shared-catalog-card header p { margin: 6px 0 0; color: #64748b; font-size: 12px; }
+.shared-source-label { font-size: 11px; padding: 5px 9px; border-radius: 99px; background: #eef7f2; color: #086b50; white-space: nowrap; }
+.shared-catalog-filters { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.shared-catalog-filters select,.shared-catalog-fields input,.shared-catalog-fields select { width: 100%; min-width: 0; border: 1px solid #d4e0db; border-radius: 7px; padding: 9px 11px; background: #fff; color: #334155; font: inherit; font-size: 12px; box-sizing: border-box; }
+.shared-inventory-table { min-width: 1450px; }
+.shared-inventory-table th:last-child { width: 42px; }
+.shared-catalog-count { color: #64748b; font-size: 12px; padding-top: 12px; }
+.shared-catalog-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.shared-catalog-fields label { display: grid; gap: 6px; font-size: 12px; }
+.shared-catalog-fields .shared-catalog-check { display: flex; align-items: center; gap: 8px; }
+.shared-catalog-check input { width: auto; }
+.shared-catalog-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.shared-catalog-tabs button,.shared-catalog-add { padding: 8px 14px; border: 1px solid #cfddd6; border-radius: 7px; color: #075443; background: white; cursor: pointer; font: inherit; font-size: 12px; }
+.shared-catalog-tabs button.active,.shared-catalog-add { background: #086b50; color: #fff; border-color: #086b50; }
+.shared-pricing-note { padding: 11px 13px; margin: 0 0 14px; border-radius: 8px; border: 1px solid #f0dfb5; background: #fffaee; color: #805a12; font-size: 12px; }
+.services-management-tabs { display: flex; gap: 4px; padding: 0 0 7px; margin-bottom: 18px; border-bottom: 1px solid #b9cbc3; }
+.services-management-tabs button { min-width: 140px; padding: 9px 18px; border: 1px solid #cfddd6; border-radius: 9px 9px 0 0; background: #fff; color: #24453b; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; }
+.services-management-tabs button.active { border-color: #086b50; background: #086b50; color: #fff; }
+.shared-service-stats { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.shared-service-stats article { position: relative; min-height: 78px; overflow: hidden; padding: 13px 20px; background: linear-gradient(110deg,#f3f8f4 0%,#eef6f0 70%,#e5f1e7 100%); border-color: #dcebe0; }
+.shared-service-stats article::after { position: absolute; right: -14px; bottom: -34px; width: 130px; height: 85px; border-radius: 50% 0 0; background: rgba(169,214,183,.2); content: ''; transform: rotate(-17deg); }
+.shared-service-stats article.is-unavailable { background: linear-gradient(110deg,#fffaf4 0%,#fff8ef 70%,#f8edde 100%); border-color: #f2e5d3; }
+.shared-service-stats article.is-unavailable::after { background: rgba(223,138,0,.08); }
+.shared-service-stats article span,.shared-service-stats article strong { position: relative; z-index: 1; }
+.shared-service-stats article span { color: #172b25; font-size: 13px; font-weight: 600; }
+.shared-service-stats article strong { margin-top: 2px; color: #075c3d; font-size: 29px; line-height: 1.15; }
+.shared-service-stats article.is-unavailable strong { color: #c47b0b; }
+.shared-service-card { padding: 0 18px 14px; }
+.shared-service-views { display: flex; flex-wrap: wrap; gap: 9px; padding: 0 0 10px; margin-bottom: 16px; border-bottom: 1px solid #bed6c5; }
+.shared-service-views button { min-height: 37px; padding: 8px 18px; border: 1px solid #dce3e0; border-radius: 10px; background: #fff; color: #243b33; cursor: pointer; font: inherit; font-size: 12px; font-weight: 650; white-space: nowrap; }
+.shared-service-views button:hover { border-color: #8eb6a1; background: #f7faf8; }
+.shared-service-views button.active { border-color: #086b50; background: #086b50; box-shadow: 0 2px 6px rgba(1,56,38,.16); color: #fff; }
+.shared-service-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin: 0 0 14px; }
+.shared-service-heading h2,.shared-category-view h2 { margin: 0; color: #123f32; font-size: 17px; }
+.shared-service-heading p,.shared-category-view .shared-service-heading p { margin: 5px 0 0; color: #64748b; font-size: 12px; }
+.shared-service-heading > span { color: #64748b; font-size: 12px; }
+.shared-service-heading .shared-catalog-add { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding-inline: 16px; border-radius: 9px; font-weight: 650; white-space: nowrap; }
+.shared-service-heading .shared-catalog-add svg { width: 15px; height: 15px; }
+.shared-pricing-note { margin: 0 0 13px; }
+.shared-service-filters { grid-template-columns: minmax(200px,2fr) minmax(145px,.8fr) minmax(145px,.8fr); align-items: center; gap: 10px; margin-bottom: 12px; }
+.shared-service-filters .lab-results-search { min-height: 38px; margin: 0; border-radius: 10px; }
+.shared-service-filters select { min-height: 38px; border-radius: 10px; font-size: 12px; }
+.shared-service-table-wrap { overflow-x: auto; border: 1px solid #e0e9e3; border-radius: 11px; }
+.lab-results-table.shared-service-table { table-layout: fixed; }
+.shared-service-table th { height: 38px; border: 0; background: #eaf3ec; color: #143c2d; font-size: 12px; }
+.shared-service-table th:first-child { width: 40%; padding-left: 30px; border-radius: 10px 0 0 10px; }
+.shared-service-table th:nth-child(2) { width: 17%; }
+.shared-service-table th:nth-child(3) { width: 13%; }
+.shared-service-table th:nth-child(4) { width: 12%; }
+.shared-service-table th:nth-child(5) { width: 13%; }
+.shared-service-table th:last-child { width: 5%; border-radius: 0 10px 10px 0; }
+.shared-service-table td { height: 45px; padding: 6px 12px; border-bottom-color: #e8eeea; color: #172b25; font-size: 12px; }
+.shared-service-table tbody tr:last-child td { border-bottom: 0; }
+.shared-service-table td:first-child { padding-left: 30px; }
+.shared-service-table .shared-service-name { display: grid; gap: 2px; overflow: hidden; font-weight: 700; }
+.shared-service-table .shared-service-name > span { overflow: hidden; color: #66756e; font-size: 10px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.shared-service-price { font-weight: 650; white-space: nowrap; }
+.shared-category-pill { display: inline-flex; max-width: 100%; align-items: center; justify-content: center; min-height: 24px; padding: 3px 12px; border-radius: 999px; background: #e4f2e7; color: #175c36; font-size: 11px; font-weight: 600; line-height: 1.25; white-space: nowrap; }
+.shared-category-pill.is-vaccination { background: #f0e5ff; color: #7540c1; }
+.shared-category-pill.is-surgery { background: #fbe0e6; color: #a33145; }
+.shared-category-pill.is-laboratory { background: #e2efff; color: #295e9a; }
+.shared-category-pill.is-confinement { background: #fff0d6; color: #8a5a08; }
+.shared-category-pill.is-medication { background: #e3f2f1; color: #146760; }
+.shared-category-pill.is-treatment { background: #e6f0df; color: #4a6b27; }
+.shared-category-pill.is-dental { background: #f3e8df; color: #80543b; }
+.shared-service-status.status-indicator { display: inline-flex; min-height: 23px; align-items: center; justify-content: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 10px; font-weight: 650; line-height: 1.2; }
+.shared-service-status .status-indicator-dot { width: 6px; height: 6px; flex-basis: 6px; }
+.shared-service-status.is-available { background: #e5f5ed; color: #18774c !important; }
+.shared-service-status.is-awaiting-price { background: #fff1d4; color: #9a5700 !important; }
+.shared-service-status.is-unavailable { background: #edf0ef; color: #526663 !important; }
+.shared-service-table .lab-result-actions { padding-right: 10px; text-align: center; }
+.shared-service-table .lab-row-action-trigger { border-radius: 7px; }
+.shared-service-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 2px 0; color: #475569; font-size: 12px; }
+.shared-service-pagination { display: flex; align-items: center; gap: 6px; }
+.shared-service-pagination button { display: grid; min-width: 34px; height: 32px; place-items: center; padding: 0 8px; border: 1px solid #dce3e0; border-radius: 8px; background: #fff; color: #243b33; cursor: pointer; font: inherit; }
+.shared-service-pagination button:disabled { cursor: default; opacity: .45; }
+.shared-service-pagination button.active { border-color: #086b50; background: #086b50; color: #fff; }
+.shared-service-pagination button svg { width: 15px; height: 15px; }
+.shared-service-pagination button:first-child svg { transform: rotate(180deg); }
+.shared-category-view { padding: 4px 0 8px; }
+.shared-category-view .shared-service-heading { align-items: center; }
+.shared-category-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(190px,1fr)); gap: 12px; }
+.shared-category-card { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; padding: 14px; border: 1px solid #e0e9e3; border-radius: 10px; background: #fff; cursor: pointer; text-align: left; }
+.shared-category-card:hover { border-color: #9abda7; background: #f9fcfa; }
+.shared-category-card .shared-category-pill { justify-self: start; }
+.shared-category-card strong { color: #075443; font-size: 20px; }
+.shared-category-card small { grid-column: 1 / -1; color: #64756d; font-size: 11px; }
+.shared-service-empty { padding: 24px 12px; color: #64756d; font-size: 13px; text-align: center; }
+@media(max-width:950px) { .shared-service-filters { grid-template-columns: minmax(0,1fr) 1fr 1fr; } }
+@media(max-width:850px) { .shared-catalog-stats { grid-template-columns: repeat(2,minmax(0,1fr)); } .shared-service-stats { grid-template-columns: repeat(3,minmax(0,1fr)); } .shared-catalog-filters { grid-template-columns: 1fr 1fr; } .shared-catalog-filters .lab-results-search { grid-column: 1 / -1; } }
+@media(max-width:680px) { .shared-service-stats { grid-template-columns: 1fr; gap: 9px; } .shared-service-stats article { min-height: 65px; padding: 10px 15px; } .shared-service-stats article strong { font-size: 24px; } .shared-service-filters { grid-template-columns: 1fr 1fr; } .shared-service-views { gap: 6px; } .shared-service-views button { padding: 7px 10px; font-size: 11px; } .shared-service-table { table-layout: auto !important; } .shared-service-table th:first-child { width: auto; padding-left: 12px; } .shared-service-table td:first-child { padding-left: 12px; } }
+@media(max-width:520px) { .shared-catalog-fields,.shared-catalog-filters,.shared-service-filters { grid-template-columns: 1fr; } .shared-catalog-card > header,.shared-service-heading { flex-wrap: wrap; } .shared-service-heading { align-items: center; } .shared-service-footer { align-items: flex-start; flex-direction: column; } .shared-service-pagination { width: 100%; justify-content: flex-end; } }
+/* Services management reference layout. */
+.services-management-page .shared-catalog-panel { gap: 14px; }
+.services-management-page .shared-service-stats { margin-bottom: 24px; }
+.services-management-page .shared-service-stats article { box-sizing: border-box; border-radius: 10px; }
+.services-management-page .services-management-tabs { display: flex; gap: 12px; padding: 0; margin: 0; border: 0; }
+.services-management-page > .services-management-tabs { margin-bottom: 16px; }
+.services-management-page .services-management-tabs button { min-width: 180px; min-height: 43px; border: 1px solid #087a61; border-radius: 10px; background: #fff; color: #172b25; box-shadow: 0 2px 4px #153e2420; font-weight: 700; }
+.services-management-page .services-management-tabs button.active { background: #086e55; color: #fff; }
+.services-management-page .shared-service-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.services-management-page .shared-service-toolbar-actions { display: flex; align-items: center; gap: 10px; }
+.services-management-page .shared-service-toolbar-actions button { min-height: 38px; padding: 9px 18px; border-radius: 9px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.services-management-page .shared-service-archive { border: 1px solid #24614f; background: #fff; color: #243b33; }
+.services-management-page .shared-service-archive[aria-pressed="true"] { background: #eaf3ec; }
+.services-management-page .shared-service-toolbar-actions .shared-catalog-add { display: inline-flex; align-items: center; gap: 8px; }
+.services-management-page .shared-catalog-add svg { width: 15px; height: 15px; }
+.services-management-page .shared-service-card { padding: 15px 12px 6px; border-radius: 11px; }
+.services-management-page .shared-service-heading { padding: 0 4px; margin-bottom: 16px; }
+.services-management-page .shared-service-table-wrap { padding-top: 10px; }
+.services-management-page .shared-service-table th { height: 38px; }
+.services-management-page .shared-service-table td { height: 49px; box-sizing: border-box; }
+.services-management-page .shared-service-status.status-indicator { padding: 0; background: transparent; }
+.services-management-page .shared-service-footer { padding: 16px 6px 0; }
+.services-management-page button:focus-visible { outline: 2px solid #087a61; outline-offset: 3px; }
+@media (max-width: 680px) {
+  .services-management-page .shared-service-stats { margin-bottom: 8px; }
+  .services-management-page .services-management-tabs { flex: 1; }
+  .services-management-page .services-management-tabs button { flex: 1; min-width: 110px; }
+  .services-management-page .shared-service-toolbar-actions { margin-left: auto; }
+  .services-management-page .shared-service-table { min-width: 700px; }
+  .services-management-page .shared-service-pagination { flex-wrap: wrap; }
+}

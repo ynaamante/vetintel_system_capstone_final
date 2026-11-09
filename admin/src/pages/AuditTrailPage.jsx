@@ -7,12 +7,12 @@ import { formatDateTimeText } from '../utils/dateFormatting';
 
 const ACTION_META = {
   'alert acknowledged': { color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
-  update: { color: '#005447', bg: '#e7f5f2', border: '#b7e4d7' },
+  update: { color: '#013826', bg: '#e7f4ec', border: '#b7e4d7' },
   'report generated': { color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff' },
   create: { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
   'data sync': { color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' },
-  login: { color: '#64748b', bg: '#f4f6f9', border: '#e8ecf0' },
-  logout: { color: '#64748b', bg: '#f4f6f9', border: '#e8ecf0' },
+  login: { color: '#64748b', bg: '#f1f6ef', border: '#e8ecf0' },
+  logout: { color: '#64748b', bg: '#f1f6ef', border: '#e8ecf0' },
   delete: { color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
   'settings changed': { color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' },
 };
@@ -300,7 +300,7 @@ export default function AuditTrailPage({ user }) {
 
         {/* STAT CARDS */}
         <div style={s.statsGrid}>{[
-        { icon: 'users', iconBg: '#d8f4e8', iconColor: '#005447', label: 'Active Users', value: String(users.length) },
+        { icon: 'users', iconBg: '#d8f4e8', iconColor: '#013826', label: 'Active Users', value: String(users.length) },
         { icon: 'file', iconBg: '#dcfce7', iconColor: '#16a34a', label: 'Total Actions', value: String(logs.length) },
         { icon: 'calendar', iconBg: '#fef3c7', iconColor: '#f59e0b', label: "Today's Activity", value: String(logs.filter(log => new Date(log.timestamp).toDateString() === today).length) },
         { icon: 'info', iconBg: '#f3e8ff', iconColor: '#9333ea', label: 'Critical Actions', value: String(criticalActions) },
@@ -413,7 +413,7 @@ export default function AuditTrailPage({ user }) {
 }
 
 const s = {
-  main: { flex: 1, overflowY: 'auto', background: '#f4f6f9' },
+  main: { flex: 1, overflowY: 'auto', background: '#f1f6ef' },
   page: { padding: '24px 22px 34px' },
   statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 },
   statCard: { background: '#fff', border: '1px solid #e1e6ec', borderRadius: 11, padding: '16px 20px' },

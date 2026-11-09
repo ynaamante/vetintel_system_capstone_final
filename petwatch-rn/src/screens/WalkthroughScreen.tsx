@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
   ScrollView,
+  type ScrollViewInstance,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
@@ -71,7 +72,7 @@ export default function WalkthroughScreen() {
   const navigation = useNavigation<any>();
   const { completeOnboarding } = useOnboarding();
   const [currentSlide, setCurrentSlide] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const progressWidth = useSharedValue(1 / slides.length);
 
   const goToSlide = (index: number, animated = true) => {

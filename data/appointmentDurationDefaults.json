@@ -1,0 +1,13 @@
+{
+  "Check-up": 30,
+  "Consultation": 30,
+  "Vaccination": 20,
+  "Surgery": 120,
+  "Dental": 60,
+  "Treatment": 30,
+  "Laboratory": 30,
+  "Confinement": 30,
+  "Follow-up": 20,
+  "Grooming": 30,
+  "General": 30
+}

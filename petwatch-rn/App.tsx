@@ -6,6 +6,7 @@ import { ThemeProvider } from './src/context/ThemeContext';
 import { AuthProvider } from './src/context/AuthContext';
 import { OnboardingProvider } from './src/context/OnboardingContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import { OwnerNotificationsProvider } from './src/context/OwnerNotificationsContext';
 
 export default function App() {
   return (
@@ -13,7 +14,7 @@ export default function App() {
       <ThemeProvider>
         <OnboardingProvider>
           <AuthProvider>
-            <AppNavigator />
+            <OwnerNotificationsProvider><AppNavigator /></OwnerNotificationsProvider>
             <StatusBar style="auto" />
             <Toast />
           </AuthProvider>

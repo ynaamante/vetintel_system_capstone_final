@@ -1,0 +1,82 @@
+.reminder-details-modal { width: min(780px,calc(100vw - 24px)); max-height: 92dvh; padding: 0; margin: auto; border: 1px solid #d9e3dc; border-radius: 14px; background: #fff; color: #000; box-shadow: 0 18px 60px #092b2440; font-family: 'DM Sans',sans-serif;  width: min(1040px,calc(100vw - 32px)); font-size: 15px;}
+.reminder-details-modal::backdrop { background: #183a2b66; }
+.rdm-shell { display: flex; flex-direction: column; max-height: calc(92dvh - 2px); }
+.rdm-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin: 0 26px; padding: 22px 0 18px; border-bottom: 1px solid #eef2ef; }
+.rdm-header h2 { margin: 0; font-size: 28px; font-weight: 800; line-height: 1.1; letter-spacing: -.6px; color: #000; }
+.rdm-header p { margin: 4px 0 0; font-size: 15px; line-height: 1.3; color: #000;  margin: 7px 0 0;}
+.rdm-header-actions { display: flex; align-items: center; gap: 24px; }
+.reminder-details-modal .rdm-close[aria-label] { display: inline-flex !important; width: 26px !important; min-width: 26px !important; height: 26px !important; min-height: 26px !important; padding: 0 !important; border: 0 !important; background: transparent !important; color: #000 !important; font-size: 27px !important; font-weight: 400 !important; line-height: 1 !important; }
+.reminder-details-modal .rdm-close[aria-label]::after { content: none !important; display: none !important; }
+.rdm-body { padding: 13px 18px 0; overflow-y: auto; min-height: 0; color: #000;  padding: 22px 26px 0;}
+.rdm-body h3 { margin: 0 0 8px; font-size: 19px; font-weight: 800; line-height: 1.2; letter-spacing: -.3px; color: #000;  margin: 0 0 12px;}
+.rdm-overview { display: grid; grid-template-columns: 280px minmax(0,1fr); gap: 28px; align-items: start; }
+.rdm-patient { background: linear-gradient(115deg,#edf6f0,#eff7f3); border-radius: 8px; padding: 20px 18px 18px; color: #000; }
+.rdm-pet-heading { display: flex; gap: 14px; align-items: flex-start; }
+.rdm-pet-heading h3 { margin: 2px 0 5px; font-size: 24px; line-height: 1.15; font-weight: 800; color: #000; }
+.rdm-pet-photo,.rdm-pet-placeholder { display: block; width: 92px; height: 92px; border-radius: 9px; object-fit: cover; flex: 0 0 92px; }
+.rdm-pet-placeholder { display: grid; place-items: center; background: #c5e6cc; font-size: 34px; font-weight: 600; color: #000; }
+.rdm-patient p { margin: 7px 0 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; color: #000; }
+.rdm-patient section { border-top: 1px solid #dce9e0; margin-top: 20px; padding-top: 16px; }
+.rdm-patient section h3 { margin-bottom: 8px; font-size: 18px;  margin-bottom: 12px;}
+.rdm-owner-name { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+.rdm-owner-name strong { font-size: 13px; font-weight: 800; color: #000;  font-size: 16px;}
+.rdm-patient .rdm-contact { display: flex; align-items: center; gap: 9px; margin-top: 10px; font-size: 14px; }
+.rdm-contact > span { display: flex; flex: 0 0 17px; width: 17px; height: 17px; }
+.rdm-contact svg { width: 14px; height: 17px; color: #000;  width: 17px;}
+.rdm-tag,.rdm-status,.rdm-delivery { display: inline-block; border-radius: 999px; padding: 5px 12px; background: #d6f1d8; color: #000; font-size: 12px; line-height: 1.1; font-weight: 700; white-space: nowrap; }
+.rdm-tag { font-size: 9px; padding: 4px 10px;  font-size: 11px;}
+.rdm-status { min-width: 82px; padding: 8px 14px; text-align: center;  min-width: 100px;}
+.rdm-status.is-overdue,.rdm-delivery.is-failed { background: #ffe3df; color: #000; }
+.rdm-status.is-due-soon,.rdm-delivery.is-sending { background: #e0f3d9; color: #000; }
+.rdm-information h3 { margin: 0 0 8px;  margin: 0 0 14px;}
+.rdm-information dl { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 15px 20px; margin: 0; }
+.rdm-information dt { font-size: 10px; line-height: 1.2; margin-bottom: 6px; font-weight: 700; color: #000;  font-size: 13px;}
+.rdm-information dd { margin: 0; padding: 11px 13px; background: linear-gradient(100deg,#eef6f0,#eef5f2); border-radius: 6px; font-size: 15px; line-height: 1.45; min-height: 44px; overflow-wrap: anywhere; color: #000; }
+.rdm-clinical-notes { background: linear-gradient(100deg,#eef6f0,#eef5f2); border-left: 4px solid #147735; padding: 12px 14px; border-radius: 6px; margin-top: 18px; font-size: 14px; line-height: 1.5; color: #000; }
+.rdm-clinical-notes strong { font-size: 11px; font-weight: 800; color: #000;  font-size: 14px;}
+.rdm-clinical-notes p { margin: 2px 0 0; white-space: pre-wrap; color: #000;  margin: 5px 0 0;}
+.rdm-send,.rdm-history,.rdm-reschedule { margin-top: 13px; border-top: 1px solid #e9eeeb; padding-top: 16px;  margin-top: 20px;}
+.rdm-send h3 { margin-bottom: 3px;  margin-bottom: 6px;}
+.rdm-send > p { font-size: 11px; color: #000; line-height: 1.3; margin: 0 0 13px;  font-size: 14px;}
+.rdm-send-row { display: flex; gap: 16px; align-items: center; }
+.rdm-channels { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; flex: 1; min-width: 0; }
+.rdm-channel { display: flex; align-items: flex-start; gap: 10px; min-height: 64px; border: 1px solid #d5e0da; padding: 12px; border-radius: 7px; font-size: 14px; line-height: 1.2; cursor: pointer; background: #fff; color: #000; }
+.rdm-channel input { appearance: auto; width: 18px; height: 18px; flex: 0 0 18px; margin: 3px 0 0; accent-color: #07582f; }
+.rdm-channel strong { font-size: 11px; font-weight: 700; color: #000;  font-size: 14px;}
+.rdm-channel small { display: block; margin-top: 5px; color: #000; font-size: 12px; line-height: 1.4; }
+.rdm-channel.is-unavailable { background: #fff; cursor: default; }
+.rdm-channel input:disabled { opacity: 1; }
+.rdm-table-scroll { overflow-x: auto; }
+.rdm-history h3 { margin-bottom: 8px;  margin-bottom: 12px;}
+.rdm-history table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 13px; line-height: 1.5; text-align: left; color: #000; }
+.rdm-col-date { width: 25%; }.rdm-col-channel { width: 15%; }.rdm-col-message { width: 46%; }.rdm-col-status { width: 14%; }
+.rdm-history th { background: #e1efdf; padding: 10px 12px; white-space: nowrap; font-size: 13px; font-weight: 800; color: #000; }
+.rdm-history th:first-child { border-radius: 5px 0 0 0; }.rdm-history th:last-child { border-radius: 0 5px 0 0; }
+.rdm-history td { padding: 7px 10px; border-bottom: 1px solid #edf1ee; vertical-align: top; overflow-wrap: anywhere; color: #000;  padding: 12px;}
+.rdm-history td:nth-child(3) { white-space: pre-wrap; }
+.rdm-history small { display: block; margin-top: 4px; color: #000; font-size: 12px; }
+.rdm-history-channel { display: inline-flex; align-items: center; gap: 8px; color: #000; }
+.rdm-history-channel > span,.rdm-history-channel svg { display: block; width: 17px; height: 17px; flex: 0 0 17px; }
+.rdm-delivery { min-width: 54px; text-align: center; font-size: 12px; padding: 5px 11px;  min-width: 68px;}
+.rdm-empty { text-align: center; color: #000; padding: 24px 12px !important; }
+.rdm-footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 14px; padding: 20px 26px; border: 0; }
+.rdm-footer button,.rdm-send-row > button,.rdm-reschedule button { min-height: 33px; padding: 10px 18px; border-radius: 7px; border: 1px solid #3c8455; background: #fff; color: #000; font: inherit; font-size: 14px; line-height: 1.2; font-weight: 700;  min-height: 42px;}
+.rdm-footer button:first-child { min-width: 157px; }.rdm-footer button:nth-child(2) { min-width: 128px; }.rdm-footer button:last-child { min-width: 82px; }
+.rdm-send-row > button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; flex: 0 0 178px; padding: 11px 15px; font-size: 14px; }
+.rdm-send-row > button > span,.rdm-send-row > button svg { display: block; width: 18px; height: 18px; flex: 0 0 18px; }
+.reminder-details-modal .rdm-primary { background: linear-gradient(110deg,#075a34,#004a27); color: #fff; border-color: #075a34; }
+.reminder-details-modal button:disabled { opacity: 1; cursor: not-allowed; }
+.reminder-details-modal .rdm-primary:disabled { background: #356b51; color: #fff; border-color: #356b51; }
+.reminder-details-modal button:focus-visible { outline: 2px solid #086b50; outline-offset: 3px; }
+.rdm-error,.rdm-notice { padding: 8px 10px; border-radius: 6px; font-size: 14px; margin: 0 0 12px; color: #000;  padding: 12px 14px;}
+.rdm-error { background: #fff0ef; }.rdm-notice { background: #e7f5eb; }
+.rdm-history .rdm-error-text { color: #000; }
+.rdm-reschedule label { display: grid; gap: 6px; margin: 10px 0; font-size: 14px; color: #000; }
+.rdm-reschedule textarea { width: 100%; min-height: 65px; padding: 9px; border: 1px solid #d6e3db; border-radius: 7px; font: inherit; color: #000; }
+.rdm-reschedule > div { display: flex; justify-content: flex-end; gap: 10px; }
+@media(max-width:780px) { .rdm-overview { grid-template-columns: 1fr; gap: 14px; }.rdm-send-row { align-items: stretch; flex-direction: column; gap: 10px; }.rdm-send-row > button { flex: auto; }.rdm-channels { grid-template-columns: 1fr; }.rdm-header { margin: 0 14px; }.rdm-body { padding: 12px 14px 0; }.rdm-footer { padding: 14px; gap: 8px; }.rdm-header-actions { gap: 10px; }.rdm-information dl { gap: 10px; }.rdm-history table { min-width: 620px; }.rdm-footer button:first-child,.rdm-footer button:nth-child(2),.rdm-footer button:last-child { min-width: 0; flex: 1; } }
+
+.rdm-channel-icon { display: flex; flex: 0 0 22px; width: 22px; height: 22px; margin-top: 1px; color: #000; }
+.rdm-channel-icon svg { width: 22px; height: 22px; }
+.rdm-channel-copy { min-width: 0; }
+.rdm-channel-copy small { line-height: 1.4; }

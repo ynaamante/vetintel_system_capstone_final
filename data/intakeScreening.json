@@ -1,0 +1,60 @@
+{
+  "triage": [
+    {
+      "value": "urgent",
+      "label": "Urgent",
+      "meaning": "Immediate veterinary assessment",
+      "tone": "urgent"
+    },
+    {
+      "value": "priority",
+      "label": "Priority",
+      "meaning": "Prompt veterinary review",
+      "tone": "priority"
+    },
+    {
+      "value": "routine",
+      "label": "Routine",
+      "meaning": "Standard registration review",
+      "tone": "routine"
+    },
+    {
+      "value": "not_assessed",
+      "label": "Not assessed",
+      "meaning": "Insufficient information for screening",
+      "tone": "unassessed"
+    }
+  ],
+  "infection": [
+    {
+      "value": "possible_infection",
+      "label": "Possible infection",
+      "meaning": "Reported symptoms suggest a potentially infectious condition",
+      "tone": "priority"
+    },
+    {
+      "value": "possible_exposure",
+      "label": "Possible exposure",
+      "meaning": "Reported contact with an infected animal or contaminated environment",
+      "tone": "priority"
+    },
+    {
+      "value": "not_indicated",
+      "label": "Not indicated",
+      "meaning": "No infectious symptoms or exposure reported",
+      "tone": "routine"
+    },
+    {
+      "value": "not_assessed",
+      "label": "Not assessed",
+      "meaning": "Insufficient information for screening",
+      "tone": "unassessed"
+    },
+    {
+      "value": "needs_assessment",
+      "label": "Needs assessment",
+      "meaning": "Reported signs require veterinary assessment; infection is not established",
+      "tone": "unassessed"
+    }
+  ]
+}

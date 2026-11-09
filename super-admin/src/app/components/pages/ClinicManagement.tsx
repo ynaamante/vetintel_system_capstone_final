@@ -683,9 +683,9 @@ export function ClinicManagement() {
   };
 
   return (
-    <div className="p-5 space-y-5 bg-[#eef3ff] min-h-full">
-      <div className="bg-white rounded-lg border border-[#cbdcfb] overflow-hidden">
-        <div className="flex items-center gap-7 px-4 border-b border-[#d4e1fb] overflow-x-auto">
+    <div className="p-5 space-y-5 bg-[#fafbf8] min-h-full">
+      <div className="bg-white rounded-lg border border-[#d4e3d7] overflow-hidden">
+        <div className="flex items-center gap-7 px-4 border-b border-[#d4e3d7] overflow-x-auto">
           {[
             ['all', 'All', clinics.length],
             ['pending', 'Pending', clinics.filter((clinic) => clinic.status === 'pending').length],
@@ -697,18 +697,18 @@ export function ClinicManagement() {
             <button
               key={value}
               onClick={() => setSelectedStatus(value as string)}
-              className={`flex items-center gap-1.5 py-3 text-xs whitespace-nowrap border-b-2 ${selectedStatus === value ? 'border-[#2161e8] text-[#2161e8]' : 'border-transparent text-[#6684b9]'}`}
+              className={`flex items-center gap-1.5 py-3 text-xs whitespace-nowrap border-b-2 ${selectedStatus === value ? 'border-[#086b50] text-[#086b50]' : 'border-transparent text-[#526B62]'}`}
             >
-              {label}<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${selectedStatus === value ? 'bg-[#2161e8] text-white' : 'bg-[#e8f0ff] text-[#5274b8]'}`}>{count}</span>
+              {label}<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${selectedStatus === value ? 'bg-[#086b50] text-white' : 'bg-[#e7f4ec] text-[#526B62]'}`}>{count}</span>
             </button>
           ))}
         </div>
-        <div className="flex items-center justify-between gap-3 p-3 border-b border-[#d4e1fb]">
+        <div className="flex items-center justify-between gap-3 p-3 border-b border-[#d4e3d7]">
           <div className="relative w-72">
-            <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-[#8ba6d3]" />
-            <input type="text" placeholder="Search clinics..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full rounded-lg border border-[#cbdcfb] bg-[#f5f8ff] pl-8 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#2161e8]" />
+            <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-[#a9d6b7]" />
+            <input type="text" placeholder="Search clinics..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full rounded-lg border border-[#d4e3d7] bg-[#fafbf8] pl-8 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#086b50]" />
           </div>
-          <button onClick={() => setShowCreateModal(true)} className="rounded-lg bg-[#2161e8] px-4 py-2 text-xs font-semibold text-white"><Plus className="inline w-3.5 h-3.5 mr-1" />New Application</button>
+          <button onClick={() => setShowCreateModal(true)} className="rounded-lg bg-[#086b50] px-4 py-2 text-xs font-semibold text-white"><Plus className="inline w-3.5 h-3.5 mr-1" />New Application</button>
         </div>
       </div>
 
@@ -716,55 +716,55 @@ export function ClinicManagement() {
       {activeTab === 'overview' && (
         <>
           {/* Clinics Overview Table */}
-          <div className="bg-white rounded-lg border border-[#cbdcfb] overflow-visible">
+          <div className="bg-white rounded-lg border border-[#d4e3d7] overflow-visible">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[#f0f5ff] border-b border-[#d4e1fb]">
+                <thead className="bg-[#e7f4ec] border-b border-[#d4e3d7]">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#5274b8]">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">
                       Clinic Name
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#5274b8]">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">
                       Owner Name
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#5274b8]">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">
                       Contact Email
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#5274b8]">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">
                       Staff Req.
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#5274b8]">Plan</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#5274b8]">Type</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#5274b8]">Submitted</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#5274b8]">Status</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#5274b8]"> </th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">Plan</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">Type</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">Submitted</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">Status</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]"> </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-[#e3ecfb]">
                   {filteredClinics.map((clinic) => (
                     <tr key={clinic.id} className="hover:bg-[#f8faff]">
-                      <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-[#102956]">
+                      <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-[#172b24]">
                         <Link
                           to={`/clinics/${clinic.id}`}
-                          className="hover:text-[#2161e8]"
+                          className="hover:text-[#086b50]"
                         >
                           {clinic.name}
                         </Link>
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap text-sm text-[#5274b8]">
+                      <td className="px-3 py-3 whitespace-nowrap text-sm text-[#526B62]">
                         {clinic.owner}
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap text-sm text-[#5274b8]">
+                      <td className="px-3 py-3 whitespace-nowrap text-sm text-[#526B62]">
                         {clinic.email || '—'}
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap text-sm text-[#5274b8]">
+                      <td className="px-3 py-3 whitespace-nowrap text-sm text-[#526B62]">
                         {clinic.totalStaff}
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap text-sm text-[#5274b8]">
+                      <td className="px-3 py-3 whitespace-nowrap text-sm text-[#526B62]">
                      {clinic.application?.plan || 'Starter'}
                     </td>
-                      <td className="px-3 py-3 whitespace-nowrap text-sm text-[#5274b8]">New Registration</td>
-                      <td className="px-3 py-3 whitespace-nowrap text-sm text-[#5274b8]">
+                      <td className="px-3 py-3 whitespace-nowrap text-sm text-[#526B62]">New Registration</td>
+                      <td className="px-3 py-3 whitespace-nowrap text-sm text-[#526B62]">
                         {new Date(clinic.registrationDate).toLocaleDateString()}
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap">
@@ -779,7 +779,7 @@ export function ClinicManagement() {
                       <td className="px-3 py-3 whitespace-nowrap text-right">
                         <button
                           onClick={() => setViewingClinic(clinic)}
-                          className="rounded-lg bg-[#e8f0ff] px-3 py-1 text-sm text-[#2161e8] transition hover:bg-[#d9e6ff]"
+                          className="rounded-lg bg-[#e7f4ec] px-3 py-1 text-sm text-[#086b50] transition hover:bg-[#d4e3d7]"
                         >
                           View
                         </button>
@@ -1049,10 +1049,10 @@ export function ClinicManagement() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#152744]/60 p-4">
           <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-[#d8e3f8] px-6 py-5">
-              <h2 className="text-lg font-bold text-[#102956]">New Clinic Application</h2>
+              <h2 className="text-lg font-bold text-[#172b24]">New Clinic Application</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-[#4870ba] transition hover:text-[#2161e8]"
+                className="text-[#4870ba] transition hover:text-[#086b50]"
                 aria-label="Close new clinic application"
               >
                 <X className="h-5 w-5" />
@@ -1061,13 +1061,13 @@ export function ClinicManagement() {
 
             <div className="space-y-5 px-6 py-5">
               <section>
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#2161e8]">Clinic Information</h3>
+                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Clinic Information</h3>
                 <label className="mb-1.5 block text-sm font-medium text-[#46649a]">Clinic Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={createClinicForm.name}
                   onChange={e => setCreateClinicForm(p => ({ ...p, name: e.target.value }))}
-                  className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#102956] placeholder:text-[#8b9bb8] focus:border-[#2161e8] focus:outline-none focus:ring-2 focus:ring-[#2161e8]/15"
+                  className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                   placeholder="e.g. Sunrise Veterinary Clinic"
                 />
                 <label className="mb-1.5 mt-4 block text-sm font-medium text-[#46649a]">Clinic Address <span className="text-red-500">*</span></label>
@@ -1075,13 +1075,13 @@ export function ClinicManagement() {
                   type="text"
                   value={createClinicForm.address}
                   onChange={e => setCreateClinicForm(p => ({ ...p, address: e.target.value }))}
-                  className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#102956] placeholder:text-[#8b9bb8] focus:border-[#2161e8] focus:outline-none focus:ring-2 focus:ring-[#2161e8]/15"
+                  className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                   placeholder="Street, City, Province"
                 />
               </section>
 
               <section>
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#2161e8]">Owner / Contact Information</h3>
+                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Owner / Contact Information</h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-[#46649a]">Owner Name <span className="text-red-500">*</span></label>
@@ -1089,7 +1089,7 @@ export function ClinicManagement() {
                       type="text"
                       value={createClinicForm.owner}
                       onChange={e => setCreateClinicForm(p => ({ ...p, owner: e.target.value }))}
-                      className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#102956] placeholder:text-[#8b9bb8] focus:border-[#2161e8] focus:outline-none focus:ring-2 focus:ring-[#2161e8]/15"
+                      className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                       placeholder="Dr. Full Name"
                     />
                   </div>
@@ -1099,7 +1099,7 @@ export function ClinicManagement() {
                       type="email"
                       value={createClinicForm.email}
                       onChange={e => setCreateClinicForm(p => ({ ...p, email: e.target.value }))}
-                      className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#102956] placeholder:text-[#8b9bb8] focus:border-[#2161e8] focus:outline-none focus:ring-2 focus:ring-[#2161e8]/15"
+                      className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                       placeholder="owner@clinic.com"
                     />
                   </div>
@@ -1109,7 +1109,7 @@ export function ClinicManagement() {
                       type="text"
                       value={createClinicForm.phone}
                       onChange={e => setCreateClinicForm(p => ({ ...p, phone: e.target.value }))}
-                      className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#102956] placeholder:text-[#8b9bb8] focus:border-[#2161e8] focus:outline-none focus:ring-2 focus:ring-[#2161e8]/15"
+                      className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                       placeholder="+63 9XX XXX XXXX"
                     />
                   </div>
@@ -1120,7 +1120,7 @@ export function ClinicManagement() {
                       min="0"
                       value={createClinicForm.staff}
                       onChange={e => setCreateClinicForm(p => ({ ...p, staff: e.target.value }))}
-                      className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#102956] placeholder:text-[#8b9bb8] focus:border-[#2161e8] focus:outline-none focus:ring-2 focus:ring-[#2161e8]/15"
+                      className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                       placeholder="e.g. 5"
                     />
                   </div>
@@ -1128,12 +1128,12 @@ export function ClinicManagement() {
               </section>
 
               <section>
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#2161e8]">Subscription Plan</h3>
+                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Subscription Plan</h3>
                 <label className="mb-1.5 block text-sm font-medium text-[#46649a]">Select Plan</label>
                 <select
                   value={createClinicForm.plan}
                   onChange={e => setCreateClinicForm(p => ({ ...p, plan: e.target.value }))}
-                  className="w-full rounded-xl border border-[#bcd2fb] bg-white px-4 py-2.5 text-base text-[#102956] focus:border-[#2161e8] focus:outline-none focus:ring-2 focus:ring-[#2161e8]/15"
+                  className="w-full rounded-xl border border-[#bcd2fb] bg-white px-4 py-2.5 text-base text-[#172b24] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                 >
                   <option>Starter</option>
                   <option>Professional</option>
@@ -1144,17 +1144,17 @@ export function ClinicManagement() {
                   rows={3}
                   value={createClinicForm.notes}
                   onChange={e => setCreateClinicForm(p => ({ ...p, notes: e.target.value }))}
-                  className="w-full resize-none rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#102956] placeholder:text-[#8b9bb8] focus:border-[#2161e8] focus:outline-none focus:ring-2 focus:ring-[#2161e8]/15"
+                  className="w-full resize-none rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                   placeholder="Any additional information about this clinic..."
                 />
               </section>
             </div>
 
             <div className="flex items-center gap-7 px-6 pb-6">
-              <button onClick={handleCreateClinic} className="rounded-xl bg-[#2161e8] px-5 py-3 text-base font-bold text-white shadow-sm transition hover:bg-[#174fc5]">
+              <button onClick={handleCreateClinic} className="rounded-xl bg-[#086b50] px-5 py-3 text-base font-bold text-white shadow-sm transition hover:bg-[#174fc5]">
                 Submit Application
               </button>
-              <button onClick={() => setShowCreateModal(false)} className="text-base font-medium text-[#315eb4] hover:text-[#2161e8]">
+              <button onClick={() => setShowCreateModal(false)} className="text-base font-medium text-[#315eb4] hover:text-[#086b50]">
                 Cancel
               </button>
             </div>
@@ -1168,7 +1168,7 @@ export function ClinicManagement() {
           <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
             <div className="flex items-start justify-between border-b border-[#d8e3f8] px-6 py-5">
               <div>
-                <h2 className="text-lg font-bold text-[#102956]">{viewingClinic.name}</h2>
+                <h2 className="text-lg font-bold text-[#172b24]">{viewingClinic.name}</h2>
                 <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
                   viewingClinic.status === 'active'
                     ? 'bg-[#d8f7e9] text-[#078c63]'
@@ -1181,7 +1181,7 @@ export function ClinicManagement() {
               </div>
               <button
                 onClick={() => setViewingClinic(null)}
-                className="text-[#4870ba] transition hover:text-[#2161e8]"
+                className="text-[#4870ba] transition hover:text-[#086b50]"
                 aria-label="Close application details"
               >
                 <X className="h-5 w-5" />
@@ -1191,32 +1191,32 @@ export function ClinicManagement() {
             <div className="space-y-4 px-6 py-5">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <section className="rounded-xl bg-[#eef4ff] p-4">
-                  <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#2161e8]">Clinic Information</h3>
-                  <div className="space-y-2 text-sm text-[#102956]">
-                    <p><strong>Clinic Name:</strong> <span className="text-[#5274b8]">{viewingClinic.name}</span></p>
-                    <p><strong>Address:</strong> <span className="text-[#5274b8]">{viewingClinic.address || '123 Katipunan Ave, Quezon City'}</span></p>
-                    <p><strong>Contact Email:</strong> <span className="text-[#5274b8]">{viewingClinic.email || '—'}</span></p>
-                    <p><strong>Phone:</strong> <span className="text-[#5274b8]">{viewingClinic.phone || '—'}</span></p>
+                  <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Clinic Information</h3>
+                  <div className="space-y-2 text-sm text-[#172b24]">
+                    <p><strong>Clinic Name:</strong> <span className="text-[#526B62]">{viewingClinic.name}</span></p>
+                    <p><strong>Address:</strong> <span className="text-[#526B62]">{viewingClinic.address || '123 Katipunan Ave, Quezon City'}</span></p>
+                    <p><strong>Contact Email:</strong> <span className="text-[#526B62]">{viewingClinic.email || '—'}</span></p>
+                    <p><strong>Phone:</strong> <span className="text-[#526B62]">{viewingClinic.phone || '—'}</span></p>
                   </div>
                 </section>
                 <section className="rounded-xl bg-[#eef4ff] p-4">
-                  <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#2161e8]">Owner Information</h3>
-                  <div className="space-y-2 text-sm text-[#102956]">
-                    <p><strong>Owner Name:</strong> <span className="text-[#5274b8]">{viewingClinic.owner}</span></p>
-                    <p><strong>Email:</strong> <span className="text-[#5274b8]">{viewingClinic.ownerEmail || viewingClinic.application?.ownerEmail || '—'}</span></p>
-                    <p><strong>Phone:</strong> <span className="text-[#5274b8]">{viewingClinic.application?.ownerPhone || '—'}</span></p>
-                    <p><strong>Position:</strong> <span className="text-[#5274b8]">Clinic Owner</span></p>
+                  <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Owner Information</h3>
+                  <div className="space-y-2 text-sm text-[#172b24]">
+                    <p><strong>Owner Name:</strong> <span className="text-[#526B62]">{viewingClinic.owner}</span></p>
+                    <p><strong>Email:</strong> <span className="text-[#526B62]">{viewingClinic.ownerEmail || viewingClinic.application?.ownerEmail || '—'}</span></p>
+                    <p><strong>Phone:</strong> <span className="text-[#526B62]">{viewingClinic.application?.ownerPhone || '—'}</span></p>
+                    <p><strong>Position:</strong> <span className="text-[#526B62]">Clinic Owner</span></p>
                   </div>
                 </section>
               </div>
 
               <section className="rounded-xl bg-[#eef4ff] p-4">
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#2161e8]">Requested Staff Structure</h3>
+                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Requested Staff Structure</h3>
                 <div className="space-y-2">
                  {(viewingClinic.application?.requestedRoles || []).map(({ role, count }) => (
-                    <div key={role} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm text-[#102956]">
+                    <div key={role} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm text-[#172b24]">
                       <span>{role || 'Unspecified role'}</span>
-                      <span className="rounded-full bg-[#e8f0ff] px-2 py-1 text-xs text-[#2161e8]">
+                      <span className="rounded-full bg-[#e7f4ec] px-2 py-1 text-xs text-[#086b50]">
                       {count || 0} {count === 1 ? 'user' : 'users'} </span>
                     </div>
                   ))}
@@ -1224,12 +1224,12 @@ export function ClinicManagement() {
               </section>
 
               <section className="rounded-xl bg-[#eef4ff] p-4">
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#2161e8]">Subscription</h3>
-                <div className="grid grid-cols-1 gap-2 text-sm text-[#102956] md:grid-cols-2">
-                  <p><strong>Plan:</strong> <span className="text-[#5274b8]">{viewingClinic.application?.plan || 'Starter'}</span></p>
-                  <p><strong>Billing:</strong> <span className="text-[#5274b8]">Monthly</span></p>
-                  <p><strong>Staff Slots:</strong> <span className="text-[#5274b8]">{viewingClinic.application?.staffCount ?? viewingClinic.totalStaff}</span></p>
-                  <p><strong>Submitted:</strong> <span className="text-[#5274b8]">{viewingClinic.registrationDate}</span></p>
+                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Subscription</h3>
+                <div className="grid grid-cols-1 gap-2 text-sm text-[#172b24] md:grid-cols-2">
+                  <p><strong>Plan:</strong> <span className="text-[#526B62]">{viewingClinic.application?.plan || 'Starter'}</span></p>
+                  <p><strong>Billing:</strong> <span className="text-[#526B62]">Monthly</span></p>
+                  <p><strong>Staff Slots:</strong> <span className="text-[#526B62]">{viewingClinic.application?.staffCount ?? viewingClinic.totalStaff}</span></p>
+                  <p><strong>Submitted:</strong> <span className="text-[#526B62]">{viewingClinic.registrationDate}</span></p>
                 </div>
               </section>
             </div>
@@ -1258,7 +1258,7 @@ export function ClinicManagement() {
                   setToast('Information request action is ready for backend integration');
                   setTimeout(() => setToast(null), 3000);
                 }}
-                className="rounded-xl bg-[#e8f0ff] px-4 py-2.5 text-sm font-bold text-[#2161e8] hover:bg-[#d9e6ff]"
+                className="rounded-xl bg-[#e7f4ec] px-4 py-2.5 text-sm font-bold text-[#086b50] hover:bg-[#d4e3d7]"
               >
                 Request Information
               </button>
@@ -1370,25 +1370,25 @@ export function ClinicManagement() {
               <div className="mb-6 flex items-center justify-center gap-3 text-xs font-medium">
                 <div className="flex items-center gap-2 text-[#079669]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#079669] text-white"><Check className="h-4 w-4" /></span>Review</div>
                 <span className="h-px w-16 bg-[#079669]" />
-                <div className={`flex items-center gap-2 ${approvalStep === 2 ? 'text-[#2161e8]' : 'text-[#079669]'}`}><span className={`flex h-7 w-7 items-center justify-center rounded-full text-white ${approvalStep === 2 ? 'bg-[#2161e8]' : 'bg-[#079669]'}`}>{approvalStep === 2 ? '2' : <Check className="h-4 w-4" />}</span>Create Account</div>
+                <div className={`flex items-center gap-2 ${approvalStep === 2 ? 'text-[#086b50]' : 'text-[#079669]'}`}><span className={`flex h-7 w-7 items-center justify-center rounded-full text-white ${approvalStep === 2 ? 'bg-[#086b50]' : 'bg-[#079669]'}`}>{approvalStep === 2 ? '2' : <Check className="h-4 w-4" />}</span>Create Account</div>
                 <span className={`h-px w-16 ${approvalStep === 3 ? 'bg-[#079669]' : 'bg-[#d6e3fb]'}`} />
-                <div className={`flex items-center gap-2 ${approvalStep === 3 ? 'text-[#2161e8]' : 'text-[#9bb1d8]'}`}><span className={`flex h-7 w-7 items-center justify-center rounded-full ${approvalStep === 3 ? 'bg-[#2161e8] text-white' : 'bg-[#e8f0ff] text-[#9bb1d8]'}`}>3</span>Credentials Sent</div>
+                <div className={`flex items-center gap-2 ${approvalStep === 3 ? 'text-[#086b50]' : 'text-[#9bb1d8]'}`}><span className={`flex h-7 w-7 items-center justify-center rounded-full ${approvalStep === 3 ? 'bg-[#086b50] text-white' : 'bg-[#e7f4ec] text-[#9bb1d8]'}`}>3</span>Credentials Sent</div>
               </div>
 
               {approvalStep === 2 && approvalClinic && (
                 <>
                   <div className="mb-5 flex items-center justify-between">
-                    <div><h2 className="text-lg font-bold text-[#102956]">Create Clinic Owner Account</h2><p className="text-sm text-[#5274b8]">{approvalClinic.name} · {approvalClinic.owner}</p></div>
-                    <button onClick={() => setShowApproveModal(false)} className="text-[#5274b8] hover:text-[#2161e8]" aria-label="Close"><X className="h-5 w-5" /></button>
+                    <div><h2 className="text-lg font-bold text-[#172b24]">Create Clinic Owner Account</h2><p className="text-sm text-[#526B62]">{approvalClinic.name} · {approvalClinic.owner}</p></div>
+                    <button onClick={() => setShowApproveModal(false)} className="text-[#526B62] hover:text-[#086b50]" aria-label="Close"><X className="h-5 w-5" /></button>
                   </div>
-                  <div className="mb-5 flex items-center gap-3 rounded-xl bg-[#eef4ff] p-3"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2161e8] text-sm font-bold text-white">{approvalClinic.owner.split(' ').map(word => word[0]).join('').slice(0, 2)}</span><div><p className="font-bold text-[#102956]">{approvalClinic.owner}</p><p className="text-sm text-[#5274b8]">Clinic Owner · {approvalClinic.name}</p></div><span className="ml-auto rounded-full bg-[#d1fae5] px-3 py-1 text-xs font-semibold text-[#079669]">Approved</span></div>
-                  <label className="mb-1.5 block text-sm font-medium text-[#5274b8]">Login Email <span className="text-red-500">*</span></label>
-                  <input value={approvalClinic.ownerEmail || approvalClinic.email || ''} readOnly className="mb-1 w-full rounded-xl border border-[#bcd2fb] bg-white px-4 py-2.5 text-sm text-[#102956]" />
+                  <div className="mb-5 flex items-center gap-3 rounded-xl bg-[#eef4ff] p-3"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#086b50] text-sm font-bold text-white">{approvalClinic.owner.split(' ').map(word => word[0]).join('').slice(0, 2)}</span><div><p className="font-bold text-[#172b24]">{approvalClinic.owner}</p><p className="text-sm text-[#526B62]">Clinic Owner · {approvalClinic.name}</p></div><span className="ml-auto rounded-full bg-[#d1fae5] px-3 py-1 text-xs font-semibold text-[#079669]">Approved</span></div>
+                  <label className="mb-1.5 block text-sm font-medium text-[#526B62]">Login Email <span className="text-red-500">*</span></label>
+                  <input value={approvalClinic.ownerEmail || approvalClinic.email || ''} readOnly className="mb-1 w-full rounded-xl border border-[#bcd2fb] bg-white px-4 py-2.5 text-sm text-[#172b24]" />
                   <p className="mb-4 text-xs text-[#8aa4d2]">Pre-filled from the application. Update if needed.</p>
-                  <div className="mb-1.5 flex items-center justify-between"><label className="text-sm font-medium text-[#5274b8]">Temporary Password <span className="text-red-500">*</span></label><button onClick={() => setApprovalPassword(generateTemporaryPassword())} className="flex items-center gap-1 text-sm font-semibold text-[#2161e8]"><RefreshCw className="h-4 w-4" />Regenerate</button></div>
-                  <div className="mb-4 flex gap-2"><input value={approvalPassword} onChange={event => setApprovalPassword(event.target.value)} className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-sm tracking-widest text-[#102956]" /><button onClick={() => setApprovalPassword(generateTemporaryPassword())} className="rounded-xl bg-[#eef4ff] px-4 text-sm font-semibold text-[#2161e8]">Generate</button></div>
-                  <div className="overflow-hidden rounded-xl border border-[#bcd2fb]"><div className="flex items-center justify-between border-b border-[#bcd2fb] bg-[#eef4ff] px-4 py-2.5 text-sm font-semibold text-[#2161e8]"><span className="flex items-center gap-2"><Mail className="h-4 w-4" />Email Preview</span><span className="font-normal text-[#8aa4d2]">Will be sent to {approvalClinic.ownerEmail || approvalClinic.email}</span></div><div className="space-y-2 p-4 text-sm text-[#3e5b8e]"><p className="font-bold text-[#102956]">Subject: <span className="font-normal">Your VetIntel Clinic Owner Account is Ready</span></p><p>Dear <strong>{approvalClinic.owner}</strong>,</p><p>Your <strong>{approvalClinic.name}</strong> application has been approved. Here are your login credentials:</p><div className="rounded-xl bg-[#eef4ff] p-3 text-xs"><p>🌐 Platform: <strong>app.vetintel.com</strong></p><p>✉ Email: <strong>{approvalClinic.ownerEmail || approvalClinic.email}</strong></p><p>🔑 Temporary Password: <strong>{approvalPassword}</strong></p></div><p className="text-[#5274b8]">Please log in and change your password on first access.</p></div></div>
-                  <div className="mt-5 flex items-center gap-3"><button disabled={isApproving || !approvalPassword.trim()} onClick={handleApprove} className="flex-1 rounded-xl bg-[#2161e8] px-4 py-3 text-sm font-bold text-white hover:bg-[#1853ca] disabled:cursor-not-allowed disabled:opacity-60"><span className="flex items-center justify-center gap-2"><Send className="h-4 w-4" />{isApproving ? 'Creating Account...' : 'Create Account & Send Credentials'}</span></button><button onClick={() => setShowApproveModal(false)} className="px-3 text-sm font-semibold text-[#2161e8]">Back</button></div>
+                  <div className="mb-1.5 flex items-center justify-between"><label className="text-sm font-medium text-[#526B62]">Temporary Password <span className="text-red-500">*</span></label><button onClick={() => setApprovalPassword(generateTemporaryPassword())} className="flex items-center gap-1 text-sm font-semibold text-[#086b50]"><RefreshCw className="h-4 w-4" />Regenerate</button></div>
+                  <div className="mb-4 flex gap-2"><input value={approvalPassword} onChange={event => setApprovalPassword(event.target.value)} className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-sm tracking-widest text-[#172b24]" /><button onClick={() => setApprovalPassword(generateTemporaryPassword())} className="rounded-xl bg-[#eef4ff] px-4 text-sm font-semibold text-[#086b50]">Generate</button></div>
+                  <div className="overflow-hidden rounded-xl border border-[#bcd2fb]"><div className="flex items-center justify-between border-b border-[#bcd2fb] bg-[#eef4ff] px-4 py-2.5 text-sm font-semibold text-[#086b50]"><span className="flex items-center gap-2"><Mail className="h-4 w-4" />Email Preview</span><span className="font-normal text-[#8aa4d2]">Will be sent to {approvalClinic.ownerEmail || approvalClinic.email}</span></div><div className="space-y-2 p-4 text-sm text-[#3e5b8e]"><p className="font-bold text-[#172b24]">Subject: <span className="font-normal">Your VetIntel Clinic Owner Account is Ready</span></p><p>Dear <strong>{approvalClinic.owner}</strong>,</p><p>Your <strong>{approvalClinic.name}</strong> application has been approved. Here are your login credentials:</p><div className="rounded-xl bg-[#eef4ff] p-3 text-xs"><p>🌐 Platform: <strong>app.vetintel.com</strong></p><p>✉ Email: <strong>{approvalClinic.ownerEmail || approvalClinic.email}</strong></p><p>🔑 Temporary Password: <strong>{approvalPassword}</strong></p></div><p className="text-[#526B62]">Please log in and change your password on first access.</p></div></div>
+                  <div className="mt-5 flex items-center gap-3"><button disabled={isApproving || !approvalPassword.trim()} onClick={handleApprove} className="flex-1 rounded-xl bg-[#086b50] px-4 py-3 text-sm font-bold text-white hover:bg-[#1853ca] disabled:cursor-not-allowed disabled:opacity-60"><span className="flex items-center justify-center gap-2"><Send className="h-4 w-4" />{isApproving ? 'Creating Account...' : 'Create Account & Send Credentials'}</span></button><button onClick={() => setShowApproveModal(false)} className="px-3 text-sm font-semibold text-[#086b50]">Back</button></div>
                 </>
               )}
             </div>
@@ -1399,14 +1399,14 @@ export function ClinicManagement() {
       {approvalResult && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#152744]/60 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
-            <div className="mb-6 flex items-center justify-center gap-3 text-xs font-medium"><div className="flex items-center gap-2 text-[#079669]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#079669] text-white"><Check className="h-4 w-4" /></span>Review</div><span className="h-px w-12 bg-[#079669]" /><div className="flex items-center gap-2 text-[#079669]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#079669] text-white"><Check className="h-4 w-4" /></span>Create Account</div><span className="h-px w-12 bg-[#079669]" /><div className="flex items-center gap-2 text-[#2161e8]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#2161e8] text-white">3</span>Credentials Sent</div></div>
+            <div className="mb-6 flex items-center justify-center gap-3 text-xs font-medium"><div className="flex items-center gap-2 text-[#079669]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#079669] text-white"><Check className="h-4 w-4" /></span>Review</div><span className="h-px w-12 bg-[#079669]" /><div className="flex items-center gap-2 text-[#079669]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#079669] text-white"><Check className="h-4 w-4" /></span>Create Account</div><span className="h-px w-12 bg-[#079669]" /><div className="flex items-center gap-2 text-[#086b50]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#086b50] text-white">3</span>Credentials Sent</div></div>
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#d1fae5] text-[#079669]"><Check className="h-8 w-8" /></div>
-            <h2 className="mt-5 text-xl font-bold text-[#102956]">Account Created!</h2>
-            <p className="mt-3 text-sm leading-5 text-[#5274b8]">Login credentials have been sent to <strong>{approvalResult.email}</strong>. The clinic owner can now sign in to VetIntel.</p>
-            <div className="mt-5 rounded-xl bg-[#eef4ff] p-4 text-left text-sm"><p className="mb-3 text-xs font-bold uppercase tracking-wide text-[#2161e8]">Credentials Summary</p><p className="mb-2 text-[#102956]">Clinic: <span className="text-[#5274b8]">{approvalResult.clinicName}</span></p><p className="mb-2 text-[#102956]">Owner: <span className="text-[#5274b8]">{approvalResult.ownerName}</span></p><p className="mb-2 text-[#102956]">Email: <span className="text-[#5274b8]">{approvalResult.email}</span></p><p className="text-[#102956]">Password: <code className="ml-1 rounded bg-white px-2 py-1 text-[#2161e8]">{approvalResult.temporaryPassword}</code></p></div>
-            <div className={`mt-4 rounded-xl border px-3 py-3 text-xs ${approvalResult.emailSent ? 'border-[#bcd2fb] bg-white text-[#5274b8]' : 'border-[#f5b942] bg-[#fffaf0] text-[#9a5b00]'}`}>{approvalResult.emailSent ? 'The clinic owner will be prompted to change their password on first login.' : (approvalResult.warning || 'The account was created, but the credential email could not be sent.')}</div>
-            <button onClick={() => { setApprovalResult(null); setApprovalStep(2); }} className="mt-5 w-full rounded-xl bg-[#2161e8] px-4 py-3 text-sm font-bold text-white hover:bg-[#1853ca]">Go to User Role Management →</button>
-            <button onClick={() => { setApprovalResult(null); setApprovalStep(2); }} className="mt-3 text-sm font-semibold text-[#5274b8]">Done</button>
+            <h2 className="mt-5 text-xl font-bold text-[#172b24]">Account Created!</h2>
+            <p className="mt-3 text-sm leading-5 text-[#526B62]">Login credentials have been sent to <strong>{approvalResult.email}</strong>. The clinic owner can now sign in to VetIntel.</p>
+            <div className="mt-5 rounded-xl bg-[#eef4ff] p-4 text-left text-sm"><p className="mb-3 text-xs font-bold uppercase tracking-wide text-[#086b50]">Credentials Summary</p><p className="mb-2 text-[#172b24]">Clinic: <span className="text-[#526B62]">{approvalResult.clinicName}</span></p><p className="mb-2 text-[#172b24]">Owner: <span className="text-[#526B62]">{approvalResult.ownerName}</span></p><p className="mb-2 text-[#172b24]">Email: <span className="text-[#526B62]">{approvalResult.email}</span></p><p className="text-[#172b24]">Password: <code className="ml-1 rounded bg-white px-2 py-1 text-[#086b50]">{approvalResult.temporaryPassword}</code></p></div>
+            <div className={`mt-4 rounded-xl border px-3 py-3 text-xs ${approvalResult.emailSent ? 'border-[#bcd2fb] bg-white text-[#526B62]' : 'border-[#f5b942] bg-[#fffaf0] text-[#9a5b00]'}`}>{approvalResult.emailSent ? 'The clinic owner will be prompted to change their password on first login.' : (approvalResult.warning || 'The account was created, but the credential email could not be sent.')}</div>
+            <button onClick={() => { setApprovalResult(null); setApprovalStep(2); }} className="mt-5 w-full rounded-xl bg-[#086b50] px-4 py-3 text-sm font-bold text-white hover:bg-[#1853ca]">Go to User Role Management →</button>
+            <button onClick={() => { setApprovalResult(null); setApprovalStep(2); }} className="mt-3 text-sm font-semibold text-[#526B62]">Done</button>
             </div>
         </div>
       )}

@@ -1,0 +1,76 @@
+{
+  "version": "intake-screening-v1",
+  "validation_status": "illustrative_not_clinically_validated",
+  "symptoms": [
+    [
+      "vomiting",
+      "Vomiting"
+    ],
+    [
+      "diarrhea",
+      "Diarrhea"
+    ],
+    [
+      "bloody_stool",
+      "Bloody stool"
+    ],
+    [
+      "loss_of_appetite",
+      "Loss of appetite"
+    ],
+    [
+      "coughing",
+      "Coughing"
+    ],
+    [
+      "sneezing",
+      "Sneezing"
+    ],
+    [
+      "difficulty_breathing",
+      "Difficulty breathing"
+    ],
+    [
+      "skin_lesions",
+      "Skin lesions"
+    ],
+    [
+      "lethargy",
+      "Lethargy / Weakness"
+    ],
+    [
+      "fever",
+      "Fever"
+    ],
+    [
+      "other",
+      "Other"
+    ],
+    [
+      "none",
+      "No symptoms reported"
+    ]
+  ],
+  "exposures": [
+    [
+      "sick_animal",
+      "Contact with a sick animal"
+    ],
+    [
+      "pet_facility",
+      "Exposure at a pet facility (e.g. boarding, grooming)"
+    ],
+    [
+      "recent_travel",
+      "Recent travel"
+    ],
+    [
+      "unknown",
+      "Not sure / Unknown"
+    ],
+    [
+      "none",
+      "No known exposure"
+    ]
+  ]
+}

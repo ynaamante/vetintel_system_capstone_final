@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 export default function FilterSelect({ label, value, options, onChange, className = '' }) {
@@ -19,11 +19,19 @@ export default function FilterSelect({ label, value, options, onChange, classNam
         value: String(option.value ?? ''),
         label: String(option.label ?? option.value ?? ''),
       }))
-      .filter(option => option.value)
     : [];
   const normalizedValue = String(value ?? '');
   const selectedIndex = Math.max(0, safeOptions.findIndex(option => option.value === normalizedValue));
-  const selectedOption = safeOptions[selectedIndex];
+  const selectedOption = safeOptions.find(option => option.value === normalizedValue);
+  const dialogHost = open ? triggerRef.current?.closest('dialog[open]') : null;
+  const portalHost = dialogHost || document.body;
+  useLayoutEffect(() => {
+    if (!open || !dialogHost) return undefined;
+    const menu = menuRef.current;
+    if (menu?.showPopover) menu.showPopover();
+    return () => { if (menu?.matches(':popover-open')) menu.hidePopover(); };
+  }, [open, dialogHost, menuPosition !== null]);
+
   const menuZIndex = className.includes('lab-date-time-select') ? 2200 : 2000;
 
   useEffect(() => {
@@ -115,11 +123,12 @@ export default function FilterSelect({ label, value, options, onChange, classNam
       </button>
       {open && menuPosition && safeOptions.length > 0 && createPortal(<div
         className={`filter-select-menu${className ? ` ${className}-menu` : ''}`}
+        popover={dialogHost ? 'manual' : undefined}
         role="listbox"
         aria-label={label}
         onKeyDown={handleKeyDown}
         ref={menuRef}
-        style={{ ...menuPosition, position: 'fixed', zIndex: menuZIndex }}
+        style={{ position: 'fixed', inset: 'auto', margin: 0, boxSizing: 'border-box', ...menuPosition, zIndex: menuZIndex }}
       >
         {safeOptions.map((option, index) => <button
           key={option.value}
@@ -133,7 +142,7 @@ export default function FilterSelect({ label, value, options, onChange, classNam
         >
           {option.label}
         </button>)}
-      </div>, document.body)}
+      </div>, portalHost)}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icons } from '../icons';
 
@@ -93,6 +93,7 @@ export default function LabDateTimePicker({
   style,
   name,
   required = false,
+  disabled = false,
   min,
   max,
   mode = 'datetime',
@@ -111,6 +112,17 @@ export default function LabDateTimePicker({
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
   const popoverRef = useRef(null);
+  const dialogHost = open ? triggerRef.current?.closest('dialog[open]') : null;
+  const portalHost = dialogHost || document.body;
+
+  useLayoutEffect(() => {
+    if (!open) return undefined;
+    const popover = popoverRef.current;
+    // A native modal lives in the browser top layer. Keep its calendar in
+    // that dialog and promote the calendar above the modal's scroll surface.
+    if (dialogHost && popover?.showPopover) popover.showPopover();
+    return () => { if (popover?.matches(':popover-open')) popover.hidePopover(); };
+  }, [open, dialogHost]);
 
   const updatePosition = () => {
     if (mode === 'time') {
@@ -125,11 +137,15 @@ export default function LabDateTimePicker({
     }
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const width = Math.min(340, window.innerWidth - 16);
+    const bounds = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight, width: window.innerWidth, height: window.innerHeight };
+    const width = Math.min(340, bounds.width - 16);
     const height = popoverRef.current?.getBoundingClientRect().height || 380;
-    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
-    const top = rect.bottom + height + 8 <= window.innerHeight ? rect.bottom + 6 : Math.max(8, rect.top - height - 6);
-    setPosition({ top, left, width });
+    const availableHeight = Math.max(100, bounds.height - 16);
+    const displayedHeight = Math.min(height, availableHeight);
+    const left = Math.max(bounds.left + 8, Math.min(rect.left, bounds.right - width - 8));
+    const preferredTop = rect.bottom + displayedHeight + 8 <= bounds.bottom ? rect.bottom + 6 : rect.top - displayedHeight - 6;
+    const top = Math.max(bounds.top + 8, Math.min(preferredTop, bounds.bottom - displayedHeight - 8));
+    setPosition({ top, left, width, maxHeight: availableHeight });
   };
 
   useEffect(() => {
@@ -138,16 +154,16 @@ export default function LabDateTimePicker({
       if (event.target.closest?.('.filter-select-menu')) return;
       if (!rootRef.current?.contains(event.target) && !popoverRef.current?.contains(event.target)) setOpen(false);
     };
-    const closeEscape = event => { if (event.key === 'Escape') setOpen(false); };
+    const closeEscape = event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setOpen(false); } };
     document.addEventListener('mousedown', closeOutside);
     document.addEventListener('touchstart', closeOutside, { passive: true });
-    document.addEventListener('keydown', closeEscape);
+    document.addEventListener('keydown', closeEscape, true);
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
     return () => {
       document.removeEventListener('mousedown', closeOutside);
       document.removeEventListener('touchstart', closeOutside);
-      document.removeEventListener('keydown', closeEscape);
+      document.removeEventListener('keydown', closeEscape, true);
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
@@ -156,6 +172,7 @@ export default function LabDateTimePicker({
   useEffect(() => { if (open) updatePosition(); }, [open, visibleMonth]);
 
   const openPicker = () => {
+    if (disabled) return;
     const parsed = parseValue(currentValue, mode);
     const date = parsed?.date || new Date();
     setDraft(parsed || { date: null, hour: '', minute: '', period: 'am' });
@@ -237,6 +254,7 @@ export default function LabDateTimePicker({
         aria-required={required || undefined}
         aria-haspopup="dialog"
         aria-expanded={open}
+        disabled={disabled}
         onClick={() => open ? setOpen(false) : openPicker()}
       >
         {Icons.calendar}
@@ -250,7 +268,8 @@ export default function LabDateTimePicker({
           role="dialog"
           aria-label={label}
           ref={popoverRef}
-          style={position ? { position: 'fixed', ...position, zIndex: 2100 } : { position: 'fixed', visibility: 'hidden', zIndex: 2100, width: `min(${mode === 'time' ? '488px' : '340px'}, calc(100vw - 16px))`, top: 8, left: 8 }}
+          popover={dialogHost ? 'manual' : undefined}
+          style={position ? { position: 'fixed', inset: 'auto', margin: 0, boxSizing: 'border-box', ...position, zIndex: 2100 } : { position: 'fixed', inset: 'auto', margin: 0, visibility: 'hidden', zIndex: 2100, width: `min(${mode === 'time' ? '488px' : '340px'}, calc(100vw - 16px))`, top: 8, left: 8 }}
         >
         {mode === 'time' && <>
           <div className="lab-date-time-time-header">
@@ -385,7 +404,7 @@ export default function LabDateTimePicker({
           <button type="button" className="apply" disabled={!selectedValue || selectedTimeUnavailable} onClick={() => { commit(selectedValue); setOpen(false); }}>Apply</button>
         </div>
         </div>
-      </>, document.body)}
+      </>, portalHost)}
     </div>
   );
 }

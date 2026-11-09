@@ -1,9 +1,11 @@
+const { publish: publishClinicEvent } = require('../utils/clinicEvents');
 const db = require('../config/db');
 const dns = require('dns').promises;
 const crypto = require('crypto');
 const { validateOwnerFields, validateClinicalDates, validateOverrideReason } = require('../validation');
 const { logAudit } = require('../utils/audit');
 const defaultClinicCatalog = require('../data/defaultClinicCatalog');
+const labTestTypes = require('../data/labTestTypes');
 const additionalClinicCatalog = require('../data/additionalClinicCatalog');
 const ownerCatalog202610 = require('../data/ownerCatalog202610');
 
@@ -66,12 +68,13 @@ const requireClinicId = (req, res) => {
   return clinicId;
 };
 
-const billingCatalogTypes = new Set(['consultation', 'treatment', 'medication', 'vaccination', 'lab_test', 'inpatient']);
+const billingCatalogTypes = new Set(['consultation', 'treatment', 'medication', 'vaccination', 'lab_test', 'inpatient', 'product']);
 const billingCatalogCategories = new Set([
   'Consultation', 'Treatment', 'Medication', 'Vaccination', 'Laboratory', 'Confinement',
   'Surgery', 'Dental', 'Grooming', 'General', 'Medical Supplies', 'Wound Care',
   'Laboratory Supplies', 'Grooming & Hygiene', 'Surgical Equipment', 'Clinic Accessories',
 ]);
+for (const category of Object.keys(require('../data/importedInventory205.json').categories)) billingCatalogCategories.add(category);
 const defaultCategoryByType = {
   consultation: 'Consultation', treatment: 'Treatment', medication: 'Medication',
   vaccination: 'Vaccination', lab_test: 'Laboratory', inpatient: 'Confinement',
@@ -86,15 +89,17 @@ exports.listBillingCatalog = async (req, res, next) => {
     if (!clinicId) return;
     const includeInactive = req.query.include_inactive === 'true';
     const result = await db.query(
-      `SELECT id, clinic_id, item_type, category, name, description, unit, duration, unit_price, active, created_at, updated_at
+      `SELECT id, clinic_id, item_type, category, name, description, unit, duration, unit_price, active, created_at, updated_at, catalog_kind, source_sku, source_key, inventory_notes
        FROM clinic_billing_catalog
        WHERE clinic_id = $1
          AND ($2::boolean OR active = true)
+         AND replaced_by_source IS NULL
+         AND ($3::boolean OR unit_price IS NOT NULL)
          AND NULLIF(BTRIM(name), '') IS NOT NULL
        ORDER BY item_type, name`,
-      [clinicId, includeInactive]
+      [clinicId, includeInactive, canManageBillingCatalog(req.user?.role) || req.query.include_unpriced === 'true']
     );
-    return res.json(result.rows);
+    return res.json(await require('./catalogConnections').enrich(result.rows,clinicId));
   } catch (error) {
     return next(error);
   }
@@ -108,6 +113,8 @@ exports.seedDefaultBillingCatalog = async (req, res, next) => {
     if (!canManageBillingCatalog(req.user?.role)) {
       return res.status(403).json({ error: 'Only clinic owners can add the suggested clinic price catalog.' });
     }
+    const replacement = await client.query('SELECT 1 FROM clinic_inventory_imports WHERE clinic_id=$1 LIMIT 1', [clinicId]);
+    if (replacement.rows.length) return res.json({ added: 0, replaced_by_pdf: true });
     await client.query(`
       CREATE TABLE IF NOT EXISTS clinic_billing_catalog_seeds (
         clinic_id INTEGER NOT NULL,
@@ -234,7 +241,7 @@ exports.createBillingCatalogItem = async (req, res, next) => {
     const unit = String(req.body.unit || 'item').trim() || 'item';
     const rawPrice = req.body.unit_price;
     const price = Number(rawPrice);
-    if (!billingCatalogTypes.has(itemType) || !billingCatalogCategories.has(category) || !name || name.length > 160 || !Number.isFinite(price) || price < 0) {
+    if (!billingCatalogTypes.has(itemType) || !billingCatalogCategories.has(category) || !name || name.length > 160 || req.body.unit_price === null || req.body.unit_price === undefined || String(req.body.unit_price).trim() === '' || !Number.isFinite(price) || price < 0) {
       return res.status(422).json({ error: 'Enter a valid item type, name, and non-negative price.' });
     }
     const result = await db.query(
@@ -263,21 +270,22 @@ exports.updateBillingCatalogItem = async (req, res, next) => {
     const name = String(req.body.name || '').trim();
     const unit = String(req.body.unit || 'item').trim() || 'item';
     const price = Number(req.body.unit_price);
-    if (!Number.isInteger(id) || id < 1 || !billingCatalogTypes.has(itemType) || !billingCatalogCategories.has(category) || !name || name.length > 160 || !Number.isFinite(price) || price < 0
+    if (!Number.isInteger(id) || id < 1 || !billingCatalogTypes.has(itemType) || !billingCatalogCategories.has(category) || !name || name.length > 160 || req.body.unit_price === null || req.body.unit_price === undefined || String(req.body.unit_price).trim() === '' || !Number.isFinite(price) || price < 0
       || (req.body.active !== undefined && typeof req.body.active !== 'boolean')) {
       return res.status(422).json({ error: 'Enter valid catalog item details.' });
     }
     const result = await db.query(
-      `UPDATE clinic_billing_catalog
+      `WITH updated AS (UPDATE clinic_billing_catalog
        SET item_type=$1, category=$2, name=$3, description=$4, unit=$5, duration=$6, unit_price=$7,
            active=COALESCE($8, active), updated_at=now()
        WHERE id=$9 AND clinic_id=$10
-       RETURNING id, clinic_id, item_type, category, name, description, unit, duration, unit_price, active, created_at, updated_at`,
+       RETURNING *), inventory_sync AS (UPDATE clinic_inventory_items i SET name=c.name,unit=c.unit,category=c.category,active=c.active,updated_at=now() FROM updated c WHERE i.catalog_item_id=c.id AND i.clinic_id=c.clinic_id), vaccine_sync AS (UPDATE clinic_vaccine_batches v SET product_name=c.name,active=c.active,updated_at=now() FROM updated c WHERE v.catalog_item_id=c.id AND v.clinic_id=c.clinic_id) SELECT * FROM updated`,
       [itemType, category, name, String(req.body.description || '').trim() || null, unit,
         String(req.body.duration || '').trim() || null, price,
         req.body.active === undefined ? null : req.body.active, id, clinicId]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Billing catalog item not found.' });
+    publishClinicEvent(clinicId, 'inventory');
     return res.json(result.rows[0]);
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ error: 'An item with this name and type already exists.' });
@@ -386,6 +394,29 @@ exports.createClient = async (req, res, next) => {
   }
 };
 
+exports.updateClient = async (req, res, next) => {
+  try {
+    const clinicId = requireClinicId(req, res);
+    if (!clinicId) return;
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid owner ID.' });
+    const existing = (await db.query('SELECT * FROM clients WHERE id=$1 AND clinic_id=$2', [id, clinicId])).rows[0];
+    if (!existing) return res.status(404).json({ error: 'Owner not found.' });
+    const { errors, normalized } = validateOwnerFields(req.body);
+    if (Object.keys(errors).length) return res.status(422).json({ error: 'Validation failed', fields: errors });
+    const { name, email, phone } = normalized;
+    const duplicate = await db.query(`SELECT id FROM clients WHERE clinic_id=$1 AND id<>$2 AND
+      (LOWER(TRIM(email))=LOWER($3) OR right(regexp_replace(phone,'[^0-9]','','g'),10)=right($4,10)) LIMIT 1`, [clinicId,id,email,phone]);
+    if (duplicate.rows.length) return res.status(409).json({ error: 'This email or contact number is already registered to another owner.' });
+    const saved = (await db.query(`UPDATE clients SET name=$1,email=$2,phone=$3,address=$4,updated_at=now()
+      WHERE id=$5 AND clinic_id=$6 RETURNING id,clinic_id,name,email,phone,address,updated_at`,
+      [name,email,phone,String(req.body.address || '').trim() || null,id,clinicId])).rows[0];
+    await logAudit({ user_id:req.user.id, role:req.user.role, action:'update', table_name:'clients', record_id:id,
+      old_data:existing, new_data:saved, reason:'Owner profile updated.', ip_address:req.ip || req.connection.remoteAddress });
+    res.json(saved);
+  } catch (error) { next(error); }
+};
+
 exports.archiveClient = async (req, res, next) => {
   try {
     const clinicId = requireClinicId(req, res);
@@ -447,7 +478,12 @@ exports.listPets = async (req, res, next) => {
               p.metadata->>'weight_target' AS weight_target,
               COALESCE(p.metadata->>'allergies', 'Not recorded') AS allergies,
               COALESCE((p.metadata->>'archived')::boolean, false) AS archived,
-              profile_photo.url AS photo_url,
+              last_visit.visit_at AS last_visit_at,
+              next_appointment.start_time AS next_appointment_at,
+              next_appointment.reason AS next_appointment_reason,
+              next_appointment.status AS next_appointment_status,
+              next_appointment.practitioner AS next_appointment_practitioner,
+              profile_photo.id AS photo_attachment_id,
               p.client_id,
               c.name AS owner,
               c.phone AS owner_phone,
@@ -457,7 +493,31 @@ exports.listPets = async (req, res, next) => {
        FROM pets p
        LEFT JOIN clients c ON p.client_id = c.id AND c.clinic_id = p.clinic_id
        LEFT JOIN LATERAL (
-         SELECT a.url
+         SELECT COALESCE(co.completed_at, a.start_time) AS visit_at
+         FROM appointments a
+         LEFT JOIN consultations co ON co.appointment_id = a.id AND co.clinic_id = a.clinic_id
+         WHERE a.clinic_id = p.clinic_id AND a.pet_id = p.id
+           AND COALESCE(a.archived, false) = false
+           AND COALESCE(co.completed_at, a.start_time) <= now()
+           AND (LOWER(COALESCE(a.status::text, '')) IN ('completed', 'complete')
+             OR LOWER(COALESCE(co.status, '')) IN ('completed', 'complete')
+             OR co.completed_at IS NOT NULL)
+         ORDER BY COALESCE(co.completed_at, a.start_time) DESC
+         LIMIT 1
+       ) last_visit ON true
+       LEFT JOIN LATERAL (
+         SELECT a.start_time, a.reason, a.status::text AS status, u.name AS practitioner
+         FROM appointments a
+         LEFT JOIN users u ON u.id = a.practitioner_id
+         WHERE a.clinic_id = p.clinic_id AND a.pet_id = p.id
+           AND COALESCE(a.archived, false) = false
+           AND a.start_time > now()
+           AND LOWER(COALESCE(a.status::text, '')) NOT IN ('completed', 'complete', 'cancelled', 'canceled', 'no_show', 'no-show', 'rescheduled')
+         ORDER BY a.start_time ASC
+         LIMIT 1
+       ) next_appointment ON true
+       LEFT JOIN LATERAL (
+         SELECT a.id
          FROM attachments a
          WHERE a.clinic_id = p.clinic_id
            AND a.owner_table = 'pets'
@@ -904,6 +964,7 @@ exports.createAppointment = async (req, res, next) => {
     if (Number(petResult.rows[0].client_id) !== clientId) {
       return res.status(422).json({ error: 'Selected owner does not match the pet’s registered owner.' });
     }
+    if(notes?.service_catalog_item_id){const checked=await require('../utils/productValidation').service(db,{pet_id:petId,notes,workflow_type:workflowType},clinicId);if(checked.error)return res.status(422).json({error:checked.error});}
     if (parentAppointmentId) {
       const parent = await db.query(
         `SELECT id FROM appointments WHERE id=$1 AND clinic_id=$2 AND pet_id=$3 AND COALESCE(archived,false)=false`,
@@ -1036,9 +1097,17 @@ exports.listAppointments = async (req, res, next) => {
     const clinicId = requireClinicId(req, res);
     if (!clinicId) return;
 
+    // Schedule views pass a bounded range; other clinic screens can continue
+    // requesting the full list by omitting these optional parameters.
+    let from, to;
+    try { ({ from, to } = require('../utils/dateFilters').dateFilters(req.query)); }
+    catch (error) { return res.status(400).json({ error: error.message }); }
+
     const result = await db.query(
       `SELECT a.id,
               a.pet_id,
+              a.practitioner_id,
+              COALESCE(NULLIF(a.notes->>'service_category',''), NULLIF(a.notes->>'appointment_type',''), a.reason) AS appointment_type,
               CASE
                 WHEN LOWER(COALESCE(q.status, '')) = 'waiting' THEN 'checked_in'
                 WHEN LOWER(COALESCE(q.status, '')) IN ('in-consultation', 'in_consultation') THEN 'in_consultation'
@@ -1054,6 +1123,8 @@ exports.listAppointments = async (req, res, next) => {
               a.workflow_reason,
               a.original_start_time,
               COALESCE(a.archived, false) AS archived,
+              co.status AS consultation_status,
+              co.completed_at AS consultation_completed_at,
               p.name AS pet,
               COALESCE(p.metadata->>'allergies', 'Not recorded') AS known_allergies,
               c.name AS owner,
@@ -1068,6 +1139,7 @@ exports.listAppointments = async (req, res, next) => {
        LEFT JOIN pets p ON a.pet_id = p.id
        LEFT JOIN clients c ON a.client_id = c.id
        LEFT JOIN users u ON a.practitioner_id = u.id
+       LEFT JOIN consultations co ON co.appointment_id = a.id AND co.clinic_id = a.clinic_id
        LEFT JOIN patient_queue q ON q.appointment_id = a.id
        LEFT JOIN LATERAL (
          SELECT child.id, child.start_time, child.end_time, child.status
@@ -1077,8 +1149,10 @@ exports.listAppointments = async (req, res, next) => {
          LIMIT 1
        ) related ON true
        WHERE a.clinic_id = $1
+         AND ($2::timestamptz IS NULL OR a.start_time >= $2::timestamptz)
+         AND ($3::timestamptz IS NULL OR a.start_time <= $3::timestamptz)
        ORDER BY a.start_time DESC`,
-      [clinicId]
+      [clinicId, from, to]
     );
 
     res.json(result.rows.map((row) => ({
@@ -1157,7 +1231,269 @@ exports.listDashboardAlerts = async (req, res, next) => {
   } catch (error) { return next(error); }
 };
 
+exports.getDiseaseIntelligenceSummary = async (req, res, next) => {
+  try {
+    const role = String(req.user?.role || '').trim().toLowerCase();
+    const clinicId = getClinicIdFromRequest(req);
+    if (role !== 'super_admin' && !clinicId) {
+      return res.status(400).json({ error: 'Your account is not assigned to a clinic.' });
+    }
+    const days = Number.parseInt(req.query.days || '30', 10);
+    if (![30, 60, 90].includes(days)) {
+      return res.status(400).json({ error: 'Choose a 30, 60, or 90 day reporting period.' });
+    }
+
+    const clinicFilter = normalizeClinicId(req.query.clinic_id);
+    // Disease trends and risk summaries use recorded diagnoses only. Duplicate
+    // entries for the same pet, disease, clinic, and day count as one case.
+    const result = await db.query(
+      `WITH raw_cases AS (
+         SELECT d.clinic_id, d.pet_id, BTRIM(d.diagnosis) AS diagnosis, d.recorded_at AS reported_at,
+                d.clinical_assessment->>'severity' AS recorded_severity
+         FROM patient_diagnoses d
+         WHERE d.case_classification <> 'ruled_out'
+         UNION ALL
+         SELECT tp.clinic_id, tp.pet_id, BTRIM(tp.diagnosis) AS diagnosis, tp.created_at AS reported_at, tp.severity AS recorded_severity
+         FROM treatment_plans tp
+         WHERE COALESCE(tp.archived, false) = false AND NULLIF(BTRIM(tp.diagnosis), '') IS NOT NULL
+         UNION ALL
+         SELECT tr.clinic_id, tr.pet_id, BTRIM(tr.diagnosis), COALESCE(tr.performed_at, tr.created_at), NULL::text
+         FROM treatment_records tr
+         WHERE COALESCE(tr.archived, false) = false AND NULLIF(BTRIM(tr.diagnosis), '') IS NOT NULL
+         UNION ALL
+         SELECT s.clinic_id, s.pet_id, BTRIM(s.provisional_diagnosis), COALESCE(s.admitted_at, s.admitted_on::timestamptz), s.urgency_level
+         FROM clinic_inpatient_stays s
+         WHERE NULLIF(BTRIM(s.provisional_diagnosis), '') IS NOT NULL
+         UNION ALL
+         SELECT co.clinic_id, co.pet_id, BTRIM(co.notes->>'diagnosis'), COALESCE(co.completed_at, co.started_at, co.created_at), co.notes->>'severity'
+         FROM consultations co
+         WHERE NULLIF(BTRIM(co.notes->>'diagnosis'), '') IS NOT NULL
+       ), cases AS (
+         SELECT r.clinic_id, r.pet_id,
+                LOWER(REGEXP_REPLACE(BTRIM(r.diagnosis), '\\s+', ' ', 'g')) AS disease_key,
+                INITCAP(REGEXP_REPLACE(BTRIM(r.diagnosis), '\\s+', ' ', 'g')) AS disease,
+                DATE_TRUNC('day', r.reported_at)::date AS case_date,
+                c.name AS clinic_name,
+                MAX(r.reported_at) AS last_reported_at,
+                CASE MAX(CASE
+                  WHEN LOWER(COALESCE(r.recorded_severity, '')) IN ('critical', 'emergency') THEN 4
+                  WHEN LOWER(COALESCE(r.recorded_severity, '')) IN ('high', 'urgent') THEN 3
+                  WHEN LOWER(COALESCE(r.recorded_severity, '')) = 'moderate' THEN 2
+                  WHEN LOWER(COALESCE(r.recorded_severity, '')) IN ('low', 'mild', 'normal') THEN 1
+                  ELSE 0 END)
+                  WHEN 4 THEN 'Critical' WHEN 3 THEN 'High' WHEN 2 THEN 'Moderate'
+                  WHEN 1 THEN 'Low' ELSE 'Unrated' END AS risk_level
+         FROM raw_cases r
+         JOIN clinics c ON c.id = r.clinic_id
+         WHERE r.reported_at >= NOW() - GREATEST($1::int * 2, 185) * INTERVAL '1 day'
+           AND r.reported_at <= NOW()
+           AND ($2::int IS NULL OR r.clinic_id = $2::int)
+           AND ($4::int IS NULL OR r.clinic_id = $4::int)
+         GROUP BY r.clinic_id, r.pet_id,
+                  LOWER(REGEXP_REPLACE(BTRIM(r.diagnosis), '\\s+', ' ', 'g')),
+                  INITCAP(REGEXP_REPLACE(BTRIM(r.diagnosis), '\\s+', ' ', 'g')),
+                  DATE_TRUNC('day', r.reported_at)::date, c.name
+       ), filtered_cases AS (
+         SELECT * FROM cases WHERE ($3::text IS NULL OR disease_key = LOWER(BTRIM($3::text)))
+           AND case_date >= CURRENT_DATE - ($1::int * 2 - 1)
+       ), disease_counts AS (
+         SELECT disease_key, MAX(disease) AS disease,
+                COUNT(*) FILTER (WHERE case_date >= CURRENT_DATE - ($1::int - 1))::int AS cases,
+                COUNT(*) FILTER (WHERE case_date < CURRENT_DATE - ($1::int - 1))::int AS previous_cases,
+                MAX(last_reported_at) AS last_reported,
+                COUNT(DISTINCT clinic_id) FILTER (WHERE case_date >= CURRENT_DATE - ($1::int - 1))::int AS reporting_clinics,
+                STRING_AGG(DISTINCT clinic_name, ', ' ORDER BY clinic_name) FILTER (WHERE case_date >= CURRENT_DATE - ($1::int - 1)) AS reporting_area
+         FROM filtered_cases GROUP BY disease_key
+       ), monthly_disease_trend AS (
+         SELECT DATE_TRUNC('month',case_date)::date AS month,disease,COUNT(*)::int AS cases
+         FROM cases WHERE case_date >= DATE_TRUNC('month',CURRENT_DATE) - INTERVAL '5 months'
+           AND ($3::text IS NULL OR disease_key=LOWER(BTRIM($3::text)))
+         GROUP BY DATE_TRUNC('month',case_date)::date,disease
+       ), clinic_options AS (
+         SELECT id,name FROM clinics WHERE COALESCE(archived,false)=false
+           AND COALESCE((metadata->>'archived')::boolean,false)=false
+           AND ($2::int IS NULL OR id=$2::int)
+       ), trend_counts AS (
+         SELECT case_date, COUNT(*)::int AS cases
+         FROM filtered_cases
+         WHERE case_date >= CURRENT_DATE - ($1::int - 1)
+         GROUP BY case_date ORDER BY case_date
+       ), clinic_counts AS (
+         SELECT clinic_id, clinic_name, COUNT(*)::int AS cases
+         FROM filtered_cases
+         WHERE case_date >= CURRENT_DATE - ($1::int - 1)
+         GROUP BY clinic_id, clinic_name ORDER BY cases DESC, clinic_name
+       ), risk_counts AS (
+         SELECT risk_level, COUNT(*)::int AS cases
+         FROM filtered_cases
+         WHERE case_date >= CURRENT_DATE - ($1::int - 1)
+         GROUP BY risk_level
+       ), clinic_risk_counts AS (
+         SELECT clinic_name,
+           COUNT(*) FILTER (WHERE risk_level='Low')::int AS low,
+           COUNT(*) FILTER (WHERE risk_level='Moderate')::int AS moderate,
+           COUNT(*) FILTER (WHERE risk_level='High')::int AS high,
+           COUNT(*) FILTER (WHERE risk_level='Critical')::int AS critical
+         FROM filtered_cases
+         WHERE case_date >= CURRENT_DATE - ($1::int - 1)
+         GROUP BY clinic_name
+         ORDER BY COUNT(*) FILTER (WHERE risk_level IN ('High', 'Critical')) DESC, clinic_name
+       ), high_risk_cases AS (
+         SELECT 'CASE-' || UPPER(SUBSTRING(MD5(clinic_id::text || ':' || pet_id::text || ':' || disease_key || ':' || case_date::text), 1, 8)) AS case_id,
+                disease, risk_level, clinic_name, case_date
+         FROM filtered_cases
+         WHERE case_date >= CURRENT_DATE - ($1::int - 1) AND risk_level IN ('High', 'Critical')
+         ORDER BY case_date DESC, disease
+         LIMIT 100
+       ), clinic_totals AS (
+         SELECT COUNT(*) FILTER (WHERE COALESCE((metadata->>'archived')::boolean, false)=false
+           AND LOWER(COALESCE(metadata->>'status','active'))='active')::int AS active_clinics
+         FROM clinics
+         WHERE ($2::int IS NULL OR id=$2::int) AND ($4::int IS NULL OR id=$4::int)
+       ), pet_totals AS (
+         SELECT COUNT(*)::int AS active_pets,
+                COUNT(*) FILTER (WHERE EXISTS (
+                  SELECT 1 FROM vaccinations v
+                  WHERE v.pet_id=p.id AND v.clinic_id=p.clinic_id
+                    AND COALESCE(v.archived,false)=false
+                    AND LOWER(COALESCE(v.status,'administered'))='administered'
+                    AND v.next_due >= CURRENT_DATE
+                ))::int AS pets_with_current_vaccine_record
+         FROM pets p
+         WHERE COALESCE((p.metadata->>'archived')::boolean,false)=false
+           AND ($2::int IS NULL OR p.clinic_id=$2::int)
+           AND ($4::int IS NULL OR p.clinic_id=$4::int)
+       ), vaccination_trend AS (
+         SELECT DATE_TRUNC('month', v.date_given)::date AS month, COUNT(*)::int AS records
+         FROM vaccinations v
+         WHERE COALESCE(v.archived,false)=false AND LOWER(COALESCE(v.status,'administered'))='administered'
+           AND v.date_given >= CURRENT_DATE - INTERVAL '6 months'
+           AND ($2::int IS NULL OR v.clinic_id=$2::int)
+           AND ($4::int IS NULL OR v.clinic_id=$4::int)
+         GROUP BY DATE_TRUNC('month',v.date_given)::date ORDER BY month
+       )
+       SELECT
+         NOW() AS checked_at,
+         COALESCE((SELECT json_agg(monthly_disease_trend ORDER BY month,disease) FROM monthly_disease_trend),'[]'::json) AS monthly_disease_trend,
+         COALESCE((SELECT json_agg(clinic_options ORDER BY name) FROM clinic_options),'[]'::json) AS clinic_options,
+         COALESCE((SELECT json_agg(option_row ORDER BY disease) FROM (
+           SELECT DISTINCT disease FROM cases
+         ) option_row), '[]'::json) AS disease_options,
+         COALESCE((SELECT json_agg(disease_counts ORDER BY cases DESC, disease) FROM disease_counts), '[]'::json) AS diseases,
+         COALESCE((SELECT json_agg(trend_counts ORDER BY case_date) FROM trend_counts), '[]'::json) AS trend,
+         COALESCE((SELECT json_agg(clinic_counts ORDER BY cases DESC, clinic_name) FROM clinic_counts), '[]'::json) AS clinics,
+         COALESCE((SELECT json_agg(risk_counts ORDER BY CASE risk_level WHEN 'Critical' THEN 1 WHEN 'High' THEN 2 WHEN 'Moderate' THEN 3 WHEN 'Low' THEN 4 ELSE 5 END) FROM risk_counts), '[]'::json) AS risk_distribution,
+         COALESCE((SELECT json_agg(clinic_risk_counts ORDER BY high + critical DESC, clinic_name) FROM clinic_risk_counts), '[]'::json) AS risk_by_clinic,
+         COALESCE((SELECT json_agg(high_risk_cases ORDER BY case_date DESC) FROM high_risk_cases), '[]'::json) AS high_risk_cases,
+         COALESCE((SELECT json_agg(vaccination_trend ORDER BY month) FROM vaccination_trend), '[]'::json) AS vaccination_trend,
+         COALESCE((SELECT SUM(cases) FROM disease_counts), 0)::int AS total_cases,
+         COALESCE((SELECT SUM(previous_cases) FROM disease_counts), 0)::int AS previous_cases,
+         COALESCE((SELECT COUNT(*) FROM clinic_counts), 0)::int AS affected_clinics,
+         (SELECT active_clinics FROM clinic_totals)::int AS active_clinics,
+         (SELECT active_pets FROM pet_totals)::int AS active_pets,
+         (SELECT pets_with_current_vaccine_record FROM pet_totals)::int AS pets_with_current_vaccine_record`,
+      [days, clinicId, req.query.disease || null, clinicFilter]
+    );
+    return res.json(result.rows[0]);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+exports.getClinicDashboardSummary = async (req, res, next) => {
+  try {
+    const clinicId = requireClinicId(req, res);
+    if (!clinicId) return;
+
+    const [appointments, alerts, vaccinations, labResults] = await Promise.all([
+      db.query(
+        `SELECT a.id, a.pet_id, a.status::text AS status, a.start_time, a.end_time,
+                a.reason, COALESCE(a.archived, false) AS archived,
+                p.name AS pet, p.species, c.name AS owner, u.name AS practitioner,
+                profile_photo.id AS pet_photo_attachment_id
+         FROM appointments a
+         LEFT JOIN pets p ON p.id = a.pet_id AND p.clinic_id = a.clinic_id
+         LEFT JOIN clients c ON c.id = a.client_id
+         LEFT JOIN users u ON u.id = a.practitioner_id
+         LEFT JOIN LATERAL (
+           SELECT profile.id FROM attachments profile
+           WHERE profile.clinic_id = a.clinic_id AND profile.owner_table = 'pets'
+             AND profile.owner_id = p.id
+             AND (profile.metadata->>'source' = 'pet_profile_photo' OR profile.content_type LIKE 'image/%')
+           ORDER BY profile.uploaded_at DESC, profile.id DESC LIMIT 1
+         ) profile_photo ON true
+         WHERE a.clinic_id = $1 AND a.start_time >= now()
+           AND a.start_time < now() + INTERVAL '30 days'
+           AND COALESCE(a.archived, false) = false
+           AND LOWER(COALESCE(a.status::text, '')) NOT IN ('completed', 'cancelled', 'canceled', 'no_show', 'no-show')
+         ORDER BY a.start_time ASC LIMIT 4`,
+        [clinicId]
+      ),
+      db.query(
+        `SELECT alerts.*, profile_photo.id AS pet_photo_attachment_id
+         FROM (
+           SELECT 'treatment-' || tp.id AS id, tp.pet_id, p.name AS pet, p.species,
+                  'Treatment follow-up' AS tag,
+                  COALESCE(tp.title, tp.diagnosis, 'Active treatment plan') AS detail,
+                  tp.updated_at AS created_at, 'high' AS severity
+           FROM treatment_plans tp JOIN pets p ON p.id=tp.pet_id AND p.clinic_id=tp.clinic_id
+           WHERE tp.clinic_id=$1 AND COALESCE(tp.archived,false)=false
+             AND LOWER(COALESCE(tp.status,'')) NOT IN ('completed','cancelled','archived')
+             AND tp.follow_up IS NOT NULL AND tp.follow_up <= CURRENT_DATE + INTERVAL '7 days'
+           UNION ALL
+           SELECT 'lab-' || lr.id AS id, lr.pet_id, p.name AS pet, p.species,
+                  'Lab Result Pending' AS tag,
+                  COALESCE(lr.test_name, 'Laboratory result') || ' awaiting review' AS detail,
+                  COALESCE(lr.collected_at, now()) AS created_at,
+                  CASE WHEN COALESCE((lr.metadata->>'urgent')::boolean,false) THEN 'high' ELSE 'medium' END AS severity
+           FROM lab_results lr JOIN pets p ON p.id=lr.pet_id AND p.clinic_id=lr.clinic_id
+           WHERE lr.clinic_id=$1 AND COALESCE((lr.metadata->>'archived')::boolean,false)=false
+             AND LOWER(COALESCE(lr.metadata->>'status','ordered')) IN ('ordered','in-progress','pending','pending-review')
+           UNION ALL
+           SELECT 'appointment-' || a.id AS id, a.pet_id, p.name AS pet, p.species,
+                  'Appointment Due' AS tag, COALESCE(a.reason, 'Scheduled appointment needs attention') AS detail,
+                  a.start_time AS created_at, 'medium' AS severity
+           FROM appointments a JOIN pets p ON p.id=a.pet_id AND p.clinic_id=a.clinic_id
+           WHERE a.clinic_id=$1 AND COALESCE(a.archived,false)=false AND a.start_time < now()
+             AND LOWER(COALESCE(a.status::text,'')) IN ('scheduled','pending')
+         ) alerts
+         LEFT JOIN LATERAL (
+           SELECT profile.id FROM attachments profile
+           WHERE profile.clinic_id=$1 AND profile.owner_table='pets'
+             AND profile.owner_id=alerts.pet_id
+             AND (profile.metadata->>'source'='pet_profile_photo' OR profile.content_type LIKE 'image/%')
+           ORDER BY profile.uploaded_at DESC, profile.id DESC LIMIT 1
+         ) profile_photo ON true
+         ORDER BY alerts.created_at DESC LIMIT 20`,
+        [clinicId]
+      ),
+      db.query(
+        `SELECT COUNT(*)::int AS count FROM vaccinations
+         WHERE clinic_id=$1 AND COALESCE(archived,false)=false AND next_due <= CURRENT_DATE`,
+        [clinicId]
+      ),
+      db.query(
+        `SELECT COUNT(*)::int AS count FROM lab_results
+         WHERE clinic_id=$1 AND COALESCE((metadata->>'archived')::boolean,false)=false
+           AND LOWER(COALESCE(metadata->>'status','ordered')) IN ('ordered','in-progress','pending','pending-review')`,
+        [clinicId]
+      ),
+    ]);
+
+    return res.json({
+      appointments: appointments.rows,
+      alerts: alerts.rows,
+      pendingVaccinations: vaccinations.rows[0]?.count || 0,
+      pendingLabResults: labResults.rows[0]?.count || 0,
+    });
+  } catch (error) { return next(error); }
+};
+
 exports.createRelatedAppointment = async (req, res, next) => {
+  const actorRole = String(req.user?.role || '').toLowerCase().replace(/[\s-]+/g, '_');
+  if (!['receptionist', 'doctor', 'assistant_doctor', 'veterinarian', 'owner', 'clinic_owner', 'super_admin'].includes(actorRole)) {
+    return res.status(403).json({ error: 'Clinic staff access is required.' });
+  }
   const client = await db.pool.connect();
   try {
     const clinicId = requireClinicId(req, res);
@@ -1182,7 +1518,7 @@ exports.createRelatedAppointment = async (req, res, next) => {
 
     await client.query('BEGIN');
     const parentResult = await client.query(
-      `SELECT id, clinic_id, pet_id, client_id, practitioner_id, status, start_time, end_time, reason, notes
+      `SELECT id, clinic_id, pet_id, client_id, practitioner_id, status, start_time, end_time, reason, notes, workflow_type
        FROM appointments WHERE id=$1 AND clinic_id=$2 FOR UPDATE`,
       [parentId, clinicId]
     );
@@ -1192,6 +1528,10 @@ exports.createRelatedAppointment = async (req, res, next) => {
       return res.status(404).json({ error: 'Appointment not found in this clinic.' });
     }
     const parentStatus = String(parent.status || '').toLowerCase();
+    if (actorRole === 'receptionist' && String(parent.workflow_type || '').includes('request')) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'The assigned doctor must review this request first.' });
+    }
     const workflowReason = typeof reason === 'string' && reason.trim()
       ? reason.trim()
       : 'Rescheduled by clinic staff.';
@@ -1203,15 +1543,32 @@ exports.createRelatedAppointment = async (req, res, next) => {
       await client.query('ROLLBACK');
       return res.status(409).json({ error: 'This appointment cannot be rescheduled from its current status.' });
     }
-    if (action === 'rebook' && parentStatus !== 'cancelled') {
+    if (action === 'rebook' && !['cancelled', 'canceled', 'no_show'].includes(parentStatus)) {
       await client.query('ROLLBACK');
-      return res.status(409).json({ error: 'Only a cancelled appointment can be rebooked.' });
+      return res.status(409).json({ error: 'Only a cancelled or missed appointment can be rebooked.' });
+    }
+
+    const arrived = await client.query(`SELECT status FROM patient_queue WHERE appointment_id=$1 AND clinic_id=$2 FOR UPDATE`, [parentId, clinicId]);
+    if (action === 'reschedule' && (arrived.rows.some(row => ['in_consultation', 'in-consultation'].includes(row.status))
+      || ((parentStatus === 'checked_in' || arrived.rows.some(row => row.status === 'waiting'))
+        && (req.body.arrival_confirmed !== true || !String(reason || '').trim())))) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Confirm the arrived patient reschedule and enter a reason. Consultation must not have started.' });
     }
 
     const durationMs = parent.end_time && parent.start_time
       ? new Date(parent.end_time).getTime() - new Date(parent.start_time).getTime()
       : 30 * 60 * 1000;
     const endTime = new Date(startDate.getTime() + (durationMs > 0 ? durationMs : 30 * 60 * 1000));
+    await client.query('SELECT pg_advisory_xact_lock($1::bigint)', [clinicId]);
+    const conflicts = await client.query(`SELECT id FROM appointments WHERE clinic_id=$1
+      AND practitioner_id=$2 AND id<>$3 AND status::text NOT IN ('cancelled','no_show','rescheduled','completed')
+      AND start_time < $5 AND COALESCE(end_time, start_time + interval '30 minutes') > $4 LIMIT 1`,
+    [clinicId, parent.practitioner_id, parentId, startDate.toISOString(), endTime.toISOString()]);
+    if (conflicts.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'The assigned doctor already has an appointment at that time.' });
+    }
     const savedResult = await client.query(
       `INSERT INTO appointments
          (clinic_id, pet_id, client_id, practitioner_id, status, start_time, end_time, reason, notes,
@@ -1229,6 +1586,7 @@ exports.createRelatedAppointment = async (req, res, next) => {
 
     let updatedParent = parent;
     if (action === 'reschedule') {
+      await client.query(`UPDATE patient_queue SET status='rescheduled', updated_at=now() WHERE appointment_id=$1 AND clinic_id=$2`, [parent.id, clinicId]);
       const parentUpdate = await client.query(
         `UPDATE appointments
          SET status='rescheduled', workflow_type='rescheduled', workflow_reason=$1, updated_at=now()
@@ -1297,6 +1655,9 @@ async function getAppointmentForClinic(appointmentId, clinicId) {
 }
 
 exports.startConsultation = async (req, res, next) => {
+  if (!['doctor', 'assistant_doctor', 'veterinarian'].includes(String(req.user?.role || '').toLowerCase().replace(/[\s-]+/g, '_'))) {
+    return res.status(403).json({ error: 'Only veterinarians can start consultations.' });
+  }
   const client = await db.pool.connect();
   try {
     const clinicId = requireClinicId(req, res);
@@ -1305,11 +1666,21 @@ exports.startConsultation = async (req, res, next) => {
     if (!Number.isInteger(appointmentId)) return res.status(400).json({ error: 'Invalid appointment ID.' });
     const appointment = await getAppointmentForClinic(appointmentId, clinicId);
     if (!appointment) return res.status(404).json({ error: 'Appointment not found.' });
-    if (appointment.status === 'completed' || appointment.status === 'cancelled') {
+    if (appointment.status === 'cancelled') {
       return res.status(409).json({ error: 'This appointment cannot start a consultation from its current status.' });
     }
-    if (appointment.practitioner_id && req.user.role === 'doctor' && appointment.practitioner_id !== req.user.id) {
+    if (appointment.practitioner_id && Number(appointment.practitioner_id) !== Number(req.user.id)) {
       return res.status(403).json({ error: 'This appointment is assigned to another doctor.' });
+    }
+    if (appointment.status === 'completed') {
+      const completedConsultation = await db.query(
+        `${consultationQuery} WHERE co.appointment_id=$1 AND co.clinic_id=$2`,
+        [appointmentId, clinicId]
+      );
+      if (!completedConsultation.rows.length) {
+        return res.status(409).json({ error: 'This completed appointment has no consultation available for billing.' });
+      }
+    return res.json(completedConsultation.rows[0]);
     }
 
     await client.query('BEGIN');
@@ -1339,6 +1710,7 @@ exports.startConsultation = async (req, res, next) => {
       old_data: { appointment_status: appointment.status, queue_status: appointment.queue_status },
       new_data: saved.rows[0], reason: 'Consultation started.', ip_address: req.ip || req.connection.remoteAddress,
     });
+    publishClinicEvent(clinicId, 'consultation');
     return res.status(201).json(saved.rows[0]);
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});
@@ -1391,6 +1763,9 @@ exports.saveConsultation = async (req, res, next) => {
 };
 
 exports.completeConsultation = async (req, res, next) => {
+  if (!['doctor','assistant_doctor','veterinarian'].includes(String(req.user?.role || '').toLowerCase().replace(/[\s-]+/g,'_'))) {
+    return res.status(403).json({ error: 'Only veterinarians can complete consultations.' });
+  }
   const client = await db.pool.connect();
   try {
     const clinicId = requireClinicId(req, res);
@@ -1399,7 +1774,7 @@ exports.completeConsultation = async (req, res, next) => {
     if (!Number.isInteger(appointmentId) || appointmentId < 1) return res.status(400).json({ error: 'Invalid appointment ID.' });
     await client.query('BEGIN');
     const appointmentResult = await client.query(
-      `SELECT id, clinic_id, pet_id, client_id, status, notes AS appointment_notes
+      `SELECT id, clinic_id, pet_id, client_id, practitioner_id, reason, status, notes AS appointment_notes
        FROM appointments WHERE id=$1 AND clinic_id=$2 FOR UPDATE`,
       [appointmentId, clinicId]
     );
@@ -1407,6 +1782,17 @@ exports.completeConsultation = async (req, res, next) => {
     if (!current) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Appointment not found.' });
+    }
+    if (current.practitioner_id && Number(current.practitioner_id) !== Number(req.user.id)) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'This appointment is assigned to another veterinarian.' });
+    }
+    if (/vaccin|rabies/i.test(current.reason || '')) {
+      const vaccines = await client.query(`SELECT status, verified FROM vaccinations WHERE appointment_id=$1 AND clinic_id=$2 AND COALESCE(archived,false)=false FOR SHARE`, [appointmentId,clinicId]);
+      if (!vaccines.rows.length || vaccines.rows.some(v => v.status === 'scheduled' || !v.verified)) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'Administer and verify the visit vaccinations before completing consultation.' });
+      }
     }
     const consultationResult = await client.query(
       `SELECT id, status, notes FROM consultations
@@ -1422,16 +1808,16 @@ exports.completeConsultation = async (req, res, next) => {
       'SELECT id, total, status FROM invoices WHERE consultation_id=$1 LIMIT 1 FOR UPDATE',
       [consultation.id]
     );
-    if (consultation.status === 'completed') {
+    const notes = consultation.notes && typeof consultation.notes === 'object' ? consultation.notes : {};
+    const requestedItems = Array.isArray(notes.billingItems) ? notes.billingItems : [];
+    if (consultation.status === 'completed' && (existingLinkedInvoice.rows.length || !requestedItems.length)) {
       await client.query('COMMIT');
       const saved = await db.query(`${consultationQuery} WHERE co.id=$1 AND co.clinic_id=$2`, [consultation.id, clinicId]);
       return res.json({ consultation: saved.rows[0], invoice: existingLinkedInvoice.rows[0] || null });
     }
-    const notes = consultation.notes && typeof consultation.notes === 'object' ? consultation.notes : {};
     const appointmentNotes = current.appointment_notes && typeof current.appointment_notes === 'object'
       ? current.appointment_notes
       : {};
-    const requestedItems = Array.isArray(notes.billingItems) ? notes.billingItems : [];
     const lineItems = requestedItems.map((item, index) => ({
       catalogId: Number(item?.catalog_item_id),
       quantity: Number(item?.quantity),
@@ -1453,7 +1839,7 @@ exports.completeConsultation = async (req, res, next) => {
       const catalogResult = await client.query(
         `SELECT id, item_type, name, unit, unit_price
          FROM clinic_billing_catalog
-         WHERE clinic_id=$1 AND active=true AND id=ANY($2::integer[])`,
+         WHERE clinic_id=$1 AND active=true AND unit_price IS NOT NULL AND id=ANY($2::integer[])`,
         [clinicId, catalogIds]
       );
       const catalogById = new Map(catalogResult.rows.map(item => [Number(item.id), item]));
@@ -1516,9 +1902,9 @@ exports.completeConsultation = async (req, res, next) => {
         if (catalogItem.item_type === 'treatment') {
           await client.query(
             `INSERT INTO treatment_records
-              (clinic_id, pet_id, diagnosis, procedure, outcome, notes, status, performed_at, performed_by, cost)
-             VALUES ($1,$2,$3,$4,$5,$6,'completed',now(),$7,$8)`,
-            [clinicId, current.pet_id, String(notes.diagnosis || notes.chiefComplaint || 'Consultation').trim(),
+                (clinic_id, pet_id, appointment_id, diagnosis, procedure, outcome, notes, status, performed_at, performed_by, cost)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,'completed',now(),$8,$9)`,
+              [clinicId, current.pet_id, appointmentId, String(notes.diagnosis || notes.chiefComplaint || 'Consultation').trim(),
               catalogItem.name, String(notes.outcome || '').trim() || null,
               item.clinicalDetails || String(notes.treatment || '').trim() || null, req.user.id || null,
               (lineTotalCents / 100).toFixed(2)]
@@ -1568,7 +1954,7 @@ exports.completeConsultation = async (req, res, next) => {
              VALUES ($1,$2,$3,$4::jsonb,$5::jsonb)`,
             [current.pet_id, clinicId, catalogItem.name,
               JSON.stringify({ summary: 'Awaiting laboratory result', measurements: [] }),
-              JSON.stringify({ status: 'ordered', requestedBy: req.user.name || 'Clinic veterinarian',
+              JSON.stringify({ status: 'ordered', appointment_id: appointmentId, requestedBy: req.user.name || 'Clinic veterinarian',
                 orderDateTime: new Date().toISOString(), indication: item.clinicalDetails })]
           );
         } else if (catalogItem.item_type === 'inpatient') {
@@ -1621,6 +2007,7 @@ exports.completeConsultation = async (req, res, next) => {
       reason: String(req.body.reason || '').trim() || 'Consultation completed.',
       ip_address: req.ip || req.connection.remoteAddress,
     });
+    publishClinicEvent(clinicId, 'consultation');
     return res.json({ consultation: saved.rows[0], invoice: issuedInvoice });
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});
@@ -1718,14 +2105,13 @@ exports.listVaccinations = async (req, res, next) => {
               verifier.name AS verified_by_name,
               v.verification_reason,
               v.sticker_attachment_id,
-              a.url AS sticker_url,
               a.filename AS sticker_filename,
               v.notes,
               v.status,
               v.appointment_id,
               COALESCE(v.archived, false) AS archived,
               p.name AS pet,
-              profile_photo.url AS pet_photo_url,
+              profile_photo.id AS pet_photo_attachment_id,
               p.metadata AS pet_metadata,
               c.name AS owner,
               c.email AS owner_email,
@@ -1738,7 +2124,7 @@ exports.listVaccinations = async (req, res, next) => {
        LEFT JOIN users verifier ON v.verified_by = verifier.id
        LEFT JOIN attachments a ON a.id = v.sticker_attachment_id
        LEFT JOIN LATERAL (
-         SELECT profile.url
+         SELECT profile.id
          FROM attachments profile
          WHERE profile.clinic_id = v.clinic_id
            AND profile.owner_table = 'pets'
@@ -1792,9 +2178,9 @@ const vaccinationResponseQuery = `
          v.administered_by, u.name AS administered_by_name, v.verified,
          v.status, v.appointment_id,
          v.verified_by, verifier.name AS verified_by_name, v.verified_at, v.verification_reason,
-         v.sticker_attachment_id, a.url AS sticker_url, a.filename AS sticker_filename,
+         v.sticker_attachment_id, a.filename AS sticker_filename,
          COALESCE(v.archived, false) AS archived,
-         v.created_at, p.name AS pet, profile_photo.url AS pet_photo_url, c.name AS owner
+         v.created_at, p.name AS pet, profile_photo.id AS pet_photo_attachment_id, c.name AS owner
   FROM vaccinations v
   LEFT JOIN users u ON v.administered_by = u.id
   LEFT JOIN users verifier ON v.verified_by = verifier.id
@@ -1802,7 +2188,7 @@ const vaccinationResponseQuery = `
   LEFT JOIN clients c ON p.client_id = c.id
   LEFT JOIN attachments a ON a.id = v.sticker_attachment_id
   LEFT JOIN LATERAL (
-    SELECT profile.url
+    SELECT profile.id
     FROM attachments profile
     WHERE profile.clinic_id = v.clinic_id
       AND profile.owner_table = 'pets'
@@ -1991,12 +2377,15 @@ exports.updateVaccinationVerification = async (req, res, next) => {
     const id = Number.parseInt(req.params.id, 10);
     const current = await getVaccinationForClinic(id, clinicId);
     if (!current) return res.status(404).json({ error: 'Vaccination not found.' });
+    if (!['doctor','assistant_doctor','veterinarian'].includes(String(req.user?.role || '').toLowerCase().replace(/[\s-]+/g,'_'))) return res.status(403).json({ error: 'Only veterinarians can verify vaccinations.' });
     const verified = req.body.verified !== false;
+    if (verified && current.status === 'scheduled') return res.status(409).json({ error: 'Administer the vaccination before verifying it.' });
     const reason = String(req.body.reason || '').trim();
     if (verified && req.body.attestation_confirmed !== true) {
       return res.status(422).json({ error: 'Confirm the physical sticker and clinic administration before verifying this record.' });
     }
     if (!verified && !reason) return res.status(422).json({ error: 'A reason is required to remove verification.' });
+    if(verified&&current.appointment_id){const mismatch=await require('../utils/productValidation').savedVaccination(db,current,clinicId);if(mismatch)return res.status(422).json({error:mismatch});}
     if (verified && current.verified === true) return res.json(current);
     const result = await db.query(
       `UPDATE vaccinations
@@ -2018,6 +2407,7 @@ exports.updateVaccinationVerification = async (req, res, next) => {
       reason: reason || 'Vaccination record verified.',
       ip_address: req.ip || req.connection.remoteAddress,
     });
+    publishClinicEvent(clinicId, 'vaccination');
     return res.json(vaccination);
   } catch (e) {
     return next(e);
@@ -2058,8 +2448,18 @@ exports.uploadVaccinationSticker = async (req, res, next) => {
       action: 'upload_sticker',
       table_name: 'vaccinations',
       record_id: id,
-      old_data: current,
-      new_data: saved,
+      old_data: {
+        id: current.id,
+        sticker_attachment_id: current.sticker_attachment_id || null,
+        sticker_filename: current.sticker_filename || null,
+        verified: current.verified,
+      },
+      new_data: {
+        id: saved.id,
+        sticker_attachment_id: saved.sticker_attachment_id || null,
+        sticker_filename: saved.sticker_filename || filename,
+        verified: saved.verified,
+      },
       reason: 'Vaccination sticker image uploaded; verification removed.',
       ip_address: req.ip || req.connection.remoteAddress,
     });
@@ -2365,7 +2765,8 @@ exports.updateTreatmentPlan = async (req, res, next) => {
     let monitoring = null;
     if (hasMonitoring) {
       const allowedMonitoringFields = [
-        'temperature', 'temperatureStatus', 'weight', 'hydration', 'appetite',
+        'temperature', 'temperatureStatus', 'weight', 'heart_rate', 'respiratory_rate',
+        'hydration', 'appetite', 'pain_assessment',
         'whiteBloodCellCount', 'whiteBloodCellStatus', 'lastUpdatedAt',
         'latestObservation', 'observations',
       ];
@@ -2383,7 +2784,8 @@ exports.updateTreatmentPlan = async (req, res, next) => {
         if (field === 'observations') {
           const observationFields = [
             'date', 'author', 'text', 'temperature', 'weight', 'hydration',
-            'appetite',
+            'heart_rate', 'respiratory_rate', 'appetite', 'pain_assessment',
+            'followUpAction',
           ];
           if (!Array.isArray(value) || value.length > 100) {
             return res.status(400).json({ error: 'Monitoring observations must be a list of no more than 100 entries' });
@@ -2394,6 +2796,13 @@ exports.updateTreatmentPlan = async (req, res, next) => {
             || typeof observation.date !== 'string' || Number.isNaN(Date.parse(observation.date))
             || observationFields.slice(1).some(key => observation[key] !== undefined
               && (typeof observation[key] !== 'string' || observation[key].length > 5000))
+            || ['temperature', 'weight', 'heart_rate', 'respiratory_rate'].some(key => {
+              const measurement = observation[key];
+              if (measurement === undefined || measurement === '') return false;
+              const number = Number(measurement);
+              return !Number.isFinite(number) || number < 0
+                || (['heart_rate', 'respiratory_rate'].includes(key) && !Number.isInteger(number));
+            })
           ));
           if (invalidObservation) {
             return res.status(400).json({ error: 'Each monitoring observation must contain a valid date and supported text fields' });
@@ -2412,6 +2821,28 @@ exports.updateTreatmentPlan = async (req, res, next) => {
       }
     }
     await client.query('BEGIN');
+    const currentPlanResult = await client.query(
+      'SELECT pet_id, monitoring FROM treatment_plans WHERE id=$1 AND clinic_id=$2 FOR UPDATE',
+      [planId, clinicId]
+    );
+    if (!currentPlanResult.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Treatment plan not found' });
+    }
+    const currentPlan = currentPlanResult.rows[0];
+    const previousMonitoring = currentPlan.monitoring && typeof currentPlan.monitoring === 'object'
+      ? currentPlan.monitoring
+      : {};
+    const newMonitoringObservations = hasMonitoring && Array.isArray(monitoring.observations)
+      ? monitoring.observations.filter(observation => (
+        ['temperature', 'weight', 'heart_rate', 'respiratory_rate', 'hydration', 'appetite', 'pain_assessment', 'followUpAction']
+          .some(field => observation[field] !== undefined && String(observation[field]).trim() !== '')
+        && !(
+          Array.isArray(previousMonitoring.observations)
+          && previousMonitoring.observations.some(previous => previous.date === observation.date && previous.text === observation.text)
+        )
+      ))
+      : [];
     const result = await client.query(
       `UPDATE treatment_plans
        SET status = COALESCE($1, status),
@@ -2422,9 +2853,43 @@ exports.updateTreatmentPlan = async (req, res, next) => {
       [status, hasMonitoring, monitoring === null ? null : JSON.stringify(monitoring), hasSteps,
         steps === null ? null : JSON.stringify(steps), planId, clinicId]
     );
-    if (!result.rows.length) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Treatment plan not found' });
+    if (newMonitoringObservations.length > 0) {
+      const activeStays = await client.query(
+        "SELECT id FROM clinic_inpatient_stays WHERE treatment_plan_id=$1 AND clinic_id=$2 AND status='active'",
+        [planId, clinicId]
+      );
+      for (const planObservation of newMonitoringObservations) {
+        const observedAt = new Date(planObservation.date);
+        const followUpAction = String(planObservation.followUpAction || '').trim();
+        const text = String(planObservation.text || '').trim();
+        const actionLine = followUpAction ? `Follow-up action: ${followUpAction}` : '';
+        const clinicalProgress = actionLine && text.endsWith(actionLine)
+          ? text.slice(0, -actionLine.length).trim()
+          : text;
+        const values = ['temperature', 'weight', 'heart_rate', 'respiratory_rate'].map(field => (
+          planObservation[field] === undefined || planObservation[field] === '' ? null : Number(planObservation[field])
+        ));
+        const observationHydration = String(planObservation.hydration || '').trim() || null;
+        const observationAppetite = String(planObservation.appetite || '').trim() || null;
+        const painAssessment = String(planObservation.pain_assessment || '').trim() || null;
+        for (const stay of activeStays.rows) {
+          const exists = await client.query(
+            'SELECT id FROM clinic_inpatient_observations WHERE stay_id=$1 AND observed_at=$2::timestamptz AND clinical_progress=$3 LIMIT 1',
+            [stay.id, observedAt.toISOString(), clinicalProgress || 'Measurements recorded.']
+          );
+          if (exists.rows.length) continue;
+          const savedObservation = await client.query(
+            `INSERT INTO clinic_inpatient_observations
+              (stay_id, recorded_by, observed_at, temperature, weight, heart_rate, respiratory_rate,
+               hydration, appetite, pain_assessment, clinical_progress, follow_up_action)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+            [stay.id, req.user?.id || null, observedAt.toISOString(), ...values,
+              observationHydration, observationAppetite, painAssessment,
+              clinicalProgress || 'Measurements recorded.', followUpAction || null]
+          );
+          await writeClinicalAudit(client, req, 'create', 'clinic_inpatient_observations', savedObservation.rows[0].id, savedObservation.rows[0]);
+        }
+      }
     }
     // A plan marked complete closes any medication course still active on that plan.
     // Keep this in the same transaction so the plan and medication list cannot drift.
@@ -2475,9 +2940,14 @@ exports.createPrescription = async (req, res, next) => {
       return res.status(404).json({ error: 'Patient not found in this clinic' });
     }
     const planId = req.body.treatment_plan_id ? Number(req.body.treatment_plan_id) : null;
+    const inpatientStayId = req.body.inpatient_stay_id ? Number(req.body.inpatient_stay_id) : null;
     if (req.body.treatment_plan_id && (!Number.isInteger(planId) || planId < 1)) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'A valid treatment_plan_id is required' });
+    }
+    if (req.body.inpatient_stay_id && (!Number.isInteger(inpatientStayId) || inpatientStayId < 1)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'A valid inpatient_stay_id is required' });
     }
     if (planId) {
       const plan = await client.query(
@@ -2489,15 +2959,26 @@ exports.createPrescription = async (req, res, next) => {
         return res.status(400).json({ error: 'The selected plan does not belong to this patient and clinic' });
       }
     }
+    if (inpatientStayId) {
+      const stay = await client.query(
+        `SELECT id FROM clinic_inpatient_stays
+         WHERE id = $1 AND pet_id = $2 AND clinic_id = $3 AND status = 'active'`,
+        [inpatientStayId, petId, clinicId]
+      );
+      if (!stay.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'The selected inpatient stay is not active or does not belong to this patient and clinic' });
+      }
+    }
     const result = await client.query(
       `INSERT INTO prescriptions
         (pet_id, clinic_id, medication, dosage, quantity, instructions, issued_by, issued_at, status,
-         route, frequency, start_date, end_date, treatment_plan_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, now(), 'active', $8, $9, $10, $11, $12)
-       RETURNING id, pet_id, treatment_plan_id, medication, dosage, route, frequency, start_date, end_date, quantity, instructions, status, issued_at`,
+         route, frequency, start_date, end_date, treatment_plan_id, inpatient_stay_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, now(), 'active', $8, $9, $10, $11, $12, $13)
+       RETURNING id, pet_id, treatment_plan_id, inpatient_stay_id, medication, dosage, route, frequency, start_date, end_date, quantity, instructions, status, issued_at`,
       [petId, clinicId, medication, dosage, req.body.quantity || null, req.body.instructions || null,
         req.user?.id || null, req.body.route || null, req.body.frequency || null,
-        req.body.start_date || null, req.body.end_date || null, planId]
+        req.body.start_date || null, req.body.end_date || null, planId, inpatientStayId]
     );
     await writeClinicalAudit(client, req, 'create', 'prescriptions', result.rows[0].id, result.rows[0]);
     await client.query('COMMIT');
@@ -2519,7 +3000,7 @@ exports.listTreatmentRecords = async (req, res, next) => {
       return res.status(400).json({ error: 'A valid pet_id is required' });
     }
     const result = await db.query(
-      `SELECT tr.id, tr.pet_id, tr.treatment_plan_id, tp.title AS treatment_plan,
+      `SELECT tr.id, tr.pet_id, tr.appointment_id, tr.treatment_plan_id, tp.title AS treatment_plan,
               tr.diagnosis, tr.procedure, tr.outcome, tr.notes,
               tr.status, tr.performed_at, tr.cost, tr.follow_up_instructions,
               u.name AS veterinarian, p.name AS pet,
@@ -2704,25 +3185,41 @@ exports.listPatientQueue = async (req, res, next) => {
   try {
     const clinicId = requireClinicId(req, res);
     if (!clinicId) return;
+    const from = req.query.from || null;
+    const to = req.query.to || null;
+    if ((from && !Number.isFinite(Date.parse(from))) || (to && !Number.isFinite(Date.parse(to)))
+      || (from && to && Date.parse(from) >= Date.parse(to))) {
+      return res.status(422).json({ error: 'Choose a valid queue date range.' });
+    }
 
     const result = await db.query(
       `SELECT q.id,
+              q.appointment_id,
               q.position,
               q.status,
               q.checkin_at,
               q.updated_at,
               a.start_time AS appointment_start,
+              a.reason AS visit_type,
+              a.workflow_type,
+              a.practitioner_id,
               p.name AS pet,
+              p.species,
               c.name AS owner,
-              u.name AS practitioner
+              u.name AS practitioner,
+              co.started_at AS consultation_started_at,
+              co.completed_at
        FROM patient_queue q
        LEFT JOIN appointments a ON q.appointment_id = a.id
        LEFT JOIN pets p ON q.pet_id = p.id
-       LEFT JOIN clients c ON q.client_id = c.id
+       LEFT JOIN clients c ON a.client_id = c.id
        LEFT JOIN users u ON a.practitioner_id = u.id
+       LEFT JOIN consultations co ON co.appointment_id=a.id AND co.clinic_id=q.clinic_id
        WHERE q.clinic_id = $1
+         AND ($2::timestamptz IS NULL OR q.checkin_at >= $2)
+         AND ($3::timestamptz IS NULL OR q.checkin_at < $3)
        ORDER BY q.position ASC`,
-      [clinicId]
+      [clinicId, from, to]
     );
 
     res.json(result.rows);
@@ -2890,6 +3387,7 @@ exports.listInpatientStays = async (req, res, next) => {
               s.attending_veterinarian_id, vet.name AS veterinarian, s.treatment_plan_id,
               tp.title AS treatment_plan_title, tp.status AS treatment_plan_status,
               tp.steps AS treatment_plan_steps, tp.follow_up AS treatment_plan_follow_up,
+              tp.monitoring AS treatment_plan_monitoring, tp.clinical_updates AS treatment_plan_clinical_updates,
               COALESCE(rx.medications, '[]'::jsonb) AS treatment_plan_medications,
               s.expected_discharge_at, s.discharge_assessment, s.home_instructions,
               s.outstanding_concerns, s.follow_up_recommendations,
@@ -2910,8 +3408,18 @@ exports.listInpatientStays = async (req, res, next) => {
            'end_date', pr.end_date, 'instructions', pr.instructions, 'status', pr.status
          ) ORDER BY pr.issued_at DESC) AS medications
          FROM prescriptions pr
-         WHERE pr.treatment_plan_id=tp.id AND pr.clinic_id=s.clinic_id
+         WHERE pr.clinic_id=s.clinic_id
            AND COALESCE(pr.archived, false)=false
+           AND (
+             pr.inpatient_stay_id=s.id
+             OR (tp.id IS NOT NULL AND pr.treatment_plan_id=tp.id)
+             OR (
+               tp.id IS NULL AND pr.pet_id=s.pet_id AND pr.treatment_plan_id IS NULL
+               AND pr.inpatient_stay_id IS NULL
+               AND pr.issued_at >= COALESCE(s.admitted_at, s.admitted_on::timestamp)
+               AND pr.issued_at <= COALESCE(s.discharged_at, now())
+             )
+           )
        ) rx ON true
        WHERE s.clinic_id=$1
        ORDER BY CASE WHEN s.status='active' THEN 0 ELSE 1 END, s.admitted_on DESC`,
@@ -2930,41 +3438,177 @@ exports.getInpatientCare = async (req, res, next) => {
     const stayId = Number.parseInt(req.params.id, 10);
     const stay = await db.query('SELECT id FROM clinic_inpatient_stays WHERE id=$1 AND clinic_id=$2', [stayId, clinicId]);
     if (!stay.rows.length) return res.status(404).json({ error: 'Inpatient stay not found.' });
-    const [observations, medications] = await Promise.all([
+    const [observations, medications, attachments] = await Promise.all([
       db.query(`SELECT o.*, u.name AS recorded_by_name FROM clinic_inpatient_observations o
         LEFT JOIN users u ON u.id=o.recorded_by WHERE o.stay_id=$1 ORDER BY o.observed_at DESC`, [stayId]),
       db.query(`SELECT m.*, u.name AS recorded_by_name FROM clinic_inpatient_medication_administrations m
         LEFT JOIN users u ON u.id=m.recorded_by WHERE m.stay_id=$1 ORDER BY m.event_at DESC`, [stayId]),
+      db.query(`SELECT id, filename, content_type, uploaded_at FROM attachments
+        WHERE clinic_id=$1 AND owner_table='clinic_inpatient_stays' AND owner_id=$2
+          AND metadata->>'source'='inpatient_attachment'
+        ORDER BY uploaded_at DESC, id DESC`, [clinicId, stayId]),
     ]);
-    return res.json({ observations: observations.rows, medications: medications.rows });
+    return res.json({ observations: observations.rows, medications: medications.rows, attachments: attachments.rows });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+exports.uploadInpatientAttachment = async (req, res, next) => {
+  try {
+    const clinicId = requireClinicId(req, res);
+    if (!clinicId) return;
+    if (!canManageClinicalRecords(req.user?.role)) return res.status(403).json({ error: 'Clinical staff access is required to upload inpatient attachments.' });
+    const stayId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(stayId) || stayId < 1) return res.status(400).json({ error: 'Invalid inpatient stay ID.' });
+    const stay = await db.query('SELECT id FROM clinic_inpatient_stays WHERE id=$1 AND clinic_id=$2', [stayId, clinicId]);
+    if (!stay.rows.length) return res.status(404).json({ error: 'Inpatient stay not found.' });
+
+    const filename = String(req.body.filename || '').trim().replace(/[\\/\r\n]/g, '_').slice(0, 255);
+    const contentType = String(req.body.content_type || '').trim().toLowerCase();
+    const data = String(req.body.data || '');
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    const prefix = `data:${contentType};base64,`;
+    if (!filename || !allowedTypes.includes(contentType) || !data.startsWith(prefix)) {
+      return res.status(422).json({ error: 'Upload a PDF, JPG, or PNG inpatient attachment.' });
+    }
+    const encoded = data.slice(prefix.length);
+    if (!encoded || encoded.length > 5_600_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) {
+      return res.status(413).json({ error: 'Inpatient attachments must be 4 MB or smaller.' });
+    }
+    const bytes = Buffer.from(encoded, 'base64');
+    if (!bytes.length || bytes.length > 4_194_304) return res.status(413).json({ error: 'Inpatient attachments must be 4 MB or smaller.' });
+    const validSignature = contentType === 'application/pdf' ? bytes.subarray(0, 5).toString() === '%PDF-'
+      : contentType === 'image/png' ? bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+        : bytes[0] === 0xff && bytes[1] === 0xd8;
+    if (!validSignature) return res.status(422).json({ error: 'The uploaded file does not match its selected format.' });
+
+    const saved = await db.query(
+      `INSERT INTO attachments (clinic_id, owner_table, owner_id, filename, content_type, url, metadata)
+       VALUES ($1, 'clinic_inpatient_stays', $2, $3, $4, $5, $6::jsonb)
+       RETURNING id, filename, content_type, uploaded_at`,
+      [clinicId, stayId, filename, contentType, data, JSON.stringify({ source: 'inpatient_attachment', uploaded_by: req.user.id })]
+    );
+    await logAudit({ user_id: req.user.id, role: req.user.role, action: 'upload_attachment', table_name: 'clinic_inpatient_stays', record_id: stayId, reason: 'Inpatient attachment uploaded.', ip_address: req.ip || req.connection.remoteAddress });
+    return res.status(201).json(saved.rows[0]);
   } catch (error) {
     return next(error);
   }
 };
 
 exports.createInpatientObservation = async (req, res, next) => {
+  let client;
   try {
+    client = await db.pool.connect();
     const clinicId = requireClinicId(req, res);
     if (!clinicId) return;
     if (!canManageClinicalRecords(req.user?.role)) return res.status(403).json({ error: 'Clinical staff access is required to record inpatient observations.' });
     const stayId = Number.parseInt(req.params.id, 10);
     const progress = String(req.body.clinical_progress || '').trim();
     if (!progress) return res.status(422).json({ error: 'Enter clinical progress for this observation.' });
-    const validStay = await db.query("SELECT id FROM clinic_inpatient_stays WHERE id=$1 AND clinic_id=$2 AND status='active'", [stayId, clinicId]);
-    if (!validStay.rows.length) return res.status(404).json({ error: 'Active inpatient stay not found.' });
-    const result = await db.query(
-      `INSERT INTO clinic_inpatient_observations
-        (stay_id, recorded_by, observed_at, temperature, heart_rate, respiratory_rate, hydration, appetite, pain_assessment, clinical_progress)
-       VALUES ($1,$2,COALESCE($3::timestamptz,now()),$4,$5,$6,$7,$8,$9,$10)
-       RETURNING *`,
-      [stayId, req.user?.id || null, req.body.observed_at || null, req.body.temperature || null,
-        req.body.heart_rate || null, req.body.respiratory_rate || null,
-        String(req.body.hydration || '').trim() || null, String(req.body.appetite || '').trim() || null,
-        String(req.body.pain_assessment || '').trim() || null, progress]
+    const observedAt = req.body.observed_at ? new Date(req.body.observed_at) : new Date();
+    if (!Number.isInteger(stayId) || stayId < 1 || Number.isNaN(observedAt.getTime()) || observedAt > new Date()) {
+      return res.status(422).json({ error: 'Enter a valid observation date and time that is not in the future.' });
+    }
+    const numericField = field => req.body[field] === '' || req.body[field] === undefined || req.body[field] === null
+      ? null
+      : Number(req.body[field]);
+    const temperature = numericField('temperature');
+    const weight = numericField('weight');
+    const heartRate = numericField('heart_rate');
+    const respiratoryRate = numericField('respiratory_rate');
+    if ([temperature, weight, heartRate, respiratoryRate].some(value => value !== null && (!Number.isFinite(value) || value < 0))
+      || [heartRate, respiratoryRate].some(value => value !== null && !Number.isInteger(value))) {
+      return res.status(422).json({ error: 'Enter valid non-negative clinical measurements; heart and respiratory rates must be whole numbers.' });
+    }
+    const followUpAction = String(req.body.follow_up_action || '').trim();
+    await client.query('BEGIN');
+    const stayResult = await client.query(
+      "SELECT id, pet_id, treatment_plan_id FROM clinic_inpatient_stays WHERE id=$1 AND clinic_id=$2 AND status='active'",
+      [stayId, clinicId]
     );
-    return res.status(201).json(result.rows[0]);
+    if (!stayResult.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Active inpatient stay not found.' });
+    }
+    const stay = stayResult.rows[0];
+    let planMonitoring = null;
+    if (stay.treatment_plan_id) {
+      const planResult = await client.query(
+        'SELECT monitoring FROM treatment_plans WHERE id=$1 AND pet_id=$2 AND clinic_id=$3 FOR UPDATE',
+        [stay.treatment_plan_id, stay.pet_id, clinicId]
+      );
+      if (!planResult.rows.length) throw new Error('The linked treatment plan could not be found for this inpatient stay.');
+      planMonitoring = planResult.rows[0].monitoring;
+    }
+    const activeStay = await client.query(
+      "SELECT id FROM clinic_inpatient_stays WHERE id=$1 AND clinic_id=$2 AND status='active' FOR UPDATE",
+      [stayId, clinicId]
+    );
+    if (!activeStay.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Active inpatient stay not found.' });
+    }
+    const authorResult = await client.query('SELECT name FROM users WHERE id=$1 AND clinic_id=$2', [req.user?.id || null, clinicId]);
+    const author = authorResult.rows[0]?.name || 'Clinic staff';
+    const observationResult = await client.query(
+      `INSERT INTO clinic_inpatient_observations
+        (stay_id, recorded_by, observed_at, temperature, weight, heart_rate, respiratory_rate, hydration, appetite, pain_assessment, clinical_progress, follow_up_action)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       RETURNING *`,
+      [stayId, req.user?.id || null, observedAt.toISOString(), temperature, weight, heartRate, respiratoryRate,
+        String(req.body.hydration || '').trim() || null, String(req.body.appetite || '').trim() || null,
+        String(req.body.pain_assessment || '').trim() || null, progress, followUpAction || null]
+    );
+    const observation = observationResult.rows[0];
+    await writeClinicalAudit(client, req, 'create', 'clinic_inpatient_observations', observation.id, observation);
+    if (stay.treatment_plan_id) {
+      const currentMonitoring = planMonitoring && typeof planMonitoring === 'object'
+        ? planMonitoring
+        : {};
+      const priorObservations = Array.isArray(currentMonitoring.observations) ? currentMonitoring.observations : [];
+      const text = [progress, followUpAction ? `Follow-up action: ${followUpAction}` : ''].filter(Boolean).join('\n');
+      const planObservation = {
+        date: observedAt.toISOString(),
+        author,
+        text,
+        temperature: temperature === null ? '' : String(temperature),
+        weight: weight === null ? '' : String(weight),
+        heart_rate: heartRate === null ? '' : String(heartRate),
+        respiratory_rate: respiratoryRate === null ? '' : String(respiratoryRate),
+        hydration: String(req.body.hydration || '').trim(),
+        appetite: String(req.body.appetite || '').trim(),
+        pain_assessment: String(req.body.pain_assessment || '').trim(),
+        followUpAction,
+      };
+      const updatedMonitoring = {
+        ...currentMonitoring,
+        ...Object.fromEntries([
+          ['temperature', planObservation.temperature],
+          ['weight', planObservation.weight],
+          ['heart_rate', planObservation.heart_rate],
+          ['respiratory_rate', planObservation.respiratory_rate],
+          ['hydration', planObservation.hydration],
+          ['appetite', planObservation.appetite],
+          ['pain_assessment', planObservation.pain_assessment],
+        ].filter(([, value]) => value)),
+        lastUpdatedAt: observedAt.toISOString(),
+        latestObservation: text,
+        observations: [planObservation, ...priorObservations].slice(0, 100),
+      };
+      const updatedPlan = await client.query(
+        'UPDATE treatment_plans SET monitoring=$1::jsonb, updated_at=now() WHERE id=$2 AND clinic_id=$3 RETURNING id, monitoring',
+        [JSON.stringify(updatedMonitoring), stay.treatment_plan_id, clinicId]
+      );
+      await writeClinicalAudit(client, req, 'update', 'treatment_plans', stay.treatment_plan_id, updatedPlan.rows[0]);
+    }
+    await client.query('COMMIT');
+    return res.status(201).json(observation);
   } catch (error) {
+    if (client) await client.query('ROLLBACK').catch(() => {});
     return next(error);
+  } finally {
+    if (client) client.release();
   }
 };
 
@@ -3061,19 +3705,45 @@ exports.listInvoices = async (req, res, next) => {
               i.paid_at,
               i.appointment_id,
               i.consultation_id,
-              jsonb_build_object(
-                'chiefComplaint', co.notes->'chiefComplaint',
+              i.metadata,
+              COALESCE(i.metadata->'invoice_clinical_summary', jsonb_build_object(
+                'chiefComplaint', COALESCE(co.notes->'chiefComplaint', to_jsonb(a.reason), invoice_lab.metadata->'indication'),
                 'diagnosis', co.notes->'diagnosis',
-                'clinicalFindings', co.notes->'clinicalFindings',
+                'clinicalFindings', COALESCE(co.notes->'clinicalFindings', invoice_lab.results->'summary', invoice_lab.metadata->'interpretation'),
                 'treatment', co.notes->'treatment',
                 'medications', co.notes->'medications',
                 'vaccinations', co.notes->'vaccinations',
-                'labTests', co.notes->'labTests',
-                'followUpInstructions', co.notes->'followUpInstructions'
-              ) AS consultation_notes,
+                'labTests', COALESCE(co.notes->'labTests', to_jsonb(invoice_lab.test_name)),
+                'followUpInstructions', co.notes->'followUpInstructions',
+                'plan', COALESCE(co.notes->'plan', co.notes->'followUpInstructions')
+              )) AS consultation_notes,
               co.completed_at AS consultation_completed_at,
-              u.name AS doctor,
-              COALESCE(a.pet_id, (SELECT s.pet_id FROM clinic_inpatient_stays s WHERE s.invoice_id = i.id ORDER BY s.id DESC LIMIT 1)) AS pet_id,
+              COALESCE(
+                u.name,
+                appointment_vet.name,
+                lab_appointment_vet.name,
+                NULLIF(invoice_lab.metadata->>'requestedBy', ''),
+                NULLIF(invoice_lab.metadata->>'requested_by', ''),
+                NULLIF(invoice_lab.metadata->>'createdBy', ''),
+                NULLIF(invoice_lab.metadata->>'lastUpdatedBy', '')
+              ) AS doctor,
+              COALESCE(a.pet_id,
+                (SELECT s.pet_id FROM clinic_inpatient_stays s WHERE s.invoice_id = i.id ORDER BY s.id DESC LIMIT 1),
+                CASE WHEN i.metadata->>'pet_id' ~ '^[0-9]+$' THEN (i.metadata->>'pet_id')::integer END
+              ) AS pet_id,
+              p.species,
+              p.breed,
+              p.sex::text AS pet_sex,
+              p.birth_date,
+              p.metadata->>'weight' AS pet_weight,
+              a.reason AS appointment_reason,
+              a.status::text AS appointment_status,
+              a.start_time AS visit_date,
+              COALESCE(a.notes->>'service_category', a.workflow_type, invoice_lab.metadata->>'testType') AS appointment_type,
+              invoice_lab.test_name AS lab_test_name,
+              invoice_lab.metadata->>'indication' AS lab_indication,
+              invoice_lab.metadata->>'status' AS lab_status,
+              pet_photo.id AS pet_photo_attachment_id,
               COALESCE((SELECT SUM(pay.amount) FROM payments pay WHERE pay.invoice_id = i.id), 0) AS amount_paid,
               COALESCE((
                 SELECT json_agg(json_build_object(
@@ -3082,22 +3752,106 @@ exports.listInvoices = async (req, res, next) => {
                 ) ORDER BY ii.id)
                 FROM invoice_items ii WHERE ii.invoice_id=i.id
               ), '[]'::json) AS items,
+              COALESCE(report_attachments.items, '[]'::json) AS attachments,
               c.name AS owner,
+              c.phone AS owner_phone,
               p.name AS pet
        FROM invoices i
        LEFT JOIN consultations co ON co.id = i.consultation_id
        LEFT JOIN users u ON u.id = co.doctor_id
        LEFT JOIN clients c ON i.client_id = c.id
        LEFT JOIN appointments a ON i.appointment_id = a.id
-       LEFT JOIN pets p ON p.id = COALESCE(a.pet_id, (SELECT s.pet_id FROM clinic_inpatient_stays s WHERE s.invoice_id = i.id ORDER BY s.id DESC LIMIT 1))
+       LEFT JOIN users appointment_vet ON appointment_vet.id = a.practitioner_id
+       LEFT JOIN pets p ON p.id = COALESCE(a.pet_id,
+         (SELECT s.pet_id FROM clinic_inpatient_stays s WHERE s.invoice_id = i.id ORDER BY s.id DESC LIMIT 1),
+         CASE WHEN i.metadata->>'pet_id' ~ '^[0-9]+$' THEN (i.metadata->>'pet_id')::integer END)
+       LEFT JOIN lab_results invoice_lab
+         ON invoice_lab.clinic_id=i.clinic_id
+        AND invoice_lab.id=CASE WHEN i.metadata->>'lab_test_id' ~ '^[0-9]+$'
+          THEN (i.metadata->>'lab_test_id')::integer END
+       LEFT JOIN appointments lab_appointment
+         ON lab_appointment.clinic_id=i.clinic_id
+        AND lab_appointment.id::text=COALESCE(invoice_lab.metadata->>'appointment_id', invoice_lab.metadata->>'appointmentId')
+       LEFT JOIN users lab_appointment_vet ON lab_appointment_vet.id=lab_appointment.practitioner_id
+       LEFT JOIN LATERAL (
+         SELECT profile.id
+         FROM attachments profile
+         WHERE profile.clinic_id=i.clinic_id
+           AND profile.owner_table='pets'
+           AND profile.owner_id=p.id
+           AND profile.metadata->>'source'='pet_profile_photo'
+         ORDER BY profile.uploaded_at DESC, profile.id DESC
+         LIMIT 1
+       ) pet_photo ON true
+       LEFT JOIN LATERAL (
+         SELECT json_agg(json_build_object(
+           'id', att.id,
+           'filename', att.filename,
+           'content_type', att.content_type,
+           'uploaded_at', att.uploaded_at,
+           'downloadEndpoint', '/clinic-records/attachments/' || att.id || '/content'
+         ) ORDER BY att.uploaded_at DESC, att.id DESC) AS items
+         FROM attachments att
+         WHERE att.clinic_id=i.clinic_id AND NOT (COALESCE(i.metadata->'hidden_invoice_attachment_ids','[]'::jsonb) @> to_jsonb(att.id)) AND (
+           (att.owner_table='invoices' AND att.owner_id=i.id AND att.metadata->>'source'='invoice_attachment') OR
+           (att.owner_table='lab_results' AND att.metadata->>'source'='lab_result_report'
+             AND EXISTS(SELECT 1 FROM lab_results lr WHERE lr.id=att.owner_id AND lr.clinic_id=i.clinic_id
+               AND (lr.id::text=i.metadata->>'lab_test_id' OR lr.metadata->>'appointment_id'=COALESCE(i.appointment_id,co.appointment_id)::text)))
+           OR (att.owner_table='vaccinations' AND att.metadata->>'source'='vaccination_sticker'
+             AND EXISTS(SELECT 1 FROM vaccinations v WHERE v.id=att.owner_id AND v.clinic_id=i.clinic_id
+               AND v.sticker_attachment_id=att.id AND COALESCE(v.archived,false)=false
+               AND v.appointment_id=COALESCE(i.appointment_id,co.appointment_id)))
+           OR (att.owner_table='clinic_inpatient_stays' AND att.metadata->>'source'='inpatient_attachment'
+             AND EXISTS(SELECT 1 FROM clinic_inpatient_stays stay WHERE stay.id=att.owner_id AND stay.clinic_id=i.clinic_id AND stay.invoice_id=i.id))
+         )
+       ) report_attachments ON true
        WHERE i.clinic_id = $1
+         AND ($2::boolean = false OR i.metadata->>'sent_to_reception' = 'true')
        ORDER BY i.issued_at DESC`,
-      [clinicId]
+      [clinicId, req.query.sent_to_reception === 'true']
     );
 
-    res.json(result.rows);
+    res.json(result.rows.map(invoice=>({...invoice,...(invoice.metadata?.billing_visit_details || {})})));
   } catch (e) {
     next(e);
+  }
+};
+
+exports.sendInvoiceToReception = async (req, res, next) => {
+  if (!canManageClinicalRecords(req.user?.role)) {
+    return res.status(403).json({ error: 'Clinical staff access is required to send an invoice to reception.' });
+  }
+  try {
+    const clinicId = requireClinicId(req, res);
+    if (!clinicId) return;
+    const invoiceId = Number(req.params.id);
+    if (!Number.isInteger(invoiceId) || invoiceId < 1) return res.status(400).json({ error: 'A valid invoice id is required.' });
+    const result = await db.query(
+      `UPDATE invoices
+       SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+         'sent_to_reception', true,
+         'sent_to_reception_at', COALESCE(metadata->>'sent_to_reception_at', now()::text),
+         'sent_to_reception_by', COALESCE(metadata->>'sent_to_reception_by', $3::text)
+       ), updated_at=now()
+       WHERE id=$1 AND clinic_id=$2 AND status <> 'void'
+       RETURNING id, clinic_id, status, total, issued_at, metadata`,
+      [invoiceId, clinicId, req.user?.id || null]
+    );
+    if (!result.rows.length) {
+      const exists = await db.query('SELECT id, status FROM invoices WHERE id=$1 AND clinic_id=$2', [invoiceId, clinicId]);
+      if (!exists.rows.length) return res.status(404).json({ error: 'Invoice not found for this clinic.' });
+      return res.status(409).json({ error: 'A void invoice cannot be sent to reception.' });
+    }
+    await logAudit({
+      user_id: req.user?.id, role: req.user?.role, action: 'send_invoice_to_reception',
+      table_name: 'invoices', record_id: invoiceId, new_data: result.rows[0],
+      reason: 'Clinic staff sent an invoice to the receptionist billing queue.',
+      ip_address: req.ip || req.connection.remoteAddress,
+    });
+    publishClinicEvent(clinicId, 'billing');
+    return res.json(result.rows[0]);
+  } catch (error) {
+    return next(error);
   }
 };
 
@@ -3113,13 +3867,16 @@ exports.listPayments = async (req, res, next) => {
               pay.method,
               pay.reference,
               pay.paid_at,
+              pay.metadata,
               i.status AS invoice_status,
               c.name AS owner,
               p.name AS pet
        FROM payments pay
        LEFT JOIN invoices i ON pay.invoice_id = i.id
        LEFT JOIN appointments a ON i.appointment_id = a.id
-       LEFT JOIN pets p ON a.pet_id = p.id
+       LEFT JOIN pets p ON p.id = COALESCE(a.pet_id,
+         (SELECT s.pet_id FROM clinic_inpatient_stays s WHERE s.invoice_id=i.id ORDER BY s.id DESC LIMIT 1),
+         CASE WHEN i.metadata->>'pet_id' ~ '^[0-9]+$' THEN (i.metadata->>'pet_id')::integer END)
        LEFT JOIN clients c ON i.client_id = c.id
        WHERE pay.clinic_id = $1
        ORDER BY pay.paid_at DESC`,
@@ -3132,36 +3889,114 @@ exports.listPayments = async (req, res, next) => {
   }
 };
 
-exports.listReminders = async (req, res, next) => {
+exports.createInvoicePayment = async (req, res, next) => {
+  const role = String(req.user?.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (!['receptionist', 'clinic_owner', 'owner', 'super_admin'].includes(role)) {
+    return res.status(403).json({ error: 'Receptionist or clinic owner access is required to process payments.' });
+  }
+  const client = await db.pool.connect();
   try {
     const clinicId = requireClinicId(req, res);
     if (!clinicId) return;
+    const invoiceId = Number(req.params.id);
+    const amount = Number(req.body.amount);
+    const method = String(req.body.method || '').trim().toLowerCase();
+    const allowedMethods = new Set(['cash', 'card', 'transfer', 'cheque', 'other']);
+    const paymentChannel = String(req.body.payment_channel || '').trim().toLowerCase();
+    const paymentChannelMethods = {
+      cash: 'cash',
+      qr_ph: 'transfer',
+      gcash: 'transfer',
+      maya: 'transfer',
+      credit_card: 'card',
+      debit_card: 'card',
+      bank_transfer: 'transfer',
+    };
+    const reference = String(req.body.reference || '').trim().slice(0, 200) || null;
+    const paymentNotes = String(req.body.notes || '').trim();
+    const paidAt = req.body.paid_at ? new Date(req.body.paid_at) : null;
+    if (paymentNotes.length > 2000 || (paidAt && (Number.isNaN(paidAt.getTime()) || paidAt.getTime() > Date.now() + 60000))) {
+      return res.status(400).json({ error: 'Enter a valid payment date that is not in the future and notes up to 2000 characters.' });
+    }
+    if (!Number.isInteger(invoiceId) || invoiceId < 1 || !Number.isFinite(amount) || amount <= 0 || !allowedMethods.has(method)) {
+      return res.status(400).json({ error: 'Enter a valid payment amount and payment method.' });
+    }
+    if (paymentChannel && paymentChannelMethods[paymentChannel] !== method) {
+      return res.status(400).json({ error: 'The payment channel does not match the selected payment method.' });
+    }
 
-    const result = await db.query(
-      `SELECT r.id,
-              r.type,
-              r.channel,
-              r.message,
-              r.scheduled_at,
-              r.sent_at,
-              r.delivered,
-              p.name AS pet,
-              c.name AS owner,
-              c.email,
-              c.phone
-       FROM reminders r
-       LEFT JOIN pets p ON r.pet_id = p.id
-       LEFT JOIN clients c ON r.client_id = c.id
-       WHERE r.clinic_id = $1
-       ORDER BY r.scheduled_at DESC`,
-      [clinicId]
+    await client.query('BEGIN');
+    const invoiceResult = await client.query(
+      `SELECT id, total, status, metadata FROM invoices
+       WHERE id=$1 AND clinic_id=$2 FOR UPDATE`,
+      [invoiceId, clinicId]
     );
-
-    res.json(result.rows);
-  } catch (e) {
-    next(e);
+    const invoice = invoiceResult.rows[0];
+    if (!invoice) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Invoice not found for this clinic.' });
+    }
+    if (invoice.metadata?.void_request_status === 'pending') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({error:'This invoice is awaiting the doctor?s void decision and cannot accept payment.'});
+    }
+    if (invoice.status === 'void') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'A void invoice cannot accept a payment.' });
+    }
+    if (invoice.metadata?.billing_review_status === 'returned') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'This bill needs correction before a payment can be recorded.' });
+    }
+    const paidResult = await client.query(
+      'SELECT COALESCE(SUM(amount),0)::numeric(12,2) AS paid FROM payments WHERE invoice_id=$1 AND clinic_id=$2',
+      [invoiceId, clinicId]
+    );
+    const balance = Math.max(0, Number(invoice.total) - Number(paidResult.rows[0].paid));
+    if (balance <= 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'This invoice has no remaining balance.' });
+    }
+    if (amount - balance > 0.005) {
+      await client.query('ROLLBACK');
+      return res.status(422).json({ error: `Payment exceeds the remaining balance of ${balance.toFixed(2)}.` });
+    }
+    const paymentResult = await client.query(
+      `INSERT INTO payments (clinic_id, invoice_id, amount, method, reference, metadata, paid_at)
+       VALUES ($1,$2,$3,$4,$5,$6::jsonb,COALESCE($7::timestamptz,now()))
+       RETURNING id, clinic_id, invoice_id, amount, method, reference, paid_at, metadata`,
+      [clinicId, invoiceId, amount.toFixed(2), method, reference, JSON.stringify({
+        recorded_by: req.user?.id || null,
+        ...(paymentChannel ? { payment_channel: paymentChannel } : {}),
+        ...(paymentNotes ? { notes: paymentNotes } : {}),
+      }), paidAt ? paidAt.toISOString() : null]
+    );
+    const newPaid = Number(paidResult.rows[0].paid) + amount;
+    const updatedInvoiceResult = await client.query(
+      `UPDATE invoices SET status=CASE WHEN $2 >= total - 0.005 THEN 'paid'::invoice_status ELSE 'issued'::invoice_status END,
+         paid_at=CASE WHEN $2 >= total - 0.005 THEN COALESCE($4::timestamptz,now()) ELSE NULL END, updated_at=now()
+       WHERE id=$1 AND clinic_id=$3
+       RETURNING id, status, total, paid_at`,
+      [invoiceId, newPaid, clinicId, paidAt ? paidAt.toISOString() : null]
+    );
+    await client.query('COMMIT');
+    await logAudit({
+      user_id: req.user?.id, role: req.user?.role, action: 'record_invoice_payment',
+      table_name: 'payments', record_id: paymentResult.rows[0].id,
+      new_data: { ...paymentResult.rows[0], invoice: updatedInvoiceResult.rows[0] },
+      reason: 'Receptionist recorded an invoice payment.', ip_address: req.ip || req.connection.remoteAddress,
+    });
+    publishClinicEvent(clinicId, 'billing');
+    return res.status(201).json({ payment: paymentResult.rows[0], invoice: updatedInvoiceResult.rows[0], amount_paid: newPaid });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    return next(error);
+  } finally {
+    client.release();
   }
 };
+
+exports.listReminders = require('./reminderController').list;
 
 const canShareOwnerRecords = (role) => [
   'doctor',
@@ -3552,6 +4387,113 @@ exports.listLabTests = async (req, res, next) => {
   } catch (error) { return next(error); }
 };
 
+exports.completeLabTestService = async (req, res, next) => {
+  const client = await db.pool.connect();
+  try {
+    const clinicId = requireClinicId(req, res);
+    if (!clinicId) return;
+    if (!canManageClinicalRecords(req.user?.role)) {
+      return res.status(403).json({ error: 'Clinical staff access is required to complete and bill this laboratory service.' });
+    }
+    const labTestId = Number(String(req.params.id).replace(/^LAB-/i, ''));
+    const catalogItemId = Number(req.body.catalog_item_id);
+    if (!Number.isInteger(labTestId) || labTestId < 1 || !Number.isInteger(catalogItemId) || catalogItemId < 1) {
+      return res.status(400).json({ error: 'A valid lab test and clinic service are required.' });
+    }
+
+    await client.query('BEGIN');
+    const labTestResult = await client.query(
+      `SELECT lr.id, lr.pet_id, lr.test_name, lr.metadata, p.client_id
+       FROM lab_results lr
+       JOIN pets p ON p.id=lr.pet_id AND p.clinic_id=lr.clinic_id
+       WHERE lr.id=$1 AND lr.clinic_id=$2
+         AND COALESCE((lr.metadata->>'archived')::boolean, false)=false
+       FOR UPDATE OF lr`,
+      [labTestId, clinicId]
+    );
+    const labTest = labTestResult.rows[0];
+    if (!labTest) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Lab test not found.' });
+    }
+    const metadata = labTest.metadata && typeof labTest.metadata === 'object' ? labTest.metadata : {};
+    if (metadata.serviceCompleted === true || metadata.serviceInvoiceId) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'This laboratory service has already been completed and billed.' });
+    }
+    if (!labTest.client_id) {
+      await client.query('ROLLBACK');
+      return res.status(422).json({ error: 'This patient must be linked to an owner before billing.' });
+    }
+
+    const catalogResult = await client.query(
+      `SELECT id, item_type, name, unit_price
+       FROM clinic_billing_catalog
+       WHERE id=$1 AND clinic_id=$2 AND active=true AND unit_price IS NOT NULL AND replaced_by_source IS NULL`,
+      [catalogItemId, clinicId]
+    );
+    const catalogItem = catalogResult.rows[0];
+    if (!catalogItem || catalogItem.item_type !== 'lab_test') {
+      await client.query('ROLLBACK');
+      return res.status(422).json({ error: 'Select an active laboratory service from this clinic price catalog.' });
+    }
+
+    const unitPrice = Number(catalogItem.unit_price);
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+      await client.query('ROLLBACK');
+      return res.status(422).json({ error: 'The selected laboratory service has an invalid clinic price.' });
+    }
+    const invoiceMetadata = JSON.stringify({
+      source: 'patient_lab_service',
+      pet_id: labTest.pet_id,
+      lab_test_id: labTest.id,
+      catalog_item_id: catalogItem.id,
+    });
+    const invoiceResult = await client.query(
+      `INSERT INTO invoices
+        (clinic_id, client_id, status, currency, subtotal, tax, total, issued_at, metadata)
+       VALUES ($1,$2,'issued','PHP',$3,0,$3,now(),$4::jsonb)
+       RETURNING id, status, currency, subtotal, tax, total, issued_at`,
+      [clinicId, labTest.client_id, unitPrice, invoiceMetadata]
+    );
+    const invoice = invoiceResult.rows[0];
+    await client.query(
+      `INSERT INTO invoice_items
+        (invoice_id, description, unit_price, quantity, catalog_item_id, item_type)
+       VALUES ($1,$2,$3,1,$4,'lab_test')`,
+      [invoice.id, catalogItem.name, unitPrice, catalogItem.id]
+    );
+    const updatedMetadata = {
+      ...metadata,
+      serviceCompleted: true,
+      serviceInvoiceId: invoice.id,
+      serviceCatalogItemId: catalogItem.id,
+    };
+    await client.query(
+      `UPDATE lab_results SET metadata=$1::jsonb WHERE id=$2 AND clinic_id=$3`,
+      [JSON.stringify(updatedMetadata), labTest.id, clinicId]
+    );
+    await client.query('COMMIT');
+
+    await logAudit({
+      user_id: req.user?.id,
+      role: req.user?.role,
+      action: 'complete_and_bill_lab_service',
+      table_name: 'lab_results',
+      record_id: labTest.id,
+      new_data: { invoice, catalog_item: catalogItem },
+      reason: 'Laboratory service confirmed complete and sent to billing.',
+      ip_address: req.ip || req.connection.remoteAddress,
+    });
+    return res.status(201).json({ invoice, lab_test_id: labTest.id });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    return next(error);
+  } finally {
+    client.release();
+  }
+};
+
 exports.uploadLabReport = async (req, res, next) => {
   try {
     const clinicId = requireClinicId(req, res);
@@ -3651,8 +4593,26 @@ exports.downloadClinicAttachment = async (req, res, next) => {
     if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid attachment ID.' });
     const result = await db.query(
       `SELECT filename, content_type, url FROM attachments
-       WHERE id=$1 AND clinic_id=$2 AND owner_table='lab_results'
-         AND metadata->>'source'='lab_result_report'`, [id, clinicId]
+       WHERE id=$1 AND clinic_id=$2
+         AND ((owner_table='invoices' AND metadata->>'source'='invoice_attachment')
+          OR (owner_table='lab_results' AND metadata->>'source'='lab_result_report')
+          OR (owner_table='patient_registration_intakes' AND metadata->>'source'='patient_registration'
+            AND EXISTS (
+              SELECT 1 FROM patient_registration_intakes i
+              WHERE i.id=attachments.owner_id AND i.clinic_id=attachments.clinic_id
+                AND (
+                  lower(regexp_replace(trim($4::text), '[[:space:]-]+', '_', 'g')) IN ('receptionist', 'clinic_owner', 'owner', 'super_admin')
+                  OR (
+                    lower(regexp_replace(trim($4::text), '[[:space:]-]+', '_', 'g')) IN ('doctor', 'assistant_doctor', 'veterinarian')
+                    AND i.assigned_doctor_id=$3
+                  )
+                )
+            ))
+          OR (owner_table='pets' AND (metadata->>'source'='pet_profile_photo' OR content_type LIKE 'image/%'))
+           OR (owner_table='vaccinations' AND metadata->>'source'='vaccination_sticker')
+           OR (owner_table='clinic_inpatient_stays' AND metadata->>'source'='inpatient_attachment'))`, [
+        id, clinicId, Number(req.user?.id), String(req.user?.role || ''),
+      ]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Attachment not found.' });
     const attachment = result.rows[0];
@@ -3664,6 +4624,11 @@ exports.downloadClinicAttachment = async (req, res, next) => {
     res.setHeader('Cache-Control', 'private, no-store');
     return res.send(Buffer.from(attachment.url.slice(prefix.length), 'base64'));
   } catch (error) { return next(error); }
+};
+
+exports.listLabTestTypes = (req, res) => {
+  if (!requireClinicId(req, res)) return;
+  return res.json(labTestTypes);
 };
 
 exports.createLabTest = async (req, res, next) => {

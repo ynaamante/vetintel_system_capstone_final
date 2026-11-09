@@ -1,16 +1,18 @@
+import { dateFilterValue } from '../../utils/dateFilters';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import { formatDateText, formatDateTimeText } from '../../utils/dateFormatting';
 import FilterSelect from '../../components/FilterSelect';
 import LabDateTimePicker from '../../components/LabDateTimePicker';
+import DateRangePopoverFields from '../../components/DateRangePopoverFields';
 import { Icons } from '../../icons';
 import { TreatmentPlansTab } from './ClinicLayout';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
 const inputStyle = { width: '100%', boxSizing: 'border-box', padding: '9px 10px', border: '1px solid #d1d5db', borderRadius: 8, font: 'inherit', color: '#111827' };
 const labelStyle = { display: 'grid', gap: 5, color: '#1f2937', fontSize: 15, fontWeight: 600 };
-const buttonStyle = { padding: '9px 13px', border: 0, borderRadius: 8, background: '#005447', color: '#fff', fontWeight: 700, cursor: 'pointer' };
+const buttonStyle = { padding: '9px 13px', border: 0, borderRadius: 8, background: '#086b50', color: '#fff', fontWeight: 700, cursor: 'pointer' };
 
 async function request(user, path, options = {}) {
   if (!user?.token || !user?.clinic_id) throw new Error('Clinic session is unavailable. Sign in again and retry.');
@@ -76,6 +78,7 @@ export function PatientMedicationsPanel({ user, patientId, patientName, onCountC
   const [typeFilter, setTypeFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [sortOrder, setSortOrder] = useState('newest');
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
   const [datePopoverPosition, setDatePopoverPosition] = useState(null);
   const dateRangeRef = useRef(null);
@@ -113,7 +116,7 @@ export function PatientMedicationsPanel({ user, patientId, patientName, onCountC
       const trigger = dateRangeButtonRef.current?.getBoundingClientRect();
       if (!trigger) return;
       const width = Math.min(290, window.innerWidth - 16);
-      const estimatedHeight = datePopoverRef.current?.offsetHeight || 205;
+      const estimatedHeight = datePopoverRef.current?.offsetHeight || 270;
       const spaceBelow = window.innerHeight - trigger.bottom;
       const placeAbove = spaceBelow < estimatedHeight + 8 && trigger.top > spaceBelow;
       setDatePopoverPosition({
@@ -126,6 +129,7 @@ export function PatientMedicationsPanel({ user, patientId, patientName, onCountC
       });
     };
     const closeOnOutsideClick = event => {
+      if (event.target?.closest?.('.lab-date-time-popover, .lab-date-time-backdrop')) return;
       if (!dateRangeRef.current?.contains(event.target) && !datePopoverRef.current?.contains(event.target)) {
         setDateRangeOpen(false);
       }
@@ -155,7 +159,7 @@ export function PatientMedicationsPanel({ user, patientId, patientName, onCountC
   };
   const filteredMedications = medications.filter(item => {
     const normalizedStatus = medicationStatus(item);
-    const issuedDate = String(item.issued_at || item.start_date || '').slice(0, 10);
+    const issuedDate = dateFilterValue(item.issued_at || item.start_date);
     const query = medicationSearch.trim().toLowerCase();
     const matchesSearch = !query || [
       item.medication,
@@ -171,6 +175,10 @@ export function PatientMedicationsPanel({ user, patientId, patientName, onCountC
     const matchesDateFrom = !dateFrom || (issuedDate && issuedDate >= dateFrom);
     const matchesDateTo = !dateTo || (issuedDate && issuedDate <= dateTo);
     return matchesSearch && matchesStatus && matchesType && matchesDateFrom && matchesDateTo;
+  }).sort((first, second) => {
+    const difference = String(first.issued_at || first.start_date || '').slice(0, 10)
+      .localeCompare(String(second.issued_at || second.start_date || '').slice(0, 10));
+    return sortOrder === 'newest' ? -difference : difference;
   });
   const medicationStatusOptions = [
     ['all', 'All status', medications.length],
@@ -248,11 +256,18 @@ export function PatientMedicationsPanel({ user, patientId, patientName, onCountC
         <button ref={dateRangeButtonRef} type="button" aria-expanded={dateRangeOpen} onClick={() => setDateRangeOpen(value => !value)}>
           <span className="medication-date-icon" aria-hidden="true">{Icons.calendar}</span>{dateRangeLabel}
         </button>
-        {dateRangeOpen && datePopoverPosition && createPortal(<div ref={datePopoverRef} className="medication-date-popover" style={{ ...datePopoverPosition, position: 'fixed', zIndex: 2000, overflowY: 'auto' }}>
-          <label>From<LabDateTimePicker mode="date" value={dateFrom} max={dateTo || undefined} onChange={setDateFrom} /></label>
-          <label>To<LabDateTimePicker mode="date" value={dateTo} min={dateFrom || undefined} onChange={setDateTo} /></label>
-          <button type="button" onClick={() => { setDateFrom(''); setDateTo(''); }}>Clear dates</button>
-        </div>, document.body)}
+        {dateRangeOpen && datePopoverPosition && createPortal(<div ref={datePopoverRef} className="medication-date-popover system-date-range-popover" style={{ ...datePopoverPosition, position: 'fixed', zIndex: 2000, overflowY: 'auto' }}>
+            <DateRangePopoverFields
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateFromChange={setDateFrom}
+              onDateToChange={setDateTo}
+              sortOrder={sortOrder}
+              onSortOrderChange={setSortOrder}
+              onClear={() => { setDateFrom(''); setDateTo(''); }}
+              onDone={() => setDateRangeOpen(false)}
+            />
+          </div>, document.body)}
       </div>
     </div>
     {loading ? <div className="detail-summary-note">Loading medication records…</div> : filteredMedications.length ? (
@@ -389,6 +404,9 @@ export function PatientTreatmentRecordsPanel({ user, patientId, patientName, onC
   const [savingPlan, setSavingPlan] = useState(false);
   const load = useCallback(async () => {
     if (!patientId) { setTreatmentRecords([]); setTreatmentPlans([]); onCountChange?.(0); setLoading(false); return; }
+    setTreatmentRecords([]);
+    setTreatmentPlans([]);
+    onCountChange?.(0);
     setLoading(true);
     try {
       const query = `?pet_id=${encodeURIComponent(patientId)}`;
@@ -398,7 +416,7 @@ export function PatientTreatmentRecordsPanel({ user, patientId, patientName, onC
       ]);
       setTreatmentRecords(recordRows);
       setTreatmentPlans(planRows);
-      onCountChange?.(recordRows.length + planRows.length);
+      onCountChange?.(recordRows.length + planRows.filter(plan => !plan.archived).length);
       setError('');
     } catch (loadError) {
       setError(loadError.message);
@@ -468,7 +486,7 @@ export function PatientTreatmentRecordsPanel({ user, patientId, patientName, onC
           <input type="search" aria-label="Search treatment records" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search care plans, procedures, or medications..." />
         </label>
       </div>
-      {createOpen && <form onSubmit={createPlan} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 14, padding: 13, border: '1px solid #dce7e3', borderRadius: 9, background: '#f8fbfa' }}>
+      {createOpen && <form onSubmit={createPlan} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 14, padding: 13, border: '1px solid #dce7e3', borderRadius: 9, background: '#fafbf8' }}>
         <label style={labelStyle}>Plan title<input name="title" required style={inputStyle} /></label>
         <label style={labelStyle}>Diagnosis<input name="diagnosis" required style={inputStyle} /></label>
         <label style={labelStyle}>Treatment step<input name="step" required style={inputStyle} /></label>
@@ -495,7 +513,7 @@ export function PatientTreatmentRecordsPanel({ user, patientId, patientName, onC
               </td>
               <td style={{ padding: '11px 9px', borderBottom: '1px solid #e2e8f0', color: '#334155', fontSize: 12 }}>{row.kind === 'plan' ? `${medications.length} prescribed` : '—'}</td>
               <td style={{ padding: '11px 9px', borderBottom: '1px solid #e2e8f0' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 14, background: isCompleted ? '#e7f7ef' : '#f1f5f9', color: isCompleted ? '#075c35' : '#334155', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{row.status}</span></td>
-              <td style={{ padding: '11px 9px', borderBottom: '1px solid #e2e8f0' }}><button type="button" onClick={() => row.kind === 'plan' ? setStandalonePlanRequest({ planId: row.plan.id }) : setSelectedTreatmentRecord(row.record)} style={{ minHeight: 36, border: 0, background: 'transparent', color: '#005447', padding: '0 4px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{row.kind === 'plan' ? 'View plan' : 'View record'}</button></td>
+              <td style={{ padding: '11px 9px', borderBottom: '1px solid #e2e8f0' }}><button type="button" onClick={() => row.kind === 'plan' ? setStandalonePlanRequest({ planId: row.plan.id }) : setSelectedTreatmentRecord(row.record)} style={{ minHeight: 36, border: 0, background: 'transparent', color: '#013826', padding: '0 4px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{row.kind === 'plan' ? 'View plan' : 'View record'}</button></td>
             </tr>;
           })}{!visibleRows.length && <tr><td colSpan={6} style={{ padding: 18, color: '#334155', fontSize: 14, textAlign: 'center' }}>{search || statusFilter !== 'all' ? 'No records match these filters.' : 'No treatment plans or records for this patient.'}</td></tr>}</tbody>
         </table>

@@ -188,7 +188,7 @@ export function ClinicDetails() {
   ];
 
   return (
-    <div className="p-5 space-y-5 bg-[#eef3ff] min-h-full">
+    <div className="p-5 space-y-5 bg-[#fafbf8] min-h-full">
       {/* Toast */}
       {toast && (
         <div className="fixed top-6 right-6 z-[100] flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white text-sm bg-green-600">

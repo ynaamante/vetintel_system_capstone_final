@@ -5,6 +5,7 @@ import LabDateTimePicker, { getUnavailableAppointmentTimes } from '../components
 import { ModalDialog } from '../components/ModalDialog';
 import { getStatusToneColors } from '../utils/statusTone';
 import { Icons } from '../icons';
+import { watchRegistrationUpdates } from '../utils/registrationSync';
 
 const formatTime = value => value
   ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
@@ -75,21 +76,32 @@ const isMeaningfulText = value => {
 
 const initialTransferForm = { patient: '', doctor: '', reason: '', urgency: 'Routine — no rush', notes: '' };
 
+// How much data this page needs. Keeping these small keeps the page fast.
+const SCHEDULE_PAST_DAYS = 7;
+const SCHEDULE_FUTURE_DAYS = 60;
+const ACTIVITY_LIMIT = 50;
+const REFRESH_INTERVAL_MS = 30000;
+
+const getScheduleRange = () => ({
+  from: new Date(Date.now() - SCHEDULE_PAST_DAYS * 864e5).toISOString(),
+  to: new Date(Date.now() + SCHEDULE_FUTURE_DAYS * 864e5).toISOString(),
+});
+
 const workflowStyles = {
   dialog: { display: 'flex', flexDirection: 'column', width: 'min(520px, 100%)', maxHeight: 'calc(100vh - 24px)', overflow: 'hidden', borderRadius: 18, background: '#fff', boxShadow: '0 18px 50px rgba(15,23,42,.25)' },
   body: { display: 'grid', gap: 20, overflowY: 'auto', padding: '20px 24px 24px' },
   field: { display: 'grid', gap: 9, color: '#193a32', fontSize: '.88rem', fontWeight: 600 },
   dateTime: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 },
-  input: { width: '100%', minWidth: 0, height: 56, boxSizing: 'border-box', border: '1px solid #d8e9e1', borderRadius: 13, padding: '0 15px', background: '#fff', color: '#193a32', font: 'inherit', fontWeight: 400, outlineColor: '#78b7a1' },
-  textarea: { width: '100%', minHeight: 96, boxSizing: 'border-box', resize: 'vertical', border: '1px solid #d8e9e1', borderRadius: 13, padding: '14px 15px', color: '#193a32', font: 'inherit', fontWeight: 400, outlineColor: '#78b7a1' },
+  input: { width: '100%', minWidth: 0, height: 56, boxSizing: 'border-box', border: '1px solid #bed6c5', borderRadius: 13, padding: '0 15px', background: '#fff', color: '#193a32', font: 'inherit', fontWeight: 400, outlineColor: '#78b7a1' },
+  textarea: { width: '100%', minHeight: 96, boxSizing: 'border-box', resize: 'vertical', border: '1px solid #bed6c5', borderRadius: 13, padding: '14px 15px', color: '#193a32', font: 'inherit', fontWeight: 400, outlineColor: '#78b7a1' },
   visitChoices: { display: 'flex', flexWrap: 'wrap', gap: 9 },
-  visitButton: { minHeight: 48, padding: '0 16px', border: '1px solid #d8e9e1', borderRadius: 13, background: '#fff', color: '#38534c', fontSize: '.8rem', cursor: 'pointer' },
-  visitSelected: { borderColor: '#005447', background: '#e7f5f2', color: '#005447' },
+  visitButton: { minHeight: 48, padding: '0 16px', border: '1px solid #bed6c5', borderRadius: 13, background: '#fff', color: '#38534c', fontSize: '.8rem', cursor: 'pointer' },
+  visitSelected: { borderColor: '#013826', background: '#e7f4ec', color: '#013826' },
   hint: { margin: '-8px 0 0', color: '#647c75', fontSize: '.76rem', lineHeight: 1.45 },
   error: { padding: '10px 12px', border: '1px solid #fecaca', borderRadius: 9, background: '#fff7f7', color: '#b91c1c', fontSize: '.78rem' },
   footer: { display: 'grid', gap: 10, padding: '16px 24px', borderTop: '1px solid #e2ebe7' },
-  backButton: { minHeight: 51, border: '1px solid #d8e9e1', borderRadius: 12, background: '#fff', color: '#005447', font: 'inherit', fontSize: '.8rem', cursor: 'pointer' },
-  submitButton: { minHeight: 52, border: 0, borderRadius: 12, background: '#005447', color: '#fff', font: 'inherit', fontSize: '.8rem', fontWeight: 700, cursor: 'pointer' },
+  backButton: { minHeight: 51, border: '1px solid #bed6c5', borderRadius: 12, background: '#fff', color: '#013826', font: 'inherit', fontSize: '.8rem', cursor: 'pointer' },
+  submitButton: { minHeight: 52, border: 0, borderRadius: 12, background: '#086b50', color: '#fff', font: 'inherit', fontSize: '.8rem', fontWeight: 700, cursor: 'pointer' },
 };
 
 const statusColor = status => getStatusToneColors(status).dot;
@@ -167,6 +179,8 @@ function Badge({ children, tone }) {
 
 export default function MySchedulePage({ user }) {
   const [appointments, setAppointments] = useState([]);
+  const [approvedRegistrations, setApprovedRegistrations] = useState([]);
+  const [registrationActivityError, setRegistrationActivityError] = useState('');
   const [isDemoSchedule, setIsDemoSchedule] = useState(false);
   const [vaccinations, setVaccinations] = useState([]);
   const [treatments, setTreatments] = useState([]);
@@ -187,7 +201,7 @@ export default function MySchedulePage({ user }) {
   const [billingCatalogLoading, setBillingCatalogLoading] = useState(false);
   const [consultationCompleting, setConsultationCompleting] = useState(false);
   const [showCompletionReview, setShowCompletionReview] = useState(false);
-  const [scheduleTab, setScheduleTab] = useState('today');
+  const [scheduleTab, setScheduleTab] = useState('all');
   const [transferForm, setTransferForm] = useState(initialTransferForm);
   const [transferErrors, setTransferErrors] = useState({});
   const [transferSubmitted, setTransferSubmitted] = useState(false);
@@ -255,53 +269,140 @@ export default function MySchedulePage({ user }) {
   }, [consultationAppointment, user?.token]);
 
   useEffect(() => {
-    if (!user?.token) return;
+    if (!user?.token) return undefined;
+    const controller = new AbortController();
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    let refreshing = false;
+    const loadRegistrations = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const response = await fetch(`${apiUrl}/clinic-records/registration-intakes`, {
+          headers: { Authorization: `Bearer ${user.token}` }, signal: controller.signal,
+        });
+        const rows = await response.json();
+        if (!response.ok || !Array.isArray(rows)) throw new Error('Approved registration activity could not be loaded.');
+        if (controller.signal.aborted) return;
+        setApprovedRegistrations(rows.filter(row => row.status === 'Approved'));
+        setRegistrationActivityError('');
+      } catch (error) {
+        if (error.name !== 'AbortError') setRegistrationActivityError('Approved registration activity could not be loaded.');
+      } finally {
+        refreshing = false;
+      }
+    };
+    loadRegistrations();
+    const stopWatching = watchRegistrationUpdates(loadRegistrations);
+    return () => { controller.abort(); stopWatching(); };
+  }, [user?.token, user?.clinic_id, user?.id]);
+
+  // Load appointments first so the calendar can render without waiting for
+  // activity feeds and dashboard counts.
+  useEffect(() => {
+    if (!user?.token) return undefined;
+    const controller = new AbortController();
     const apiUrl = import.meta.env.VITE_API_URL || '';
     const headers = { Authorization: `Bearer ${user.token}` };
     const clinicQuery = user.clinic_id ? `?clinic_id=${encodeURIComponent(user.clinic_id)}` : '';
-    Promise.all([
-      fetch(`${apiUrl}/clinic-records/appointments`, { headers }),
-      fetch(`${apiUrl}/clinic-records/vaccinations`, { headers }),
-      fetch(`${apiUrl}/clinic-records/treatments`, { headers }),
-      fetch(`${apiUrl}/users`, { headers }),
-      fetch(`${apiUrl}/clinic-records/inpatient-stays${clinicQuery}`, { headers }),
-      fetch(`${apiUrl}/clinic-records/treatment-plans${clinicQuery}`, { headers }),
-    ]).then(async responses => {
-      if (responses.some(response => !response.ok)) throw new Error('Unable to load your schedule.');
-      return Promise.all(responses.map(response => response.json()));
-    }).then(([appointmentRows, vaccinationRows, treatmentRows, userRows, inpatientRows, planRows]) => {
-      const rows = [appointmentRows, vaccinationRows, treatmentRows].map(row => Array.isArray(row) ? row : []);
-      setClinicDoctors(Array.isArray(userRows) ? userRows : []);
-      setInpatientStays(Array.isArray(inpatientRows) ? inpatientRows : []);
-      setTreatmentPlans(Array.isArray(planRows) ? planRows : []);
-      const hasRecords = rows.some(row => row.length > 0);
-      if (!hasRecords) {
-        const demoData = getDemoScheduleData(user.name || 'Doctor');
-        const storageKey = `vetintel:demo-schedule:${user.clinic_id || user.id || 'default'}`;
-        let savedAppointments = [];
-        try {
-          const saved = JSON.parse(window.localStorage.getItem(storageKey) || 'null');
-          if (Array.isArray(saved)) savedAppointments = saved.filter(isDemoAppointment);
-        } catch (storageError) {
-          console.warn('Unable to restore the demo schedule from this browser', storageError);
+    const { from, to } = getScheduleRange();
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const monthStartParam = toDateInputValue(monthStart);
+
+    const get = async path => {
+      const response = await fetch(`${apiUrl}${path}`, { headers, signal: controller.signal });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || `Unable to load schedule data (HTTP ${response.status}).`);
+      return payload;
+    };
+
+    const loadSchedule = async () => {
+      try {
+        const appointmentRows = await get(`/clinic-records/appointments?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        if (!Array.isArray(appointmentRows)) throw new Error('The appointments endpoint returned an invalid response.');
+        if (controller.signal.aborted) return;
+
+        setAppointments(appointmentRows);
+        setIsDemoSchedule(false);
+        setError('');
+        setLoading(false);
+
+        // These requests populate secondary dashboard metrics and activity.
+        // They start only after the appointment calendar is already usable.
+        const secondaryResults = await Promise.allSettled([
+          get(`/clinic-records/vaccinations?from=${monthStartParam}&limit=${ACTIVITY_LIMIT}`),
+          get(`/clinic-records/treatments?from=${monthStartParam}&limit=${ACTIVITY_LIMIT}`),
+          get(`/clinic-records/inpatient-stays${clinicQuery}`),
+          get(`/clinic-records/treatment-plans${clinicQuery}`),
+        ]);
+        if (controller.signal.aborted) return;
+
+        const secondaryError = secondaryResults.find(result => result.status === 'rejected');
+        if (secondaryError) {
+          if (secondaryError.reason?.name !== 'AbortError') {
+            setError(secondaryError.reason?.message || 'Some schedule activity could not be loaded.');
+          }
+          return;
         }
-        const appointmentsById = new Map(demoData.appointments.map(item => [String(item.id), item]));
-        savedAppointments.forEach(item => appointmentsById.set(String(item.id), item));
-        setIsDemoSchedule(true);
-        setAppointments([...appointmentsById.values()]);
-        setVaccinations(demoData.vaccinations);
-        setTreatments(demoData.treatments);
-        return;
+
+        const [vaccinationRows, treatmentRows, inpatientRows, planRows] = secondaryResults.map(result => result.value);
+        if (![vaccinationRows, treatmentRows, inpatientRows, planRows].every(Array.isArray)) {
+          setError('A schedule activity endpoint returned an invalid response.');
+          return;
+        }
+        setVaccinations(vaccinationRows);
+        setTreatments(treatmentRows);
+        setInpatientStays(inpatientRows);
+        setTreatmentPlans(planRows);
+
+        if (!appointmentRows.length && !vaccinationRows.length && !treatmentRows.length) {
+          const demoData = getDemoScheduleData(user.name || 'Doctor');
+          const storageKey = `vetintel:demo-schedule:${user.clinic_id || user.id || 'default'}`;
+          let savedAppointments = [];
+          try {
+            const saved = JSON.parse(window.localStorage.getItem(storageKey) || 'null');
+            if (Array.isArray(saved)) savedAppointments = saved.filter(isDemoAppointment);
+          } catch (storageError) {
+            console.warn('Unable to restore the demo schedule from this browser', storageError);
+          }
+          const appointmentsById = new Map(demoData.appointments.map(item => [String(item.id), item]));
+          savedAppointments.forEach(item => appointmentsById.set(String(item.id), item));
+          setIsDemoSchedule(true);
+          setAppointments([...appointmentsById.values()]);
+          setVaccinations(demoData.vaccinations);
+          setTreatments(demoData.treatments);
+        }
+      } catch (loadError) {
+        if (loadError.name === 'AbortError') return;
+        console.error('Failed to load doctor schedule', loadError);
+        setError(loadError.message || 'Unable to load your schedule.');
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
       }
-      setIsDemoSchedule(false);
-      setAppointments(rows[0]);
-      setVaccinations(rows[1]);
-      setTreatments(rows[2]);
+    };
+
+    loadSchedule();
+
+    return () => controller.abort();
+  }, [user?.token, user?.clinic_id, user?.id, user?.name]);
+
+  // Staff are needed only for the handoff form, so defer this lookup until it opens.
+  useEffect(() => {
+    if (!showTransferModal || !user?.token || clinicDoctors.length) return undefined;
+    const controller = new AbortController();
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    fetch(`${apiUrl}/users`, {
+      headers: { Authorization: `Bearer ${user.token}` },
+      signal: controller.signal,
+    }).then(async response => {
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Unable to load clinic doctors.');
+      if (!Array.isArray(payload)) throw new Error('The clinic staff endpoint returned an invalid response.');
+      setClinicDoctors(payload);
     }).catch(loadError => {
-      console.error('Failed to load doctor schedule', loadError);
-      setError(loadError.message);
-    }).finally(() => setLoading(false));
-  }, [user]);
+      if (loadError.name !== 'AbortError') setTransferNotice(loadError.message || 'Unable to load clinic doctors.');
+    });
+    return () => controller.abort();
+  }, [showTransferModal, user?.token, clinicDoctors.length]);
 
   useEffect(() => {
     if (!isDemoSchedule || !appointments.some(isDemoAppointment)) return;
@@ -315,23 +416,34 @@ export default function MySchedulePage({ user }) {
     }
   }, [appointments, isDemoSchedule, user?.clinic_id, user?.id]);
 
+  // Status refresh.
+  // - Polls every 30s (was 5s), and skips while the browser tab is hidden.
+  // - Only requests the date range shown on this page.
+  // - The 'vetintel:appointment-updated' event still refreshes immediately
+  //   after any status change made in the app.
   useEffect(() => {
     if (!user?.token) return undefined;
 
     const apiUrl = import.meta.env.VITE_API_URL || '';
     const headers = { Authorization: `Bearer ${user.token}` };
+    let refreshing = false;
 
     const refreshAppointments = async () => {
+      if (document.hidden || refreshing) return;
+      refreshing = true;
       try {
-        const response = await fetch(`${apiUrl}/clinic-records/appointments`, { headers });
+        const { from, to } = getScheduleRange();
+        const response = await fetch(
+          `${apiUrl}/clinic-records/appointments?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+          { headers },
+        );
         if (!response.ok) throw new Error('Unable to refresh appointments.');
         const rows = await response.json();
         if (!Array.isArray(rows)) return;
 
-        setAppointments(current => current.map(appointment => {
-          const refreshed = rows.find(row => row.id === appointment.id);
-          return refreshed ? { ...appointment, ...refreshed } : appointment;
-        }));
+        setAppointments(current => {
+          return [...current.filter(isDemoAppointment), ...rows];
+        });
         setSelectedAppointment(current => {
           if (!current) return current;
           const refreshed = rows.find(row => row.id === current.id);
@@ -339,33 +451,48 @@ export default function MySchedulePage({ user }) {
         });
       } catch (refreshError) {
         console.error('Failed to refresh appointment statuses', refreshError);
+      } finally {
+        refreshing = false;
       }
     };
 
     const handleAppointmentUpdate = () => {
       refreshAppointments();
     };
+    const handleVisibilityChange = () => {
+      if (!document.hidden) refreshAppointments();
+    };
     window.addEventListener('vetintel:appointment-updated', handleAppointmentUpdate);
-    const refreshTimer = window.setInterval(refreshAppointments, 5000);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const refreshTimer = window.setInterval(refreshAppointments, REFRESH_INTERVAL_MS);
 
     return () => {
       window.removeEventListener('vetintel:appointment-updated', handleAppointmentUpdate);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.clearInterval(refreshTimer);
     };
-  }, [user]);
+  }, [user?.token]);
 
   const myAppointments = useMemo(() => appointments.filter(item => {
     if (!item.practitioner || !user?.name) return true;
     return item.practitioner.toLowerCase() === user.name.toLowerCase();
-  }), [appointments, user]);
+  }), [appointments, user?.name]);
   const recentClinicalActivities = useMemo(() => [
+    ...approvedRegistrations.map(item => ({
+      id: item.id,
+      pet: item.pet_data?.name,
+      owner: item.owner_data?.name,
+      activity: 'Registration approved',
+      detail: 'New patient registration approved',
+      activityDate: item.updated_at,
+    })),
     ...vaccinations.map(item => ({ ...item, activity: 'Vaccination', detail: item.vaccine_name, activityDate: item.date_given })),
     ...treatments.map(item => ({ ...item, activity: 'Treatment', detail: item.medication, activityDate: item.issued_at })),
-  ].sort((left, right) => (Date.parse(right.activityDate || '') || 0) - (Date.parse(left.activityDate || '') || 0)).slice(0, 6), [vaccinations, treatments]);
+  ].sort((left, right) => (Date.parse(right.activityDate || '') || 0) - (Date.parse(left.activityDate || '') || 0)).slice(0, 6), [approvedRegistrations, vaccinations, treatments]);
   const todayAppointments = myAppointments.filter(item => {
     const date = new Date(item.start_time);
     return date.toDateString() === today.toDateString();
-  });
+  }).sort((left, right) => new Date(left.start_time) - new Date(right.start_time));
   const countableTodayAppointments = todayAppointments.filter(item =>
     ['confirmed', 'scheduled', 'pending'].includes(normalizeAppointmentStatus(item.status))
   );
@@ -396,14 +523,11 @@ export default function MySchedulePage({ user }) {
   // ward assignment. Never invent a status, ward, or cage for display.
   const patients = [...new Map(myAppointments.filter(item => item.pet).map(item => [item.pet, item])).values()].slice(0, 3);
   const scheduleTabs = [
-    { id: 'today', label: "Today's Appointments", records: todayAppointments.filter(item => ['confirmed', 'scheduled'].includes(normalizeAppointmentStatus(item.status))) },
-    { id: 'pending', label: 'Pending', records: myAppointments.filter(item => normalizeAppointmentStatus(item.status) === 'pending') },
-    { id: 'checked_in', label: 'Checked In', records: myAppointments.filter(item => String(item.status || '').toLowerCase() === 'checked_in') },
-    { id: 'rescheduled', label: 'Rescheduled', records: myAppointments.filter(item => String(item.status || '').toLowerCase().includes('resched')) },
-    { id: 'cancelled', label: 'Cancelled', records: myAppointments.filter(item => String(item.status || '').toLowerCase().includes('cancel')) },
-    { id: 'no_show', label: 'No-show', records: myAppointments.filter(item => String(item.status || '').toLowerCase().replace(/[-\s]+/g, '_').includes('no_show')) },
-    { id: 'in_consultation', label: 'In Consultation', records: myAppointments.filter(item => String(item.status || '').toLowerCase().replace(/[-\s]+/g, '_').includes('in_consultation')) },
-    { id: 'completed', label: 'Completed', records: myAppointments.filter(item => String(item.status || '').toLowerCase() === 'completed') },
+    { id: 'all', label: 'All', records: todayAppointments },
+    { id: 'expected', label: 'Expected', records: todayAppointments.filter(item => ['confirmed', 'scheduled', 'pending', 'rescheduled'].includes(normalizeAppointmentStatus(item.status))) },
+    { id: 'checked_in', label: 'Checked In', records: todayAppointments.filter(item => normalizeAppointmentStatus(item.status) === 'checked_in') },
+    { id: 'cancelled', label: 'Cancelled', records: todayAppointments.filter(item => ['cancelled', 'canceled'].includes(normalizeAppointmentStatus(item.status))) },
+    { id: 'no_show', label: 'No Show', records: todayAppointments.filter(item => normalizeAppointmentStatus(item.status) === 'no_show') },
   ];
   const activeScheduleTab = scheduleTabs.find(tab => tab.id === scheduleTab) || scheduleTabs[0];
   const selectedCalendarAppointments = myAppointments.filter(item => new Date(item.start_time).toDateString() === selectedCalendarDate.toDateString());
@@ -788,7 +912,7 @@ export default function MySchedulePage({ user }) {
   return <div style={styles.main}>
     <Topbar user={user} title="My Schedule" subtitle="Your appointments, patients, clinical activity, and patient handoff tools" />
     <div style={styles.page}>
-      {isDemoSchedule && <div role="status" style={{ marginBottom: 14, padding: '11px 14px', border: '1px solid #b7e4d7', borderRadius: 9, background: '#e7f5f2', color: '#005447', fontSize: '.8rem' }}>Demo schedule: changes are stored in this browser only and are not saved to clinic records.</div>}
+      {isDemoSchedule && <div role="status" style={{ marginBottom: 14, padding: '11px 14px', border: '1px solid #b7e4d7', borderRadius: 9, background: '#e7f4ec', color: '#013826', fontSize: '.8rem' }}>Demo schedule: changes are stored in this browser only and are not saved to clinic records.</div>}
       <section style={styles.hero}>
         <div style={styles.avatar}>{(user?.initials || user?.name || 'DR').slice(0, 2).toUpperCase()}</div>
         <div>
@@ -800,7 +924,7 @@ export default function MySchedulePage({ user }) {
 
       <div style={styles.stats}>
         {[
-          [Icons.calendar, '#e7f5f2', "Today's Appointments", countableTodayAppointments.length, 'Confirmed and pending'],
+          [Icons.calendar, '#e7f4ec', "Today's Appointments", countableTodayAppointments.length, 'Confirmed and pending'],
           [Icons.syringe, '#d9efea', 'Vaccinations Given', vaccinationsGivenThisMonth.length, 'Given this month'],
           [Icons.stethoscope, '#cce8e1', 'Treatments Prescribed', treatmentsIssuedThisMonth.length, 'Issued this month'],
           [Icons.activity, '#bde0d7', 'Active Patients', activePatientCount, 'Inpatient + active treatment plans'],
@@ -822,11 +946,12 @@ export default function MySchedulePage({ user }) {
           })}
         </div><div style={styles.listTitle}>{selectedCalendarDate.toDateString() === today.toDateString() ? `TODAY — ${formatLongDate(selectedCalendarDate)}` : selectedCalendarDate.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase()} — {selectedCalendarAppointments.length} APPOINTMENTS</div><div style={styles.calendarList}>{selectedCalendarAppointments.map(item => <div className="schedule-list-item" style={styles.miniRow} key={item.id}><span style={{ ...styles.dot, background: statusColor(item.status) }} /><div style={styles.miniDetails}><strong style={styles.miniPatient}>{item.pet || 'Patient'}</strong><small style={styles.miniAppointmentDetails}>{formatTime(item.start_time)} · {item.reason || 'Appointment'}</small></div></div>)}</div></section>
 
-        <section style={styles.card}><div style={styles.cardHeader}><h3 style={styles.heading}>Today's Schedule</h3><span style={styles.date}>{today.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span></div><div style={styles.scheduleTabs}>{scheduleTabs.map(tab => <button type="button" key={tab.id} onClick={() => setScheduleTab(tab.id)} style={{ ...styles.scheduleTab, ...(scheduleTab === tab.id ? styles.scheduleTabActive : {}) }}>{tab.label}{tab.records.length > 0 && <span style={styles.scheduleTabCount}>{tab.records.length}</span>}</button>)}</div><div style={styles.scheduleList}>{activeScheduleTab.records.map(item => <button type="button" className="schedule-list-item" style={{ ...styles.appointment, ...styles.appointmentButton }} key={item.id} onClick={() => setSelectedAppointment(item)}><div style={styles.time}>{formatTime(item.start_time)}</div><span style={{ ...styles.timelineDot, borderColor: statusColor(item.status) }} /><div style={styles.appointmentBody}><strong style={styles.appointmentPatient}>{item.pet || 'Patient'}</strong><small style={styles.appointmentOwner}>{item.owner || '—'} · {item.reason || 'Appointment'}</small><StatusIndicator status={item.status || 'confirmed'} /></div></button>)}{!activeScheduleTab.records.length && <div style={styles.emptySchedule}>No {activeScheduleTab.label.toLowerCase()} appointments.</div>}</div></section>
+        <section style={styles.card}><div style={{ ...styles.cardHeader, alignItems: 'center', gap: 12, marginBottom: 16 }}><div><h3 style={{ ...styles.heading, marginBottom: 6 }}>Today's Schedule</h3><span style={styles.date}>{today.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}{user?.name ? ` ? ${user.name}` : ''}</span></div><span style={{ ...styles.scheduleTabCount, whiteSpace: 'nowrap', padding: '4px 8px' }}>{todayAppointments.length} {todayAppointments.length === 1 ? 'appointment' : 'appointments'}</span></div><div style={styles.scheduleTabs}>{scheduleTabs.map(tab => <button type="button" key={tab.id} onClick={() => setScheduleTab(tab.id)} aria-pressed={scheduleTab === tab.id} style={{ ...styles.scheduleTab, ...(scheduleTab === tab.id ? styles.scheduleTabActive : {}) }}>{tab.label}{tab.records.length > 0 && <span style={styles.scheduleTabCount}>{tab.records.length}</span>}</button>)}</div><div style={styles.scheduleList}>{activeScheduleTab.records.map(item => <button type="button" className="schedule-list-item" style={{ ...styles.appointment, ...styles.appointmentButton }} key={item.id} onClick={() => setSelectedAppointment(item)}><div style={styles.time}>{formatTime(item.start_time)}</div><span style={{ ...styles.timelineDot, borderColor: statusColor(item.status) }} /><div style={styles.appointmentBody}><strong style={styles.appointmentPatient}>{item.pet || 'Patient'}</strong><small style={styles.appointmentOwner}>{item.owner || '—'} · {item.reason || 'Appointment'}</small><StatusIndicator status={item.status || 'confirmed'} /></div></button>)}{!activeScheduleTab.records.length && <div style={styles.emptySchedule}>{activeScheduleTab.id === 'all' ? 'No appointments today.' : `No ${activeScheduleTab.label.toLowerCase()} appointments today.`}</div>}</div></section>
 
         <section style={styles.card}><h3 style={styles.heading}>My Active Patients</h3>{patients.map(item => <div className="schedule-list-item" style={styles.patient} key={item.pet}><div style={styles.patientDetails}><div style={styles.patientTitle}><strong style={styles.patientName}>{item.pet}</strong><StatusIndicator status={item.status || 'Active'} /></div><small style={styles.patientSubtext}>Owner: {item.owner || '—'}</small></div><button type="button" style={styles.handoff} onClick={() => openHandoffForPatient(item)}><span style={styles.buttonIcon}>{Icons.transfer}</span> Handoff</button></div>)}{!patients.length && <div style={styles.emptySchedule}>No active patients are recorded.</div>}</section>
         <section style={styles.card}>
           <h3 style={styles.heading}>Recent Clinical Activity</h3>
+          {registrationActivityError && <p role="alert" style={{ color: '#b42318', fontSize: '.78rem' }}>{registrationActivityError}</p>}
           {(showAllRecentActivities ? recentClinicalActivities : recentClinicalActivities.slice(0, 3)).map(item => (
             <article
               className="schedule-list-item"
@@ -845,7 +970,7 @@ export default function MySchedulePage({ user }) {
                 <Badge tone={{ color: '#08783e', background: '#e7f5ec', border: '1px solid #b7e4d7' }}>{item.activity}</Badge>
               </div>
               <div style={{ height: 1, margin: '10px 0', background: '#dbe4e0' }} />
-              <strong style={{ display: 'block', color: '#005447', fontSize: '.88rem' }}>{item.detail || 'Clinical record'}</strong>
+              <strong style={{ display: 'block', color: '#013826', fontSize: '.88rem' }}>{item.detail || 'Clinical record'}</strong>
               <small style={{ display: 'block', marginTop: 7, color: '#475569', fontSize: '.78rem' }}>{formatActivityDate(item.activityDate)}</small>
               <small style={{ display: 'block', marginTop: 5, color: '#475569', fontSize: '.78rem' }}>Owner: {item.owner || item.pet_owner || '—'}</small>
             </article>
@@ -855,7 +980,7 @@ export default function MySchedulePage({ user }) {
             type="button"
             aria-expanded={showAllRecentActivities}
             onClick={() => setShowAllRecentActivities(expanded => !expanded)}
-            style={{ display: 'block', width: '100%', border: 0, padding: '8px 0 0', background: 'transparent', color: '#005447', font: 'inherit', fontSize: '.78rem', fontWeight: 700, textAlign: 'center', cursor: 'pointer' }}
+            style={{ display: 'block', width: '100%', border: 0, padding: '8px 0 0', background: 'transparent', color: '#013826', font: 'inherit', fontSize: '.78rem', fontWeight: 700, textAlign: 'center', cursor: 'pointer' }}
           >
             {showAllRecentActivities ? 'Show less' : `Show all ${recentClinicalActivities.length} activities`}
           </button>}
@@ -956,7 +1081,7 @@ export default function MySchedulePage({ user }) {
             <div style={styles.detailsGrid}>
               <div><span style={styles.detailLabel}>Pet</span><strong style={styles.detailValue}>{selectedAppointment.pet || 'Patient'}</strong></div>
               <div><span style={styles.detailLabel}>Owner</span><strong style={styles.detailValue}>{selectedAppointment.owner || selectedAppointment.pet_owner || '—'}</strong></div>
-              <div><span style={styles.detailLabel}>Type</span><span style={styles.detailValue}><Badge tone={{ color: '#193a32', background: '#fff', border: '1px solid #d8e9e1' }}>{type}</Badge></span></div>
+              <div><span style={styles.detailLabel}>Type</span><span style={styles.detailValue}><Badge tone={{ color: '#193a32', background: '#fff', border: '1px solid #bed6c5' }}>{type}</Badge></span></div>
               <div><span style={styles.detailLabel}>Status</span><span style={styles.detailValue}><StatusIndicator status={status === 'checked_in' ? 'Checked In' : selectedAppointment.status} /></span></div>
               <div><span style={styles.detailLabel}>◷ &nbsp;Time</span><strong style={styles.detailValue}>{formatTime(selectedAppointment.start_time)} · {getAppointmentDuration(selectedAppointment)}</strong></div>
               <div><span style={styles.detailLabel}>Room</span><strong style={styles.detailValue}>{selectedAppointment.room || selectedAppointment.room_name || 'Room not assigned'}</strong></div>
@@ -1034,19 +1159,19 @@ export default function MySchedulePage({ user }) {
           <div style={styles.modalField}>
             Hydration
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-              {['Normal', 'Mild deficit', 'Moderate deficit'].map(value => <button key={value} type="button" aria-pressed={consultationForm.hydration === value} onClick={() => updateConsultationField('hydration', value)} style={{ ...styles.modalActionButton, borderColor: consultationForm.hydration === value ? '#005447' : '#d8e9e1', background: consultationForm.hydration === value ? '#e7f5f2' : '#fff', color: consultationForm.hydration === value ? '#005447' : '#38534c' }}>{value}</button>)}
+              {['Normal', 'Mild deficit', 'Moderate deficit'].map(value => <button key={value} type="button" aria-pressed={consultationForm.hydration === value} onClick={() => updateConsultationField('hydration', value)} style={{ ...styles.modalActionButton, borderColor: consultationForm.hydration === value ? '#013826' : '#bed6c5', background: consultationForm.hydration === value ? '#e7f4ec' : '#fff', color: consultationForm.hydration === value ? '#013826' : '#38534c' }}>{value}</button>)}
             </div>
           </div>
           <div style={styles.modalField}>
             Diagnosis status
             <div style={{ display: 'flex', gap: 7 }}>
-              {['Suspected', 'Confirmed'].map(value => <button key={value} type="button" aria-pressed={consultationForm.diagnosisStatus === value} onClick={() => updateConsultationField('diagnosisStatus', value)} style={{ ...styles.modalActionButton, borderColor: consultationForm.diagnosisStatus === value ? '#005447' : '#d8e9e1', background: consultationForm.diagnosisStatus === value ? '#e7f5f2' : '#fff', color: consultationForm.diagnosisStatus === value ? '#005447' : '#38534c' }}>{value}</button>)}
+              {['Suspected', 'Confirmed'].map(value => <button key={value} type="button" aria-pressed={consultationForm.diagnosisStatus === value} onClick={() => updateConsultationField('diagnosisStatus', value)} style={{ ...styles.modalActionButton, borderColor: consultationForm.diagnosisStatus === value ? '#013826' : '#bed6c5', background: consultationForm.diagnosisStatus === value ? '#e7f4ec' : '#fff', color: consultationForm.diagnosisStatus === value ? '#013826' : '#38534c' }}>{value}</button>)}
             </div>
           </div>
           <div style={styles.modalField}>
             Severity
             <div style={{ display: 'flex', gap: 7 }}>
-              {['Mild', 'Moderate', 'Severe'].map(value => <button key={value} type="button" aria-pressed={consultationForm.severity === value} onClick={() => updateConsultationField('severity', value)} style={{ ...styles.modalActionButton, borderColor: consultationForm.severity === value ? '#005447' : '#d8e9e1', background: consultationForm.severity === value ? '#e7f5f2' : '#fff', color: consultationForm.severity === value ? '#005447' : '#38534c' }}>{value}</button>)}
+              {['Mild', 'Moderate', 'Severe'].map(value => <button key={value} type="button" aria-pressed={consultationForm.severity === value} onClick={() => updateConsultationField('severity', value)} style={{ ...styles.modalActionButton, borderColor: consultationForm.severity === value ? '#013826' : '#bed6c5', background: consultationForm.severity === value ? '#e7f4ec' : '#fff', color: consultationForm.severity === value ? '#013826' : '#38534c' }}>{value}</button>)}
             </div>
           </div>
           </>}
@@ -1141,18 +1266,18 @@ const consultationStyles = {
 const styles = {
   main: { flex: 1, overflowY: 'auto', background: '#f8fafc', fontFamily: "'DM Sans', sans-serif" },
   page: { padding: '24px 26px', color: '#0f172a' },
-  hero: { display: 'flex', alignItems: 'center', gap: 14, padding: '22px 24px', borderRadius: 12, background: 'linear-gradient(110deg,#005447,#243d8f)', color: '#fff' },
+  hero: { display: 'flex', alignItems: 'center', gap: 14, padding: '22px 24px', borderRadius: 12, background: 'linear-gradient(110deg,#013826,#243d8f)', color: '#fff' },
   avatar: { width: 54, height: 54, borderRadius: '50%', background: 'rgba(255,255,255,.2)', display: 'grid', placeItems: 'center', fontSize: '1.2rem', fontWeight: 700 },
   heroTitle: { margin: 0, fontSize: '1.35rem' }, heroSub: { marginTop: 4, color: '#d8f4e8', fontSize: '.8rem' }, heroMeta: { display: 'flex', gap: 15, marginTop: 12, color: '#e0e7ff', fontSize: '.7rem' }, heroMetaIcon: { display: 'inline-flex', width: 14, height: 14, marginRight: 5, verticalAlign: 'middle' },
   transfer: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', border: 0, borderRadius: 7, background: '#fff', color: '#2551be', fontWeight: 600 }, buttonIcon: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, fontSize: '1rem', lineHeight: 1 }, 
-  stats: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, margin: '20px 0' }, stat: { display: 'flex', alignItems: 'center', gap: 10, padding: 18, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 11 }, statIcon: { display: 'grid', placeItems: 'center', flex: '0 0 30px', width: 30, height: 30, borderRadius: 8, color: '#005447' }, statLabel: { color: '#64748b', fontSize: '.72rem' }, statValue: { display: 'block', marginTop: 4, fontSize: '1.25rem' }, statSub: { color: '#9aaaca', fontSize: '.66rem' },
+  stats: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, margin: '20px 0' }, stat: { display: 'flex', alignItems: 'center', gap: 10, padding: 18, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 11 }, statIcon: { display: 'grid', placeItems: 'center', flex: '0 0 30px', width: 30, height: 30, borderRadius: 8, color: '#013826' }, statLabel: { color: '#64748b', fontSize: '.72rem' }, statValue: { display: 'block', marginTop: 4, fontSize: '1.25rem' }, statSub: { color: '#9aaaca', fontSize: '.66rem' },
   workspace: { marginBottom: 18, padding: '14px 16px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 11 }, workspaceHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }, workspaceTitle: { margin: 0, color: '#334155', fontSize: '.84rem' }, workspaceMeta: { display: 'block', marginTop: 3, color: '#8292ad', fontSize: '.7rem' }, completedMeta: { color: '#8292ad', fontSize: '.7rem' }, workspaceRow: { display: 'flex', alignItems: 'center', gap: 10, minHeight: 48, padding: '8px 10px', marginTop: 7, border: '1px solid #f1f5f9', borderRadius: 8, background: '#fafbfc' }, workspacePendingRow: { background: '#fffaf0', borderColor: '#fde68a' }, workspaceCompletedRow: { background: '#f0fdf4', borderColor: '#bbf7d0' }, workspaceDot: { width: 8, height: 8, flex: '0 0 8px', borderRadius: '50%' }, workspaceDetails: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 7, rowGap: 2, minWidth: 0, flex: 1, fontSize: '.76rem' }, workspaceDetailsStrong: { color: '#0f172a', fontSize: '.8rem' }, workspaceDetailsSpan: { color: '#64748b' }, workspaceDetailsEm: { width: '100%', overflow: 'hidden', color: '#718096', fontSize: '.7rem', fontStyle: 'italic', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, workspaceButton: { padding: '6px 9px', border: '1px solid #cbd5e1', borderRadius: 7, background: '#fff', color: '#475569', fontSize: '.7rem', cursor: 'pointer', whiteSpace: 'nowrap' }, workspacePrimaryButton: { padding: '6px 9px', border: 0, borderRadius: 7, background: '#0f1020', color: '#fff', fontSize: '.7rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
-  grid: { display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 18 }, card: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 11, padding: 20, minHeight: 160 }, heading: { margin: '0 0 16px', fontSize: '.95rem' }, cardHeader: { display: 'flex', justifyContent: 'space-between' }, calendarHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' }, calendarHeaderHeading: {}, calendarControls: { display: 'flex', alignItems: 'center', gap: 10, marginTop: -14 }, iconButton: { border: 0, background: 'transparent', color: '#8292ad', fontSize: '1.3rem', cursor: 'pointer' }, todayButton: { border: 0, background: 'transparent', color: '#005447', fontSize: '.78rem', cursor: 'pointer' }, date: { color: '#7183a1', fontSize: '.8rem' },
-  week: { display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, borderBottom: '1px solid #e2e8f0', paddingBottom: 15 }, day: { display: 'grid', justifyItems: 'center', gap: 5, padding: '8px 3px', border: 0, color: '#7183a1', background: 'transparent', font: 'inherit', fontSize: '.68rem', borderRadius: 8, cursor: 'pointer' }, selectedDay: { background: '#005447', color: '#fff' }, appointmentCount: { color: '#ef4444', fontSize: '.72rem', fontWeight: 800, lineHeight: 1 },
+  grid: { display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 18 }, card: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 11, padding: 20, minHeight: 160 }, heading: { margin: '0 0 16px', fontSize: '.95rem' }, cardHeader: { display: 'flex', justifyContent: 'space-between' }, calendarHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' }, calendarHeaderHeading: {}, calendarControls: { display: 'flex', alignItems: 'center', gap: 10, marginTop: -14 }, iconButton: { border: 0, background: 'transparent', color: '#8292ad', fontSize: '1.3rem', cursor: 'pointer' }, todayButton: { border: 0, background: 'transparent', color: '#013826', fontSize: '.78rem', cursor: 'pointer' }, date: { color: '#7183a1', fontSize: '.8rem' },
+  week: { display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, borderBottom: '1px solid #e2e8f0', paddingBottom: 15 }, day: { display: 'grid', justifyItems: 'center', gap: 5, padding: '8px 3px', border: 0, color: '#7183a1', background: 'transparent', font: 'inherit', fontSize: '.68rem', borderRadius: 8, cursor: 'pointer' }, selectedDay: { background: '#086b50', color: '#fff' }, appointmentCount: { color: '#ef4444', fontSize: '.72rem', fontWeight: 800, lineHeight: 1 },
   listTitle: { margin: '14px 0 9px', color: '#8292ad', fontSize: '.76rem', fontWeight: 700 }, calendarList: { maxHeight: 230, overflowY: 'auto', paddingRight: 4 }, miniRow: { display: 'flex', alignItems: 'center', width: '100%', boxSizing: 'border-box', gap: 10, padding: '9px 10px', marginBottom: 6, border: 0, textAlign: 'left', background: '#f8fafc', borderRadius: 7, cursor: 'pointer' }, dot: { width: 8, height: 8, flex: '0 0 8px', borderRadius: '50%' }, miniDetails: { flex: 1, minWidth: 0 }, miniPatient: { display: 'block', fontSize: '.92rem', lineHeight: 1.25, fontWeight: 700 }, miniAppointmentDetails: { display: 'block', marginTop: 4, color: '#475569', fontSize: '.8rem', lineHeight: 1.35, fontWeight: 400 },
-  scheduleTabs: { display: 'flex', flexWrap: 'wrap', gap: 5, margin: '-3px 0 14px', paddingBottom: 10, borderBottom: '1px solid #eef2f7' }, scheduleTab: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 8px', border: 0, borderRadius: 7, background: 'transparent', color: '#64748b', fontSize: '.68rem', cursor: 'pointer' }, scheduleTabActive: { background: '#e7f5f2', color: '#005447', fontWeight: 700 }, scheduleTabCount: { minWidth: 16, padding: '1px 4px', borderRadius: 10, background: '#e2e8f0', color: '#475569', fontSize: '.62rem', textAlign: 'center' }, emptySchedule: { padding: '24px 12px', textAlign: 'center', color: '#64748b', fontSize: '.8rem' },
+  scheduleTabs: { display: 'flex', flexWrap: 'wrap', gap: 5, margin: '-3px 0 14px', paddingBottom: 10, borderBottom: '1px solid #eef2f7' }, scheduleTab: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: '1px solid #dce5df', borderRadius: 999, background: 'transparent', color: '#64748b', fontSize: '.68rem', cursor: 'pointer' }, scheduleTabActive: { background: '#e7f4ec', color: '#013826', fontWeight: 700 }, scheduleTabCount: { minWidth: 16, padding: '1px 4px', borderRadius: 10, background: '#e2e8f0', color: '#475569', fontSize: '.62rem', textAlign: 'center' }, emptySchedule: { padding: '24px 12px', textAlign: 'center', color: '#64748b', fontSize: '.8rem' },
   appointment: { display: 'flex', alignItems: 'center', gap: 11, padding: '11px 13px', border: '1px solid #e2e8f0', borderRadius: 11, marginBottom: 8 }, appointmentButton: { width: '100%', boxSizing: 'border-box', textAlign: 'left', background: '#fff', cursor: 'pointer', font: 'inherit' }, time: { width: 54, flex: '0 0 54px', fontWeight: 700, fontSize: '.8rem', color: '#475569' }, timelineDot: { width: 9, height: 9, flex: '0 0 9px', border: '2px solid', borderRadius: '50%' }, appointmentBody: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 7, minWidth: 0, flex: 1 }, appointmentPatient: { fontSize: '.94rem', fontWeight: 700 }, appointmentOwner: { width: '100%', color: '#475569', fontSize: '.78rem', fontStyle: 'normal' }, appointmentNotes: { width: '100%', color: '#475569', fontSize: '.78rem' }, scheduleActions: { width: '100%', display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 5 }, modalActions: { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 20 }, modalActionButton: { padding: '8px 11px', border: '1px solid #cbd5e1', borderRadius: 7, background: '#fff', color: '#334155', fontSize: '.76rem', cursor: 'pointer' }, modalPrimaryAction: { padding: '8px 11px', border: 0, borderRadius: 7, background: '#0f1020', color: '#fff', fontSize: '.76rem', fontWeight: 600, cursor: 'pointer' }, disabledAction: { opacity: .5, cursor: 'not-allowed' }, checkInNotice: { marginTop: 16, padding: '10px 12px', border: '1px solid #fde68a', borderRadius: 8, background: '#fffbeb', color: '#92400e', fontSize: '.76rem' }, badge: { display: 'inline-flex', padding: '4px 9px', borderRadius: 7, fontSize: '.72rem', fontWeight: 600 },
   scheduleList: { maxHeight: 220, overflowY: 'auto', paddingRight: 4 },
-  patient: { display: 'flex', alignItems: 'center', gap: 11, padding: 11, border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 8 }, patientIcon: { width: 32, height: 32, padding: 7, borderRadius: 7, flex: '0 0 32px' }, patientDetails: { minWidth: 0, flex: 1, fontSize: '.8rem' }, patientTitle: { display: 'flex', alignItems: 'center', gap: 6 }, patientName: { fontSize: '.94rem', fontWeight: 700 }, patientSubtext: { display: 'block', color: '#475569', fontSize: '.8rem', marginTop: 4 }, handoff: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, border: 0, background: 'transparent', color: '#005447', fontSize: '.78rem', cursor: 'pointer' },
-  activity: { display: 'flex', gap: 11, marginBottom: 14, padding: 3 }, activityIcon: { width: 32, height: 32, padding: 7, color: '#9333ea', background: '#f3e8ff', borderRadius: 8, flex: '0 0 32px' }, activityDetails: { minWidth: 0, flex: 1, fontSize: '.8rem' }, activityTitle: { display: 'flex', alignItems: 'center', gap: 6 }, activityName: { fontSize: '.94rem', fontWeight: 700 }, activitySubtext: { display: 'block', color: '#475569', fontSize: '.8rem', marginTop: 4 }, table: { width: '100%', fontSize: '.8rem' }, tableRowHeader: { display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr 1.5fr 1.5fr 1fr', gap: 12, padding: '9px 6px', color: '#64748b', fontWeight: 700, borderBottom: '1px solid #e2e8f0' }, tableRow: { display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr 1.5fr 1.5fr 1fr', gap: 12, alignItems: 'center', padding: '11px 6px', color: '#475569', borderBottom: '1px solid #eef2f7' },   petTableIcon: { width: 17, height: 17, display: 'inline-block', marginRight: 7, color: '#94a3b8', verticalAlign: 'middle' }, appointmentModal: { display: 'flex', flexDirection: 'column', width: 'min(680px, 100%)', maxHeight: 'calc(100vh - 24px)', overflow: 'hidden', borderRadius: 14, background: '#fff', boxShadow: '0 18px 50px rgba(15,23,42,.25)' }, appointmentModalBody: { overflowY: 'auto', padding: '20px 22px' }, appointmentModalActions: { display: 'grid', gap: 9, padding: '16px 22px', borderTop: '1px solid #e2ebe7', background: '#fff' }, appointmentInfoPanel: { marginTop: 12, padding: '14px 16px', borderRadius: 13, background: '#f3f8f6' }, appointmentActionRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }, appointmentPrimaryAction: { width: '100%', minHeight: 52, padding: '12px 14px', border: 0, borderRadius: 12, background: '#005447', color: '#fff', font: 'inherit', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer' }, appointmentPrimaryDisabled: { background: '#9bcbbd', cursor: 'not-allowed' }, appointmentSecondaryAction: { width: '100%', minHeight: 49, padding: '11px 13px', border: '1px solid #d8e9e1', borderRadius: 12, background: '#fff', color: '#005447', font: 'inherit', fontSize: '.78rem', cursor: 'pointer' }, appointmentDangerAction: { borderColor: '#fca5a5', color: '#dc2626' },     consultationModal: { width: 'min(760px, 100%)', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', padding: '22px 24px 24px', borderRadius: 10, background: '#e9eeeb', boxShadow: '0 18px 50px rgba(15,23,42,.32)' }, reviewModal: { width: 'min(520px, 100%)', padding: '22px 24px 24px', borderRadius: 10, background: '#fff', boxShadow: '0 18px 50px rgba(15,23,42,.25)' }, consultationContext: { display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 12px', borderRadius: 8, background: '#c8dfd7', color: '#003b32', fontSize: '.76rem' }, consultationGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px', marginTop: 16 }, reviewSummary: { display: 'grid', gap: 10, marginTop: 14, padding: 14, borderRadius: 8, background: '#f8fafc', color: '#334155', fontSize: '.78rem', lineHeight: 1.45 }, detailsGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '17px 24px' }, detailLabel: { display: 'block', marginBottom: 6, color: '#526663', fontSize: '.78rem' }, detailValue: { display: 'flex', alignItems: 'center', gap: 6, color: '#102b24', fontSize: '.9rem' }, detailIcon: { display: 'inline-flex', width: 15, height: 15, color: '#475569' }, notesPanel: { marginTop: 16, padding: '13px 12px', borderRadius: 10, background: '#f1f5f9' }, notesText: { margin: 0, color: '#193a32', fontSize: '.88rem', lineHeight: 1.5 }, transferOutline: { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 12px', border: '1px solid #86d7b4', borderRadius: 8, background: '#fff', color: '#005447', font: 'inherit', fontSize: '.78rem', cursor: 'pointer' }, transferConfirmation: { marginTop: 4, padding: '13px 12px', border: '1px solid #86efac', borderRadius: 9, background: '#f0fdf4', color: '#166534', fontSize: '.78rem', lineHeight: 1.45 }, transferToast: { position: 'fixed', top: 18, right: 18, zIndex: 120, display: 'flex', alignItems: 'flex-start', gap: 10, width: 'min(355px, calc(100vw - 36px))', padding: '16px 14px', border: '1px solid #e2e8f0', borderRadius: 9, background: '#fff', color: '#111827', boxShadow: '0 8px 24px rgba(15,23,42,.12)', fontSize: '.78rem', lineHeight: 1.45 }, toastIcon: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 17px', width: 17, height: 17, color: '#fff', background: '#111827', borderRadius: '50%' }, modalOverlay: { position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, background: 'rgba(25, 43, 38, .48)' }, transferModal: { width: 'min(520px, 100%)', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', padding: '22px 24px 24px', borderRadius: 10, background: '#fff', boxShadow: '0 18px 50px rgba(15,23,42,.25)' }, modalHeader: { display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 14 }, modalTitle: { margin: 0, fontSize: '1.12rem', fontWeight: 700, color: '#102b24' }, modalSubtitle: { margin: '4px 0 0', maxWidth: 440, color: '#647c75', fontSize: '.82rem', lineHeight: 1.45 }, modalClose: { width: 24, height: 24, padding: 0, border: 0, background: 'transparent', color: '#58716b', fontSize: '1.5rem', lineHeight: 1, cursor: 'pointer' }, transferNotice: { display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 15, padding: '12px 14px', border: '1px solid #b7e4d7', borderRadius: 9, background: '#e7f5f2', color: '#005447', fontSize: '.78rem', lineHeight: 1.45 }, noticeIcon: { flex: '0 0 auto', color: '#005447', fontSize: '1.1rem' }, modalField: { display: 'block', marginBottom: 13, color: '#111827', fontSize: '.78rem', fontWeight: 600 }, required: { marginLeft: 2, color: '#dc2626' }, modalControl: { display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 5, padding: '9px 12px', border: '1px solid transparent', borderRadius: 8, outline: 0, background: '#e2e6e4', color: '#111827', font: 'inherit', fontWeight: 400 }, modalTextarea: { display: 'block', width: '100%', minHeight: 64, boxSizing: 'border-box', marginTop: 5, padding: '10px 12px', border: '1px solid transparent', borderRadius: 8, outline: 0, resize: 'vertical', background: '#e2e6e4', color: '#111827', font: 'inherit', fontWeight: 400, lineHeight: 1.45 }, invalidControl: { border: '1px solid #ef4444', background: '#fff7f7' }, fieldError: { display: 'block', marginTop: 4, color: '#dc2626', fontSize: '.7rem', fontWeight: 500 }, modalFooter: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }, modalCancel: { padding: '8px 13px', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', color: '#374151', font: 'inherit', fontSize: '.78rem', cursor: 'pointer' }, modalConfirm: { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 12px', border: 0, borderRadius: 8, background: '#003b32', color: '#fff', font: 'inherit', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer' }, error: { padding: 12, marginBottom: 14, color: '#b91c1c', background: '#fee2e2', borderRadius: 8 }, loading: { padding: 40, textAlign: 'center', color: '#64748b' },
+  patient: { display: 'flex', alignItems: 'center', gap: 11, padding: 11, border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 8 }, patientIcon: { width: 32, height: 32, padding: 7, borderRadius: 7, flex: '0 0 32px' }, patientDetails: { minWidth: 0, flex: 1, fontSize: '.8rem' }, patientTitle: { display: 'flex', alignItems: 'center', gap: 6 }, patientName: { fontSize: '.94rem', fontWeight: 700 }, patientSubtext: { display: 'block', color: '#475569', fontSize: '.8rem', marginTop: 4 }, handoff: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, border: 0, background: 'transparent', color: '#013826', fontSize: '.78rem', cursor: 'pointer' },
+  activity: { display: 'flex', gap: 11, marginBottom: 14, padding: 3 }, activityIcon: { width: 32, height: 32, padding: 7, color: '#9333ea', background: '#f3e8ff', borderRadius: 8, flex: '0 0 32px' }, activityDetails: { minWidth: 0, flex: 1, fontSize: '.8rem' }, activityTitle: { display: 'flex', alignItems: 'center', gap: 6 }, activityName: { fontSize: '.94rem', fontWeight: 700 }, activitySubtext: { display: 'block', color: '#475569', fontSize: '.8rem', marginTop: 4 }, table: { width: '100%', fontSize: '.8rem' }, tableRowHeader: { display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr 1.5fr 1.5fr 1fr', gap: 12, padding: '9px 6px', color: '#64748b', fontWeight: 700, borderBottom: '1px solid #e2e8f0' }, tableRow: { display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr 1.5fr 1.5fr 1fr', gap: 12, alignItems: 'center', padding: '11px 6px', color: '#475569', borderBottom: '1px solid #eef2f7' },   petTableIcon: { width: 17, height: 17, display: 'inline-block', marginRight: 7, color: '#94a3b8', verticalAlign: 'middle' }, appointmentModal: { display: 'flex', flexDirection: 'column', width: 'min(680px, 100%)', maxHeight: 'calc(100vh - 24px)', overflow: 'hidden', borderRadius: 14, background: '#fff', boxShadow: '0 18px 50px rgba(15,23,42,.25)' }, appointmentModalBody: { overflowY: 'auto', padding: '20px 22px' }, appointmentModalActions: { display: 'grid', gap: 9, padding: '16px 22px', borderTop: '1px solid #e2ebe7', background: '#fff' }, appointmentInfoPanel: { marginTop: 12, padding: '14px 16px', borderRadius: 13, background: '#f3f8f6' }, appointmentActionRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }, appointmentPrimaryAction: { width: '100%', minHeight: 52, padding: '12px 14px', border: 0, borderRadius: 12, background: '#086b50', color: '#fff', font: 'inherit', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer' }, appointmentPrimaryDisabled: { background: '#9bcbbd', cursor: 'not-allowed' }, appointmentSecondaryAction: { width: '100%', minHeight: 49, padding: '11px 13px', border: '1px solid #bed6c5', borderRadius: 12, background: '#fff', color: '#013826', font: 'inherit', fontSize: '.78rem', cursor: 'pointer' }, appointmentDangerAction: { borderColor: '#fca5a5', color: '#dc2626' },     consultationModal: { width: 'min(760px, 100%)', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', padding: '22px 24px 24px', borderRadius: 10, background: '#e9eeeb', boxShadow: '0 18px 50px rgba(15,23,42,.32)' }, reviewModal: { width: 'min(520px, 100%)', padding: '22px 24px 24px', borderRadius: 10, background: '#fff', boxShadow: '0 18px 50px rgba(15,23,42,.25)' }, consultationContext: { display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 12px', borderRadius: 8, background: '#c8dfd7', color: '#003b32', fontSize: '.76rem' }, consultationGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px', marginTop: 16 }, reviewSummary: { display: 'grid', gap: 10, marginTop: 14, padding: 14, borderRadius: 8, background: '#f8fafc', color: '#334155', fontSize: '.78rem', lineHeight: 1.45 }, detailsGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '17px 24px' }, detailLabel: { display: 'block', marginBottom: 6, color: '#526663', fontSize: '.78rem' }, detailValue: { display: 'flex', alignItems: 'center', gap: 6, color: '#102b24', fontSize: '.9rem' }, detailIcon: { display: 'inline-flex', width: 15, height: 15, color: '#475569' }, notesPanel: { marginTop: 16, padding: '13px 12px', borderRadius: 10, background: '#f1f5f9' }, notesText: { margin: 0, color: '#193a32', fontSize: '.88rem', lineHeight: 1.5 }, transferOutline: { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 12px', border: '1px solid #86d7b4', borderRadius: 8, background: '#fff', color: '#013826', font: 'inherit', fontSize: '.78rem', cursor: 'pointer' }, transferConfirmation: { marginTop: 4, padding: '13px 12px', border: '1px solid #86efac', borderRadius: 9, background: '#f0fdf4', color: '#166534', fontSize: '.78rem', lineHeight: 1.45 }, transferToast: { position: 'fixed', top: 18, right: 18, zIndex: 120, display: 'flex', alignItems: 'flex-start', gap: 10, width: 'min(355px, calc(100vw - 36px))', padding: '16px 14px', border: '1px solid #e2e8f0', borderRadius: 9, background: '#fff', color: '#111827', boxShadow: '0 8px 24px rgba(15,23,42,.12)', fontSize: '.78rem', lineHeight: 1.45 }, toastIcon: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 17px', width: 17, height: 17, color: '#fff', background: '#111827', borderRadius: '50%' }, modalOverlay: { position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, background: 'rgba(25, 43, 38, .48)' }, transferModal: { width: 'min(520px, 100%)', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', padding: '22px 24px 24px', borderRadius: 10, background: '#fff', boxShadow: '0 18px 50px rgba(15,23,42,.25)' }, modalHeader: { display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 14 }, modalTitle: { margin: 0, fontSize: '1.12rem', fontWeight: 700, color: '#102b24' }, modalSubtitle: { margin: '4px 0 0', maxWidth: 440, color: '#647c75', fontSize: '.82rem', lineHeight: 1.45 }, modalClose: { width: 24, height: 24, padding: 0, border: 0, background: 'transparent', color: '#58716b', fontSize: '1.5rem', lineHeight: 1, cursor: 'pointer' }, transferNotice: { display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 15, padding: '12px 14px', border: '1px solid #b7e4d7', borderRadius: 9, background: '#e7f4ec', color: '#013826', fontSize: '.78rem', lineHeight: 1.45 }, noticeIcon: { flex: '0 0 auto', color: '#013826', fontSize: '1.1rem' }, modalField: { display: 'block', marginBottom: 13, color: '#111827', fontSize: '.78rem', fontWeight: 600 }, required: { marginLeft: 2, color: '#dc2626' }, modalControl: { display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 5, padding: '9px 12px', border: '1px solid transparent', borderRadius: 8, outline: 0, background: '#e2e6e4', color: '#111827', font: 'inherit', fontWeight: 400 }, modalTextarea: { display: 'block', width: '100%', minHeight: 64, boxSizing: 'border-box', marginTop: 5, padding: '10px 12px', border: '1px solid transparent', borderRadius: 8, outline: 0, resize: 'vertical', background: '#e2e6e4', color: '#111827', font: 'inherit', fontWeight: 400, lineHeight: 1.45 }, invalidControl: { border: '1px solid #ef4444', background: '#fff7f7' }, fieldError: { display: 'block', marginTop: 4, color: '#dc2626', fontSize: '.7rem', fontWeight: 500 }, modalFooter: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }, modalCancel: { padding: '8px 13px', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', color: '#374151', font: 'inherit', fontSize: '.78rem', cursor: 'pointer' }, modalConfirm: { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 12px', border: 0, borderRadius: 8, background: '#003b32', color: '#fff', font: 'inherit', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer' }, error: { padding: 12, marginBottom: 14, color: '#b91c1c', background: '#fee2e2', borderRadius: 8 }, loading: { padding: 40, textAlign: 'center', color: '#64748b' },
 };

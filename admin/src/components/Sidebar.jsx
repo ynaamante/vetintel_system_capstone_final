@@ -7,29 +7,26 @@ const ALL_NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard',              icon: 'grid',     section: 'Disease Intelligence', checkPermission: 'Intelligence Dashboard' },
   { id: 'disease',   label: 'Disease Monitoring',     icon: 'activity', dot: true },
   { id: 'risk',      label: 'Risk Monitoring',         icon: 'shield'   },
-  { id: 'analytics', label: 'Community Analytics',    icon: 'users'    },
   { id: 'reports',   label: 'Reports',                icon: 'file'     },
-  { id: 'sync',      label: 'Data Sync Status',       icon: 'refresh'  },
   // Clinic Management
   { id: 'clinics',   label: 'Clinic Overview',         icon: 'building', section: 'Clinic Management' },
   { id: 'users',     label: 'User Management',         icon: 'users',   checkPermission: 'User & Role Management' },
   { id: 'roles',     label: 'Roles & Permissions',     icon: 'lock',    checkPermission: 'User & Role Management' },
   { id: 'financial', label: 'Financial Monitoring',   icon: 'dollar'   },
-  { id: 'inventory', label: 'Inventory Management',   icon: 'archive', ownerOnly: true },
   { id: 'services',  label: 'Services Management',    icon: 'settings', ownerOnly: true },
+  { id: 'client-mgmt', label: 'Client Management', icon: 'users' },
   { id: 'audit',     label: 'Audit Trail',            icon: 'list'     },
   // Clinic Records
   { id: 'schedule',  label: 'My Schedule',             icon: 'calendar', section: 'Clinical Records', doctorOnly: true },
   { id: 'patient-intakes', label: 'Patient Intakes',   icon: 'clipboard', doctorOnly: true },
   { id: 'clinic',    label: 'Local Clinic Records',   icon: 'building', checkPermission: 'Pet Profiles' },
   { id: 'patient-records', label: 'Patient Records',   icon: 'file', doctorOnly: true },
+  { id: 'reminders', label: 'Due Dates & Reminders', icon: 'bell', doctorOnly: true },
   // Operations
   { id: 'patient-registration', label: 'New Patient Registration', icon: 'clipboard', section: 'Operations', receptionistOnly: true },
   { id: 'appointments', label: 'Appointment Management', icon: 'calendar', receptionistOnly: true },
   { id: 'patient-queue', label: 'Patient Queue', icon: 'users', receptionistOnly: true },
   { id: 'billing', label: 'Billing & Payments', icon: 'dollar', receptionistOnly: true },
-  { id: 'client-mgmt', label: 'Client Management', icon: 'users', receptionistOnly: true },
-  { id: 'reminders', label: 'Due Dates & Reminders', icon: 'bell', receptionistOnly: true },
 ];
 
 const isDoctorRole = role => ['doctor', 'assistant_doctor', 'veterinarian'].includes(String(role || '').trim().toLowerCase().replace(/[-\s]+/g, '_'));
@@ -62,7 +59,7 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
   return (
     <>
       {isMobile && !collapsed && <div style={s.backdrop} onClick={onNavigate} />}
-      <div className="admin-sidebar" style={{ ...s.sidebar, ...(collapsed ? s.sidebarCollapsed : {}), ...(isMobile ? s.mobileSidebar : {}), ...(!collapsed && isMobile ? s.mobileSidebarOpen : {}) }}>
+      <div className={`admin-sidebar admin-sidebar-${roleName}`} style={{ ...s.sidebar, ...(collapsed ? s.sidebarCollapsed : {}), ...(isMobile ? s.mobileSidebar : {}), ...(!collapsed && isMobile ? s.mobileSidebarOpen : {}) }}>
       <div style={{ ...s.brandRow, ...(collapsed ? s.brandRowCollapsed : {}) }}>
         {collapsed ? (
           <button
@@ -107,14 +104,11 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
       )}
 
       {NAV.map(item => (
-        <div
-          key={item.id}
-          className={item.id === 'schedule' ? 'sidebar-clinical-section' : undefined}
-        >
-          {item.section && !collapsed && <div style={s.section}>{item.section}</div>}
+        <div key={item.id} className={item.id === 'schedule' ? 'sidebar-clinical-section' : undefined}>
+          {item.section && !collapsed && <div className={`sidebar-section${item.section === 'Clinic Management' ? ' sidebar-section-clinic-management' : ''}`} style={s.section}>{item.section}</div>}
           <div
-            className={`sidebar-nav-item${active === item.id ? ' active' : ''}`}
-            style={{ ...s.item, ...(collapsed ? s.itemCollapsed : {}), ...(active === item.id ? s.itemActive : {}) }}
+            className={`sidebar-nav-item${(active === item.id || (item.id === 'services' && active === 'inventory')) ? ' active' : ''}`}
+            style={{ ...s.item, ...(collapsed ? s.itemCollapsed : {}), ...((active === item.id || (item.id === 'services' && active === 'inventory')) ? s.itemActive : {}) }}
             onClick={() => navigate(item.id)}
             title={collapsed ? item.label : undefined}
           >
@@ -132,25 +126,22 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
 
       {['owner', 'doctor', 'receptionist'].includes(roleName) && (
         <div
-          className={`sidebar-nav-item${active === 'inbox' ? ' active' : ''}`}
-          style={{ ...s.item, ...(collapsed ? s.itemCollapsed : {}), ...s.inboxItem, ...(active === 'inbox' ? s.itemActive : {}) }}
+          className={`sidebar-nav-item sidebar-inbox-item${active === 'inbox' ? ' active' : ''}`}
+          style={{ ...s.item, ...(collapsed ? s.itemCollapsed : {}), ...(roleName === 'owner' ? s.inboxOwnerItem : s.inboxItem), ...(active === 'inbox' ? s.itemActive : {}) }}
           onClick={() => navigate('inbox')}
           title={collapsed ? 'Shared Inbox' : undefined}
         >
           <span className="sidebar-icon sidebar-inbox-icon" style={{ ...s.icon, ...(collapsed ? s.iconCollapsed : {}) }}>
             {Icons.mail}
-            {collapsed && <span style={s.collapsedInboxCount}>3</span>}
+            
           </span>
           {!collapsed && <span>Shared Inbox</span>}
-          {!collapsed && <span style={s.inboxCount}>3</span>}
+          
         </div>
       )}
 
       <div style={s.actions}>
-        <div className="sidebar-action" style={s.action}>
-          <span style={s.icon}>{Icons.settings}</span>
-          {!collapsed && 'Settings'}
-        </div>
+        <button type="button" className={`sidebar-action${active === 'settings' ? ' active' : ''}`} style={{ ...s.action, width: '100%', border: 0, background: active === 'settings' ? '#0a966b' : 'transparent', textAlign: 'left', ...(collapsed ? { justifyContent: 'center', padding: '10px 0' } : {}) }} onClick={() => navigate('settings')} aria-current={active === 'settings' ? 'page' : undefined} aria-label="Settings" title={collapsed ? 'Settings' : undefined}><span style={s.icon}>{Icons.settings}</span>{!collapsed && 'Settings'}</button>
         {collapsed && (
           <button type="button" className="sidebar-action" style={s.action} onClick={onLogout} aria-label="Sign out" title="Sign out">
             <span style={s.icon}>{Icons.logout}</span>
@@ -203,8 +194,9 @@ const s = {
   section:    { padding: '13px 10px 5px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.95)', letterSpacing: '.08em', textTransform: 'uppercase' },
   item:       { display: 'flex', alignItems: 'center', gap: 12, minHeight: 42, padding: '9px 11px', margin: '1px 0', borderRadius: 11, color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', position: 'relative', whiteSpace: 'nowrap', transition: 'background .15s ease, color .15s ease, transform .15s ease' },
   itemCollapsed: { justifyContent: 'center', gap: 0, minHeight: 41, padding: 6, margin: '0 0 0' },
-  itemActive: { background: '#39a98f', color: '#fff', boxShadow: 'none', fontWeight: 700 },
+  itemActive: { background: '#0a966b', color: '#fff', boxShadow: 'none', fontWeight: 700 },
   inboxItem: { margin: '0 0 8px', color: '#fff' },
+  inboxOwnerItem: { margin: '16px 0 8px', color: '#fff' },
   inboxCount: { marginLeft: 'auto', minWidth: 21, height: 21, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 11, background: '#f45128', color: '#fff', fontSize: 11, fontWeight: 700 },
   icon:       { width: 18, height: 18, flexShrink: 0, display: 'flex', alignItems: 'center', opacity: 1 },
   iconCollapsed: { width: 20, height: 20, justifyContent: 'center' },

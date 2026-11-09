@@ -1,11 +1,17 @@
+import '../components/patientOverview.css';
+import PatientIntakeSummary from '../components/PatientIntakeSummary';
+import PatientDiagnosisPanel from '../components/PatientDiagnosisPanel';
+import { dateFilterValue } from '../utils/dateFilters';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
+import ClinicAttachmentImage from '../components/ClinicAttachmentImage';
 import VaccinationRecordDrawer, { VaccinationVerificationDialog } from '../components/VaccinationRecordDrawer';
 import FilterSelect from '../components/FilterSelect';
 import LabDateTimePicker from '../components/LabDateTimePicker';
-import { LabResultsTab } from './clinic/ClinicLayout';
+import DateRangePopoverFields from '../components/DateRangePopoverFields';
+import { LabResultsTab, TreatmentPlansTab } from './clinic/ClinicLayout';
 import { PatientMedicationsPanel, PatientTreatmentRecordsPanel } from './clinic/TreatmentsAndPlans';
 import { Icons } from '../icons';
 import { notifySuccess } from '../utils/notifications';
@@ -24,18 +30,7 @@ function calculateAge(value) {
   return years ? `${years} yr${months ? ` ${months} mo` : ''}` : `${months} mo`;
 }
 
-function toDateInput(value) {
-  if (!value) return '';
-  const text = String(value).trim();
-  const isoDate = /^(\d{4}-\d{2}-\d{2})/.exec(text);
-  if (isoDate) return isoDate[1];
-  const date = new Date(text);
-  if (Number.isNaN(date.getTime())) return '';
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
+const toDateInput = dateFilterValue;
 
 function formatBirthDate(value) {
   return formatDateText(value, 'en-GB', value || '');
@@ -61,15 +56,41 @@ function getVaccinationFamily(value) {
 }
 
 function getAppointmentVisitType(value) {
-  const reason = String(value || '').toLowerCase();
+  const appointment = value && typeof value === 'object' ? value : { reason: value };
+  let notes = appointment.notes || {};
+  if (typeof notes === 'string') {
+    try { notes = JSON.parse(notes); } catch { notes = {}; }
+  }
+  const reason = [
+    appointment.reason,
+    appointment.type,
+    appointment.workflow_type,
+    notes.service_category,
+    notes.service_name,
+    notes.vaccination_type,
+  ].filter(Boolean).join(' ').toLowerCase();
   if (/vaccin|rabies/.test(reason)) return 'Vaccination';
   if (/lab|blood|test|culture|radiograph|x-ray|ultrasound|histopathology/.test(reason)) return 'Laboratory';
   if (/dental|tooth|oral/.test(reason)) return 'Dental';
   if (/surgery|surgical|spay|neuter|sacculectomy|hernia|mastectomy|gastrotomy|colopexy/.test(reason)) return 'Surgery';
-  if (/treatment|procedure|wound|injection|catheter|groom|bath|trimming|cleaning|deworm|confinement|oxygen|monitoring/.test(reason)) return 'Treatment';
+  if (/confinement|inpatient|hospitali[sz]ation/.test(reason)) return 'Confinement';
+  if (/groom|bath|trimming/.test(reason)) return 'Grooming';
+  if (/treatment|procedure|wound|injection|catheter|cleaning|deworm|oxygen|monitoring/.test(reason)) return 'Treatment';
   if (/follow[- ]?up/.test(reason)) return 'Follow-up';
   if (/check[- ]?up|wellness|consultation/.test(reason)) return 'Check-up';
   return 'Check-up';
+}
+
+function getAppointmentNotes(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+  if (typeof value !== 'string' || !value.trim()) return {};
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+  } catch {
+    return { internal_notes: value };
+  }
+  return { internal_notes: value };
 }
 
 function formatVaccinationTableDate(value) {
@@ -77,49 +98,8 @@ function formatVaccinationTableDate(value) {
   return formatDateText(value, undefined, String(value));
 }
 
-const RECORDS = [
-  { id: 'PAT-INT-003', name: 'Nala', species: 'Dog', breed: 'Golden Retriever', age: '5 yr 3 mo', birthDate: '30 June 2021', weight: '27 kg', owner: 'Grace Villanueva', lastVisit: '8 September 2026', nextAppointment: 'None scheduled', alert: '', status: 'Active', avatar: '🐕', color: '#f4e8dd', gender: 'Female', colorName: 'Golden', phone: '+63 917 555 0133', email: 'grace.villanueva@email.com', address: 'Santa Maria, Bulacan', microchip: 'Not recorded', vaccination: 'Up to date', vaccinationDue: '12 December 2026', weightTarget: '27 kg', lastVisitAgo: '22 days ago', veterinarian: 'Dr. Santos', recentVisits: [{ date: '8 September 2026', title: 'Annual wellness check', doctor: 'Dr. Santos' }, { date: '12 December 2025', title: 'Rabies vaccination', doctor: 'Dr. Torres' }, { date: '10 June 2025', title: 'Dental check-up', doctor: 'Dr. Santos' }], notes: 'Friendly during examinations. Continue routine wellness checks.', vaccinations: [{ date: '12 December 2025', title: 'Rabies vaccination', doctor: 'Dr. Torres', status: 'Completed' }, { date: '10 June 2025', title: 'DHPP booster', doctor: 'Dr. Santos', status: 'Completed' }], medications: [{ date: 'Current', title: 'No active prescriptions', doctor: 'Medication review', status: 'Reviewed' }], medicalHistory: [{ date: '8 September 2026', title: 'Annual wellness examination', doctor: 'Dr. Santos', status: 'Normal' }, { date: '10 June 2025', title: 'Dental check-up', doctor: 'Dr. Santos', status: 'Completed' }], treatmentPlans: [{ date: '8 September 2026', title: 'Routine preventive wellness', doctor: 'Dr. Santos', status: 'Active' }], files: [{ date: '8 September 2026', title: 'Annual wellness summary.pdf', doctor: 'Dr. Santos', status: 'Available' }, { date: '12 December 2025', title: 'Rabies vaccination record.pdf', doctor: 'Dr. Torres', status: 'Available' }], labResults: [{ date: '8 September 2026', title: 'Wellness Blood Panel', doctor: 'Dr. Santos', status: 'Normal' }], inpatientHistory: [] },
-  { id: 'PAT-001', name: 'Buddy', species: 'Dog', breed: 'Golden Retriever', age: '4 yr 6 mo', weight: '28 kg', owner: 'John Smith', lastVisit: '15 March 2022', nextAppointment: '5 October 2026', alert: 'Penicillin allergy', status: 'Active', avatar: '🐕', color: '#efe4d7', gender: 'Male', phone: '+63 917 123 4567', email: 'john.smith@email.com', address: '123 Maple St., Santa Maria, Bulacan', microchip: 'Not recorded', vaccination: 'Up to date', vaccinationDue: '1 June 2027', weightTarget: '≤ 27 kg', lastVisitAgo: '2 yr ago', appointmentType: 'Hip follow-up', veterinarian: 'Dr. Torres', medicalAlerts: ['Penicillin allergy', 'Certain flea-control topicals'], recentVisits: [{ date: '15 March 2022', title: 'Annual check-up', doctor: 'Dr. Torres' }, { date: '10 January 2022', title: 'Vaccination (Rabies)', doctor: 'Dr. Torres' }, { date: '05 October 2021', title: 'Skin issue', doctor: 'Dr. Santos' }] },
-  { id: 'PAT-002', name: 'Luna', species: 'Cat', breed: 'Persian', age: '3 yr 2 mo', birthDate: '30 July 2023', weight: '4.2 kg', owner: 'Sarah Johnson', lastVisit: '2 July 2023', nextAppointment: 'None scheduled', alert: '', status: 'Active', avatar: '🐈', color: '#e7e6e3', gender: 'Female', colorName: 'Silver', phone: '+63 917 555 0168', email: 'sarah.johnson@email.com', address: 'Meycauayan, Bulacan', microchip: '985141000482116', vaccination: 'Due soon', vaccinationDue: '15 October 2026', weightTarget: '4.0 kg', lastVisitAgo: '3 yr ago', veterinarian: 'Dr. Reyes', recentVisits: [{ date: '2 July 2023', title: 'Initial wellness check', doctor: 'Dr. Reyes' }, { date: '2 July 2023', title: 'Core vaccination', doctor: 'Dr. Reyes' }], notes: 'Indoor cat. Owner reports a healthy appetite.' },
-  { id: 'PAT-003', name: 'Max', species: 'Dog', breed: 'Labrador', age: '4 yr 10 mo', birthDate: '30 November 2021', weight: '32 kg', owner: 'Mike Davis', lastVisit: '28 August 2026', nextAppointment: 'None scheduled', alert: '', status: 'Active', avatar: '🐈‍⬛', color: '#e9e4dc', gender: 'Male', colorName: 'Black', phone: '+63 917 555 0124', email: 'mike.davis@email.com', address: 'Quezon City, Metro Manila', microchip: '985141000378421', vaccination: 'Up to date', vaccinationDue: '28 August 2027', weightTarget: '30 kg', lastVisitAgo: '1 month ago', veterinarian: 'Dr. Torres', recentVisits: [{ date: '28 August 2026', title: 'Weight and wellness review', doctor: 'Dr. Torres' }, { date: '12 February 2026', title: 'Annual vaccination', doctor: 'Dr. Torres' }], notes: 'Gradual weight management plan discussed with owner.' },
-  { id: 'PAT-004', name: 'Mochi', species: 'Cat', breed: 'Domestic Shorthair', age: '3 yr 8 mo', birthDate: '30 January 2023', weight: '3.8 kg', owner: 'Emma Wilson', lastVisit: '20 August 2026', nextAppointment: 'None scheduled', alert: '', status: 'Active', avatar: '🐈', color: '#f0e5db', gender: 'Female', colorName: 'Calico', phone: '+63 917 555 0190', email: 'emma.wilson@email.com', address: 'Malolos, Bulacan', microchip: 'Not recorded', vaccination: 'Up to date', vaccinationDue: '20 August 2027', weightTarget: '3.8 kg', lastVisitAgo: '1 month ago', veterinarian: 'Dr. Santos', recentVisits: [{ date: '20 August 2026', title: 'Routine wellness check', doctor: 'Dr. Santos' }, { date: '20 August 2025', title: 'Vaccination (Rabies)', doctor: 'Dr. Santos' }], notes: 'No current concerns reported.' },
-  { id: 'PAT-005', name: 'Rocky', species: 'Dog', breed: 'Dog (Aspin)', age: '6 yr 4 mo', birthDate: '30 May 2020', weight: '18 kg', owner: 'David Brown', lastVisit: '10 June 2026', nextAppointment: 'None scheduled', alert: '', status: 'Archived', avatar: '🐕', color: '#efe6d9', gender: 'Male', colorName: 'Brown and white', phone: '+63 917 555 0116', email: 'david.brown@email.com', address: 'San Jose del Monte, Bulacan', microchip: '985141000294518', vaccination: 'Review needed', vaccinationDue: '10 June 2026', weightTarget: '18 kg', lastVisitAgo: '3 months ago', veterinarian: 'Dr. Reyes', recentVisits: [{ date: '10 June 2026', title: 'Skin irritation review', doctor: 'Dr. Reyes' }, { date: '14 November 2025', title: 'General check-up', doctor: 'Dr. Reyes' }], notes: 'Archived patient profile. Contact owner before reactivation.' },
-];
-
-const PATIENT_VISIT_MOCKS = [
-  { date: '8 September 2026', title: 'Annual wellness check', doctor: 'Dr. Santos', visitType: 'Check-up', status: 'Completed', isMock: true },
-  { date: '12 December 2025', title: 'Rabies vaccination visit', doctor: 'Dr. Torres', visitType: 'Vaccination', status: 'Completed', isMock: true },
-  { date: '10 June 2025', title: 'Dental check-up', doctor: 'Dr. Santos', visitType: 'Dental', status: 'Completed', isMock: true },
-];
-
-const PATIENT_VISIT_MOCK_DETAILS = {
-  '8 September 2026|Annual wellness check': {
-    visitType: 'Check-up',
-    reason: 'Sample annual wellness examination.',
-    chiefComplaint: 'Routine wellness check with no urgent concern in this demo.',
-    vitals: [['Weight', '4.8 kg'], ['Temperature', '38.4 °C'], ['Heart rate', '108 bpm'], ['Respiratory rate', '24/min']],
-    assessment: ['Sample examination findings for layout preview.', 'Use actual clinician observations for real records.'],
-    plan: ['Continue routine preventive care.', 'Schedule follow-up based on real examination findings.'],
-  },
-  '12 December 2025|Rabies vaccination visit': {
-    visitType: 'Vaccination',
-    reason: 'Sample scheduled rabies vaccination visit.',
-    chiefComplaint: 'Routine vaccine visit shown for demonstration.',
-    vitals: [['Weight', '4.6 kg'], ['Temperature', '38.3 °C'], ['Heart rate', '104 bpm'], ['Respiratory rate', '22/min']],
-    assessment: ['Sample pre-vaccination examination; not a real clinical finding.'],
-    plan: ['Compare vaccine details with the physical sticker before verification.'],
-  },
-  '10 June 2025|Dental check-up': {
-    visitType: 'Dental',
-    reason: 'Sample preventive dental examination.',
-    chiefComplaint: 'Routine oral health check shown for demonstration.',
-    vitals: [['Weight', '4.4 kg'], ['Temperature', '38.2 °C'], ['Heart rate', '110 bpm'], ['Respiratory rate', '24/min']],
-    assessment: ['Sample dental notes for UI preview only.'],
-    plan: ['Record real oral examination and home-care recommendations during an actual visit.'],
-  },
-};
-
 const styles = `
+  .admin-content:has(> .patient-records-page) { scrollbar-gutter: stable; }
   .patient-records-page { min-height: 100%; background: #f5f9fa; color: #174253; font-family: 'DM Sans', sans-serif; }
   .patient-records-page * { box-sizing: border-box; }
   .patient-records-page .records-topbar { min-height: 58px; padding: 7px 18px; background: #fff; }
@@ -130,13 +110,13 @@ const styles = `
   .patient-records-page .records-topbar h2 { font-size: 22px !important; }
   .patient-records-page .records-topbar p { font-size: 13px !important; }
   .patient-records-page .records-content { padding: 12px 13px 10px; }
-  .patient-records-page .records-add { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 0 14px; border: 0; border-radius: 7px; background: #005447; color: #fff; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 5px #00544722; }
+  .patient-records-page .records-add { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 0 14px; border: 0; border-radius: 7px; background: #086b50; color: #fff; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 5px #075F4F22; }
   .patient-records-page .records-add svg { width: 13px; height: 13px; }
   .patient-records-page .records-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin-bottom: 10px; }
   .patient-records-page .records-stat { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 64px; padding: 8px 10px; border: 1px solid #e2edf1; border-radius: 9px; background: #fff; box-shadow: 0 2px 7px #173f4b06; }
-  .patient-records-page .records-stat-icon { display: grid; flex: 0 0 30px; width: 30px; height: 30px; place-items: center; border-radius: 8px; color: #005447; }
+  .patient-records-page .records-stat-icon { display: grid; flex: 0 0 30px; width: 30px; height: 30px; place-items: center; border-radius: 8px; color: #013826; }
   .patient-records-page .records-stat-icon svg { width: 16px; height: 16px; }
-  .patient-records-page .stat-blue { background: #e7f5f2; }
+  .patient-records-page .stat-blue { background: #e7f4ec; }
   .patient-records-page .stat-green { background: #d9efea; }
   .patient-records-page .stat-amber { background: #cce8e1; }
   .patient-records-page .stat-purple { background: #bde0d7; }
@@ -157,7 +137,7 @@ const styles = `
   .patient-records-page .patient-archive-tabs button.active span { background: #e0f3ec; color: #076b5b; }
   .patient-records-page .records-view-toggle { display: flex; flex: 0 0 auto; gap: 3px; margin-left: auto; padding: 2px; border: 1px solid #e4edf0; border-radius: 6px; }
   .patient-records-page .records-view-toggle button { display: grid; width: 20px; height: 20px; place-items: center; padding: 0; border: 0; border-radius: 4px; background: #fff; color: #91a7b4; cursor: pointer; }
-  .patient-records-page .records-view-toggle button[aria-pressed="true"] { background: #005447; color: #fff; }
+  .patient-records-page .records-view-toggle button[aria-pressed="true"] { background: #086b50; color: #fff; }
   .patient-records-page .records-view-toggle svg { width: 12px; height: 12px; }
   .patient-records-page .records-list-heading { margin: 0 2px 8px; color: #111820; font-size: 16px; font-weight: 750; }
   .patient-records-page .records-table-wrap { overflow-x: auto; border: 1px solid #dfebef; border-radius: 9px; background: #fff; box-shadow: 0 2px 7px #173f4b06; }
@@ -292,7 +272,7 @@ const styles = `
   .patient-records-page:has(.visit-detail-panel) .records-detail-topbar,
   .patient-records-page:has(.medication-detail-panel) .records-detail,
   .patient-records-page:has(.medication-detail-panel) .records-detail-topbar { width: 100%; }
-  .patient-records-page .records-back { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 12px; padding: 0; border: 0; background: transparent; color: #005447; font: inherit; font-size: 14px; cursor: pointer; }
+  .patient-records-page .records-back { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 12px; padding: 0; border: 0; background: transparent; color: #013826; font: inherit; font-size: 14px; cursor: pointer; }
   .patient-records-page .records-back svg { width: 15px; height: 15px; transform: rotate(180deg); }
   .patient-records-page .detail-hero { display: flex; align-items: center; gap: 15px; min-width: 0; }
   .patient-records-page .detail-avatar { width: 88px; height: 88px; flex: 0 0 88px; border: 1px solid #e2ece9; border-radius: 50%; object-fit: cover; }
@@ -316,15 +296,17 @@ const styles = `
   .patient-records-page .detail-summary-label { color: #4c6674; font-size: 12px; }
   .patient-records-page .detail-summary-value { margin-top: 4px; color: #152f3a; font-size: 15px; font-weight: 700; }
   .patient-records-page .detail-summary-note { margin-top: 3px; color: #334155; font-size: 11px; }
-  .patient-records-page .detail-tabs { display: flex; overflow-x: auto; gap: 0; margin: 0 0 12px; border: 1px solid #e1ebef; border-radius: 9px; background: #fff; }
-  .patient-records-page .detail-tab { flex: 0 0 auto; padding: 11px 13px; border: 0; border-right: 1px solid #edf2f3; background: transparent; color: #263b45; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
-  .patient-records-page .detail-tab.active { background: #005f50; color: #fff; }
+  .patient-records-page .detail-tabs { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 3px; margin: 0 0 14px; padding: 2px; border: 1px solid #dceee5; border-radius: 13px; background: linear-gradient(180deg,#f5fbf7 0%,#e8f4ed 52%,#d5e9de 100%); }
+  .patient-records-page .detail-tab { flex: 1 0 auto; min-width: max-content; display: inline-flex; justify-content: center; align-items: center; gap: 6px; height: 40px; padding: 8px 9px; border: 0; border-radius: 10px; background: transparent; color: #141e19; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; line-height: 1.25; transition: background .15s, color .15s; }
+  .patient-records-page .detail-tab:hover { background: #ffffff75; }
+  .patient-records-page .detail-tab.active { background: linear-gradient(150deg,#168b52,#006d3d 70%,#087741); color: #fff; box-shadow: inset 0 1px 0 #ffffff30,0 1px 3px #0b633820; }
+  .patient-records-page .detail-tab:focus-visible { outline: 2px solid #087741; outline-offset: -3px; }
   .patient-records-page .detail-columns { display: grid; grid-template-columns: 1.05fr 1fr; gap: 12px; }
   .patient-records-page .detail-column { display: grid; align-content: start; gap: 12px; min-width: 0; }
   .patient-records-page .detail-panel { padding: 13px; border: 1px solid #e1ebef; border-radius: 9px; background: #fff; }
   .patient-records-page .detail-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; color: #152f3a; font-size: 15px; font-weight: 700; }
   .patient-records-page .detail-edit { display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; border: 1px solid #dce8ec; border-radius: 6px; background: #fff; color: #263b45; font: inherit; font-size: 11px; cursor: pointer; }
-  .patient-records-page .detail-edit.patient-primary-add { min-height: 34px; padding: 0 11px; border-color: #005447; background: #005447; color: #fff; font-size: 12px; font-weight: 650; }
+  .patient-records-page .detail-edit.patient-primary-add { min-height: 34px; padding: 0 11px; border-color: #013826; background: #086b50; color: #fff; font-size: 12px; font-weight: 650; }
   .patient-records-page .detail-edit.patient-primary-add:hover:not(:disabled) { border-color: #064e3b; background: #064e3b; }
   .patient-records-page .detail-edit.patient-primary-add:disabled { opacity: .55; cursor: not-allowed; }
   .patient-records-page .detail-edit svg { width: 12px; height: 12px; }
@@ -338,7 +320,7 @@ const styles = `
   .patient-records-page .detail-owner-avatar svg { width: 22px; height: 22px; }
   .patient-records-page .detail-owner-info { display: grid; gap: 5px; color: #263b45; font-size: 12px; }
   .patient-records-page .detail-appointment { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px; border-radius: 8px; background: #effaf7; color: #263b45; }
-  .patient-records-page .detail-appointment-date { padding: 8px; border-radius: 7px; background: #d9f7eb; color: #005447; text-align: center; font-size: 12px; font-weight: 700; }
+  .patient-records-page .detail-appointment-date { padding: 8px; border-radius: 7px; background: #d9f7eb; color: #013826; text-align: center; font-size: 12px; font-weight: 700; }
   .patient-records-page .detail-appointment-name { font-size: 13px; font-weight: 700; }
   .patient-records-page .detail-appointment-meta { margin-top: 4px; color: #40545e; font-size: 11px; }
   .patient-records-page .detail-visits { display: grid; }
@@ -359,21 +341,48 @@ const styles = `
   .patient-records-page .visit-list-status .status-indicator-dot { width: 8px; height: 8px; flex-basis: 8px; }
   .patient-records-page .detail-visit-chevron { color: #758b91; font-size: 18px; }
   .patient-records-page .record-side-panel-backdrop { position: fixed; z-index: 39; inset: 0; background: rgba(15, 38, 42, .18); }
-  .patient-records-page .visit-detail-panel { position: fixed; z-index: 40; inset: 0 0 0 auto; display: flex; width: min(560px, 100vw); flex-direction: column; border-left: 1px solid #dce8e5; background: #fff; color: #173d37; box-shadow: -10px 0 32px rgba(20, 48, 43, .12); }
+  .patient-records-page .visit-detail-panel { position: fixed; z-index: 40; inset: 0 0 0 auto; display: flex; width: min(460px, 100vw); flex-direction: column; border-left: 1px solid #dce8e5; background: #fff; color: #173d37; box-shadow: -10px 0 32px rgba(20, 48, 43, .12); }
   .patient-records-page .visit-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 22px 14px; border-bottom: 1px solid #e1ebe8; }
-  .patient-records-page .visit-detail-back { display: inline-flex; min-height: 32px; align-items: center; gap: 7px; margin: -4px 0 8px; padding: 0; border: 0; background: transparent; color: #087967; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .patient-records-page .visit-detail-back { display: inline-flex; min-height: 32px; align-items: center; gap: 7px; margin: -4px 0 8px; padding: 0; border: 0; background: transparent; color: #086b50; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
   .patient-records-page .visit-detail-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
   .patient-records-page .visit-detail-title-row h2 { margin: 0; color: #183b36; font-size: 21px; line-height: 1.3; }
   .patient-records-page .visit-detail-meta { margin-top: 6px; color: #334155; font-size: 13px; }
   .patient-records-page .visit-detail-status { gap: 7px; padding: 0; border-radius: 0; background: transparent; font-size: 14px; font-weight: 600; }
   .patient-records-page .visit-detail-status .status-indicator-dot { width: 8px; height: 8px; flex-basis: 8px; }
-  .patient-records-page .visit-detail-close { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border: 0; border-radius: 11px; background: #f0f6f4; color: #385b55; cursor: pointer; }
-  .patient-records-page .visit-detail-close { font-size: 21px; line-height: 1; }
-  .patient-records-page .visit-detail-body { flex: 1; overflow-y: auto; padding: 18px 22px 22px; }
+  .patient-records-page .visit-detail-close { display: grid; min-width: 52px; height: 32px; flex: 0 0 auto; place-items: center; padding: 0 10px; border: 0; border-radius: 9px; background: #f0f6f4; color: #385b55; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .patient-records-page .visit-detail-body { flex: 1; overflow-y: auto; padding: 14px 18px 18px; }
   .patient-records-page .visit-detail-intro { display: grid; gap: 14px; padding-bottom: 15px; border-bottom: 1px solid #e9efed; }
+  .patient-records-page .visit-information-section { padding-top: 0; }
+  .patient-records-page .visit-detail-rows { overflow: hidden; border: 1px solid #dfe8e7; border-radius: 7px; background: #f5f8f9; }
+  .patient-records-page .visit-detail-rows > div { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-height: 22px; align-items: center; padding: 4px 9px; color: #334155; font-size: 12px; }
+  .patient-records-page .visit-detail-rows > div + div { border-top: 1px solid #e3e9e9; }
+  .patient-records-page .visit-detail-rows strong { min-width: 0; color: #263d39; font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
+  .patient-records-page .visit-detail-rows .visit-panel-status { display: inline-flex; width: fit-content; min-height: 20px; align-items: center; padding: 2px 8px; border-radius: 999px; background: #d9f4ed; color: #086b50; font-weight: 650; }
   .patient-records-page .visit-detail-field { display: grid; gap: 5px; }
   .patient-records-page .visit-detail-field span { color: #334155; font-size: 12px; }
   .patient-records-page .visit-detail-field strong { color: #203b37; font-size: 14px; font-weight: 600; line-height: 1.4; }
+  .patient-records-page .visit-service-pricing { display: grid; gap: 0; margin: 0; padding: 4px 9px; border: 1px solid #dfe8e7; border-radius: 7px; background: #f5f8f9; }
+  .patient-records-page .visit-service-pricing > div { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-height: 24px; align-items: center; color: #334155; font-size: 12px; }
+  .patient-records-page .visit-service-pricing > div + div { border-top: 1px solid #e3e9e9; }
+  .patient-records-page .visit-service-pricing dd { min-width: 0; margin: 0; color: #263d39; font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
+  .patient-records-page .visit-detail-disclosure { padding: 0; }
+  .patient-records-page .visit-detail-disclosure summary { display: flex; min-height: 54px; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; }
+  .patient-records-page .visit-detail-disclosure summary::-webkit-details-marker { display: none; }
+  .patient-records-page .visit-detail-disclosure summary::after { content: '⌄'; color: #526762; font-size: 17px; }
+  .patient-records-page .visit-detail-disclosure:not([open]) summary::after { content: '›'; }
+  .patient-records-page .visit-detail-disclosure summary > span { display: grid; gap: 4px; }
+  .patient-records-page .visit-detail-disclosure summary strong { color: #203b37; font-size: 14px; }
+  .patient-records-page .visit-detail-disclosure summary small { color: #61746e; font-size: 11px; }
+  .patient-records-page .visit-detail-disclosure .visit-related-records { padding-bottom: 13px; }
+  .patient-records-page .visit-add-file { display: inline-flex; min-height: 34px; align-items: center; gap: 6px; margin: 8px 0 13px; padding: 0 10px; border: 1px solid #dce8e5; border-radius: 7px; background: #fff; color: #203b37; font: inherit; font-size: 12px; cursor: pointer; }
+  .patient-records-page .visit-add-file:disabled { cursor: wait; opacity: .7; }
+  .patient-records-page .visit-attachment button { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; text-decoration: underline; cursor: pointer; }
+  .patient-records-page .visit-detail-section.visit-service-completion { box-sizing: border-box; width: 100%; min-width: 0; overflow: hidden; margin: 14px 0; padding: 14px 16px; border: 1px solid #cce5db; border-radius: 9px; background: linear-gradient(135deg, #f3faf7, #eaf6f1); }
+  .patient-records-page .visit-service-completion h3 { margin-bottom: 5px; }
+  .patient-records-page .visit-service-completion .completion-controls { display: grid; min-width: 0; gap: 8px; margin-top: 10px; }
+  .patient-records-page .visit-service-completion .visit-detail-field { min-width: 0; }
+  .patient-records-page .visit-service-completion .visit-service-readonly { box-sizing: border-box; display: block; width: 100%; min-width: 0; min-height: 38px; padding: 10px; overflow-wrap: anywhere; border: 1px solid #cfded9; border-radius: 7px; background: #fff; color: #334155; font-size: 12px; line-height: 1.35; }
+  .patient-records-page .visit-service-completion .detail-action.primary { box-sizing: border-box; min-height: 36px; width: fit-content; max-width: 100%; margin: 0 !important; padding: 8px 12px; overflow-wrap: anywhere; white-space: normal; }
   .patient-records-page .visit-detail-exam { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 15px 0; border-bottom: 1px solid #e9efed; }
   .patient-records-page .visit-detail-section h3 { margin: 0 0 9px; color: #203b37; font-size: 14px; }
   .patient-records-page .visit-detail-vitals { display: grid; gap: 9px; }
@@ -381,12 +390,12 @@ const styles = `
   .patient-records-page .visit-detail-vitals strong { color: #173d4a; font-size: 14px; font-weight: 600; white-space: nowrap; }
   .patient-records-page .visit-detail-list { display: grid; gap: 8px; margin: 0; padding-left: 19px; color: #334155; font-size: 14px; line-height: 1.55; }
   .patient-records-page .visit-related-records { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .patient-records-page .visit-related-records button { display: flex; min-width: 0; min-height: 40px; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px; border: 1px solid #dce8e5; border-radius: 7px; background: #fff; color: #203b37; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+  .patient-records-page .visit-related-records button { display: flex; min-width: 0; min-height: 34px; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px; border: 1px solid #dce8e5; border-radius: 7px; background: #fff; color: #203b37; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
   .patient-records-page .visit-related-records button:hover { border-color: #8abdaf; background: #f4faf8; }
   .patient-records-page .visit-related-records button span:first-child { min-width: 0; overflow-wrap: anywhere; }
-  .patient-records-page .visit-related-records button span:last-child { display: grid; min-width: 22px; height: 22px; flex: 0 0 auto; place-items: center; border-radius: 999px; background: #e8f5f1; color: #087967; font-size: 11px; font-weight: 700; }
+  .patient-records-page .visit-related-records button span:last-child { display: grid; min-width: 22px; height: 22px; flex: 0 0 auto; place-items: center; border-radius: 999px; background: #e8f5f1; color: #086b50; font-size: 11px; font-weight: 700; }
   .patient-records-page .visit-detail-section { padding: 15px 0; border-bottom: 1px solid #e9efed; }
-  .patient-records-page .visit-attachment { display: flex; align-items: center; gap: 10px; min-height: 42px; color: #005447; font-size: 14px; }
+  .patient-records-page .visit-attachment { display: flex; align-items: center; gap: 10px; min-height: 42px; color: #013826; font-size: 14px; }
   .patient-records-page .visit-attachment small { margin-left: auto; color: #334155; font-size: 12px; }
   .patient-records-page .visit-detail-empty { margin: 0; color: #334155; font-size: 13px; line-height: 1.5; }
   .patient-records-page .vaccine-records-wrap { overflow-x: auto; border: 1px solid #e0ebe8; border-radius: 10px; background: #fff; }
@@ -400,10 +409,10 @@ const styles = `
   .patient-records-page .vaccine-records-table tbody tr:focus-visible { outline: 2px solid #078673; outline-offset: -2px; }
   .patient-records-page .patient-history-static-table tbody tr { cursor: default; }
   .patient-records-page .patient-history-static-table.patient-document-table tbody tr { cursor: pointer; }
-  .patient-records-page .patient-document-link { padding: 0; border: 0; background: none; color: #005447; font: inherit; font-weight: 700; text-align: left; text-decoration: none; cursor: pointer; }
+  .patient-records-page .patient-document-link { padding: 0; border: 0; background: none; color: #013826; font: inherit; font-weight: 700; text-align: left; text-decoration: none; cursor: pointer; }
   .patient-records-page .patient-document-link:hover { text-decoration: underline; }
   .patient-records-page .patient-document-open { display: inline-flex; align-items: center; justify-content: center; padding: 4px; border: 0; background: transparent; cursor: pointer; }
-  .patient-records-page .patient-history-static-table tr:hover .patient-document-open .vaccine-row-arrow { transform: translateX(3px); color: #087967; }
+  .patient-records-page .patient-history-static-table tr:hover .patient-document-open .vaccine-row-arrow { transform: translateX(3px); color: #086b50; }
   .patient-records-page .document-viewer-backdrop { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 24px; background: rgba(13, 33, 31, .58); }
   .patient-records-page .document-viewer { display: flex; width: min(100%, 1040px); height: min(88vh, 820px); flex-direction: column; overflow: hidden; border: 1px solid #dce8e5; border-radius: 12px; background: #fff; box-shadow: 0 24px 70px rgba(0,0,0,.24); }
   .patient-records-page .document-viewer-header { display: flex; min-height: 56px; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #e5eeeb; color: #173d37; }
@@ -430,7 +439,7 @@ const styles = `
   .patient-records-page .vaccine-due-state.unknown { color: #657670; }
   .patient-records-page .vaccine-status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
   .patient-records-page .vaccine-row-arrow { color: #758b91; font-size: 19px; line-height: 1; transition: transform .15s ease, color .15s ease; }
-  .patient-records-page .vaccine-records-table tr:hover .vaccine-row-arrow { transform: translateX(3px); color: #087967; }
+  .patient-records-page .vaccine-records-table tr:hover .vaccine-row-arrow { transform: translateX(3px); color: #086b50; }
   .patient-records-page .patient-vaccination-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .patient-records-page .patient-vaccination-search-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
   .patient-records-page .patient-vaccination-search { min-width: 0; min-height: 40px; }
@@ -438,6 +447,21 @@ const styles = `
   .patient-records-page .patient-vaccination-search input { flex: 1 1 auto; min-width: 0; }
   .patient-records-page .patient-vaccination-status-row { flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
   .patient-records-page .patient-vaccination-status-row .lab-status-filters { flex: 1 1 auto; flex-wrap: wrap; }
+  .patient-records-page .patient-visit-filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0 14px; }
+  .patient-records-page .patient-visit-search { min-width: 220px; min-height: 40px; height: 40px; flex: 2 1 250px; gap: 9px; padding: 0 11px; border-color: #dce7e3; border-radius: 7px; color: #64748b; }
+  .patient-records-page .patient-visit-search > svg { display: block; width: 15px; height: 15px; flex: 0 0 15px; }
+  .patient-records-page .patient-visit-search input { width: 100%; min-width: 0; height: 38px; flex: 1 1 auto; padding: 0; border: 0; outline: 0; background: transparent; color: #172b25; font: inherit; font-size: 13px; }
+  .patient-records-page .patient-visit-search input::placeholder { color: #64748b; opacity: 1; }
+  .patient-records-page .patient-visit-filter-bar select,
+  .patient-records-page .patient-visit-date-trigger { min-width: 130px; min-height: 40px; padding: 0 11px; border: 1px solid #dce7e3; border-radius: 7px; background: #fff; color: #38545e; font: inherit; font-size: 12px; }
+  .patient-records-page .patient-visit-filter-bar select { flex: 1 1 130px; }
+  .patient-records-page .patient-visit-date-filter { position: relative; flex: 1 1 158px; min-width: 150px; }
+  .patient-records-page .patient-visit-date-trigger { display: flex; width: 100%; align-items: center; gap: 8px; cursor: pointer; text-align: left; }
+  .patient-records-page .patient-visit-date-trigger svg { width: 15px; height: 15px; flex: 0 0 15px; }
+  .patient-records-page .patient-visit-date-popover { position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; display: grid; width: min(290px, calc(100vw - 32px)); gap: 11px; padding: 14px; border: 1px solid #dce7e3; border-radius: 9px; background: #fff; box-shadow: 0 8px 24px #173f4b1f; }
+  .patient-records-page .patient-visit-filter-bar select:focus-visible,
+  .patient-records-page .patient-visit-date-trigger:focus-visible { outline: 2px solid #013826; outline-offset: 2px; }
+  @media (max-width: 640px) { .patient-records-page .patient-visit-filter-bar { align-items: stretch; } .patient-records-page .patient-visit-search { flex-basis: 100%; } .patient-records-page .patient-visit-filter-bar select { flex-basis: calc(50% - 5px); } }
   @media (max-width: 480px) { .patient-records-page .patient-vaccination-search-row { align-items: stretch; flex-direction: column; } .patient-records-page .patient-vaccination-search-row > button { align-self: flex-end; } }
   .patient-records-page .medication-filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0; }
   .patient-records-page .medication-filter-bar select,
@@ -453,10 +477,10 @@ const styles = `
   .patient-records-page .medication-date-filter > button { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
   .patient-records-page .medication-date-icon { display: inline-flex; width: 13px; height: 13px; flex: 0 0 13px; }
   .patient-records-page .medication-date-icon svg { width: 13px; height: 13px; }
-  .patient-records-page .medication-date-popover { position: absolute; z-index: 8; top: calc(100% + 6px); right: 0; display: grid; width: 260px; gap: 10px; padding: 14px; border: 1px solid #dce7e3; border-radius: 10px; background: #fff; box-shadow: 0 8px 24px #1830241a; }
-  .patient-records-page .medication-date-popover label { display: grid; gap: 5px; color: #526762; font-size: 12px; font-weight: 600; }
+  .patient-records-page .medication-date-popover { position: absolute; z-index: 8; top: calc(100% + 6px); right: 0; display: grid; width: min(290px, calc(100vw - 32px)); gap: 11px; padding: 14px; border: 1px solid #dce7e3; border-radius: 9px; background: #fff; box-shadow: 0 8px 24px #1830241a; }
+  .patient-records-page .medication-date-popover .system-date-range-field { display: grid; gap: 5px; color: #334155; font-size: 12px; font-weight: 500; }
   .patient-records-page .medication-date-popover input { min-height: 36px; padding: 0 8px; border: 1px solid #dce7e3; border-radius: 6px; color: #173d4a; font: inherit; }
-  .patient-records-page .medication-date-popover > button { justify-self: start; padding: 4px 0; border: 0; background: transparent; color: #087967; font: inherit; font-size: 13px; cursor: pointer; }
+  .patient-records-page .medication-date-popover > button { justify-self: start; padding: 4px 0; border: 0; background: transparent; color: #086b50; font: inherit; font-size: 13px; cursor: pointer; }
   .patient-records-page .medication-detail-panel { z-index: 40; width: min(560px, 100vw); border-left: 1px solid #dce8e5; box-shadow: -10px 0 32px rgba(20, 48, 43, .12); }
   .patient-records-page .medication-detail-header { padding: 16px 22px 14px; border-bottom: 1px solid #e1ebe8; background: #fff; }
   .patient-records-page .medication-detail-heading { display: flex; height: 38px; align-items: center; gap: 11px; }
@@ -523,7 +547,6 @@ const styles = `
   @media (max-width: 640px) {
     .patient-records-page .vaccine-overdue-notice { align-items: flex-start; flex-direction: column; }
   }
-  .patient-records-page .vaccine-mock-label { display: inline-flex; margin-left: 7px; padding: 2px 6px; border-radius: 999px; background: #fff4d6; color: #805b00; font-size: 10px; font-weight: 700; vertical-align: middle; }
   .patient-records-page .vaccine-share-state { display: inline-flex; align-items: center; gap: 5px; color: #62736f; font-size: 12px; font-weight: 600; }
   .patient-records-page .vaccine-share-state.shared { color: #087b43; }
   .patient-records-page .vaccine-detail-tabs { display: flex; gap: 5px; padding: 0 18px; border-bottom: 1px solid #e5eeeb; }
@@ -540,12 +563,12 @@ const styles = `
   .patient-records-page .vaccine-detail-actions button.primary { border-color: #078673; background: #078673; color: #fff; }
   .patient-records-page .vaccine-detail-actions button:disabled { opacity: .55; cursor: not-allowed; }
   .patient-records-page .vaccine-audit-list { display: grid; gap: 9px; padding: 16px 18px; }
-  .patient-records-page .vaccine-audit-item { display: flex; justify-content: space-between; gap: 12px; padding: 11px 12px; border: 1px solid #e5eeeb; border-radius: 8px; background: #f8fbfa; color: #38555a; font-size: 13px; }
+  .patient-records-page .vaccine-audit-item { display: flex; justify-content: space-between; gap: 12px; padding: 11px 12px; border: 1px solid #e5eeeb; border-radius: 8px; background: #fafbf8; color: #38555a; font-size: 13px; }
   .patient-records-page .vaccine-audit-item time { color: #74898c; text-align: right; white-space: nowrap; }
   .patient-records-page .vaccine-upload-input { display: block; max-width: 100%; margin-top: 9px; color: #526b70; font-size: 13px; }
   .patient-records-page .vaccine-verify-note { margin: 0 0 14px; color: #61777d; font-size: 13px; line-height: 1.5; }
-  .patient-records-page .vaccine-verify-attestation { display: flex; align-items: flex-start; gap: 10px; margin-top: 15px; padding: 12px; border: 1px solid #dce9e6; border-radius: 9px; background: #f8fbfa; color: #38555a; font-size: 13px; line-height: 1.5; cursor: pointer; }
-  .patient-records-page .vaccine-verify-attestation input { width: 18px; height: 18px; flex: 0 0 18px; margin: 1px 0 0; accent-color: #005447; }
+  .patient-records-page .vaccine-verify-attestation { display: flex; align-items: flex-start; gap: 10px; margin-top: 15px; padding: 12px; border: 1px solid #dce9e6; border-radius: 9px; background: #fafbf8; color: #38555a; font-size: 13px; line-height: 1.5; cursor: pointer; }
+  .patient-records-page .vaccine-verify-attestation input { width: 18px; height: 18px; flex: 0 0 18px; margin: 1px 0 0; accent-color: #013826; }
   .patient-records-page .vaccine-verify-meaning { margin-top: 13px; padding: 11px 12px; border: 1px solid #b7d5ff; border-radius: 9px; background: #eff6ff; color: #1d4ed8; font-size: 12px; line-height: 1.5; }
   .patient-records-page .vaccine-verify-meaning strong { display: block; margin-bottom: 4px; }
   .patient-records-page .vaccine-verify-error { margin-top: 11px; color: #b42318; font-size: 13px; }
@@ -569,16 +592,18 @@ const styles = `
     .patient-records-page .detail-visit-button { grid-template-columns: 70px minmax(0, 1fr) auto 16px; }
     .patient-records-page .detail-visit-button .visit-type-pill { display: none; }
     .patient-records-page .visit-detail-exam { grid-template-columns: 1fr; }
-    .patient-records-page .visit-related-records { grid-template-columns: 1fr; }
     .patient-records-page .vaccine-detail-grid { grid-template-columns: 1fr; }
     .patient-records-page .medication-detail-grid { grid-template-columns: 1fr; }
     .patient-records-page .medication-diagnosis-grid { grid-template-columns: 1fr; }
     .patient-records-page .medication-date-popover { right: auto; left: 0; }
   }
+  @media (max-width: 360px) {
+    .patient-records-page .visit-related-records { grid-template-columns: 1fr; }
+  }
   .patient-records-page .detail-quick-actions { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
   .patient-records-page .detail-quick-actions button { display: grid; justify-items: center; gap: 7px; min-height: 66px; padding: 9px 5px; border: 1px solid #e1ebef; border-radius: 8px; background: #fff; color: #254652; font: inherit; font-size: 11px; cursor: pointer; }
-  .patient-records-page .detail-quick-actions button.patient-primary-add { border-color: #005447; background: #005447; color: #fff; }
-  .patient-records-page .detail-quick-actions svg { width: 18px; height: 18px; color: #005447; }
+  .patient-records-page .detail-quick-actions button.patient-primary-add { border-color: #013826; background: #086b50; color: #fff; }
+  .patient-records-page .detail-quick-actions svg { width: 18px; height: 18px; color: #013826; }
   .patient-records-page .detail-quick-actions button.patient-primary-add svg { color: #fff; }
   .patient-records-page .records-status-system { gap: 6px; padding: 0; border-radius: 0; background: transparent; font-size: 12px; font-weight: 600; line-height: 1.2; }
   .patient-records-page .records-status-system .status-indicator-dot { width: 8px; height: 8px; flex-basis: 8px; }
@@ -594,7 +619,7 @@ const styles = `
   .patient-records-page .patient-edit-summary img { width: 52px; height: 52px; flex: 0 0 52px; border-radius: 50%; object-fit: cover; }
   .patient-records-page .patient-edit-summary-name { color: #1c414d; font-size: 15px; font-weight: 700; }
   .patient-records-page .patient-edit-summary-meta { margin-top: 3px; color: #425f6c; font-size: 11px; }
-  .patient-records-page .patient-edit-summary-meta span { padding: 0 5px; color: #005447; }
+  .patient-records-page .patient-edit-summary-meta span { padding: 0 5px; color: #013826; }
   .patient-records-page .patient-edit-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px 13px; }
   .patient-records-page .patient-edit-field { display: grid; gap: 5px; min-width: 0; color: #294956; font-size: 11px; font-weight: 650; }
   .patient-records-page .patient-edit-field.wide { grid-column: 1 / -1; }
@@ -606,7 +631,7 @@ const styles = `
   .patient-records-page .patient-edit-error { grid-column: 1 / -1; color: #bd2632; font-size: 12px; }
   .patient-records-page .patient-edit-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 18px; border-top: 1px solid #e6eef1; }
   .patient-records-page .patient-edit-footer button { min-height: 34px; padding: 0 14px; border: 1px solid #d2e0e5; border-radius: 6px; background: #fff; color: #365663; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
-  .patient-records-page .patient-edit-footer button[type="submit"] { border-color: #005447; background: #005447; color: #fff; }
+  .patient-records-page .patient-edit-footer button[type="submit"] { border-color: #013826; background: #086b50; color: #fff; }
   .patient-records-page .owner-edit-dialog { width: min(680px,100%); }
   .patient-records-page .owner-edit-header h2 { font-size: 22px; }
   .patient-records-page .owner-edit-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px 18px; }
@@ -622,7 +647,7 @@ const styles = `
   .patient-records-page .owner-edit-required { color: #d83740; }
   .patient-records-page .owner-edit-phone { display: grid; grid-template-columns: 78px minmax(0,1fr); gap: 7px; }
   .patient-records-page .owner-edit-app { display: flex; grid-column: 1 / -1; align-items: center; width: 100%; gap: 12px; padding: 12px; border: 1px solid #e0efeb; border-radius: 8px; background: #f1f8f6; color: #294956; }
-  .patient-records-page .owner-edit-app-icon { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 8px; background: #005447; color: #fff; }
+  .patient-records-page .owner-edit-app-icon { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 8px; background: #086b50; color: #fff; }
   .patient-records-page .owner-edit-app-icon svg { width: 18px; height: 18px; }
   .patient-records-page .owner-edit-app strong,
   .patient-records-page .owner-edit-app span { display: block; }
@@ -634,7 +659,7 @@ const styles = `
   .patient-records-page .owner-profile-header h2 { font-size: 22px; }
   .patient-records-page .owner-profile-header p { font-size: 14px; }
   .patient-records-page .owner-profile-body { padding: 16px 22px; }
-  .patient-records-page .owner-profile-summary { display: flex; align-items: center; gap: 13px; padding: 14px; border: 1px solid #dce8e8; border-radius: 11px; background: #f8fbfa; }
+  .patient-records-page .owner-profile-summary { display: flex; align-items: center; gap: 13px; padding: 14px; border: 1px solid #dce8e8; border-radius: 11px; background: #fafbf8; }
   .patient-records-page .owner-profile-summary > div { display: grid; gap: 4px; }
   .patient-records-page .owner-profile-summary > div strong { color: #193a47; font-size: 18px; }
   .patient-records-page .owner-profile-summary > div span { color: #647980; font-size: 14px; }
@@ -645,12 +670,12 @@ const styles = `
   .patient-records-page .owner-profile-fields > div > strong { overflow-wrap: anywhere; color: #193a40; font-size: 14px; font-weight: 600; }
   .patient-records-page .owner-profile-pets-heading { padding: 0 0 7px; border-bottom: 1px solid #dfe8e9; color: #193a40; font-size: 14px; font-weight: 700; }
   .patient-records-page .owner-profile-pet { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
-  .patient-records-page .owner-profile-pet-avatar { display: block; width: 44px; height: 44px; flex: 0 0 44px; border-radius: 50%; object-fit: cover; background: #e7f5f2; }
+  .patient-records-page .owner-profile-pet-avatar { display: block; width: 44px; height: 44px; flex: 0 0 44px; border-radius: 50%; object-fit: cover; background: #e7f4ec; }
   .patient-records-page .owner-profile-pet > div { display: grid; flex: 1; gap: 4px; }
   .patient-records-page .owner-profile-pet > div strong { color: #193a40; font-size: 14px; }
   .patient-records-page .owner-profile-pet > div span { color: #647980; font-size: 12px; }
   .patient-records-page .owner-profile-footer { padding: 12px 18px; }
-  .patient-records-page .owner-profile-footer button:last-child { border-color: #005447; background: #005447; color: #fff; }
+  .patient-records-page .owner-profile-footer button:last-child { border-color: #013826; background: #086b50; color: #fff; }
   .patient-records-page .import-image-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 18px; }
   .patient-records-page .export-report-dialog { width: min(760px, 100%); max-height: calc(100vh - 24px); border-radius: 16px; }
   .patient-records-page .export-report-body { display: grid; gap: 14px; overflow-y: auto; padding: 16px 20px; }
@@ -660,20 +685,20 @@ const styles = `
   .patient-records-page .export-report-section-heading p { margin: 3px 0 0; color: #607873; font-size: 12px; }
   .patient-records-page .export-report-check-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; padding: 10px; }
   .patient-records-page .export-report-check { display: flex; min-height: 44px; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #dfe8e5; border-radius: 9px; color: #173d37; font-size: 13px; cursor: pointer; }
-  .patient-records-page .export-report-check input, .patient-records-page .export-report-select-all input, .patient-records-page .export-report-notes input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: #005447; }
+  .patient-records-page .export-report-check input, .patient-records-page .export-report-select-all input, .patient-records-page .export-report-notes input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: #013826; }
   .patient-records-page .export-report-options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 12px; }
   .patient-records-page .export-report-option-label { display: grid; gap: 7px; color: #173d37; font-size: 13px; font-weight: 650; }
   .patient-records-page .export-report-option-label select { width: 100%; min-width: 0; min-height: 46px; padding: 0 12px; border: 1px solid #d6e3df; border-radius: 9px; background: #fff; color: #173d37; font: inherit; font-size: 14px; }
   .patient-records-page .export-report-format-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .patient-records-page .export-report-format-buttons button { min-height: 46px; border: 1px solid #d6e3df; border-radius: 9px; background: #fff; color: #36534c; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-  .patient-records-page .export-report-format-buttons button[aria-pressed="true"] { border-color: #005447; background: #e7f4f0; color: #075f54; box-shadow: inset 0 0 0 1px #005447; }
+  .patient-records-page .export-report-format-buttons button[aria-pressed="true"] { border-color: #013826; background: #e7f4f0; color: #075f54; box-shadow: inset 0 0 0 1px #013826; }
   .patient-records-page .export-report-notes { display: flex; min-height: 48px; align-items: center; gap: 11px; padding: 9px 12px; border: 1px solid #dfe8e5; border-radius: 9px; background: #f5f9f7; color: #173d37; cursor: pointer; }
   .patient-records-page .export-report-notes span { display: grid; gap: 3px; }
   .patient-records-page .export-report-notes strong { font-size: 13px; font-weight: 550; }
   .patient-records-page .export-report-notes small { color: #607873; font-size: 12px; line-height: 1.35; }
   .patient-records-page .export-report-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 20px; border-top: 1px solid #e0e8e6; }
   .patient-records-page .export-report-footer button { min-height: 46px; padding: 0 17px; border: 1px solid #d6e3df; border-radius: 9px; background: #fff; color: #173d37; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-  .patient-records-page .export-report-footer button[type="submit"] { border-color: #005447; background: #005447; color: #fff; }
+  .patient-records-page .export-report-footer button[type="submit"] { border-color: #013826; background: #086b50; color: #fff; }
   .patient-records-page .share-owner-dialog { width: min(620px, 100%); max-height: calc(100vh - 32px); border-radius: 14px; }
   .patient-records-page .share-owner-body { display: grid; gap: 9px; overflow-y: auto; padding: 11px 14px; }
   .patient-records-page .share-owner-link-status { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #d8e9e3; border-radius: 10px; background: #eef7f4; color: #0a6b5d; }
@@ -683,33 +708,33 @@ const styles = `
   .patient-records-page .share-owner-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; }
   .patient-records-page .share-owner-section-heading h3 { margin: 0; color: #173d37; font-size: 14px; }
   .patient-records-page .share-owner-section-actions { display: flex; align-items: center; gap: 9px; }
-  .patient-records-page .share-owner-section-actions button { min-height: 34px; padding: 0 9px; border: 1px solid #cddfd9; border-radius: 7px; background: #fff; color: #005447; font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+  .patient-records-page .share-owner-section-actions button { min-height: 34px; padding: 0 9px; border: 1px solid #cddfd9; border-radius: 7px; background: #fff; color: #013826; font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; white-space: nowrap; }
   .patient-records-page .share-owner-section-actions button:disabled { color: #9aa8a2; cursor: not-allowed; }
   .patient-records-page .share-owner-instructions { margin: 0; padding: 0 10px 8px; color: #607873; font-size: 11px; line-height: 1.4; }
   .patient-records-page .share-owner-record-list { display: grid; gap: 5px; max-height: 210px; overflow-y: auto; padding: 0 8px 8px; }
   .patient-records-page .share-owner-record { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 9px; min-height: 50px; padding: 7px 9px; border: 1px solid #dce9e5; border-radius: 9px; background: #f0f8f5; color: #173d37; cursor: pointer; }
-  .patient-records-page .share-owner-record input, .patient-records-page .share-owner-private-note input, .patient-records-page .share-owner-notify input { width: 19px; height: 19px; accent-color: #005447; }
+  .patient-records-page .share-owner-record input, .patient-records-page .share-owner-private-note input, .patient-records-page .share-owner-notify input { width: 19px; height: 19px; accent-color: #013826; }
   .patient-records-page .share-owner-record-info { display: grid; min-width: 0; gap: 3px; }
   .patient-records-page .share-owner-record-info strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
   .patient-records-page .share-owner-record-info small { overflow: hidden; color: #607873; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
   .patient-records-page .share-owner-record time { color: #607873; font-size: 11px; white-space: nowrap; }
-  .patient-records-page .share-owner-add-update { margin: 0 8px 9px; padding: 10px; border: 1px dashed #b9d4ce; border-radius: 9px; background: #f8fbfa; }
-  .patient-records-page .share-owner-add-update > button { min-height: 38px; padding: 0 11px; border: 1px solid #cddfd9; border-radius: 8px; background: #fff; color: #005447; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+  .patient-records-page .share-owner-add-update { margin: 0 8px 9px; padding: 10px; border: 1px dashed #b9d4ce; border-radius: 9px; background: #fafbf8; }
+  .patient-records-page .share-owner-add-update > button { min-height: 38px; padding: 0 11px; border: 1px solid #cddfd9; border-radius: 8px; background: #fff; color: #013826; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
   .patient-records-page .share-owner-add-update-form { display: grid; gap: 9px; }
   .patient-records-page .share-owner-add-update-form select, .patient-records-page .share-owner-add-update-form input, .patient-records-page .share-owner-add-update-form textarea { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid #d6e3df; border-radius: 8px; background: #fff; color: #173d37; font: inherit; font-size: 13px; }
   .patient-records-page .share-owner-add-update-form textarea { min-height: 64px; resize: vertical; }
   .patient-records-page .share-owner-add-update-actions { display: flex; justify-content: flex-end; gap: 8px; }
   .patient-records-page .share-owner-add-update-actions button { min-height: 38px; padding: 0 11px; border: 1px solid #d6e3df; border-radius: 8px; background: #fff; color: #36534c; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-  .patient-records-page .share-owner-add-update-actions button[type="submit"] { border-color: #005447; background: #005447; color: #fff; }
-  .patient-records-page .share-owner-message { display: grid; gap: 6px; color: #005447; font-size: 13px; font-weight: 650; }
+  .patient-records-page .share-owner-add-update-actions button[type="submit"] { border-color: #013826; background: #086b50; color: #fff; }
+  .patient-records-page .share-owner-message { display: grid; gap: 6px; color: #013826; font-size: 13px; font-weight: 650; }
   .patient-records-page .share-owner-message textarea { width: 100%; min-height: 66px; resize: vertical; padding: 10px 12px; border: 1px solid #d6e3df; border-radius: 9px; color: #173d37; font: inherit; font-size: 13px; line-height: 1.4; }
-  .patient-records-page .share-owner-notify { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 8px 11px; border: 1px solid #dce9e5; border-radius: 9px; background: #eff8f5; color: #005447; cursor: pointer; }
+  .patient-records-page .share-owner-notify { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 8px 11px; border: 1px solid #dce9e5; border-radius: 9px; background: #eff8f5; color: #013826; cursor: pointer; }
   .patient-records-page .share-owner-notify span { display: grid; gap: 2px; }
   .patient-records-page .share-owner-notify strong { font-size: 12px; }
   .patient-records-page .share-owner-notify small { color: #607873; font-size: 11px; }
   .patient-records-page .share-owner-footer { display: flex; justify-content: flex-end; gap: 9px; padding: 9px 14px; border-top: 1px solid #e0e8e6; }
   .patient-records-page .share-owner-footer button { min-height: 44px; padding: 0 15px; border: 1px solid #d6e3df; border-radius: 9px; background: #fff; color: #173d37; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .patient-records-page .share-owner-footer button[type="submit"] { border-color: #005447; background: #005447; color: #fff; }
+  .patient-records-page .share-owner-footer button[type="submit"] { border-color: #013826; background: #086b50; color: #fff; }
   @media (max-width: 900px) {
     .patient-records-page .detail-columns { grid-template-columns: 1fr; }
     .patient-records-page .detail-actions { justify-content: flex-start; width: 100%; margin-left: 0; }
@@ -828,10 +853,10 @@ const styles = `
   }
   .patient-records-page .filter-select-trigger:hover,
   .patient-records-page .filter-select-trigger[aria-expanded="true"] {
-    border-color: #005447;
+    border-color: #013826;
   }
   .patient-records-page .filter-select-trigger:focus-visible {
-    outline: 2px solid #005447;
+    outline: 2px solid #013826;
     outline-offset: 2px;
     box-shadow: 0 0 0 3px rgba(0, 84, 71, .14);
   }
@@ -887,12 +912,12 @@ const styles = `
     cursor: pointer;
   }
   .patient-records-page .patient-record-status-row .lab-status-filters button.active {
-    border-color: #005447;
+    border-color: #013826;
     background: #e7f5f0;
     color: #064e3b;
   }
   .patient-records-page .patient-record-status-row .lab-status-filters button:focus-visible {
-    outline: 2px solid #005447;
+    outline: 2px solid #013826;
     outline-offset: 2px;
   }
   .patient-records-page .detail-integrated-tab .medication-search,
@@ -936,7 +961,7 @@ const styles = `
   }
   .patient-records-page .detail-integrated-tab .medication-search:focus-within,
   .patient-records-page .patient-vaccination-search:focus-within {
-    border-color: #005447;
+    border-color: #013826;
     box-shadow: 0 0 0 2px rgba(0, 84, 71, .12);
   }
   .patient-records-page .detail-integrated-tab .medication-filter-select,
@@ -961,7 +986,7 @@ const styles = `
   }
   .patient-records-page .detail-integrated-tab .patient-record-filter-controls .filter-select-trigger:focus-visible,
   .patient-records-page .detail-integrated-tab .medication-date-filter > button:focus-visible {
-    outline: 2px solid #005447;
+    outline: 2px solid #013826;
     outline-offset: 2px;
     box-shadow: 0 0 0 3px rgba(0, 84, 71, .14);
   }
@@ -989,7 +1014,7 @@ const styles = `
     color: #64748b;
   }
   .patient-records-page .records-search:focus-within {
-    border-color: #005447;
+    border-color: #013826;
     box-shadow: 0 0 0 2px rgba(0, 84, 71, .12);
   }
   .patient-records-page .records-select .filter-select-trigger {
@@ -1002,7 +1027,7 @@ const styles = `
     font-size: 13px;
   }
   .patient-records-page .records-select .filter-select-trigger:focus-visible {
-    outline: 2px solid #005447;
+    outline: 2px solid #013826;
     outline-offset: 2px;
     box-shadow: 0 0 0 3px rgba(0, 84, 71, .14);
   }
@@ -1022,12 +1047,8 @@ const styles = `
 `;
 
 export default function PatientRecordsPage({ user, onNavigate, initialPatient }) {
-  const matchesInitialPatient = initialPatient && RECORDS.find(record => (
-    record.name.trim().toLowerCase() === initialPatient.pet.trim().toLowerCase()
-    && record.owner.trim().toLowerCase() === initialPatient.name.trim().toLowerCase()
-  ));
-  const initialRecord = initialPatient
-    ? matchesInitialPatient || {
+  const initialRecord = initialPatient && !initialPatient.pet_id
+    ? {
       id: `INBOX-${initialPatient.id}`,
       name: initialPatient.pet,
       species: initialPatient.species || 'Dog',
@@ -1057,44 +1078,31 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
   const [alertsFilter, setAlertsFilter] = useState('All');
   const [sortBy, setSortBy] = useState('Last visit (newest)');
   const [viewMode, setViewMode] = useState('list');
-  const [selectedRecordId, setSelectedRecordId] = useState(initialRecord?.id != null ? String(initialRecord.id) : null);
+  const [selectedRecordId, setSelectedRecordId] = useState(initialPatient?.pet_id != null ? String(initialPatient.pet_id) : initialRecord?.id != null ? String(initialRecord.id) : null);
   const [activeDetailTab, setActiveDetailTab] = useState('Overview');
   const [recordOverrides, setRecordOverrides] = useState({});
-  const [patientRecords, setPatientRecords] = useState(RECORDS);
+  const [patientRecords, setPatientRecords] = useState([]);
+  const [patientRecordsLoading, setPatientRecordsLoading] = useState(true);
   const [patientRecordsError, setPatientRecordsError] = useState('');
   const [appointmentRecordsError, setAppointmentRecordsError] = useState('');
 
   useEffect(() => {
-    if (!user?.clinic_id || !user?.token) return undefined;
+    if (!user?.clinic_id || !user?.token) {
+      setPatientRecords([]);
+      setPatientRecordsLoading(false);
+      return undefined;
+    }
     const controller = new AbortController();
+    setPatientRecordsLoading(true);
     const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
     const query = `?clinic_id=${encodeURIComponent(user.clinic_id)}`;
     const headers = { Authorization: `Bearer ${user.token}` };
-    Promise.all([
-      fetch(`${apiUrl}/clinic-records/pets${query}`, { headers, signal: controller.signal }),
-      fetch(`${apiUrl}/clinic-records/clients${query}`, { headers, signal: controller.signal }),
-      fetch(`${apiUrl}/clinic-records/appointments${query}`, { headers, signal: controller.signal }),
-    ]).then(async ([petsResponse, clientsResponse, appointmentsResponse]) => {
-      const petsPayload = await petsResponse.json().catch(() => ({}));
-      const clientsPayload = await clientsResponse.json().catch(() => ({}));
-      if (!petsResponse.ok) throw new Error(petsPayload.error || `Unable to load clinic patients (HTTP ${petsResponse.status}).`);
-      if (!clientsResponse.ok) throw new Error(clientsPayload.error || `Unable to load clinic owners (HTTP ${clientsResponse.status}).`);
-      if (!Array.isArray(petsPayload) || !Array.isArray(clientsPayload)) throw new Error('Clinic patient or owner endpoint returned an invalid response.');
-      let appointments = [];
-      if (appointmentsResponse.ok) {
-        const appointmentPayload = await appointmentsResponse.json().catch(() => null);
-        if (Array.isArray(appointmentPayload)) {
-          appointments = appointmentPayload;
-          setAppointmentRecordsError('');
-        } else {
-          setAppointmentRecordsError('Clinic appointments endpoint returned an invalid response.');
-        }
-      } else {
-        const appointmentPayload = await appointmentsResponse.json().catch(() => ({}));
-        setAppointmentRecordsError(appointmentPayload.error || `Unable to load clinic appointments (HTTP ${appointmentsResponse.status}).`);
-      }
-      const pets = petsPayload;
-      const clients = clientsPayload;
+    const petsRequest = fetch(`${apiUrl}/clinic-records/pets${query}`, { headers, signal: controller.signal });
+    const clientsRequest = fetch(`${apiUrl}/clinic-records/clients${query}`, { headers, signal: controller.signal });
+    const appointmentsRequest = fetch(`${apiUrl}/clinic-records/appointments${query}`, { headers, signal: controller.signal })
+      .then(response => ({ response }), error => ({ error }));
+
+    const mapPatientRecords = (pets, clients, appointments = []) => {
       const ownersById = new Map(clients.map(owner => [String(owner.id), owner]));
       const appointmentsByPetId = new Map();
       appointments.filter(item => !item.archived && item.pet_id != null).forEach(item => {
@@ -1102,22 +1110,37 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
         appointmentsByPetId.set(key, [...(appointmentsByPetId.get(key) || []), item]);
       });
       const now = Date.now();
-      setPatientRecordsError('');
-      setPatientRecords(pets.map(pet => {
+      return pets.map(pet => {
         const owner = ownersById.get(String(pet.client_id)) || {};
         const birthDate = pet.birth_date ? String(pet.birth_date).slice(0, 10) : '';
         const petAppointments = appointmentsByPetId.get(String(pet.id)) || [];
-        const recentAppointments = petAppointments.filter(item => String(item.status).toLowerCase() === 'completed' && Date.parse(item.start_time) <= now)
-          .sort((a, b) => Date.parse(b.start_time) - Date.parse(a.start_time));
-        const nextAppointment = petAppointments.filter(item => Date.parse(item.start_time) > now && !['completed', 'cancelled', 'no_show', 'rescheduled'].includes(String(item.status).toLowerCase()))
-          .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time))[0];
-        const recentVisits = recentAppointments.map(item => ({
+        const completedVisits = petAppointments.filter(item => {
+          const appointmentStatus = String(item.status || '').toLowerCase().replace(/[\s-]+/g, '_');
+          const consultationStatus = String(item.consultation_status || '').toLowerCase().replace(/[\s-]+/g, '_');
+          const visitDate = item.consultation_completed_at || item.start_time;
+          return Date.parse(visitDate) <= now && (['completed', 'complete'].includes(appointmentStatus)
+            || ['completed', 'complete'].includes(consultationStatus)
+            || Boolean(item.consultation_completed_at));
+        }).sort((a, b) => Date.parse(b.consultation_completed_at || b.start_time) - Date.parse(a.consultation_completed_at || a.start_time));
+        const latestVisitDate = pet.last_visit_at || completedVisits[0]?.consultation_completed_at || completedVisits[0]?.start_time;
+        const nextAppointment = pet.next_appointment_at
+          ? {
+            start_time: pet.next_appointment_at,
+            reason: pet.next_appointment_reason,
+            status: pet.next_appointment_status,
+            practitioner: pet.next_appointment_practitioner,
+          }
+          : petAppointments.filter(item => Date.parse(item.start_time) > now && !['completed', 'complete', 'cancelled', 'canceled', 'no_show', 'no-show', 'rescheduled'].includes(String(item.status || '').toLowerCase().replace(/[\s-]+/g, '_')))
+            .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time))[0];
+        const recentVisits = completedVisits.map(item => ({
           id: item.id,
-          date: item.start_time,
+          date: item.consultation_completed_at || item.start_time,
           title: item.reason || 'Clinic appointment',
           doctor: item.practitioner || 'Clinic team',
-          status: item.status || 'completed',
-          visitType: getAppointmentVisitType(item.reason || item.type),
+          status: item.consultation_completed_at || ['completed', 'complete'].includes(String(item.consultation_status || '').toLowerCase())
+            ? 'completed'
+            : item.status || 'completed',
+          visitType: getAppointmentVisitType(item),
           reason: item.reason || 'Clinic appointment',
           notes: item.notes || '',
         }));
@@ -1126,6 +1149,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
           databasePetId: pet.id,
           name: pet.name,
           photo_url: pet.photo_url || pet.photoUrl || '',
+          photo_attachment_id: pet.photo_attachment_id || pet.photoAttachmentId || '',
           species: pet.species || 'Other',
           breed: pet.breed || 'Not recorded',
           age: pet.age || (birthDate ? calculateAge(birthDate) : 'Not recorded'),
@@ -1133,8 +1157,9 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
           weight: pet.weight ? `${pet.weight} kg` : pet.metadata?.weight ? `${pet.metadata.weight} kg` : 'Not recorded',
           weightTarget: pet.metadata?.weight_target ? `${pet.metadata.weight_target} kg` : '',
           owner: pet.owner || owner.name || 'Unknown owner',
-          lastVisit: recentAppointments[0] ? formatDateText(recentAppointments[0].start_time) : 'No visit recorded',
-          lastVisitAgo: recentAppointments[0] ? 'Latest completed appointment' : 'No visit history',
+          lastVisit: latestVisitDate ? formatDateText(latestVisitDate) : 'No visit recorded',
+          lastVisitTimestamp: latestVisitDate || '',
+          lastVisitAgo: latestVisitDate ? 'Latest completed visit' : 'No visit history',
           nextAppointment: nextAppointment ? formatDateText(nextAppointment.start_time) : 'None scheduled',
           appointmentType: nextAppointment?.reason || '',
           nextAppointmentTime: nextAppointment?.start_time || '',
@@ -1156,13 +1181,52 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
           notes: pet.notes || 'No additional medical notes are available yet.',
           recentVisits,
         };
-      }));
-    }).catch(error => {
-      if (error.name !== 'AbortError') {
-        console.error('Unable to load clinic patient records:', error);
-        setPatientRecordsError(`${error.message || 'Unable to load saved clinic patients.'} Showing the available patient list.`);
+      });
+    };
+
+    const loadRecords = async () => {
+      try {
+        const [petsResponse, clientsResponse] = await Promise.all([petsRequest, clientsRequest]);
+        const [petsPayload, clientsPayload] = await Promise.all([
+          petsResponse.json().catch(() => ({})),
+          clientsResponse.json().catch(() => ({})),
+        ]);
+        if (!petsResponse.ok) throw new Error(petsPayload.error || `Unable to load clinic patients (HTTP ${petsResponse.status}).`);
+        if (!clientsResponse.ok) throw new Error(clientsPayload.error || `Unable to load clinic owners (HTTP ${clientsResponse.status}).`);
+        if (!Array.isArray(petsPayload) || !Array.isArray(clientsPayload)) throw new Error('Clinic patient or owner endpoint returned an invalid response.');
+        if (controller.signal.aborted) return;
+
+        setPatientRecordsError('');
+        setPatientRecords(mapPatientRecords(petsPayload, clientsPayload));
+        setPatientRecordsLoading(false);
+
+        try {
+          const appointmentsResult = await appointmentsRequest;
+          if (appointmentsResult.error) throw appointmentsResult.error;
+          const appointmentsResponse = appointmentsResult.response;
+          const appointmentsPayload = await appointmentsResponse.json().catch(() => ({}));
+          if (!appointmentsResponse.ok) throw new Error(appointmentsPayload.error || `Unable to load clinic appointments (HTTP ${appointmentsResponse.status}).`);
+          if (!Array.isArray(appointmentsPayload)) throw new Error('Clinic appointments endpoint returned an invalid response.');
+          if (!controller.signal.aborted) {
+            setAppointmentRecordsError('');
+            setPatientRecords(mapPatientRecords(petsPayload, clientsPayload, appointmentsPayload));
+          }
+        } catch (error) {
+          if (error.name !== 'AbortError' && !controller.signal.aborted) {
+            setAppointmentRecordsError(error.message || 'Unable to load clinic appointments.');
+          }
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Unable to load clinic patient records:', error);
+          setPatientRecordsError(error.message || 'Unable to load saved clinic patients.');
+        }
+      } finally {
+        if (!controller.signal.aborted) setPatientRecordsLoading(false);
       }
-    });
+    };
+
+    loadRecords();
     return () => controller.abort();
   }, [user?.clinic_id, user?.token]);
 
@@ -1179,12 +1243,19 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
     }).sort((a, b) => {
       if (sortBy === 'Name (A-Z)') return a.name.localeCompare(b.name);
       if (sortBy === 'Name (Z-A)') return b.name.localeCompare(a.name);
-      return patientRecords.indexOf(a) - patientRecords.indexOf(b);
+      const firstVisit = Date.parse(a.lastVisitTimestamp || '') || 0;
+      const secondVisit = Date.parse(b.lastVisitTimestamp || '') || 0;
+      return secondVisit - firstVisit || a.name.localeCompare(b.name);
     });
   }, [search, speciesFilter, statusFilter, alertsFilter, sortBy, archiveView, recordOverrides, patientRecords]);
   const activePatientCount = patientRecords.filter(record => record.status !== 'Archived').length;
   const archivedPatientCount = patientRecords.length - activePatientCount;
   const alertPatientCount = patientRecords.filter(record => Boolean(record.alert)).length;
+  const nextSevenDays = Date.now() + 7 * 24 * 60 * 60 * 1000;
+  const upcomingAppointmentsNext7Days = patientRecords.filter(record => {
+    const appointmentTime = Date.parse(record.nextAppointmentTime || '');
+    return appointmentTime > Date.now() && appointmentTime <= nextSevenDays;
+  }).length;
 
   function openRecord(record) {
     setSelectedRecordId(String(record.id));
@@ -1194,6 +1265,15 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
   const selectedRecord = patientRecords.find(record => String(record.id) === String(selectedRecordId))
     || (initialRecord && String(initialRecord.id) === String(selectedRecordId) ? initialRecord : null);
   const currentSelectedRecord = selectedRecord ? { ...selectedRecord, ...recordOverrides[selectedRecord.id] } : null;
+
+  if (patientRecordsLoading) {
+    return (
+      <div className="patient-records-page">
+        <style>{styles}</style>
+        <main className="records-content" role="status">Patient records is loading</main>
+      </div>
+    );
+  }
 
   if (currentSelectedRecord) {
     return (
@@ -1207,6 +1287,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
           headerContent={<button type="button" className="records-back" onClick={() => setSelectedRecordId(null)}>{Icons.arrowRight} Back to Patient Records</button>}
         />
         <PatientRecordDetail
+          key={`${user?.clinic_id || 'local'}:${currentSelectedRecord.databasePetId || currentSelectedRecord.id}`}
           record={currentSelectedRecord}
           user={user}
           activeTab={activeDetailTab}
@@ -1246,11 +1327,160 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
     );
   }
 
-  function PatientRecordDetail({ record, user: currentUser, activeTab, setActiveTab, onNavigate, onBack, onSave, onArchive }) {
+  
+
+  return (
+    <div className="patient-records-page">
+      <style>{styles}</style>
+      <Topbar
+        user={user}
+        title="Patient Records"
+        subtitle="Manage patient records and owner information"
+        className="records-topbar"
+        actions={(
+          <button type="button" className="records-add" onClick={() => onNavigate ? onNavigate('patient-registration') : notifySuccess('Add patient', 'Open patient registration to add a new patient.')}>
+            {Icons.plus} Add Patient
+          </button>
+        )}
+      />
+      <main className="records-content">
+        <section className="records-stats" aria-label="Patient record summary">
+          <div className="records-stat">
+            <span className="records-stat-icon stat-blue">{Icons.users}</span>
+            <div><div className="records-stat-label">Total Patients</div><div className="records-stat-value">{patientRecords.length}</div><div className="records-stat-note">Registered in this clinic</div></div>
+          </div>
+          <div className="records-stat">
+            <span className="records-stat-icon stat-green">{Icons.check}</span>
+            <div><div className="records-stat-label">Active Patients</div><div className="records-stat-value">{activePatientCount}</div><div className="records-stat-note">Currently active</div></div>
+          </div>
+          <div className="records-stat">
+            <span className="records-stat-icon stat-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M10.3 3.9 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4m0 3h.01" /></svg></span>
+            <div><div className="records-stat-label">With Alerts</div><div className="records-stat-value">{alertPatientCount}</div><div className="records-stat-note">Require attention</div></div>
+          </div>
+          <div className="records-stat">
+            <span className="records-stat-icon stat-purple">{Icons.calendar}</span>
+            <div><div className="records-stat-label">Upcoming Appointments</div><div className="records-stat-value">{upcomingAppointmentsNext7Days}</div><div className="records-stat-note">Within next 7 days</div></div>
+          </div>
+        </section>
+
+        <nav className="patient-archive-tabs" aria-label="Patient record archive">
+          <button type="button" className={archiveView === 'active' ? 'active' : ''} aria-pressed={archiveView === 'active'} onClick={() => { setArchiveView('active'); setStatusFilter('All'); }}>
+            Active Patients <span>{activePatientCount}</span>
+          </button>
+          <button type="button" className={archiveView === 'archived' ? 'active' : ''} aria-pressed={archiveView === 'archived'} onClick={() => { setArchiveView('archived'); setStatusFilter('All'); }}>
+            Archived Patients <span>{archivedPatientCount}</span>
+          </button>
+        </nav>
+        <section className="records-toolbar" aria-label="Search and filter patients">
+          <label className="records-search">
+            {Icons.search}
+            <input type="search" placeholder="Search by pet name, owner, breed or patient ID" value={search} onChange={event => setSearch(event.target.value)} />
+          </label>
+          <FilterSelect label="Filter by species" className="records-select" value={speciesFilter} onChange={setSpeciesFilter} options={[
+            { value: 'All', label: 'Species · All' }, { value: 'Dog', label: 'Dog' }, { value: 'Cat', label: 'Cat' }, { value: 'Rabbit', label: 'Rabbit' },
+          ]} />
+          <FilterSelect label="Filter by status" className="records-select" value={statusFilter} onChange={setStatusFilter} options={[
+            { value: 'All', label: 'Status · All' }, { value: 'Active', label: 'Active' },
+          ]} />
+          <FilterSelect label="Filter by alerts" className="records-select" value={alertsFilter} onChange={setAlertsFilter} options={[
+            { value: 'All', label: 'Alerts · All' }, { value: 'With alerts', label: 'With alerts' }, { value: 'None', label: 'None' },
+          ]} />
+          <FilterSelect label="Sort patients" className="records-select records-sort" value={sortBy} onChange={setSortBy} options={[
+            { value: 'Last visit (newest)', label: 'Last visit (newest)' }, { value: 'Name (A-Z)', label: 'Name (A-Z)' }, { value: 'Name (Z-A)', label: 'Name (Z-A)' },
+          ]} />
+          <div className="records-view-toggle" aria-label="Choose patient view">
+            <button type="button" aria-label="List view" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>{Icons.list}</button>
+            <button type="button" aria-label="Grid view" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>{Icons.grid}</button>
+          </div>
+        </section>
+
+        {patientRecordsError && <div role="alert" style={{ margin: '0 0 12px', color: '#b45309', fontSize: 13 }}>{patientRecordsError}</div>}
+        {appointmentRecordsError && <div role="alert" style={{ margin: '0 0 12px', color: '#b45309', fontSize: 13 }}>{appointmentRecordsError}</div>}
+        <section className="records-table-wrap" aria-label="Patient records">
+          {viewMode === 'list' ? (
+            <>
+              <table className="records-table">
+                <thead><tr><th>ID</th><th>Patient Profile</th><th>Pet Name</th><th>Owner</th><th>Last Visit</th><th>Next Appointment</th><th>Alerts</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody>
+                  {filtered.map(record => (
+                    <tr key={record.id}>
+                      <td><div className="records-patient-id">{record.id}</div></td>
+                      <td><ClinicAttachmentImage className="records-avatar" src={record.photo_url} attachmentId={record.photo_attachment_id} user={user} fallback={<img className="records-avatar" src="/healthy-pets.png" alt={`${record.name} profile`} />} alt={`${record.name} profile`} /></td>
+                      <td><div className="records-pet-info"><div className="records-info-line">{record.name}</div></div></td>
+                      <td><div className="records-owner"><span>{record.owner}</span></div></td>
+                      <td><div className="records-date"><span>{record.lastVisit}</span></div></td>
+                      <td><div className={`records-date records-appointment${record.nextAppointment !== 'None scheduled' ? ' due' : ''}`}><span>{record.nextAppointment === 'None scheduled' ? <>None<br />scheduled</> : record.nextAppointment}</span></div></td>
+                      <td>{record.alert ? <span className="records-alert">{record.alert}</span> : <span className="records-alert-none">None<br />recorded</span>}</td>
+                      <td><StatusIndicator status={record.status} className="records-status-system" /></td>
+                      <td><button type="button" className="records-view" onClick={() => openRecord(record)}>View Record {Icons.arrowRight}</button></td>
+                    </tr>
+                  ))}
+                  {!filtered.length && <tr><td colSpan="9" className="records-empty">No patient records match your search or filters.</td></tr>}
+                </tbody>
+              </table>
+              <footer className="records-footer">
+                <span>Showing {filtered.length ? `1–${filtered.length}` : '0'} of {filtered.length} patients</span>
+                <div className="records-pagination"><button type="button" aria-label="Previous page" disabled>‹</button><span>1</span><button type="button" aria-label="Next page" disabled>›</button></div>
+              </footer>
+            </>
+          ) : (
+              <>
+                <header className="records-grid-header">
+                  <div>
+                    <h2 className="records-grid-heading">{archiveView === 'archived' ? 'Archived patients' : 'Active patients'}</h2>
+                    <p className="records-grid-subtitle">{filtered.length} {archiveView === 'archived' ? 'patients archived' : 'patients currently active'}</p>
+                  </div>
+                  <span className="records-grid-total">{filtered.length} total</span>
+                </header>
+                <div className="records-grid">
+                  {filtered.map(record => (
+                    <article className="records-grid-card" key={record.id}>
+                      <ClinicAttachmentImage className="records-avatar" src={record.photo_url} attachmentId={record.photo_attachment_id} user={user} fallback={<img className="records-avatar" src="/healthy-pets.png" alt={`${record.name} profile`} />} alt={`${record.name} profile`} />
+                      <div>
+                        <div className="records-patient-name">{record.name}</div>
+                        <div className="records-grid-meta">
+                          {record.breed || record.species
+                            ? `${record.breed || record.species}${record.age ? ` · ${record.age}` : ''}`
+                            : 'Species and breed not displayed'}
+                        </div>
+                        <div className="records-grid-owner">Owner: {record.owner || 'Not recorded'}</div>
+                      </div>
+                      <button type="button" className="records-view" aria-label={`View ${record.name} record`} onClick={() => openRecord(record)}>{Icons.arrowRight}</button>
+                    </article>
+                  ))}
+                  {!filtered.length && <div className="records-empty">No patient records match your search or filters.</div>}
+                </div>
+              </>
+            )}
+        </section>
+      </main>
+    </div>
+  );
+}
+
+
+// Keep a stable React component identity when switching patient detail tabs.
+function PatientRecordDetail({ record, user: currentUser, activeTab, setActiveTab, onNavigate, onBack, onSave, onArchive }) {
+    const [patientRecordRefreshKey, setPatientRecordRefreshKey] = useState(0);
     const [integratedTabCounts, setIntegratedTabCounts] = useState({});
+    const patientScopeKey = `${currentUser?.clinic_id || 'local'}:${record.databasePetId || record.id}`;
     const reportIntegratedCount = useCallback((tab, count) => {
-      setIntegratedTabCounts(current => current[tab] === count ? current : ({ ...current, [tab]: count }));
-    }, []);
+      const patientKey = patientScopeKey;
+      setIntegratedTabCounts(current => {
+        const patientCounts = current[patientKey] || {};
+        return patientCounts[tab] === count && patientCounts[`${tab}Ready`]
+          ? current
+          : {
+            ...current,
+            [patientKey]: {
+              ...patientCounts,
+              [tab]: count,
+              [`${tab}Ready`]: true,
+            },
+          };
+      });
+    }, [patientScopeKey]);
+    const patientIntegratedTabCounts = integratedTabCounts[patientScopeKey] || {};
     const reportMedicationCount = useCallback(count => reportIntegratedCount('medications', count), [reportIntegratedCount]);
     const reportTreatmentRecordCount = useCallback(count => reportIntegratedCount('treatmentRecords', count), [reportIntegratedCount]);
     const reportLabResultCount = useCallback(count => reportIntegratedCount('labResults', count), [reportIntegratedCount]);
@@ -1261,21 +1491,37 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
     const [visitBillItemId, setVisitBillItemId] = useState('');
     const [visitCompletionSaving, setVisitCompletionSaving] = useState(false);
     const [visitCompletionError, setVisitCompletionError] = useState('');
+    const [visitCompletionResult, setVisitCompletionResult] = useState(null);
+    const [visitAttachmentUploading, setVisitAttachmentUploading] = useState(false);
+    const [visitAttachmentError, setVisitAttachmentError] = useState('');
+    const visitAttachmentInputRef = useRef(null);
     const [vaccinationRecords, setVaccinationRecords] = useState([]);
-    const [vaccinationsLoading, setVaccinationsLoading] = useState(false);
+    const [vaccinationsLoading, setVaccinationsLoading] = useState(Boolean(record.databasePetId));
     const [billingHistory, setBillingHistory] = useState([]);
-    const [billingHistoryLoading, setBillingHistoryLoading] = useState(false);
+    const [billingHistoryLoading, setBillingHistoryLoading] = useState(Boolean(record.databasePetId));
     const [billingHistoryError, setBillingHistoryError] = useState('');
+    const [admissionRecords, setAdmissionRecords] = useState([]);
+    const [admissionRecordsLoading, setAdmissionRecordsLoading] = useState(Boolean(record.databasePetId));
+    const [admissionRecordsError, setAdmissionRecordsError] = useState('');
     const [vaccinationsError, setVaccinationsError] = useState('');
     const [patientDocuments, setPatientDocuments] = useState([]);
-    const [patientDocumentsLoading, setPatientDocumentsLoading] = useState(false);
+    const [patientDocumentsLoading, setPatientDocumentsLoading] = useState(Boolean(record.databasePetId));
     const [patientDocumentsError, setPatientDocumentsError] = useState('');
     const [documentViewer, setDocumentViewer] = useState(null);
     const [documentViewerLoading, setDocumentViewerLoading] = useState(false);
     const [documentViewerError, setDocumentViewerError] = useState('');
     const [visitRecords, setVisitRecords] = useState([]);
-    const [visitsLoading, setVisitsLoading] = useState(false);
+    const [visitsLoading, setVisitsLoading] = useState(Boolean(record.databasePetId));
     const [visitsError, setVisitsError] = useState('');
+    const [visitSearch, setVisitSearch] = useState('');
+    const [visitTypeFilter, setVisitTypeFilter] = useState('all');
+    const [visitStatusFilter, setVisitStatusFilter] = useState('all');
+    const [visitDateFrom, setVisitDateFrom] = useState('');
+    const [visitDateTo, setVisitDateTo] = useState('');
+    const [visitSortOrder, setVisitSortOrder] = useState('newest');
+    const [visitDateRangeOpen, setVisitDateRangeOpen] = useState(false);
+    const visitDateFilterRef = useRef(null);
+    const visitDatePopoverRef = useRef(null);
     const [vaccinationFilter, setVaccinationFilter] = useState('All');
     const [vaccinationSearch, setVaccinationSearch] = useState('');
     const [addVaccinationOpen, setAddVaccinationOpen] = useState(false);
@@ -1335,6 +1581,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
       }
       const controller = new AbortController();
       const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+      setPatientDocuments([]);
       setPatientDocumentsLoading(true);
       fetch(`${apiUrl}/clinic-records/pets/${encodeURIComponent(petId)}/documents?clinic_id=${encodeURIComponent(currentUser.clinic_id)}`, {
         headers: { Authorization: `Bearer ${currentUser.token}` }, signal: controller.signal,
@@ -1348,8 +1595,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
         if (error.name !== 'AbortError') setPatientDocumentsError(error.message || 'Unable to load patient documents.');
       }).finally(() => { if (!controller.signal.aborted) setPatientDocumentsLoading(false); });
       return () => controller.abort();
-    }, [record.databasePetId, currentUser?.clinic_id, currentUser?.token, activeTab]);
-    useEffect(() => { setIntegratedTabCounts({}); }, [record.databasePetId]);
+    }, [record.databasePetId, currentUser?.clinic_id, currentUser?.token, patientScopeKey, patientRecordRefreshKey]);
     useEffect(() => {
       if (!record.databasePetId || !currentUser?.clinic_id || !currentUser?.token) {
         setVisitRecords([]);
@@ -1359,6 +1605,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
       }
       const controller = new AbortController();
       const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+      setVisitRecords([]);
       setVisitsLoading(true);
       setVisitsError('');
       fetch(`${apiUrl}/clinic-records/appointments?clinic_id=${encodeURIComponent(currentUser.clinic_id)}`, {
@@ -1369,11 +1616,30 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
         if (!response.ok) throw new Error(body.error || `Unable to load visits and check-ups (HTTP ${response.status}).`);
         if (!Array.isArray(body)) throw new Error('The visits and check-ups response was not valid.');
         const matching = body.filter(item => String(item.pet_id) === String(record.databasePetId) && !item.archived);
-        setVisitRecords(matching.map(item => {
-          let appointmentNotes = item.notes || {};
-          if (typeof appointmentNotes === 'string') {
-            try { appointmentNotes = JSON.parse(appointmentNotes); } catch { appointmentNotes = {}; }
-          }
+        const query = `pet_id=${encodeURIComponent(record.databasePetId)}&clinic_id=${encodeURIComponent(currentUser.clinic_id)}`;
+        const relatedHeaders = { Authorization: `Bearer ${currentUser.token}` };
+        const [treatmentResponse, labResponse] = await Promise.all([
+          fetch(`${apiUrl}/clinic-records/treatment-records?${query}`, { headers: relatedHeaders, signal: controller.signal }),
+          fetch(`${apiUrl}/clinic-records/lab-tests?${query}`, { headers: relatedHeaders, signal: controller.signal }),
+        ]);
+        const [treatmentRecords, labTests] = await Promise.all([treatmentResponse, labResponse].map(async (relatedResponse, index) => {
+          const label = index === 0 ? 'treatment records' : 'laboratory results';
+          const payload = await relatedResponse.json().catch(() => ({}));
+          if (!relatedResponse.ok) throw new Error(payload.error || `Unable to load ${label} (HTTP ${relatedResponse.status}).`);
+          if (!Array.isArray(payload)) throw new Error(`The ${label} response was not valid.`);
+          return payload;
+        }));
+        const appointmentIds = new Set(matching.map(item => String(item.id)));
+        const labsByAppointment = new Map(labTests
+          .filter(item => item.appointment_id && appointmentIds.has(String(item.appointment_id)))
+          .map(item => [String(item.appointment_id), item]));
+        const treatmentsByAppointment = new Map(treatmentRecords
+          .filter(item => item.appointment_id && appointmentIds.has(String(item.appointment_id)))
+          .map(item => [String(item.appointment_id), item]));
+        const appointmentVisits = matching.map(item => {
+          const appointmentNotes = getAppointmentNotes(item.notes);
+          const labResult = labsByAppointment.get(String(item.id));
+          const treatmentRecord = treatmentsByAppointment.get(String(item.id));
           return {
             id: item.id,
             appointmentId: item.id,
@@ -1381,30 +1647,74 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
             title: item.reason || 'Clinic appointment',
             doctor: item.practitioner || 'Clinic team',
             status: item.status || 'scheduled',
-            visitType: getAppointmentVisitType(item.reason || item.type),
+            visitType: getAppointmentVisitType(item),
             reason: item.reason || 'Clinic appointment',
-            notes: item.notes || '',
+            notes: typeof appointmentNotes.internal_notes === 'string' ? appointmentNotes.internal_notes : '',
+            chiefComplaint: appointmentNotes.chiefComplaint || appointmentNotes.chief_complaint || '',
+            serviceCategory: appointmentNotes.service_category || '',
+            serviceName: appointmentNotes.service_name || '',
             vaccinationDetails: appointmentNotes.vaccination_details || {},
             endTime: item.end_time,
             workflowType: item.workflow_type || '',
+            labResult: labResult || null,
+            treatmentRecord: treatmentRecord || null,
+            amount: treatmentRecord?.cost,
           };
-        }));
+        });
+        const standaloneTreatments = treatmentRecords
+          .filter(item => !item.archived && (!item.appointment_id || !appointmentIds.has(String(item.appointment_id))))
+          .map(item => ({
+            id: `treatment-record-${item.id}`,
+            treatmentRecordId: item.id,
+            date: item.performed_at,
+            title: item.procedure || 'Treatment',
+            doctor: item.veterinarian || 'Clinic team',
+            status: item.status || 'completed',
+            visitType: 'Treatment',
+            reason: item.diagnosis || item.procedure || 'Treatment record',
+            notes: item.notes || '',
+            serviceName: item.procedure || '',
+            amount: item.cost,
+            assessment: [item.diagnosis, item.outcome].filter(Boolean),
+            plan: item.follow_up_instructions ? [item.follow_up_instructions] : [],
+            sourceType: 'treatment-record',
+          }));
+        const standaloneLabTests = labTests
+          .filter(item => !item.archived && (!item.appointment_id || !appointmentIds.has(String(item.appointment_id))))
+          .map(item => ({
+            id: `lab-result-${item.databaseId || item.id}`,
+            labResultId: item.databaseId || item.id,
+            date: item.date || item.collected_at || item.reported_at,
+            title: item.testType || item.test_name || 'Laboratory test',
+            doctor: item.requestedBy || 'Laboratory',
+            status: item.status || 'ordered',
+            visitType: 'Laboratory',
+            reason: item.indication || item.testType || 'Laboratory test',
+            serviceName: item.testType || item.test_name || '',
+            amount: item.cost,
+            assessment: [item.summary, item.interpretation].filter(Boolean),
+            plan: [],
+            labResult: item,
+            sourceType: 'lab-result',
+          }));
+        setVisitRecords([...appointmentVisits, ...standaloneTreatments, ...standaloneLabTests]);
       }).catch(error => {
         if (error.name !== 'AbortError') setVisitsError(error.message || 'Unable to load visits and check-ups.');
       }).finally(() => {
         if (!controller.signal.aborted) setVisitsLoading(false);
       });
       return () => controller.abort();
-    }, [record.databasePetId, currentUser?.clinic_id, currentUser?.token]);
+    }, [record.databasePetId, currentUser?.clinic_id, currentUser?.token, patientRecordRefreshKey]);
     useEffect(() => {
-      if (activeTab !== 'Billing History') return undefined;
       if (!record.databasePetId || !currentUser?.clinic_id || !currentUser?.token) {
         setBillingHistory([]);
+        setBillingHistoryLoading(false);
         setBillingHistoryError('Billing history is available for saved patient records when signed in to a clinic.');
         return undefined;
       }
       const controller = new AbortController();
       const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+      setBillingHistory([]);
       setBillingHistoryLoading(true);
       setBillingHistoryError('');
       fetch(`${apiUrl}/clinic-records/invoices?clinic_id=${encodeURIComponent(currentUser.clinic_id)}`, {
@@ -1419,9 +1729,42 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
         if (error.name !== 'AbortError') setBillingHistoryError(error.message || 'Unable to load billing history.');
       }).finally(() => { if (!controller.signal.aborted) setBillingHistoryLoading(false); });
       return () => controller.abort();
-    }, [activeTab, record.databasePetId, currentUser?.clinic_id, currentUser?.token]);
+    }, [record.databasePetId, currentUser?.clinic_id, currentUser?.token, patientRecordRefreshKey]);
     useEffect(() => {
-      if (!selectedVisit?.appointmentId || !currentUser?.clinic_id || !currentUser?.token) {
+      if (!record.databasePetId || !currentUser?.clinic_id || !currentUser?.token) {
+        setAdmissionRecords([]);
+        setAdmissionRecordsLoading(false);
+        setAdmissionRecordsError('');
+        return undefined;
+      }
+      const controller = new AbortController();
+      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+      setAdmissionRecords([]);
+      setAdmissionRecordsLoading(true);
+      setAdmissionRecordsError('');
+      fetch(`${apiUrl}/clinic-records/inpatient-stays?clinic_id=${encodeURIComponent(currentUser.clinic_id)}`, {
+        headers: { Authorization: `Bearer ${currentUser.token}` },
+        signal: controller.signal,
+      }).then(async response => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error || `Unable to load admission history (HTTP ${response.status}).`);
+        if (!Array.isArray(body)) throw new Error('The admission history response was not valid.');
+        setAdmissionRecords(body.filter(stay => String(stay.pet_id) === String(record.databasePetId)).map(stay => ({
+          ...stay,
+          status: stay.status === 'active' ? 'admitted' : 'discharged',
+          admitted_at: stay.admitted_at || stay.admitted_on,
+          reason: stay.admission_reason || 'Clinic admission',
+          dischargeSummary: stay.discharge_assessment || '',
+          progress: stay.initial_assessment || stay.physical_notes || '',
+          outcome: stay.discharge_assessment || stay.follow_up_recommendations || (stay.status === 'active' ? 'Admitted' : 'Discharged'),
+        })));
+      }).catch(error => {
+        if (error.name !== 'AbortError') setAdmissionRecordsError(error.message || 'Unable to load admission history.');
+      }).finally(() => { if (!controller.signal.aborted) setAdmissionRecordsLoading(false); });
+      return () => controller.abort();
+    }, [record.databasePetId, currentUser?.clinic_id, currentUser?.token, patientRecordRefreshKey]);
+    useEffect(() => {
+      if (!selectedVisit || !currentUser?.clinic_id || !currentUser?.token) {
         setVisitBillingCatalog([]);
         setVisitBillingCatalogLoading(false);
         setVisitBillingCatalogError('');
@@ -1430,6 +1773,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
       }
       const controller = new AbortController();
       const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+      setVisitBillingCatalog([]);
       setVisitBillingCatalogLoading(true);
       setVisitBillingCatalogError('');
       setVisitBillItemId('');
@@ -1443,16 +1787,40 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
         if (error.name !== 'AbortError') setVisitBillingCatalogError(error.message || 'Unable to load clinic prices for this service.');
       }).finally(() => { if (!controller.signal.aborted) setVisitBillingCatalogLoading(false); });
       return () => controller.abort();
-    }, [selectedVisit?.appointmentId, currentUser?.clinic_id, currentUser?.token]);
+    }, [selectedVisit, currentUser?.clinic_id, currentUser?.token]);
     useEffect(() => {
       const petId = record.databasePetId;
       if (!petId || !currentUser?.clinic_id || !currentUser?.token) {
-        setIntegratedTabCounts({ medications: 0, treatmentRecords: 0, labResults: 0 });
+        const patientKey = patientScopeKey;
+        setIntegratedTabCounts(current => ({
+          ...current,
+          [patientKey]: {
+            ...(current[patientKey] || {}),
+            medications: 0,
+            medicationsReady: true,
+            treatmentRecords: 0,
+            treatmentRecordsReady: true,
+            labResults: 0,
+            labResultsReady: true,
+          },
+        }));
         return undefined;
       }
       const controller = new AbortController();
       const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
       const query = `pet_id=${encodeURIComponent(petId)}&clinic_id=${encodeURIComponent(currentUser.clinic_id)}`;
+      setIntegratedTabCounts(current => ({
+        ...current,
+        [patientScopeKey]: {
+          ...(current[patientScopeKey] || {}),
+          medications: 0,
+          medicationsReady: false,
+          treatmentRecords: 0,
+          treatmentRecordsReady: false,
+          labResults: 0,
+          labResultsReady: false,
+        },
+      }));
       Promise.all([
         fetch(`${apiUrl}/clinic-records/treatments?${query}&include_archived=true`, { headers: { Authorization: `Bearer ${currentUser.token}` }, signal: controller.signal }),
         fetch(`${apiUrl}/clinic-records/treatment-records?${query}`, { headers: { Authorization: `Bearer ${currentUser.token}` }, signal: controller.signal }),
@@ -1463,21 +1831,29 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
         return Promise.all(responses.map(response => response.json()));
       }).then(([medications, treatmentRecords, plans, labResults]) => {
         if (controller.signal.aborted) return;
-        setIntegratedTabCounts({
-          medications: Array.isArray(medications) ? medications.length : 0,
-          treatmentRecords: (Array.isArray(treatmentRecords) ? treatmentRecords.length : 0)
-            + (Array.isArray(plans) ? plans.length : 0),
-          labResults: Array.isArray(labResults) ? labResults.filter(item => !item.archived).length : 0,
-        });
+        setIntegratedTabCounts(current => ({
+          ...current,
+          [patientScopeKey]: {
+            ...(current[patientScopeKey] || {}),
+            medications: Array.isArray(medications) ? medications.length : 0,
+            medicationsReady: true,
+            treatmentRecords: (Array.isArray(treatmentRecords) ? treatmentRecords.length : 0)
+              + (Array.isArray(plans) ? plans.filter(plan => !plan.archived).length : 0),
+            treatmentRecordsReady: true,
+            labResults: Array.isArray(labResults) ? labResults.filter(item => !item.archived).length : 0,
+            labResultsReady: true,
+          },
+        }));
       }).catch(error => {
         if (error.name !== 'AbortError') console.error('Unable to load patient treatment counts:', error);
       });
       return () => controller.abort();
-    }, [record.databasePetId, currentUser?.clinic_id, currentUser?.token]);
+    }, [record.databasePetId, currentUser?.clinic_id, currentUser?.token, patientRecordRefreshKey]);
     useEffect(() => {
       if (!currentUser?.clinic_id || !currentUser?.token) {
         setVaccinationsError('Sign in to your clinic account to view saved vaccination records.');
         setVaccinationRecords([]);
+        setVaccinationsLoading(false);
         return undefined;
       }
       const controller = new AbortController();
@@ -1523,7 +1899,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
       });
       setSelectedVaccinationId(null);
       return () => controller.abort();
-    }, [record.id, record.databasePetId, record.name, record.owner, record.veterinarian, currentUser?.clinic_id, currentUser?.token]);
+    }, [record.id, record.databasePetId, record.name, record.owner, record.veterinarian, currentUser?.clinic_id, currentUser?.token, patientRecordRefreshKey]);
     useEffect(() => {
       if (!shareOwnerOpen) return;
       if (!currentUser?.clinic_id || !currentUser?.token || !record.name || !record.email) {
@@ -1558,29 +1934,68 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
       return () => controller.abort();
     }, [shareOwnerOpen, currentUser?.clinic_id, currentUser?.token, record.email, record.name, shareTargetId]);
     useEffect(() => {
-      if (activeTab !== 'Visits & Check-ups') setSelectedVisit(null);
+      if (activeTab !== 'Visits & Check-ups') {
+        setSelectedVisit(null);
+        setVisitDateRangeOpen(false);
+      }
     }, [activeTab]);
     useEffect(() => {
       if (activeTab !== 'Vaccinations') setSelectedVaccinationId(null);
     }, [activeTab]);
-    const tabs = ['Overview', 'Visits & Check-ups', 'Service Completion', 'Vaccinations', 'Treatment Records', 'Medications', 'Lab Results', 'Admission History', 'Billing History', 'Files & Documents'];
+    const tabs = ['Overview', 'Diagnosis', 'Visits & Check-ups', 'Service Completion', 'Vaccinations', 'Treatment Records', 'Medications', 'Lab Results', 'Admission History', 'Billing History', 'Files & Documents'];
     const alerts = record.medicalAlerts || (record.alert ? [record.alert] : []);
-    const hasSasadDemoVisits = record.name.trim().toLowerCase() === 'sasad';
-    const visits = record.databasePetId ? visitRecords : hasSasadDemoVisits ? PATIENT_VISIT_MOCKS : record.recentVisits || [];
+    const inpatientVisits = record.databasePetId ? admissionRecords.map(stay => ({
+      id: `inpatient-${stay.databaseId || stay.id}`,
+      inpatientStayId: stay.databaseId || stay.id,
+      date: stay.admitted_at || stay.admitted_on,
+      title: stay.reason || stay.admission_reason || 'Inpatient admission',
+      reason: stay.reason || stay.admission_reason || 'Inpatient admission',
+      doctor: stay.veterinarian || 'Not assigned',
+      status: stay.status === 'active' ? 'Admitted' : stay.status || 'Discharged',
+      visitType: 'Admission',
+      sourceType: 'inpatient-admission',
+      serviceName: stay.ward ? `Inpatient admission · ${stay.ward}` : 'Inpatient admission',
+      notes: [stay.initial_assessment, stay.discharge_assessment].filter(Boolean).join('\n\n'),
+    })) : [];
+    const visits = record.databasePetId ? [...visitRecords, ...inpatientVisits] : record.recentVisits || [];
+    const linkedVaccinationAppointments = new Set(vaccinationRecords.map(item => String(item.appointment_id || '')).filter(Boolean));
+    const scheduledVaccinationVisits = visitRecords.filter(visit => (
+      /vaccin|rabies/i.test(`${visit.visitType || ''} ${visit.title || ''} ${visit.reason || ''}`)
+      && !['completed', 'cancelled', 'canceled'].includes(String(visit.status || '').toLowerCase())
+      && !linkedVaccinationAppointments.has(String(visit.appointmentId || visit.id))
+    )).filter((visit, index, records) => records.findIndex(candidate => (
+      String(candidate.appointmentId || candidate.id) === String(visit.appointmentId || visit.id)
+    )) === index).map(visit => ({
+      id: `appointment-${visit.appointmentId || visit.id}`,
+      title: String(visit.title || 'Vaccination').replace(/^vaccination\s*[-:–—]?\s*/i, '') || 'Vaccination',
+      date: null,
+      nextDue: visit.date,
+      dose: visit.vaccinationDetails?.dose || '—',
+      manufacturer: visit.vaccinationDetails?.manufacturer || '',
+      lotNumber: visit.vaccinationDetails?.lot_number || '',
+      expiryDate: visit.vaccinationDetails?.expiry_date || '',
+      administeredBy: visit.doctor,
+      appointmentStatus: String(visit.status || '').toLowerCase(),
+      isScheduledAppointment: true,
+    }));
     const recentVisits = record.databasePetId
       ? visitRecords.filter(visit => String(visit.status).toLowerCase() === 'completed' && Date.parse(visit.date) <= Date.now())
       : visits;
     const tabCounts = {
-      'Visits & Check-ups': visits.length,
-      'Service Completion': visits.filter(visit => String(visit.status || '').toLowerCase() === 'completed').length,
-      Vaccinations: vaccinationRecords.length,
-      Medications: integratedTabCounts.medications,
+      'Visits & Check-ups': visitsLoading || admissionRecordsLoading || visitsError || admissionRecordsError ? null : visits.length,
+      'Service Completion': visitsLoading || visitsError ? null : visits.filter(visit => String(visit.status || '').toLowerCase() === 'completed').length,
+      Vaccinations: vaccinationsLoading || vaccinationsError ? null : vaccinationRecords.filter(item => !item.archived).length + scheduledVaccinationVisits.length,
+      Medications: patientIntegratedTabCounts.medicationsReady ? patientIntegratedTabCounts.medications : null,
       'Medical History': (record.medicalHistory || []).length,
-      'Treatment Records': integratedTabCounts.treatmentRecords,
-      'Admission History': (record.admissionHistory || record.inpatientHistory || []).length,
-      'Billing History': billingHistory.length,
-      'Files & Documents': record.databasePetId ? patientDocuments.length : (record.files || []).length,
-      'Lab Results': integratedTabCounts.labResults ?? (record.labResults || []).length,
+      'Treatment Records': patientIntegratedTabCounts.treatmentRecordsReady ? patientIntegratedTabCounts.treatmentRecords : null,
+      'Admission History': record.databasePetId
+        ? admissionRecordsLoading || admissionRecordsError ? null : admissionRecords.length
+        : (record.admissionHistory || record.inpatientHistory || []).length,
+      'Billing History': billingHistoryLoading || billingHistoryError ? null : billingHistory.length,
+      'Files & Documents': record.databasePetId
+        ? patientDocumentsLoading || patientDocumentsError ? null : patientDocuments.length
+        : (record.files || []).length,
+      'Lab Results': patientIntegratedTabCounts.labResultsReady ? patientIntegratedTabCounts.labResults : null,
     };
     const detailRows = {
       'Visits & Check-ups': visits.map(visit => ({ ...visit, status: visit.status || 'Completed' })),
@@ -1591,10 +2006,53 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
         ? alerts.map(alert => ({ date: 'On file', title: alert, doctor: 'Medical alert', status: 'Active' }))
         : [{ date: record.lastVisit, title: 'Routine wellness examination', doctor: record.veterinarian || 'Clinic team', status: 'Reviewed' }]),
       'Treatment Records': record.treatmentRecords || [],
-      'Admission History': record.admissionHistory || record.inpatientHistory || [],
+      'Admission History': record.databasePetId ? admissionRecords : (record.admissionHistory || record.inpatientHistory || []),
       'Files & Documents': record.databasePetId ? patientDocuments : (record.files || []),
       'Lab Results': record.labResults || [],
     }[activeTab] || [];
+    const visitTypeOptions = [...new Set(visits.map(visit => (
+      visit.visitType || (/vaccin|rabies/i.test(visit.title || '') ? 'Vaccination' : /follow/i.test(visit.title || '') ? 'Follow-up' : 'Check-up')
+    )).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    const normalizeVisitStatus = status => {
+      const normalized = String(status || '').toLowerCase().replace(/[_\s]+/g, '-').replace(/-+/g, '-').trim();
+      if (normalized === 'complete') return 'completed';
+      if (normalized === 'inprogress') return 'in-progress';
+      if (normalized === 'canceled') return 'cancelled';
+      return normalized;
+    };
+    const visitStatusOptions = [...new Set(visits.map(visit => normalizeVisitStatus(visit.status)).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b));
+    const filteredVisitRows = detailRows.filter(entry => {
+      const type = entry.visitType || (/vaccin|rabies/i.test(entry.title || '') ? 'Vaccination' : /follow/i.test(entry.title || '') ? 'Follow-up' : 'Check-up');
+      const status = normalizeVisitStatus(entry.status);
+      const date = toDateInput(entry.date);
+      const query = visitSearch.trim().toLowerCase();
+      const matchesSearch = !query || [entry.title, entry.reason, type, entry.doctor, entry.status]
+        .some(value => String(value || '').toLowerCase().includes(query));
+      return matchesSearch
+        && (visitTypeFilter === 'all' || type.toLowerCase() === visitTypeFilter)
+        && (visitStatusFilter === 'all' || status === visitStatusFilter)
+        && (!visitDateFrom || (date && date >= visitDateFrom))
+        && (!visitDateTo || (date && date <= visitDateTo));
+    }).sort((first, second) => {
+      const difference = new Date(first.date).getTime() - new Date(second.date).getTime();
+      return visitSortOrder === 'newest' ? -difference : difference;
+    });
+    useEffect(() => {
+      if (!visitDateRangeOpen) return undefined;
+      const closeOutside = event => {
+        if (event.target?.closest?.('.lab-date-time-popover, .lab-date-time-backdrop')) return;
+        if (!visitDateFilterRef.current?.contains(event.target) && !visitDatePopoverRef.current?.contains(event.target)) {
+          setVisitDateRangeOpen(false);
+        }
+      };
+      document.addEventListener('mousedown', closeOutside);
+      document.addEventListener('touchstart', closeOutside, { passive: true });
+      return () => {
+        document.removeEventListener('mousedown', closeOutside);
+        document.removeEventListener('touchstart', closeOutside);
+      };
+    }, [visitDateRangeOpen]);
     const openPatientDocument = async entry => {
       if (documentViewer?.objectUrl) URL.revokeObjectURL(documentViewer.url);
       setSelectedVisit(null);
@@ -1637,11 +2095,73 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
     const openVisit = visit => {
       setSelectedVisit(visit);
       setVisitCompletionError('');
+      setVisitCompletionResult(null);
+      setVisitAttachmentError('');
       if (activeTab !== 'Visits & Check-ups') setActiveTab('Visits & Check-ups');
     };
+    const uploadVisitLabAttachment = async event => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file || !selectedVisit?.labResult || visitAttachmentUploading) return;
+      if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
+        setVisitAttachmentError('Choose a PDF, JPG, or PNG laboratory report.');
+        return;
+      }
+      if (file.size > 4 * 1024 * 1024) {
+        setVisitAttachmentError('Laboratory reports must be 4 MB or smaller.');
+        return;
+      }
+      setVisitAttachmentUploading(true);
+      setVisitAttachmentError('');
+      try {
+        const data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('Unable to read the selected report file.'));
+          reader.readAsDataURL(file);
+        });
+        const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+        const labTestId = selectedVisit.labResult.databaseId || selectedVisit.labResult.id;
+        const response = await fetch(`${apiUrl}/clinic-records/lab-tests/${encodeURIComponent(labTestId)}/report?clinic_id=${encodeURIComponent(currentUser.clinic_id)}`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${currentUser.token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name, content_type: file.type, data }),
+        });
+        const attachment = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(attachment?.error || `Unable to upload laboratory report (HTTP ${response.status}).`);
+        const uploadedFile = {
+          attachmentId: attachment.id,
+          title: attachment.filename || file.name,
+          fileName: attachment.filename || file.name,
+          date: attachment.uploaded_at || new Date().toISOString(),
+          contentType: attachment.content_type || file.type,
+          downloadEndpoint: `/clinic-records/attachments/${attachment.id}/content`,
+        };
+        setSelectedVisit(current => current ? {
+          ...current,
+          attachments: [...(current.attachments || []), uploadedFile],
+          labResult: {
+            ...current.labResult,
+            reportAttachmentId: attachment.id,
+            fileName: uploadedFile.fileName,
+            reportContentType: uploadedFile.contentType,
+            downloadable: true,
+          },
+        } : current);
+        setPatientRecordRefreshKey(key => key + 1);
+      } catch (error) {
+        setVisitAttachmentError(error.message || 'Unable to upload laboratory report.');
+      } finally {
+        setVisitAttachmentUploading(false);
+      }
+    };
+    const getVisitBillingKey = visit => visit?.appointmentId
+      ? `appointment:${visit.appointmentId}`
+      : visit?.labResult
+        ? `lab:${visit.labResult.databaseId || visit.labResult.id}`
+        : '';
     const confirmVisitServiceComplete = async () => {
-      if (!selectedVisit?.appointmentId || !visitBillItemId || visitCompletionSaving) return;
-      if (!window.confirm(`Confirm ${selectedVisit.title || 'this service'} was completed? This will complete the visit and issue an invoice for Billing.`)) return;
+      if ((!selectedVisit?.appointmentId && !selectedVisit?.labResult) || !visitBillItemId || visitCompletionSaving) return;
       setVisitCompletionSaving(true);
       setVisitCompletionError('');
       const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
@@ -1649,63 +2169,59 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
       const headers = { Authorization: `Bearer ${currentUser.token}`, 'Content-Type': 'application/json' };
       const item = visitBillingCatalog.find(entry => String(entry.id) === String(visitBillItemId));
       try {
-        const startResponse = await fetch(`${apiUrl}/clinic-records/appointments/${selectedVisit.appointmentId}/start-consultation${query}`, { method: 'POST', headers, body: '{}' });
-        const startPayload = await startResponse.json().catch(() => ({}));
-        if (!startResponse.ok) throw new Error(startPayload.error || 'Unable to start service completion.');
-        const notes = {
-          chiefComplaint: selectedVisit.reason || selectedVisit.title,
-          diagnosis: selectedVisit.reason || selectedVisit.title,
-          clinicalFindings: selectedVisit.notes || 'Service completed by the attending veterinarian.',
-          outcome: 'Service completed',
-          treatment: item?.item_type === 'treatment' ? item.name : '',
-          vaccinations: item?.item_type === 'vaccination' ? item.name : '',
-          billingItems: [{ catalog_item_id: Number(visitBillItemId), quantity: 1, clinical_details: selectedVisit.reason || selectedVisit.title }],
-        };
-        const saveResponse = await fetch(`${apiUrl}/clinic-records/appointments/${selectedVisit.appointmentId}/consultation${query}`, { method: 'PUT', headers, body: JSON.stringify({ notes, owner_visible: false }) });
-        const savePayload = await saveResponse.json().catch(() => ({}));
-        if (!saveResponse.ok) throw new Error(savePayload.error || 'Unable to save service details.');
-        const completeResponse = await fetch(`${apiUrl}/clinic-records/appointments/${selectedVisit.appointmentId}/complete-consultation${query}`, { method: 'POST', headers, body: JSON.stringify({ reason: 'Doctor confirmed service completion.' }) });
-        const completePayload = await completeResponse.json().catch(() => ({}));
-        if (!completeResponse.ok) throw new Error(completePayload.error || 'Unable to complete this service.');
-        setVisitRecords(current => current.map(visit => String(visit.appointmentId || visit.id) === String(selectedVisit.appointmentId) ? { ...visit, status: 'completed' } : visit));
-        setSelectedVisit(null);
-        if (completePayload.invoice) {
-          onNavigate?.('clinic', { tab: 'consultation', invoiceId: completePayload.invoice.id });
+        let completePayload;
+        if (selectedVisit.appointmentId) {
+          const startResponse = await fetch(`${apiUrl}/clinic-records/appointments/${selectedVisit.appointmentId}/start-consultation${query}`, { method: 'POST', headers, body: '{}' });
+          const startPayload = await startResponse.json().catch(() => ({}));
+          if (!startResponse.ok) throw new Error(startPayload.error || 'Unable to start service completion.');
+          const notes = {
+            chiefComplaint: selectedVisit.reason || selectedVisit.title,
+            diagnosis: selectedVisit.reason || selectedVisit.title,
+            clinicalFindings: selectedVisit.notes || 'Service completed by the attending veterinarian.',
+            outcome: 'Service completed',
+            treatment: item?.item_type === 'treatment' ? item.name : '',
+            vaccinations: item?.item_type === 'vaccination' ? item.name : '',
+            billingItems: [{ catalog_item_id: Number(visitBillItemId), quantity: 1, clinical_details: selectedVisit.reason || selectedVisit.title }],
+          };
+          const saveResponse = await fetch(`${apiUrl}/clinic-records/appointments/${selectedVisit.appointmentId}/consultation${query}`, { method: 'PUT', headers, body: JSON.stringify({ notes, owner_visible: false }) });
+          const savePayload = await saveResponse.json().catch(() => ({}));
+          if (!saveResponse.ok) throw new Error(savePayload.error || 'Unable to save service details.');
+          const completeResponse = await fetch(`${apiUrl}/clinic-records/appointments/${selectedVisit.appointmentId}/complete-consultation${query}`, { method: 'POST', headers, body: JSON.stringify({ reason: 'Doctor confirmed service completion.' }) });
+          completePayload = await completeResponse.json().catch(() => ({}));
+          if (!completeResponse.ok) throw new Error(completePayload.error || 'Unable to complete this service.');
         } else {
-          setActiveTab('Billing History');
+          const labTestId = selectedVisit.labResult.databaseId || selectedVisit.labResult.id;
+          const completeResponse = await fetch(`${apiUrl}/clinic-records/lab-tests/${encodeURIComponent(labTestId)}/complete-service${query}`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ catalog_item_id: Number(visitBillItemId) }),
+          });
+          completePayload = await completeResponse.json().catch(() => ({}));
+          if (!completeResponse.ok) throw new Error(completePayload.error || 'Unable to complete and bill this laboratory service.');
         }
+        const visitKey = getVisitBillingKey(selectedVisit);
+        setVisitCompletionResult({ visitKey, invoiceId: completePayload.invoice?.id || null });
+        setSelectedVisit(current => current ? {
+          ...current,
+          serviceCompleted: true,
+          labResult: current.labResult ? { ...current.labResult, serviceCompleted: true } : current.labResult,
+        } : current);
+        setPatientRecordRefreshKey(key => key + 1);
+        notifySuccess(
+          'Service completed',
+          completePayload.invoice
+            ? `Invoice #${completePayload.invoice.id} was sent to Local Clinic Records Billing. Related patient records have been updated.`
+            : `${record.name}'s visit and related patient records have been updated.`
+        );
       } catch (error) {
         setVisitCompletionError(error.message || 'Unable to complete this service.');
       } finally {
         setVisitCompletionSaving(false);
       }
     };
-    const selectedVisitDetails = selectedVisit
-      ? (selectedVisit.isMock ? PATIENT_VISIT_MOCK_DETAILS[`${selectedVisit.date}|${selectedVisit.title}`] : null)
-        || selectedVisit
-      : null;
+    const selectedVisitDetails = selectedVisit || null;
     const selectedVaccination = vaccinationRecords.find(item => item.id === selectedVaccinationId) || null;
     const verificationVaccination = vaccinationRecords.find(item => item.id === verifyVaccinationId) || null;
-    const linkedVaccinationAppointments = new Set(vaccinationRecords.map(item => String(item.appointment_id || '')).filter(Boolean));
-    const scheduledVaccinationVisits = visitRecords.filter(visit => (
-      /vaccin|rabies/i.test(`${visit.visitType || ''} ${visit.title || ''} ${visit.reason || ''}`)
-      && !['completed', 'cancelled', 'canceled'].includes(String(visit.status || '').toLowerCase())
-      && !linkedVaccinationAppointments.has(String(visit.appointmentId || visit.id))
-    )).filter((visit, index, records) => records.findIndex(candidate => (
-      String(candidate.appointmentId || candidate.id) === String(visit.appointmentId || visit.id)
-    )) === index).map(visit => ({
-      id: `appointment-${visit.appointmentId || visit.id}`,
-      title: String(visit.title || 'Vaccination').replace(/^vaccination\s*[-:–—]?\s*/i, '') || 'Vaccination',
-      date: null,
-      nextDue: visit.date,
-      dose: visit.vaccinationDetails?.dose || '—',
-      manufacturer: visit.vaccinationDetails?.manufacturer || '',
-      lotNumber: visit.vaccinationDetails?.lot_number || '',
-      expiryDate: visit.vaccinationDetails?.expiry_date || '',
-      administeredBy: visit.doctor,
-      appointmentStatus: String(visit.status || '').toLowerCase(),
-      isScheduledAppointment: true,
-    }));
     const vaccinationRows = [...vaccinationRecords, ...scheduledVaccinationVisits].map(item => {
       if (item.isScheduledAppointment) {
         const overdue = item.appointmentStatus === 'due';
@@ -1828,16 +2344,104 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
         || (/vaccin|rabies/i.test(selectedVisit.title) ? 'Vaccination' : /follow/i.test(selectedVisit.title) ? 'Follow-up' : 'Check-up')
       : '';
     const visitBillingItems = visitBillingCatalog.filter(item => {
-      const reason = `${selectedVisit?.reason || ''} ${selectedVisit?.title || ''}`.toLowerCase();
-      if (/vaccin|rabies/.test(reason)) return item.item_type === 'vaccination' || item.category === 'Vaccination';
-      if (/dent/.test(reason)) return item.category === 'Dental' || ['treatment', 'consultation'].includes(item.item_type);
-      if (/treatment|procedure|surg/.test(reason)) return ['treatment', 'consultation'].includes(item.item_type);
+      const reason = `${selectedVisitType} ${selectedVisit?.serviceCategory || ''} ${selectedVisit?.serviceName || ''} ${selectedVisit?.reason || ''} ${selectedVisit?.title || ''}`.toLowerCase();
+      const category = String(item.category || '').toLowerCase();
+      if (/vaccin|rabies/.test(reason)) return item.item_type === 'vaccination' || category === 'vaccination';
+      if (/dent/.test(reason)) return category === 'dental' || ['treatment', 'consultation'].includes(item.item_type);
+      if (/surg/.test(reason)) return category === 'surgery' || ['treatment', 'consultation'].includes(item.item_type);
+      if (/groom|bath|trimming/.test(reason)) return category === 'grooming' || item.item_type === 'treatment';
+      if (/treatment|procedure|wound|injection|catheter|deworm|oxygen|monitoring/.test(reason)) return category === 'treatment' || ['treatment', 'consultation'].includes(item.item_type);
       if (/lab|blood|test/.test(reason)) return item.item_type === 'lab_test';
-      if (/confin|hospital|inpatient/.test(reason)) return item.category === 'Confinement' || item.item_type === 'inpatient';
+      if (/confin|hospital|inpatient/.test(reason)) return category === 'confinement' || item.item_type === 'inpatient';
+      if (/follow|check-up|checkup|wellness|consultation/.test(reason)) return item.item_type === 'consultation' || category === 'consultation';
       return ['consultation', 'treatment', 'medication', 'vaccination', 'lab_test', 'inpatient'].includes(item.item_type);
     });
+    useEffect(() => {
+      if (!selectedVisit || visitBillItemId || visitBillingCatalogLoading || !visitBillingItems.length) return;
+      const normalize = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const serviceName = normalize(selectedVisit.serviceName);
+      const title = normalize(selectedVisit.title);
+      const reason = normalize(selectedVisit.reason);
+      const scoredItems = visitBillingItems.map(item => {
+        const name = normalize(item.name);
+        const score = serviceName && name === serviceName ? 100
+          : title && name === title ? 90
+            : serviceName && (name.includes(serviceName) || serviceName.includes(name)) ? 80
+              : title && (name.includes(title) || title.includes(name)) ? 70
+                : reason && (name.includes(reason) || reason.includes(name)) ? 60
+                  : 0;
+        return { item, score };
+      }).sort((first, second) => second.score - first.score);
+      const bestMatch = scoredItems[0];
+      const unambiguousTextMatch = bestMatch?.score > 0
+        && (scoredItems.length === 1 || bestMatch.score > scoredItems[1].score);
+      const onlyCategoryMatch = visitBillingItems.length === 1;
+      if (unambiguousTextMatch || onlyCategoryMatch) {
+        setVisitBillItemId(String(bestMatch.item.id));
+      }
+    }, [selectedVisit, visitBillItemId, visitBillingCatalogLoading, visitBillingItems]);
+    const selectedVisitBillingItem = visitBillingItems.find(item => String(item.id) === String(visitBillItemId));
+    const selectedVisitInvoice = selectedVisit
+      ? billingHistory.find(invoice => (
+        (selectedVisit.appointmentId && String(invoice.appointment_id) === String(selectedVisit.appointmentId))
+        || (selectedVisit.labResult?.databaseId
+          && String(invoice.metadata?.lab_test_id || '') === String(selectedVisit.labResult.databaseId))
+      ))
+      : null;
+    const selectedVisitKey = getVisitBillingKey(selectedVisit);
+    const selectedVisitCompletionSucceeded = Boolean(
+      selectedVisitInvoice
+      || (selectedVisitKey && visitCompletionResult?.visitKey === selectedVisitKey)
+    );
+    const selectedVisitInvoiceId = selectedVisitInvoice?.id
+      || (visitCompletionResult?.visitKey === selectedVisitKey ? visitCompletionResult.invoiceId : null);
+    const selectedVisitCanBeBilled = Boolean(
+      selectedVisit
+      && (selectedVisit.appointmentId || selectedVisit.labResult)
+      && !['cancelled', 'canceled'].includes(String(selectedVisit.status || '').toLowerCase())
+      && !selectedVisitCompletionSucceeded
+      && !selectedVisit.serviceCompleted
+      && !selectedVisit.labResult?.serviceCompleted
+    );
+    const openSelectedVisitBilling = () => {
+      onNavigate?.('clinic', { tab: 'consultation', invoiceId: selectedVisitInvoiceId });
+    };
+    const selectedVisitInvoiceAmount = selectedVisitInvoice
+      ? selectedVisitInvoice.items?.length
+        ? selectedVisitInvoice.items.reduce((total, item) => total + (Number(item.line_total) || 0), 0)
+        : Number(selectedVisitInvoice.total)
+      : null;
+    const selectedVisitAmount = Number.isFinite(selectedVisitInvoiceAmount)
+      ? selectedVisitInvoiceAmount
+      : selectedVisit?.amount != null && Number.isFinite(Number(selectedVisit.amount))
+        ? Number(selectedVisit.amount)
+        : selectedVisitBillingItem ? Number(selectedVisitBillingItem.unit_price)
+          : visitBillingItems.find(item => {
+            const normalize = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+            const catalogName = normalize(item.name);
+            const visitService = normalize(selectedVisit?.serviceName);
+            const visitTitle = normalize(selectedVisit?.title);
+            return (visitService && catalogName === visitService) || (visitTitle && catalogName === visitTitle);
+          })?.unit_price ?? (visitBillingItems.length === 1 ? Number(visitBillingItems[0].unit_price) : null);
+    const selectedVisitStatusLabel = selectedVisit
+      ? String(selectedVisit.labResult?.status || selectedVisit.status || 'Completed')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\b\w/g, letter => letter.toUpperCase())
+      : '';
     const selectedVisitAttachments = selectedVisit
-      ? selectedVisitDetails.attachments || (record.files || []).filter(file => file.date === selectedVisit.date)
+      ? [
+        ...(selectedVisitDetails.attachments || (record.files || []).filter(file => file.date === selectedVisit.date)),
+        ...(selectedVisit.labResult?.reportAttachmentId && !(selectedVisitDetails.attachments || []).some(file => String(file.attachmentId || file.id) === String(selectedVisit.labResult.reportAttachmentId))
+          ? [{
+            attachmentId: selectedVisit.labResult.reportAttachmentId,
+            title: selectedVisit.labResult.fileName || 'Laboratory report',
+            fileName: selectedVisit.labResult.fileName || 'Laboratory report',
+            contentType: selectedVisit.labResult.reportContentType,
+            downloadEndpoint: `/clinic-records/attachments/${selectedVisit.labResult.reportAttachmentId}/content`,
+            date: selectedVisit.date,
+          }]
+          : []),
+      ]
       : [];
     const detailAction = label => notifySuccess(label, `${label} for ${record.name} is not connected yet.`);
     const exportSectionNames = Object.keys(reportSections);
@@ -1970,6 +2574,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
     const contactOwner = () => {
       if (onNavigate) {
         onNavigate('inbox', {
+          pet_id: record.databasePetId || record.pet_id || record.id,
           id: record.id,
           name: record.owner,
           phone: record.phone || '',
@@ -2254,7 +2859,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
     return (
       <main className="records-detail">
         <div className="detail-hero">
-          <img className="detail-avatar" src={record.photo_url || '/healthy-pets.png'} alt={`${record.name} profile`} />
+          <ClinicAttachmentImage className="detail-avatar" src={record.photo_url} attachmentId={record.photo_attachment_id} user={currentUser} fallback={<img className="detail-avatar" src="/healthy-pets.png" alt={`${record.name} profile`} />} alt={`${record.name} profile`} />
           <div>
             <div className="detail-title">
               <h1>{record.name}</h1>
@@ -2287,17 +2892,21 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
         )}
 
         <section className="detail-summary" aria-label="Patient status overview">
-          <div className="detail-summary-card"><div className="detail-summary-label">Last visit</div><div className="detail-summary-value">{record.lastVisit}</div><div className="detail-summary-note">{record.lastVisitAgo || 'Visit history'}</div></div>
-          <div className="detail-summary-card"><div className="detail-summary-label">Next appointment</div><div className="detail-summary-value">{record.nextAppointment === 'None scheduled' ? 'None scheduled' : `${record.nextAppointment} · ${record.appointmentType || 'Appointment'}`}</div><div className="detail-summary-note">{record.nextAppointment === 'None scheduled' ? 'No upcoming appointment' : record.nextAppointmentPractitioner || record.veterinarian || 'Clinic team'}</div></div>
-          <div className="detail-summary-card"><div className="detail-summary-label">Weight (target {record.weightTarget || 'not set'})</div><div className="detail-summary-value">{record.weight}</div><div className="detail-summary-note">Weight on file</div></div>
-          <div className="detail-summary-card"><div className="detail-summary-label">Vaccination</div><div className="detail-summary-value">{record.vaccination || 'Not recorded'}</div><div className="detail-summary-note">{record.vaccinationDue ? `Next ${record.vaccinationDue}` : 'Review vaccination record'}</div></div>
+          {[
+            {label:'Last visit',value:record.lastVisit,note:record.lastVisitAgo || 'Visit history',icon:Icons.calendar},
+            {label:'Next appointment',value:record.nextAppointment === 'None scheduled' ? 'None scheduled' : `${record.nextAppointment} · ${record.appointmentType || 'Appointment'}`,note:record.nextAppointment === 'None scheduled' ? 'No upcoming appointment' : record.nextAppointmentPractitioner || record.veterinarian || 'Clinic team',icon:Icons.calendarPlus},
+            {label:`Weight (target ${record.weightTarget || 'not set'})`,value:record.weight,note:'Weight on file',icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="4" width="16" height="17" rx="3"/><path d="M7 9a6 6 0 0 1 10 0M12 7v5m-3 5 3-5 3 5"/></svg>},
+            {label:'Vaccination',value:record.vaccination || 'Not recorded',note:record.vaccinationDue ? `Next ${record.vaccinationDue}` : 'Review vaccination record',icon:Icons.syringe},
+          ].map(metric=><div className="detail-summary-card" key={metric.label}><span className="detail-summary-icon" aria-hidden="true">{metric.icon}</span><div className="detail-summary-text"><div className="detail-summary-label">{metric.label}</div><div className="detail-summary-value">{metric.value}</div><div className="detail-summary-note">{metric.note}</div></div></div>)}
         </section>
 
         <nav className="detail-tabs" aria-label="Patient record sections">
-          {tabs.map(tab => <button key={tab} type="button" className={`detail-tab${activeTab === tab ? ' active' : ''}`} onClick={() => setActiveTab(tab)}>{tab}{tabCounts[tab] != null ? `　${tabCounts[tab]}` : ''}</button>)}
+          {tabs.map(tab => <button key={tab} type="button" aria-current={activeTab === tab ? 'page' : undefined} className={`detail-tab${activeTab === tab ? ' active' : ''}`} onClick={() => setActiveTab(tab)}>{tab === 'Diagnosis' ? 'Diagnoses' : tab}</button>)}
         </nav>
 
-        {activeTab === 'Medications' ? (
+        {activeTab === 'Diagnosis' ? (
+          <PatientDiagnosisPanel patient={record} renderPlan={(planId, onClose) => <TreatmentPlansTab user={currentUser} patientName={record.name} standalonePlanRequest={{ planId }} onStandalonePlanClose={onClose} />} renderLabs={() => <LabResultsTab patientName={record.name} patientRecord={record} user={currentUser} />} renderTreatmentRequest={({ initialPlan, portalTarget, onClose, onSaved }) => <TreatmentPlansTab user={currentUser} patientName={record.name} createOnly initialPlan={initialPlan} portalTarget={portalTarget} onCreateClose={onClose} onCreated={onSaved} />} patientId={record.databasePetId} patientName={record.name} user={currentUser} renderLabRequest={onClose => <LabResultsTab patientName={record.name} patientRecord={record} user={currentUser} requestOnly onRequestClose={onClose} />} />
+        ) : activeTab === 'Medications' ? (
           <div className="detail-integrated-tab"><PatientMedicationsPanel patientId={record.databasePetId} patientName={record.name} user={currentUser} onCountChange={reportMedicationCount} /></div>
         ) : activeTab === 'Treatment Records' ? (
           <div className="detail-integrated-tab"><PatientTreatmentRecordsPanel patientId={record.databasePetId} patientName={record.name} user={currentUser} onCountChange={reportTreatmentRecordCount} /></div>
@@ -2331,7 +2940,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
                 ) : <div className="detail-summary-note">No billing records are available for this patient.</div>}
           </section>
         ) : activeTab === 'Overview' ? (
-          <div className="detail-columns">
+          <div className="detail-columns detail-overview-columns">
             <div className="detail-column">
               <section className="detail-panel">
                 <div className="detail-panel-heading">Patient Information</div>
@@ -2382,15 +2991,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
                   </button>
                 ))}</div>
               </section>
-              <section className="detail-panel">
-                <div className="detail-panel-heading">Quick Actions</div>
-                <div className="detail-quick-actions">
-                  <button type="button" onClick={() => detailAction('New visit')}>{Icons.calendarPlus}New Visit</button>
-                  <button type="button" onClick={() => detailAction('Add treatment plan')}>{Icons.clipboard}Add Treatment Plan</button>
-                  <button type="button" className="patient-primary-add" onClick={() => detailAction('Add medication')}>{Icons.pill}Add Medication</button>
-                  <button type="button" onClick={() => setActiveTab('Visits & Check-ups')}>{Icons.file}View Full Record</button>
-                </div>
-              </section>
+              <PatientIntakeSummary patientId={record.databasePetId} user={currentUser} onDiagnosis={()=>setActiveTab('Diagnosis')}/>
             </div>
           </div>
         ) : (
@@ -2398,6 +2999,38 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
             <div className={`detail-panel-heading${activeTab === 'Vaccinations' ? ' patient-vaccination-heading' : ''}`}>
               <span>{activeTab}</span>
             </div>
+            {activeTab === 'Visits & Check-ups' && <div className="patient-visit-filter-bar">
+              <label className="medication-search patient-visit-search">
+                {Icons.search}
+                <input type="search" aria-label="Search visits, services, or veterinarians" placeholder="Search visit, service, or veterinarian..." value={visitSearch} onChange={event => setVisitSearch(event.target.value)} />
+              </label>
+              <select aria-label="Filter visits by type" value={visitTypeFilter} onChange={event => setVisitTypeFilter(event.target.value)}>
+                <option value="all">All Types</option>
+                {visitTypeOptions.map(type => <option key={type} value={type.toLowerCase()}>{type}</option>)}
+              </select>
+              <select aria-label="Filter visits by status" value={visitStatusFilter} onChange={event => setVisitStatusFilter(event.target.value)}>
+                <option value="all">All Statuses</option>
+                {visitStatusOptions.map(status => <option key={status} value={status}>{status.replace(/-/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase())}</option>)}
+              </select>
+              <div className="patient-visit-date-filter" ref={visitDateFilterRef}>
+                <button type="button" className="patient-visit-date-trigger" aria-label="Choose visit date range" aria-expanded={visitDateRangeOpen} onClick={() => setVisitDateRangeOpen(open => !open)}>
+                  {Icons.calendar}
+                  <span>{visitDateFrom || visitDateTo ? `${visitDateFrom || 'Any date'} – ${visitDateTo || 'Any date'}` : 'Select date range'}</span>
+                </button>
+                {visitDateRangeOpen && <div className="patient-visit-date-popover system-date-range-popover" role="group" aria-label="Visit date range" ref={visitDatePopoverRef}>
+                  <DateRangePopoverFields
+                    dateFrom={visitDateFrom}
+                    dateTo={visitDateTo}
+                    onDateFromChange={setVisitDateFrom}
+                    onDateToChange={setVisitDateTo}
+                    sortOrder={visitSortOrder}
+                    onSortOrderChange={setVisitSortOrder}
+                    onClear={() => { setVisitDateFrom(''); setVisitDateTo(''); }}
+                    onDone={() => setVisitDateRangeOpen(false)}
+                  />
+                </div>}
+              </div>
+            </div>}
             {activeTab === 'Vaccinations' && <>
               <div className="lab-status-row patient-vaccination-status-row patient-record-status-row">
                 <div className="lab-status-filters" role="tablist" aria-label="Vaccination status">
@@ -2420,18 +3053,22 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
             {activeTab === 'Admission History' && <p className="detail-summary-note">Hospital stays for this pet, including the reason for admission, admission and discharge dates, attending veterinarian, progress, and outcome.</p>}
             {activeTab === 'Files & Documents' && patientDocumentsLoading ? <div className="detail-summary-note">Loading documents from the clinic database…</div>
               : activeTab === 'Files & Documents' && patientDocumentsError ? <div className="detail-summary-note" role="alert">{patientDocumentsError}</div>
-                : ['Visits & Check-ups', 'Service Completion'].includes(activeTab) && visitsLoading ? <div className="detail-summary-note">Loading visit and service records from the clinic database…</div>
-              : ['Visits & Check-ups', 'Service Completion'].includes(activeTab) && visitsError ? <div className="detail-summary-note" role="alert">{visitsError}</div>
+                : activeTab === 'Admission History' && admissionRecordsLoading ? <div className="detail-summary-note">Loading admission history from the clinic database…</div>
+                : activeTab === 'Admission History' && admissionRecordsError ? <div className="detail-summary-note" role="alert">{admissionRecordsError}</div>
+                : activeTab === 'Visits & Check-ups' && (visitsLoading || admissionRecordsLoading) ? <div className="detail-summary-note">Loading visit, check-up, and admission records from the clinic database…</div>
+                : activeTab === 'Visits & Check-ups' && (visitsError || admissionRecordsError) ? <div className="detail-summary-note" role="alert">{visitsError || admissionRecordsError}</div>
+                : activeTab === 'Service Completion' && visitsLoading ? <div className="detail-summary-note">Loading visit and service records from the clinic database…</div>
+              : activeTab === 'Service Completion' && visitsError ? <div className="detail-summary-note" role="alert">{visitsError}</div>
                 : activeTab === 'Vaccinations' && vaccinationsLoading ? <div className="detail-summary-note">Loading vaccination records from the clinic database…</div>
                   : activeTab === 'Vaccinations' && vaccinationsError ? <div className="detail-summary-note" role="alert">{vaccinationsError}</div>
-                    : detailRows.length ? (
+                    : (activeTab === 'Vaccinations' ? vaccinationRows.some(item => !item.archived) : detailRows.length > 0) ? (
               activeTab === 'Service Completion' ? (
                 <div className="vaccine-records-wrap">
                   <table className="vaccine-records-table patient-history-table patient-history-static-table">
                     <thead><tr><th>Completed</th><th>Service</th><th>Type</th><th>Veterinarian</th><th>Status</th></tr></thead>
                     <tbody>{detailRows.map(entry => <tr key={entry.id || `${entry.date}-${entry.title}`}>
                       <td>{formatDateText(entry.date, undefined, entry.date)}</td>
-                      <td><strong>{entry.title || entry.reason || 'Clinic service'}</strong>{entry.notes && <span className="vaccine-secondary">{typeof entry.notes === 'string' ? entry.notes : ''}</span>}</td>
+                      <td><strong>{entry.title || entry.reason || 'Clinic service'}</strong></td>
                       <td>{entry.visitType || 'Service'}</td>
                       <td>{entry.doctor || 'Not recorded'}</td>
                       <td><StatusIndicator status="Completed" className="visit-list-status" /></td>
@@ -2442,7 +3079,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
                 <div className="vaccine-records-wrap">
                   <table className="vaccine-records-table patient-history-table">
                     <thead><tr><th>Date</th><th>Visit / Reason</th><th>Type</th><th>Veterinarian</th><th>Status</th></tr></thead>
-                    <tbody>{detailRows.map(entry => <tr
+                    <tbody>{filteredVisitRows.length ? filteredVisitRows.map(entry => <tr
                       key={entry.id || `${entry.date}-${entry.title}`}
                       tabIndex={0}
                       aria-label={`View ${entry.title} visit details`}
@@ -2452,19 +3089,18 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
                       onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openVisit(entry); } }}
                     >
                       <td>{formatDateText(entry.date, undefined, entry.date)}</td>
-                      <td><strong>{entry.title}</strong>{entry.notes && <span className="vaccine-secondary">{entry.notes}</span>}</td>
+                      <td><strong>{entry.title}</strong></td>
                       <td>{entry.visitType || (/vaccin|rabies/i.test(entry.title) ? 'Vaccination' : /follow/i.test(entry.title) ? 'Follow-up' : 'Check-up')}</td>
                       <td>{entry.doctor || 'Not recorded'}</td>
                       <td><StatusIndicator status={entry.status || 'Completed'} className="visit-list-status" /></td>
-                    </tr>)}</tbody>
+                    </tr>) : <tr><td className="records-empty" colSpan="5">No visits match the selected filters.</td></tr>}</tbody>
                   </table>
                 </div>
               ) : activeTab === 'Vaccinations' ? (
                 vaccinationsLoading ? <div className="detail-summary-note">Loading vaccination records from the clinic database…</div>
                   : vaccinationsError ? <div className="detail-summary-note" role="alert">{vaccinationsError}</div>
-                    : vaccinationRecords.length ? (
+                  : vaccinationRows.some(item => !item.archived) ? (
                   <>
-                    {vaccinationRecords.every(item => item.isMock) && <div className="detail-summary-note" role="note">Prototype sample records for Nala. These examples are not saved to the clinic database; verification and sharing actions are disabled.</div>}
                     {overdueVaccinationRows.length > 0 && <div className="vaccine-overdue-notice" role="status" aria-live="polite">
                       <span><strong>{overdueVaccinationRows.length} {overdueVaccinationRows.length === 1 ? 'vaccine is' : 'vaccines are'} overdue:</strong> {overdueVaccinationRows.map(item => item.title).join(' and ')}. Let {record.owner.split(' ')[0]} know so {record.owner.split(' ')[0] === 'you' ? 'you can' : 'they can'} book a visit.</span>
                       <button type="button" className="vaccine-overdue-action" onClick={contactOwner}>Contact owner</button>
@@ -2490,7 +3126,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
                             }}
                           >
                             <td>{item.isScheduledAppointment || item.status === 'scheduled' ? `Scheduled · ${formatVaccinationTableDate(item.isScheduledAppointment ? item.nextDue : item.date || item.date_given)}` : formatVaccinationTableDate(item.date)}</td>
-                            <td><strong className="vaccine-name">{item.title}{item.isMock && <small className="vaccine-mock-label">Sample</small>}</strong><span className="vaccine-secondary">{item.isScheduledAppointment || item.status === 'scheduled' ? [item.manufacturer, item.lotNumber, item.expiryDate ? `Expires ${formatDateText(item.expiryDate)}` : '', 'Not administered'].filter(Boolean).join(' · ') : [item.manufacturer, item.lotNumber].filter(value => value && value !== 'Not recorded').join(' · ') || 'Manufacturer / lot not recorded'}</span></td>
+                            <td><strong className="vaccine-name">{item.title}</strong><span className="vaccine-secondary">{item.isScheduledAppointment || item.status === 'scheduled' ? [item.manufacturer, item.lotNumber, item.expiryDate ? `Expires ${formatDateText(item.expiryDate)}` : '', 'Not administered'].filter(Boolean).join(' · ') : [item.manufacturer, item.lotNumber].filter(value => value && value !== 'Not recorded').join(' · ') || 'Manufacturer / lot not recorded'}</span></td>
                             <td>{item.dose || '—'}</td>
                             <td>{formatVaccinationTableDate(item.nextDue)}</td>
                             <td><span className={`vaccine-due-state ${item.isSuperseded ? 'superseded' : item.isOverdue ? 'overdue' : item.isScheduledAppointment || item.status === 'scheduled' ? 'unknown' : item.isUpToDate ? 'up-to-date' : 'unknown'}`}><span className="vaccine-status-dot" />{item.isSuperseded ? 'Superseded' : item.isOverdue ? 'Due' : item.isScheduledAppointment || item.status === 'scheduled' ? 'Scheduled' : item.isUpToDate ? 'Up to date' : 'Not recorded'}</span></td>
@@ -2585,34 +3221,30 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
           <aside id="visit-detail-panel" className="visit-detail-panel" role="dialog" aria-modal="false" aria-label={`${record.name} visit details`}>
             <header className="visit-detail-header">
               <div>
-                <div className="visit-detail-title-row"><h2>{selectedVisit.title}</h2><StatusIndicator status={selectedVisit.status || 'Completed'} className="visit-detail-status" /></div>
+                <div className="visit-detail-title-row"><h2>{selectedVisit.title}</h2><StatusIndicator status={selectedVisit.labResult?.status || selectedVisit.status || 'Completed'} className="visit-detail-status" /></div>
                 <div className="visit-detail-meta">{formatDateText(selectedVisit.date, undefined, selectedVisit.date)} · {selectedVisit.doctor}</div>
               </div>
-              <button type="button" className="visit-detail-close" aria-label="Close visit details" onClick={() => setSelectedVisit(null)}>×</button>
+              <button type="button" className="visit-detail-close" aria-label="Close visit details" onClick={() => setSelectedVisit(null)}>Close</button>
             </header>
             <div className="visit-detail-body">
-              <div className="visit-detail-intro">
-                <div className="visit-detail-field"><span>Reason for visit</span><strong>{selectedVisitDetails.reason || selectedVisit.title}</strong></div>
-                <div className="visit-detail-field"><span>Chief complaint</span><strong>{selectedVisitDetails.chiefComplaint || 'Not recorded'}</strong></div>
-              </div>
-              <div className="visit-detail-exam">
-                <section className="visit-detail-section">
-                  <h3>Examination (vitals)</h3>
-                  {selectedVisitDetails.vitals?.length ? (
-                    <div className="visit-detail-vitals">{selectedVisitDetails.vitals.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
-                  ) : <p className="visit-detail-empty">No examination values recorded for this visit.</p>}
-                </section>
-                <section className="visit-detail-section">
-                  <h3>Assessment</h3>
-                  {selectedVisitDetails.assessment?.length ? <ul className="visit-detail-list">{selectedVisitDetails.assessment.map(item => <li key={item}>{item}</li>)}</ul> : <p className="visit-detail-empty">No assessment recorded for this visit.</p>}
-                </section>
-              </div>
-              <section className="visit-detail-section">
-                <h3>Plan</h3>
-                {selectedVisitDetails.plan?.length ? <ul className="visit-detail-list">{selectedVisitDetails.plan.map(item => <li key={item}>{item}</li>)}</ul> : <p className="visit-detail-empty">No follow-up plan recorded for this visit.</p>}
+              <section className="visit-detail-section visit-information-section">
+                <h3>Visit details</h3>
+                <div className="visit-detail-rows">
+                  <div><span>Attending veterinarian</span><strong>{selectedVisit.doctor || 'Not recorded'}</strong></div>
+                  <div><span>Appointment type</span><strong>{selectedVisit.visitType || 'Not recorded'}</strong></div>
+                  <div><span>Visit date</span><strong>{formatDateText(selectedVisit.date, 'en-US', selectedVisit.date)}</strong></div>
+                  <div><span>Visit status</span><strong className="visit-panel-status">{selectedVisitStatusLabel}</strong></div>
+                </div>
               </section>
               <section className="visit-detail-section">
-                <h3>Related records</h3>
+                <h3>Service & pricing</h3>
+                <dl className="visit-service-pricing">
+                  <div><dt>Service</dt><dd>{selectedVisit.serviceName || selectedVisit.title || 'Not recorded'}</dd></div>
+                  <div><dt>Clinic price</dt><dd>{selectedVisitAmount == null ? 'Not recorded' : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(selectedVisitAmount)}</dd></div>
+                </dl>
+              </section>
+              <details className="visit-detail-section visit-detail-disclosure" open>
+                <summary><span><strong>Related records</strong><small>View related patient records for this visit.</small></span></summary>
                 <div className="visit-related-records">
                   {[
                     ['Vaccinations', 'Vaccinations'],
@@ -2627,32 +3259,57 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
                     </button>
                   ))}
                 </div>
-              </section>
-              <section className="visit-detail-section">
-                <h3>Attachments</h3>
+              </details>
+              <details className="visit-detail-section visit-detail-disclosure">
+                <summary><span><strong>Attachments</strong><small>{selectedVisitAttachments.length ? `${selectedVisitAttachments.length} file${selectedVisitAttachments.length === 1 ? '' : 's'} linked to this visit.` : 'No attachments linked to this visit.'}</small></span></summary>
                 {selectedVisitAttachments.length ? selectedVisitAttachments.map(file => (
                   <div className="visit-attachment" key={`${file.date}-${file.title}`}>
-                    {file.data ? <a href={file.data} download={file.fileName || file.title}>{file.title}</a> : <span>{file.title}</span>}
+                    {file.data ? <a href={file.data} download={file.fileName || file.title}>{file.title}</a>
+                      : file.downloadEndpoint ? <button type="button" onClick={() => openPatientDocument(file)}>{file.title}</button>
+                        : <span>{file.title}</span>}
                     {file.size ? <small>{file.size}</small> : null}
                   </div>
                 )) : <p className="visit-detail-empty">No attachments linked to this visit.</p>}
-              </section>
-              {Number.isInteger(Number(selectedVisit.appointmentId)) && currentUser?.clinic_id && !['completed', 'cancelled', 'canceled'].includes(String(selectedVisit.status || '').toLowerCase()) && (
-                <section className="visit-detail-section">
-                  <h3>Complete service</h3>
-                  <p className="visit-detail-empty">Confirm the service was performed and select its clinic price. This will complete the visit and issue an invoice for Billing.</p>
-                  <label className="visit-detail-field" style={{ marginTop: 12 }}>
-                    <span>Service to bill</span>
-                    <select aria-label="Service to bill" value={visitBillItemId} onChange={event => setVisitBillItemId(event.target.value)} disabled={!visitBillingCatalog.length} style={{ minHeight: 40, padding: '8px 10px', border: '1px solid #d6e3df', borderRadius: 8, background: '#fff', color: '#203b37', font: 'inherit', fontSize: 13 }}>
-                      <option value="">{visitBillingItems.length ? 'Choose a clinic service or item' : visitBillingCatalogLoading ? 'Loading clinic prices…' : 'No matching priced service is available'}</option>
-                      {visitBillingItems.map(item => <option key={item.id} value={item.id}>{item.name} · {item.item_type.replace('_', ' ')} · ₱{Number(item.unit_price).toFixed(2)}</option>)}
-                    </select>
-                  </label>
+                {selectedVisit.labResult && currentUser?.clinic_id && (
+                  <>
+                    <input ref={visitAttachmentInputRef} type="file" accept="application/pdf,image/jpeg,image/png" onChange={uploadVisitLabAttachment} hidden />
+                    <button type="button" className="visit-add-file" onClick={() => visitAttachmentInputRef.current?.click()} disabled={visitAttachmentUploading}>
+                      {visitAttachmentUploading ? 'Uploading…' : '＋ Add file'}
+                    </button>
+                    {visitAttachmentError && <p className="detail-summary-note" role="alert">{visitAttachmentError}</p>}
+                  </>
+                )}
+              </details>
+              {(selectedVisitCanBeBilled || selectedVisitCompletionSucceeded) && currentUser?.clinic_id && (
+                <section className="visit-detail-section visit-service-completion">
+                  <h3>{selectedVisitCompletionSucceeded ? 'Service completed' : 'Complete service'}</h3>
+                  <p className="visit-detail-empty">{selectedVisitCompletionSucceeded
+                    ? 'The service has been completed and sent to Billing.'
+                    : 'Confirm the service was performed. This will complete the visit and issue an invoice for Billing.'}</p>
+                  <div className="completion-controls">
+                    <div className="visit-detail-field">
+                      <span>{selectedVisitCompletionSucceeded ? 'Billed service' : 'Service to bill'}</span>
+                      <div className="visit-service-readonly">
+                        {visitBillingCatalogLoading ? 'Loading clinic price…'
+                          : selectedVisitBillingItem
+                            ? `${selectedVisitBillingItem.name} · ${selectedVisitBillingItem.item_type.replace('_', ' ')} · ${new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(selectedVisitBillingItem.unit_price) || 0)}`
+                            : 'No unambiguous clinic price match is available.'}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="detail-action primary"
+                      disabled={!selectedVisitCompletionSucceeded && (!selectedVisitBillingItem || visitCompletionSaving || billingHistoryLoading || Boolean(billingHistoryError))}
+                      onClick={selectedVisitCompletionSucceeded ? openSelectedVisitBilling : confirmVisitServiceComplete}
+                    >
+                      {selectedVisitCompletionSucceeded
+                        ? 'View Billing Page'
+                        : visitCompletionSaving ? 'Completing service…' : 'Confirm Service Completed'}
+                    </button>
+                  </div>
                   {visitBillingCatalogError && <p className="detail-summary-note" role="alert">{visitBillingCatalogError}</p>}
+                  {billingHistoryError && <p className="detail-summary-note" role="alert">{billingHistoryError}</p>}
                   {visitCompletionError && <p className="detail-summary-note" role="alert">{visitCompletionError}</p>}
-                  <button type="button" className="detail-action primary" disabled={!visitBillItemId || visitCompletionSaving} onClick={confirmVisitServiceComplete} style={{ marginTop: 12 }}>
-                    {visitCompletionSaving ? 'Completing service…' : 'Confirm Service Completed'}
-                  </button>
                 </section>
               )}
               <div className="visit-owner-sharing">
@@ -2874,12 +3531,12 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
               <div style={{ overflowY: 'auto', padding: '20px 22px' }}>
                 <input ref={filePickerRef} type="file" accept="image/jpeg,image/png,application/pdf" onChange={selectImportFile} style={{ display: 'none' }} />
                 <input ref={cameraPickerRef} type="file" accept="image/*" capture="environment" onChange={selectImportFile} style={{ display: 'none' }} />
-                <div style={{ display: 'grid', justifyItems: 'center', gap: 7, minHeight: 188, alignContent: 'center', padding: '18px 14px', border: '2px dashed #b9d4ce', borderRadius: 14, background: '#f8fbfa', textAlign: 'center' }}>
-                  <svg aria-hidden="true" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#005447" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4m-5 5 5-5 5 5M3 20h18" /></svg>
+                <div style={{ display: 'grid', justifyItems: 'center', gap: 7, minHeight: 188, alignContent: 'center', padding: '18px 14px', border: '2px dashed #b9d4ce', borderRadius: 14, background: '#fafbf8', textAlign: 'center' }}>
+                  <svg aria-hidden="true" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#013826" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4m-5 5 5-5 5 5M3 20h18" /></svg>
                   <strong style={{ marginTop: 4, color: '#173d37', fontSize: 15 }}>{importFile ? importFile.name : 'No file selected'}</strong>
                   <span style={{ color: '#607873', fontSize: 13 }}>{importFile ? `${(importFile.size / (1024 * 1024)).toFixed(2)} MB · Ready to import` : 'JPG, PNG or PDF up to 10 MB'}</span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginTop: 8 }}>
-                    <button type="button" onClick={() => cameraPickerRef.current?.click()} style={{ minHeight: 48, padding: '0 19px', border: '1px solid #005447', borderRadius: 12, background: '#005447', color: '#fff', font: 'inherit', fontSize: 15, fontWeight: 650, cursor: 'pointer' }}>Take photo</button>
+                    <button type="button" onClick={() => cameraPickerRef.current?.click()} style={{ minHeight: 48, padding: '0 19px', border: '1px solid #013826', borderRadius: 12, background: '#086b50', color: '#fff', font: 'inherit', fontSize: 15, fontWeight: 650, cursor: 'pointer' }}>Take photo</button>
                     <button type="button" onClick={() => filePickerRef.current?.click()} style={{ minHeight: 48, padding: '0 19px', border: '1px solid #d8e4e0', borderRadius: 12, background: '#fff', color: '#173d37', font: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Choose file</button>
                   </div>
                 </div>
@@ -2905,10 +3562,10 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
                 </div>
                 <label style={{ display: 'grid', gap: 8, marginTop: 17, color: '#173d37', fontSize: 14, fontWeight: 600 }}>
                   Description (optional)
-                  <textarea value={importDescription} onChange={event => setImportDescription(event.target.value)} placeholder="e.g. Annual vaccination card" rows={3} style={{ width: '100%', minHeight: 90, resize: 'vertical', padding: '12px 13px', border: '1px solid #ccdcd7', borderRadius: 11, color: '#173d37', font: 'inherit', fontSize: 15, lineHeight: 1.45, outlineColor: '#005447' }} />
+                  <textarea value={importDescription} onChange={event => setImportDescription(event.target.value)} placeholder="e.g. Annual vaccination card" rows={3} style={{ width: '100%', minHeight: 90, resize: 'vertical', padding: '12px 13px', border: '1px solid #ccdcd7', borderRadius: 11, color: '#173d37', font: 'inherit', fontSize: 15, lineHeight: 1.45, outlineColor: '#013826' }} />
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 13, marginTop: 15, padding: '12px 14px', border: '1px solid #dce7e3', borderRadius: 12, color: '#173d37', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={shareImportedFile} onChange={event => setShareImportedFile(event.target.checked)} style={{ width: 23, height: 23, flex: '0 0 23px', accentColor: '#005447' }} />
+                  <input type="checkbox" checked={shareImportedFile} onChange={event => setShareImportedFile(event.target.checked)} style={{ width: 23, height: 23, flex: '0 0 23px', accentColor: '#013826' }} />
                   <span style={{ display: 'grid', gap: 3 }}>
                     <strong style={{ fontSize: 14, fontWeight: 500 }}>Share with owner after staff review</strong>
                     <small style={{ color: '#607873', fontSize: 13 }}>Stays internal until you approve it</small>
@@ -2918,7 +3575,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
               </div>
               <footer style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 22px', borderTop: '1px solid #e0e8e6', background: '#fff' }}>
                 <button type="button" onClick={() => setImportImageOpen(false)} style={{ minHeight: 48, padding: '0 17px', border: '1px solid #d8e4e0', borderRadius: 12, background: '#fff', color: '#173d37', font: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" style={{ minHeight: 48, padding: '0 18px', border: '1px solid #005447', borderRadius: 12, background: '#005447', color: '#fff', font: 'inherit', fontSize: 15, fontWeight: 650, cursor: 'pointer' }}>Import</button>
+                <button type="submit" style={{ minHeight: 48, padding: '0 18px', border: '1px solid #013826', borderRadius: 12, background: '#086b50', color: '#fff', font: 'inherit', fontSize: 15, fontWeight: 650, cursor: 'pointer' }}>Import</button>
               </footer>
             </form>
           </div>
@@ -2943,7 +3600,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
                 </div>
                 <div className="owner-profile-pets-heading">Pets (1)</div>
                 <div className="owner-profile-pet">
-                  <img className="owner-profile-pet-avatar" src={record.photo_url || '/healthy-pets.png'} alt={`${record.name} profile`} />
+                  <ClinicAttachmentImage className="owner-profile-pet-avatar" src={record.photo_url} attachmentId={record.photo_attachment_id} user={currentUser} fallback={<img className="owner-profile-pet-avatar" src="/healthy-pets.png" alt={`${record.name} profile`} />} alt={`${record.name} profile`} />
                   <div><strong>{record.name}</strong><span>{record.breed} · {record.id}</span></div>
                   <StatusIndicator status={record.status} className="records-status-system" />
                 </div>
@@ -3037,132 +3694,3 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
       </main>
     );
   }
-
-  return (
-    <div className="patient-records-page">
-      <style>{styles}</style>
-      <Topbar
-        user={user}
-        title="Patient Records"
-        subtitle="Manage patient records and owner information"
-        className="records-topbar"
-        actions={(
-          <button type="button" className="records-add" onClick={() => onNavigate ? onNavigate('patient-registration') : notifySuccess('Add patient', 'Open patient registration to add a new patient.')}>
-            {Icons.plus} Add Patient
-          </button>
-        )}
-      />
-      <main className="records-content">
-        <section className="records-stats" aria-label="Patient record summary">
-          <div className="records-stat">
-            <span className="records-stat-icon stat-blue">{Icons.users}</span>
-            <div><div className="records-stat-label">Total Patients</div><div className="records-stat-value">{patientRecords.length}</div><div className="records-stat-note">Registered in this clinic</div></div>
-          </div>
-          <div className="records-stat">
-            <span className="records-stat-icon stat-green">{Icons.check}</span>
-            <div><div className="records-stat-label">Active Patients</div><div className="records-stat-value">{activePatientCount}</div><div className="records-stat-note">Currently active</div></div>
-          </div>
-          <div className="records-stat">
-            <span className="records-stat-icon stat-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M10.3 3.9 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4m0 3h.01" /></svg></span>
-            <div><div className="records-stat-label">With Alerts</div><div className="records-stat-value">{alertPatientCount}</div><div className="records-stat-note">Require attention</div></div>
-          </div>
-          <div className="records-stat">
-            <span className="records-stat-icon stat-purple">{Icons.calendar}</span>
-            <div><div className="records-stat-label">Upcoming Appointments</div><div className="records-stat-value">{patientRecords.filter(record => record.nextAppointment !== 'None scheduled').length}</div><div className="records-stat-note">Within next 7 days</div></div>
-          </div>
-        </section>
-
-        <nav className="patient-archive-tabs" aria-label="Patient record archive">
-          <button type="button" className={archiveView === 'active' ? 'active' : ''} aria-pressed={archiveView === 'active'} onClick={() => { setArchiveView('active'); setStatusFilter('All'); }}>
-            Active Patients <span>{activePatientCount}</span>
-          </button>
-          <button type="button" className={archiveView === 'archived' ? 'active' : ''} aria-pressed={archiveView === 'archived'} onClick={() => { setArchiveView('archived'); setStatusFilter('All'); }}>
-            Archived Patients <span>{archivedPatientCount}</span>
-          </button>
-        </nav>
-        <section className="records-toolbar" aria-label="Search and filter patients">
-          <label className="records-search">
-            {Icons.search}
-            <input type="search" placeholder="Search by pet name, owner, breed or patient ID" value={search} onChange={event => setSearch(event.target.value)} />
-          </label>
-          <FilterSelect label="Filter by species" className="records-select" value={speciesFilter} onChange={setSpeciesFilter} options={[
-            { value: 'All', label: 'Species · All' }, { value: 'Dog', label: 'Dog' }, { value: 'Cat', label: 'Cat' }, { value: 'Rabbit', label: 'Rabbit' },
-          ]} />
-          <FilterSelect label="Filter by status" className="records-select" value={statusFilter} onChange={setStatusFilter} options={[
-            { value: 'All', label: 'Status · All' }, { value: 'Active', label: 'Active' },
-          ]} />
-          <FilterSelect label="Filter by alerts" className="records-select" value={alertsFilter} onChange={setAlertsFilter} options={[
-            { value: 'All', label: 'Alerts · All' }, { value: 'With alerts', label: 'With alerts' }, { value: 'None', label: 'None' },
-          ]} />
-          <FilterSelect label="Sort patients" className="records-select records-sort" value={sortBy} onChange={setSortBy} options={[
-            { value: 'Last visit (newest)', label: 'Last visit (newest)' }, { value: 'Name (A-Z)', label: 'Name (A-Z)' }, { value: 'Name (Z-A)', label: 'Name (Z-A)' },
-          ]} />
-          <div className="records-view-toggle" aria-label="Choose patient view">
-            <button type="button" aria-label="List view" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>{Icons.list}</button>
-            <button type="button" aria-label="Grid view" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>{Icons.grid}</button>
-          </div>
-        </section>
-
-        {patientRecordsError && <div role="alert" style={{ margin: '0 0 12px', color: '#b45309', fontSize: 13 }}>{patientRecordsError}</div>}
-        {appointmentRecordsError && <div role="alert" style={{ margin: '0 0 12px', color: '#b45309', fontSize: 13 }}>{appointmentRecordsError}</div>}
-        <section className="records-table-wrap" aria-label="Patient records">
-          {viewMode === 'list' ? (
-            <>
-              <table className="records-table">
-                <thead><tr><th>ID</th><th>Patient Profile</th><th>Pet Name</th><th>Owner</th><th>Last Visit</th><th>Next Appointment</th><th>Alerts</th><th>Status</th><th>Action</th></tr></thead>
-                <tbody>
-                  {filtered.map(record => (
-                    <tr key={record.id}>
-                      <td><div className="records-patient-id">{record.id}</div></td>
-                      <td><img className="records-avatar" src={record.photo_url || '/healthy-pets.png'} alt={`${record.name} profile`} /></td>
-                      <td><div className="records-pet-info"><div className="records-info-line">{record.name}</div></div></td>
-                      <td><div className="records-owner"><span>{record.owner}</span></div></td>
-                      <td><div className="records-date"><span>{record.lastVisit}</span></div></td>
-                      <td><div className={`records-date records-appointment${record.nextAppointment !== 'None scheduled' ? ' due' : ''}`}><span>{record.nextAppointment === 'None scheduled' ? <>None<br />scheduled</> : record.nextAppointment}</span></div></td>
-                      <td>{record.alert ? <span className="records-alert">{record.alert}</span> : <span className="records-alert-none">None<br />recorded</span>}</td>
-                      <td><StatusIndicator status={record.status} className="records-status-system" /></td>
-                      <td><button type="button" className="records-view" onClick={() => openRecord(record)}>View Record {Icons.arrowRight}</button></td>
-                    </tr>
-                  ))}
-                  {!filtered.length && <tr><td colSpan="9" className="records-empty">No patient records match your search or filters.</td></tr>}
-                </tbody>
-              </table>
-              <footer className="records-footer">
-                <span>Showing {filtered.length ? `1–${filtered.length}` : '0'} of {filtered.length} patients</span>
-                <div className="records-pagination"><button type="button" aria-label="Previous page" disabled>‹</button><span>1</span><button type="button" aria-label="Next page" disabled>›</button></div>
-              </footer>
-            </>
-          ) : (
-              <>
-                <header className="records-grid-header">
-                  <div>
-                    <h2 className="records-grid-heading">{archiveView === 'archived' ? 'Archived patients' : 'Active patients'}</h2>
-                    <p className="records-grid-subtitle">{filtered.length} {archiveView === 'archived' ? 'patients archived' : 'patients currently active'}</p>
-                  </div>
-                  <span className="records-grid-total">{filtered.length} total</span>
-                </header>
-                <div className="records-grid">
-                  {filtered.map(record => (
-                    <article className="records-grid-card" key={record.id}>
-                      <img className="records-avatar" src={record.photo_url || '/healthy-pets.png'} alt={`${record.name} profile`} />
-                      <div>
-                        <div className="records-patient-name">{record.name}</div>
-                        <div className="records-grid-meta">
-                          {record.breed || record.species
-                            ? `${record.breed || record.species}${record.age ? ` · ${record.age}` : ''}`
-                            : 'Species and breed not displayed'}
-                        </div>
-                        <div className="records-grid-owner">Owner: {record.owner || 'Not recorded'}</div>
-                      </div>
-                      <button type="button" className="records-view" aria-label={`View ${record.name} record`} onClick={() => openRecord(record)}>{Icons.arrowRight}</button>
-                    </article>
-                  ))}
-                  {!filtered.length && <div className="records-empty">No patient records match your search or filters.</div>}
-                </div>
-              </>
-            )}
-        </section>
-      </main>
-    </div>
-  );
-}

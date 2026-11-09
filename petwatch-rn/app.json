@@ -5,7 +5,16 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "ios": { "supportsTablet": false, "bundleIdentifier": "com.petwatch.app" },
-    "android": { "package": "com.petwatch.app" }
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.petwatch.app"
+    },
+    "android": {
+      "package": "com.petwatch.app"
+    },
+    "plugins": [
+      "expo-status-bar",
+      "expo-font"
+    ]
   }
 }

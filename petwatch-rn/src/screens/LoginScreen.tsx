@@ -125,5 +125,5 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   link: { fontSize: 14, color: colors.primary, fontWeight: '600' },
   demo: { backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', borderRadius: radius.md, padding: 16 },
   demoTitle: { fontSize: 14, fontWeight: '600', color: '#1E40AF', marginBottom: 4 },
-  demoText: { fontSize: 13, color: '#3B82F6' },
+  demoText: { fontSize: 13, color: '#087A70' },
 });

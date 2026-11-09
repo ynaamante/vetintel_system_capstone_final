@@ -29,8 +29,6 @@ const ROLE_DEFAULT_FEATURES = {
     'New Patient Registration',
     'Patient Queue',
     'Billing & Payments',
-    'Client Management',
-    'Due Dates & Reminders',
     'Shared Inbox',
   ]),
 };
@@ -66,6 +64,14 @@ export const hasPermissionForFeature = (permissions, role, feature) => {
 
 export const canViewFeature = (permissions, role, feature) => {
   const normalizedRole = normalizeRoleName(role);
+  const normalizedFeature = normalizeFeatureName(feature);
+  // These pages belong to their assigned roles even when saved permissions are older.
+  if (normalizedFeature === 'Client Management') {
+    return ['owner', 'clinic_owner', 'super_admin'].includes(normalizedRole);
+  }
+  if (normalizedFeature === 'Due Dates & Reminders') {
+    return ['doctor', 'assistant_doctor', 'veterinarian', 'super_admin'].includes(normalizedRole);
+  }
   if (ROLE_DEFAULT_FEATURES[normalizedRole]?.has(normalizeFeatureName(feature))) return true;
 
   const featurePermissions = getFeaturePermissions(permissions, feature);

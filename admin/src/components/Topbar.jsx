@@ -2,22 +2,15 @@ import { useEffect, useState } from 'react';
 import { Icons } from '../icons';
 import { subscribeToNotifications } from '../utils/notifications';
 
-const INITIAL_NOTIFICATIONS = [
-  { id: 1, icon: 'calendar', color: '#005447', title: 'New Appointment Request', text: 'John Smith requested an appointment for Max on July 25 at 10:00 AM — Checkup', time: '5 min ago', pet: 'Max', unread: true },
-  { id: 2, icon: 'info', color: '#6366f1', title: 'New Message from Pet Owner', text: "Lisa Taylor: 'Can Dr. Smith refill Daisy's Doxycycline prescription?'", time: '12 min ago', pet: 'Daisy', unread: true },
-  { id: 3, icon: 'syringe', color: '#005447', title: 'Vaccination Due Soon', text: 'Rocky (David Brown) — Rabies vaccination due in 6 days (July 28)', time: '2 hours ago', pet: 'Rocky', unread: true },
-  { id: 4, icon: 'info', color: '#16a34a', title: 'Payment Received', text: "₱2,300 payment confirmed for Bella's dental cleaning (Emma Wilson)", time: '3 hours ago', pet: 'Bella', unread: false },
-  { id: 5, icon: 'calendar', color: '#16a34a', title: 'Appointment Confirmed', text: 'Appointment for Max (Checkup) confirmed for July 22 at 2:00 AM with Dr. Torres', time: '4 hours ago', pet: 'Max', unread: false },
-  { id: 6, icon: 'pill', color: '#f59e0b', title: 'Low Stock Alert', text: 'Amoxicillin 50mg is below its reorder level.', time: 'Yesterday', pet: '', unread: false },
-  { id: 7, icon: 'refresh', color: '#0891b2', title: 'Data Sync Completed', text: '47 records were synchronized with the intelligence network.', time: 'Yesterday', pet: '', unread: false },
-  { id: 8, icon: 'settings', color: '#64748b', title: 'System Settings Updated', text: 'Privacy settings for data sharing were updated.', time: '2 days ago', pet: '', unread: false },
-];
+const INITIAL_NOTIFICATIONS = [];
+const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
 
 export default function Topbar({ user, title, subtitle, actions, headerContent, className = '' }) {
+  const notificationStorageKey = `vetintel_notifications_${user?.id || user?.clinic_id || 'user'}`;
   const [notifications, setNotifications] = useState(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem('vetintel_notifications') || 'null');
-      return Array.isArray(saved) ? saved : INITIAL_NOTIFICATIONS;
+      const saved = JSON.parse(localStorage.getItem(notificationStorageKey) || 'null');
+      return Array.isArray(saved) ? saved.filter(item => typeof item.id === 'string' && (item.id.startsWith('server-') || /^\d{13}-/.test(item.id))) : INITIAL_NOTIFICATIONS;
     } catch {
       return INITIAL_NOTIFICATIONS;
     }
@@ -25,6 +18,7 @@ export default function Topbar({ user, title, subtitle, actions, headerContent, 
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [notificationError, setNotificationError] = useState('');
   const unreadCount = notifications.filter(notification => notification.unread).length;
   const visibleNotifications = (unreadOnly
     ? notifications.filter(notification => notification.unread)
@@ -34,25 +28,94 @@ export default function Topbar({ user, title, subtitle, actions, headerContent, 
   useEffect(() => subscribeToNotifications(notification => {
     setNotifications(current => {
       const next = [notification, ...current].slice(0, 50);
-      localStorage.setItem('vetintel_notifications', JSON.stringify(next));
+      localStorage.setItem(notificationStorageKey, JSON.stringify(next));
       return next;
     });
-  }), []);
+  }), [notificationStorageKey]);
+
+  useEffect(() => {
+    if (!user?.token || !user?.clinic_id) return undefined;
+    let active = true;
+    const loadNotifications = async () => {
+      try {
+        const response = await fetch(`${apiBase}/notifications`, { headers: { Authorization: `Bearer ${user.token}` } });
+        const rows = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(rows.error || 'Unable to load notifications.');
+        if (!active) return;
+        const remoteNotifications = rows.map(row => ({
+          id: `server-${row.id}`,
+          remoteId: row.id,
+          icon: 'info',
+          color: '#0a966b',
+          title: row.title,
+          text: row.text,
+          time: row.created_at ? new Date(row.created_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) : '',
+          unread: !row.read_at,
+        }));
+        setNotifications(current => {
+          const remoteIds = new Set(remoteNotifications.map(item => item.id));
+          const previousById = new Map(current.filter(item => remoteIds.has(item.id)).map(item => [item.id, item]));
+          const merged = remoteNotifications.map(item => previousById.has(item.id)
+            ? { ...item, unread: previousById.get(item.id).unread }
+            : item);
+          const next = [...merged, ...current.filter(item => !remoteIds.has(item.id))].slice(0, 50);
+          localStorage.setItem(notificationStorageKey, JSON.stringify(next));
+          return next;
+        });
+        setNotificationError('');
+      } catch (error) {
+        if (active) setNotificationError(error.message || 'Unable to load notifications.');
+      }
+    };
+    loadNotifications();
+    const intervalId = window.setInterval(loadNotifications, 30000);
+    window.addEventListener('vetintel:billing-updated', loadNotifications);
+    window.addEventListener('vetintel:registration-updated', loadNotifications);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('vetintel:billing-updated', loadNotifications);
+      window.removeEventListener('vetintel:registration-updated', loadNotifications);
+    };
+  }, [notificationStorageKey, user?.clinic_id, user?.token]);
 
   const markRead = id => {
+    const notification = notifications.find(item => item.id === id);
     setNotifications(current => {
       const next = current.map(notification => (
       notification.id === id ? { ...notification, unread: false } : notification
       ));
-      localStorage.setItem('vetintel_notifications', JSON.stringify(next));
+      localStorage.setItem(notificationStorageKey, JSON.stringify(next));
       return next;
     });
+    if (notification?.remoteId && user?.token) {
+      fetch(`${apiBase}/notifications/${notification.remoteId}/read`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${user.token}` },
+      }).then(async response => {
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          throw new Error(result.error || 'Unable to mark the notification as read.');
+        }
+      }).catch(error => setNotificationError(error.message || 'Unable to mark the notification as read.'));
+    }
   };
 
   const markAllRead = () => {
+    notifications.filter(notification => notification.remoteId && notification.unread).forEach(notification => {
+      fetch(`${apiBase}/notifications/${notification.remoteId}/read`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${user?.token}` },
+      }).then(async response => {
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          throw new Error(result.error || 'Unable to mark notifications as read.');
+        }
+      }).catch(error => setNotificationError(error.message || 'Unable to mark notifications as read.'));
+    });
     setNotifications(current => {
       const next = current.map(notification => ({ ...notification, unread: false }));
-      localStorage.setItem('vetintel_notifications', JSON.stringify(next));
+      localStorage.setItem(notificationStorageKey, JSON.stringify(next));
       return next;
     });
   };
@@ -90,6 +153,7 @@ export default function Topbar({ user, title, subtitle, actions, headerContent, 
               </div>
             </div>
             <div style={s.notificationSummary}>Showing notifications for <strong>{user.role}</strong> · {notifications.length} total</div>
+            {notificationError && <div role="alert" style={s.notificationSummary}>{notificationError}</div>}
             <div style={s.notificationList}>
               {visibleNotifications.map(notification => (
                 <div key={notification.id} style={{ ...s.notificationItem, ...(notification.unread ? s.unreadItem : {}) }}>
@@ -188,9 +252,9 @@ const s = {
   notificationBell: { width: 15, height: 15, display: 'flex', color: '#64748b' },
   newBadge: { padding: '4px 8px', borderRadius: 8, background: '#fee2e2', color: '#dc2626', fontSize: '.64rem', fontWeight: 600 },
   notificationHeaderActions: { display: 'flex', alignItems: 'center', gap: 7 },
-  filterButton: { border: 0, borderRadius: 12, padding: '4px 8px', background: '#fff', color: '#005447', fontSize: '.64rem', cursor: 'pointer', whiteSpace: 'nowrap' },
-  filterButtonActive: { background: '#005447', color: '#fff' },
-  markAllButton: { border: 0, background: 'transparent', color: '#005447', fontSize: '.64rem', cursor: 'pointer', whiteSpace: 'nowrap' },
+  filterButton: { border: 0, borderRadius: 12, padding: '4px 8px', background: '#fff', color: '#013826', fontSize: '.64rem', cursor: 'pointer', whiteSpace: 'nowrap' },
+  filterButtonActive: { background: '#086b50', color: '#fff' },
+  markAllButton: { border: 0, background: 'transparent', color: '#013826', fontSize: '.64rem', cursor: 'pointer', whiteSpace: 'nowrap' },
   closeButton: { width: 18, height: 18, display: 'flex', padding: 1, border: 0, background: 'transparent', color: '#94a3b8', cursor: 'pointer' },
   notificationSummary: { padding: '8px 12px', background: '#f8fafc', color: '#64748b', fontSize: '.64rem', borderBottom: '1px solid #edf2f7' },
   notificationList: { maxHeight: 462, overflowY: 'auto' },
@@ -203,10 +267,10 @@ const s = {
   unreadDot: { width: 5, height: 5, borderRadius: '50%', flexShrink: 0 },
   notificationText: { marginTop: 3, color: '#405673', fontSize: '.68rem', lineHeight: 1.35 },
   notificationMeta: { marginTop: 4, color: '#8aa0bd', fontSize: '.63rem' },
-  notificationArrow: { alignSelf: 'center', minWidth: 48, border: 0, background: 'transparent', color: '#005447', fontSize: '.62rem', cursor: 'pointer', padding: 0, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' },
+  notificationArrow: { alignSelf: 'center', minWidth: 48, border: 0, background: 'transparent', color: '#013826', fontSize: '.62rem', cursor: 'pointer', padding: 0, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' },
   notificationArrowIcon: { width: 12, height: 12, display: 'flex', color: '#cbd5e1' },
   emptyNotifications: { padding: '30px 12px', textAlign: 'center', color: '#64748b', fontSize: '.75rem' },
-  viewAllButton: { width: '100%', padding: '12px', border: 0, borderTop: '1px solid #e7edf4', background: '#fff', color: '#005447', fontSize: '.75rem', cursor: 'pointer' },
+  viewAllButton: { width: '100%', padding: '12px', border: 0, borderTop: '1px solid #e7edf4', background: '#fff', color: '#013826', fontSize: '.75rem', cursor: 'pointer' },
   pill: {
     display: 'flex',
     alignItems: 'center',

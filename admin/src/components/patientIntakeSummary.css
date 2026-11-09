@@ -1,0 +1,31 @@
+.patient-records-page .patient-intake-summary { padding: 10px; background: linear-gradient(120deg,#f1faf6,#eaf7f2); border-color: #d5e9df; }
+.patient-intake-summary > header { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:3px 8px 12px; }
+.patient-intake-summary h2 { margin:0; color:#17392e; font-size:16px; }
+.patient-intake-origin { border:1px solid #cfece0; border-radius:8px; padding:5px 8px; color:#087051; background:#f6fffa; font-size:11px; font-weight:650; }
+.patient-intake-summary details { border:1px solid #deede5; border-radius:10px; background:#fff; box-shadow:0 3px 8px #0b593914; }
+.patient-intake-summary .patient-intake-card-trigger { display:flex; align-items:center; gap:14px; padding:16px; cursor:pointer; width:100%; text-align:left; border:1px solid #deede5; border-radius:10px; background:#fff; font:inherit; box-shadow:0 3px 8px #0b593914; }
+.patient-intake-summary .patient-intake-card-trigger:focus-visible { outline:2px solid #087051; outline-offset:3px; }
+.patient-intake-summary summary::-webkit-details-marker { display:none; }
+.patient-intake-summary summary:focus-visible { outline:2px solid #087051; outline-offset:3px; border-radius:8px; }
+.patient-intake-file { display:grid; place-items:center; flex:0 0 42px; height:46px; border-radius:10px; background:#e8f7ef; color:#075c43; }
+.patient-intake-file svg { width:22px; height:22px; }
+.patient-intake-submission { display:grid; gap:8px; flex:1; min-width:120px; }
+.patient-intake-submission strong { font-size:12px; color:#17392e; }
+.patient-intake-submission small,.patient-intake-metric > small { font-size:11px; color:#475569; }
+.patient-intake-metric { display:grid; align-content:center; gap:7px; padding-left:16px; border-left:1px solid #deebe5; min-width:90px; }
+.patient-intake-indicator { justify-self:start; border-radius:999px; padding:5px 9px; font-size:11px; font-weight:700; white-space:nowrap; }
+.patient-intake-indicator.is-urgent { background:#ffe3e5; color:#b51d2b; }
+.patient-intake-indicator.is-priority { background:#fff0d5; color:#914900; }
+.patient-intake-indicator.is-routine { background:#e0f7eb; color:#146044; }
+.patient-intake-indicator.is-unassessed { background:#eef2f6; color:#526477; }
+.patient-intake-chevron { color:#24453a; }
+.patient-intake-chevron svg { width:17px; height:17px; }
+.patient-intake-summary details[open] .patient-intake-chevron { transform:rotate(90deg); }
+.patient-intake-expanded { padding:0 16px 14px; border-top:1px solid #e2eee7; }
+.patient-intake-expanded dl { display:grid; grid-template-columns:1fr 1fr; gap:14px 20px; margin:14px 0; }
+.patient-intake-expanded dt { font-size:11px; color:#586b62; margin-bottom:4px; }
+.patient-intake-expanded dd { margin:0; font-size:12px; line-height:1.5; color:#1b3026; white-space:pre-wrap; overflow-wrap:anywhere; }
+.patient-intake-expanded dd p { margin:4px 0; }
+.patient-intake-disclaimer { margin:12px 0 0; color:#64748b; font-size:11px; line-height:1.5; }
+@media(max-width:1100px){.patient-intake-summary .patient-intake-card-trigger{flex-wrap:wrap;gap:12px}.patient-intake-submission{flex-basis:calc(100% - 70px)}.patient-intake-metric{border:0;padding-left:0}.patient-intake-chevron{margin-left:auto}}
+@media(max-width:550px){.patient-intake-expanded dl{grid-template-columns:1fr}}

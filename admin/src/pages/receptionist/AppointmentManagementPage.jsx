@@ -1,105 +1,135 @@
-import { useEffect, useMemo, useState } from 'react';
+import { dateFilterValue } from '../../utils/dateFilters';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import RecordActionsModal from '../../components/RecordActionsModal';
+import StatusIndicator from '../../components/StatusIndicator';
+import DateRangePopoverFields from '../../components/DateRangePopoverFields';
+import { appointmentActions, appointmentStage, actionDefinitions } from '../../utils/appointmentActions';
+import AppointmentWorkflowDialog, { appointmentRequest } from './AppointmentWorkflowDialog';
 import Topbar from '../../components/Topbar';
 import LabDateTimePicker, { getUnavailableAppointmentTimes } from '../../components/LabDateTimePicker';
 import { Icons } from '../../icons';
 import { canViewFeature } from '../../utils/permissionUtils';
-import { formatDateText } from '../../utils/dateFormatting';
 
-function formatDate(value) {
-  return formatDateText(value, undefined, '');
+const localDateValue = (value = new Date()) => dateFilterValue(value);
+
+function formatSelectedDate(value) {
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime())
+    ? ''
+    : date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function formatClock(value) {
+  return value.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
 function formatTime(value) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return Number.isNaN(date.getTime())
+    ? '—'
+    : date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
-function getMockAppointments() {
-  const today = new Date();
-  const at = (dayOffset, hour, minute) => {
-    const date = new Date(today);
-    date.setDate(date.getDate() + dayOffset);
-    date.setHours(hour, minute, 0, 0);
-    return date.toISOString();
-  };
-
-  return [
-    { id: 'demo-1', start_time: at(0, 9, 0), pet: 'Max', owner: 'Emma Santos', reason: 'General Checkup', practitioner: 'Dr. Torres', status: 'Confirmed' },
-    { id: 'demo-2', start_time: at(0, 10, 30), pet: 'Luna', owner: 'Daniel Cruz', reason: 'Vaccination', practitioner: 'Dr. Chen', status: 'Pending' },
-    { id: 'demo-3', start_time: at(1, 11, 0), pet: 'Charlie', owner: 'Sofia Reyes', reason: 'Dental Cleaning', practitioner: 'Dr. Torres', status: 'Confirmed' },
-    { id: 'demo-4', start_time: at(2, 14, 0), pet: 'Bella', owner: 'Noah Garcia', reason: 'Walk-in Consultation', practitioner: 'Dr. Chen', status: 'Confirmed', is_walk_in: true },
-    { id: 'demo-5', start_time: at(-1, 15, 30), pet: 'Rocky', owner: 'Mia Flores', reason: 'Follow-up', practitioner: 'Dr. Torres', status: 'Completed' },
-    { id: 'demo-6', start_time: at(-2, 13, 0), pet: 'Milo', owner: 'Lucas Mendoza', reason: 'General Checkup', practitioner: 'Dr. Chen', status: 'No Show' },
-    { id: 'demo-7', start_time: at(3, 10, 0), pet: 'Coco', owner: 'Ava Navarro', reason: 'Reschedule Request', practitioner: 'Dr. Torres', status: 'Reschedule Request' },
-    { id: 'demo-8', start_time: at(4, 16, 0), pet: 'Nala', owner: 'Ethan Ramos', reason: 'Cancel Request', practitioner: 'Dr. Chen', status: 'Cancel Request' },
-  ];
+function normalizeStatus(value) {
+  return String(value || '').trim().toLowerCase().replace(/[-\s]+/g, '_');
 }
 
-function AppointmentActionsModal({ appointment, onClose, onAction }) {
+function appointmentDuration(appointment) {
+  const recorded = Number(appointment.duration_minutes || appointment.duration);
+  if (Number.isFinite(recorded) && recorded > 0) return recorded;
+  const duration = (new Date(appointment.end_time) - new Date(appointment.start_time)) / 60000;
+  return Number.isFinite(duration) && duration > 0 ? Math.round(duration) : null;
+}
+
+function isAppointmentRequest(appointment) {
+  const status = normalizeStatus(appointment.status);
+  const workflow = normalizeStatus(appointment.workflow_type);
+  return status.includes('request') || workflow.includes('request');
+}
+
+function getStatusLabel(appointment) {
+  const status = normalizeStatus(appointment.status);
+  if (status === 'checked_in') return 'Checked In';
+  if (status === 'in_consultation') return 'In Consultation';
+  if (appointmentStage(appointment) === 'pending_confirmation') return 'Pending Confirmation';
+  if (appointmentStage(appointment) === 'expected') return 'Expected';
+  if (status === 'complete' || status === 'completed') return 'Completed';
+  if (status === 'no_show') return 'No Show';
+  if (status === 'cancel_request' || status === 'cancellation_request' || status === 'cancellation_requested') return 'Cancellation Requested';
+  if (status === 'reschedule_request' || status === 'reschedule_requested') return 'Reschedule Requested';
+  return String(appointment.status || 'Scheduled').replace(/_/g, ' ');
+}
+
+function getStatusColors(label) {
+  const status = normalizeStatus(label);
+  if (status.includes('check') || status.includes('consultation')) return ['#e7f4ec', '#086b50'];
+  if (status.includes('await') || status === 'pending' || status === 'due') return ['#fff6df', '#a76500'];
+  if (status.includes('reschedule')) return ['#f1eaff', '#6639b8'];
+  if (status.includes('cancel') || status.includes('no_show')) return ['#fdeceb', '#bf3e39'];
+  if (status.includes('complete')) return ['#edf0f2', '#4b5c55'];
+  return ['#e7f4ec', '#086b50'];
+}
+
+const appointmentStatusFilters = [
+  { id: 'all', label: 'All' },
+  { id: 'pending_confirmation', label: 'Pending Confirmation' },
+  { id: 'expected', label: 'Expected' },
+  { id: 'checked_in', label: 'Checked In' },
+  { id: 'in_consultation', label: 'In Consultation' },
+  { id: 'completed', label: 'Completed' },
+  { id: 'cancelled', label: 'Cancelled' },
+  { id: 'no_show', label: 'No Show' },
+];
+
+const requestStatusFilters = [
+  { id: 'all', label: 'All' },
+  { id: 'reschedule_request', label: 'Reschedule Requested' },
+  { id: 'cancellation_request', label: 'Cancellation Requested' },
+];
+
+function matchesStatusFilter(appointment, filter) {
+  const status = normalizeStatus(appointment.status);
+  const workflow = normalizeStatus(appointment.workflow_type);
+  if (filter === 'all') return true;
+  if (filter === 'pending_confirmation') return appointmentStage(appointment) === 'pending_confirmation';
+  if (filter === 'expected') return appointmentStage(appointment) === 'expected';
+  if (filter === 'checked_in') return status === 'checked_in';
+  if (filter === 'in_consultation') return status === 'in_consultation';
+  if (filter === 'completed') return ['completed', 'complete'].includes(status);
+  if (filter === 'cancelled') return ['cancelled', 'canceled'].includes(status);
+  if (filter === 'no_show') return ['no_show', 'noshow'].includes(status);
+  if (filter === 'reschedule_request') return status.includes('reschedule_request') || workflow.includes('reschedule_request');
+  if (filter === 'cancellation_request') return status.includes('cancel_request') || status.includes('cancellation_request')
+    || workflow.includes('cancel_request') || workflow.includes('cancellation_request');
+  return true;
+}
+
+function AppointmentActionsModal({ appointment, user, onClose, onAction }) {
+  useEffect(() => {
+    if (!appointment) return undefined;
+    const previous = document.activeElement;
+    const onKeyDown = event => { if (event.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKeyDown);
+    return () => { document.removeEventListener('keydown', onKeyDown); previous?.focus(); };
+  }, [appointment?.id, onClose]);
   if (!appointment) return null;
-
-  const actions = [
-    ['confirm', 'Confirm', 'Mark this appointment as confirmed.', 'positive', Icons.check],
-    ['checkin', 'Check In', 'Mark patient as checked in for their appointment.', 'primary', Icons.send],
-    ['view', 'View Details', 'See full appointment information.', 'neutral', Icons.eye],
-    ['reschedule', 'Reschedule', 'Change the appointment date and time.', 'warning', Icons.calendar],
-    ['cancel', 'Cancel Appointment', 'Cancel this appointment and notify the patient.', 'danger', Icons.xCircle],
-    ['noshow', 'Mark No Show', 'Mark this appointment as a no show.', 'danger', Icons.xCircle],
-  ];
-
-  return (
-    <div style={s.modalBackdrop} onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="appointment-actions-title"
-        onClick={(event) => event.stopPropagation()}
-        style={s.actionsDialog}
-      >
-        <button type="button" aria-label="Close appointment actions" onClick={onClose} style={s.modalClose}>
-          {Icons.close}
-        </button>
-        <div style={s.actionsHeader}>
-          <div style={s.actionsHeaderIcon}>{Icons.calendar}</div>
-          <div>
-            <h2 id="appointment-actions-title" style={s.actionsTitle}>Appointment Actions</h2>
-            <div style={s.actionsSubtitle}>
-              {appointment.pet || 'Appointment'} — {appointment.reason || 'Appointment'} ({formatTime(appointment.start_time)})
-            </div>
-          </div>
-        </div>
-        <div style={s.actionsList}>
-          <div style={s.actionGrid}>
-            {actions.slice(0, 3).map(([action, label, description, variant, icon]) => (
-              <button key={action} type="button" onClick={() => onAction(appointment, action)} style={{ ...s.modalActionButton, ...s[`modalAction_${variant}`] }}>
-                <span style={{ ...s.modalActionIcon, ...s[`modalIcon_${variant}`] }}>{icon}</span>
-                <span style={s.modalActionText}><strong>{label}</strong><small>{description}</small></span>
-                <span style={s.modalActionChevron}>›</span>
-              </button>
-            ))}
-          </div>
-          <div style={s.actionDivider} />
-          <div style={s.actionGrid}>
-            {actions.slice(3).map(([action, label, description, variant, icon]) => (
-              <button key={action} type="button" onClick={() => onAction(appointment, action)} style={{ ...s.modalActionButton, ...s[`modalAction_${variant}`] }}>
-                <span style={{ ...s.modalActionIcon, ...s[`modalIcon_${variant}`] }}>{icon}</span>
-                <span style={s.modalActionText}><strong>{label}</strong><small>{description}</small></span>
-                <span style={s.modalActionChevron}>›</span>
-              </button>
-            ))}
-          </div>
-          <div style={s.actionsNotice}>
-            <span style={s.noticeIcon}>i</span>
-            <span>These actions will update the appointment status and be reflected in the patient’s record.<br />For clinic-specific workflows, please refer to your clinic settings.</span>
-          </div>
-        </div>
-        <div style={s.modalFooter}>
-          <button type="button" style={s.modalCancel} onClick={onClose}>Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
+  const label = appointmentStage(appointment).replace(/_/g, ' ').replace(/\b\w/g, value => value.toUpperCase());
+  return <RecordActionsModal
+    title="Appointment Actions"
+    recordLabel={`Appointment #${appointment.id}`}
+    recordName={appointment.pet || 'Patient'}
+    recordMeta={<><span>{appointment.reason || 'Appointment'} &middot; {new Date(appointment.start_time).toLocaleDateString()} &middot; {formatTime(appointment.start_time)}</span><br /><span>Owner: {appointment.owner || 'Not recorded'} &middot; Assigned to: {appointment.practitioner || 'Unassigned'}</span></>}
+    status={label}
+    recordPhotoAttachmentId={appointment.pet_photo_attachment_id}
+    user={user}
+    showPetAvatar
+    onClose={onClose}
+    actions={appointmentActions(appointment).map(action => ({
+      label: actionDefinitions[action][0], description: actionDefinitions[action][1],
+      destructive: ['cancel', 'noshow'].includes(action),
+      onClick: () => onAction(appointment, action),
+    }))}
+  />;
 }
 
 function NewAppointmentModal({ appointments, onClose, onSchedule }) {
@@ -141,28 +171,59 @@ function NewAppointmentModal({ appointments, onClose, onSchedule }) {
 
 export default function AppointmentManagementPage({ user }) {
   const [tab, setTab] = useState('all');
+  const [currentTime, setCurrentTime] = useState(() => new Date());
   const [openActionsId, setOpenActionsId] = useState(null);
+  const [workflow, setWorkflow] = useState(null);
   const [showNewAppointment, setShowNewAppointment] = useState(false);
   const [search, setSearch] = useState('');
+  const [dateRangeOpen, setDateRangeOpen] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
+  const [doctorOptions, setDoctorOptions] = useState([]);
+  const [filterOptionsError, setFilterOptionsError] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [dateRangeSort, setDateRangeSort] = useState('newest');
   const [practitionerFilter, setPractitionerFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const pageSize = 8;
+  const dateRangeRef = useRef(null);
+  const pageSize = 7;
 
   const tabs = [
-    { id: 'all', label: 'All' },
-    { id: 'upcoming', label: 'Upcoming' },
-    { id: 'past', label: 'Past' },
-    { id: 'cancelled', label: 'Cancelled' },
+    { id: 'all', label: 'All Appointments', icon: Icons.calendar },
+    { id: 'today', label: "Today's Appointments", icon: Icons.users },
+    { id: 'requests', label: 'Requests', icon: Icons.clipboard },
   ];
 
   const canView = canViewFeature(user.permissions, user.role, 'Appointment Management');
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    if (!dateRangeOpen) return undefined;
+    const closeDateRange = event => {
+      if (event.type === 'keydown' && event.key === 'Escape') {
+        setDateRangeOpen(false);
+        return;
+      }
+      if (event.type !== 'keydown'
+        && !dateRangeRef.current?.contains(event.target)
+        && !event.target.closest?.('.lab-date-time-popover')) {
+        setDateRangeOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', closeDateRange);
+    document.addEventListener('keydown', closeDateRange);
+    return () => {
+      document.removeEventListener('mousedown', closeDateRange);
+      document.removeEventListener('keydown', closeDateRange);
+    };
+  }, [dateRangeOpen]);
 
   useEffect(() => {
     if (!user || !user.token) return;
@@ -174,89 +235,103 @@ export default function AppointmentManagementPage({ user }) {
     const query = params.toString() ? `?${params.toString()}` : '';
     const headers = { Authorization: `Bearer ${user.token}` };
 
-    const loadAppointments = async () => {
-      setLoading(true);
+    let active = true;
+    let refreshing = false;
+    const loadAppointments = async (silent = false) => {
+      if (refreshing) return;
+      refreshing = true;
+      if (!silent) setLoading(true);
       setError(null);
       try {
         const response = await fetch(`${apiUrl}/clinic-records/appointments${query}`, { headers });
-        if (!response.ok) throw new Error('Failed to load appointments');
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          throw new Error(result.error || 'Unable to load appointments.');
+        }
         const data = await response.json();
-        setAppointments(Array.isArray(data) && data.length > 0 ? data : getMockAppointments());
+        if (active) setAppointments(Array.isArray(data) ? data.filter(appointment => !appointment.archived) : []);
       } catch (err) {
-        console.error(err);
-        setError(null);
-        setAppointments(getMockAppointments());
+        if (active) setError(err.message || 'Unable to load appointments.');
       } finally {
-        setLoading(false);
+        refreshing = false;
+        if (active) setLoading(false);
       }
     };
 
     loadAppointments();
-  }, [user, canView]);
+    const refresh = () => { if (!document.hidden) loadAppointments(true); };
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [user?.token, user?.clinic_id, canView]);
 
   const filteredAppointments = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     return appointments.filter((appt) => {
       const date = new Date(appt.start_time);
-      const status = String(appt.status || '').toLowerCase();
-      const isCancelled = status === 'cancelled' || status === 'canceled';
+      const dateValue = Number.isNaN(date.getTime()) ? '' : localDateValue(date);
+      const matchesDateRange = (!dateFrom || dateValue >= dateFrom) && (!dateTo || dateValue <= dateTo);
       const matchesTab = tab === 'all'
-        || (tab === 'cancelled' && isCancelled)
-        || (tab === 'upcoming' && !isCancelled && !Number.isNaN(date.getTime()) && date >= today)
-        || (tab === 'past' && !isCancelled && !Number.isNaN(date.getTime()) && (date < today || ['completed', 'complete', 'no show', 'no-show'].includes(status)));
+        ? matchesDateRange
+        : tab === 'today'
+          ? dateValue === localDateValue(currentTime)
+          : isAppointmentRequest(appt) && matchesDateRange;
       const matchesSearch = !query || [appt.pet || appt.pet_name, appt.owner || appt.owner_name, appt.reason || appt.type, appt.practitioner || appt.veterinarian || appt.veterinarian_name, appt.id]
         .some((value) => String(value || '').toLowerCase().includes(query));
-      const dateValue = Number.isNaN(date.getTime()) ? '' : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       return matchesTab
         && matchesSearch
-        && (!dateFrom || dateValue >= dateFrom)
-        && (!dateTo || dateValue <= dateTo)
         && (!practitionerFilter || (appt.practitioner || appt.veterinarian || appt.veterinarian_name) === practitionerFilter)
-        && (!typeFilter || (appt.reason || appt.type) === typeFilter)
-        && (!statusFilter || status.toLowerCase() === statusFilter.toLowerCase());
+        && matchesStatusFilter(appt, statusFilter);
+    }).sort((first, second) => {
+      const difference = new Date(first.start_time).getTime() - new Date(second.start_time).getTime();
+      return dateRangeSort === 'newest' ? -difference : difference;
     });
-  }, [appointments, search, tab, dateFrom, dateTo, practitionerFilter, typeFilter, statusFilter]);
-  const practitioners = [...new Set(appointments.map(appt => appt.practitioner || appt.veterinarian || appt.veterinarian_name).filter(Boolean))];
-  const appointmentTypes = [...new Set(appointments.map(appt => appt.reason || appt.type).filter(Boolean))];
-  const appointmentStatuses = [...new Set(appointments.map(appt => appt.status).filter(Boolean))];
+  }, [appointments, search, tab, currentTime, dateFrom, dateTo, dateRangeSort, practitionerFilter, statusFilter]);
+  useEffect(() => {
+    if (!canView || !user?.token) return;
+    const controller = new AbortController();
+    const api = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+    fetch(api + '/clinic-records/appointments/filters?clinic_id=' + encodeURIComponent(user.clinic_id || ''), { headers: { Authorization: 'Bearer ' + user.token }, signal: controller.signal })
+      .then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Unable to load appointment filters.'); if (!controller.signal.aborted) { setDoctorOptions(data.doctors); setFilterOptionsError(''); } })
+      .catch(failure => { if (!controller.signal.aborted) setFilterOptionsError(failure.message); });
+    return () => controller.abort();
+  }, [canView, user?.token, user?.clinic_id]);
+  const practitioners = [...new Set([...doctorOptions, ...appointments.map(appt => appt.practitioner || appt.veterinarian || appt.veterinarian_name).filter(Boolean)])].sort((a,b) => a.localeCompare(b));
+  const currentStatusFilters = tab === 'requests' ? requestStatusFilters : appointmentStatusFilters;
   const pageCount = Math.max(1, Math.ceil(filteredAppointments.length / pageSize));
   const pageAppointments = filteredAppointments.slice((page - 1) * pageSize, page * pageSize);
-  const tabCounts = {
-    all: appointments.length,
-    upcoming: appointments.filter(appt => {
-      const date = new Date(appt.start_time);
-      return !Number.isNaN(date.getTime()) && date >= new Date(new Date().setHours(0, 0, 0, 0)) && !['cancelled', 'canceled'].includes(String(appt.status || '').toLowerCase());
-    }).length,
-    past: appointments.filter(appt => {
-      const date = new Date(appt.start_time);
-      return !Number.isNaN(date.getTime()) && (date < new Date(new Date().setHours(0, 0, 0, 0)) || ['completed', 'complete', 'no show', 'no-show'].includes(String(appt.status || '').toLowerCase())) && !['cancelled', 'canceled'].includes(String(appt.status || '').toLowerCase());
-    }).length,
-    cancelled: appointments.filter(appt => ['cancelled', 'canceled'].includes(String(appt.status || '').toLowerCase())).length,
+  const summaryAppointments = appointments.filter(appt => {
+    const appointmentDate = localDateValue(appt.start_time);
+    const matchesDateRange = (!dateFrom || appointmentDate >= dateFrom) && (!dateTo || appointmentDate <= dateTo);
+    if (tab === 'today') return appointmentDate === localDateValue(currentTime);
+    if (tab === 'requests') return isAppointmentRequest(appt) && matchesDateRange;
+    return matchesDateRange;
+  });
+  const dateRangeHeading = dateFrom && dateTo
+    ? `${formatSelectedDate(dateFrom)} – ${formatSelectedDate(dateTo)}`
+    : dateFrom ? `From ${formatSelectedDate(dateFrom)}` : `Through ${formatSelectedDate(dateTo)}`;
+  const checkedInCount = summaryAppointments.filter(appt => ['checked_in', 'in_consultation'].includes(normalizeStatus(appt.status))).length;
+  const awaitingCount = summaryAppointments.filter(appt => ['scheduled', 'confirmed', 'pending', 'due'].includes(normalizeStatus(appt.status))).length;
+  const requestCount = appointments.filter(isAppointmentRequest).length;
+  const refreshAppointments = async () => {
+    window.dispatchEvent(new Event('vetintel:appointment-updated'));
+    try {
+      const rows = await appointmentRequest(user, '');
+      setAppointments(rows.filter(appointment => !appointment.archived));
+      setError(null);
+    } catch {
+      setError('The action was saved, but the list could not refresh. Please refresh the page.');
+    }
   };
-
   const handleAppointmentAction = (appointment, action) => {
     setOpenActionsId(null);
-    if (action === 'view') {
-      window.alert(`${appointment.pet || 'Appointment'}\n${appointment.owner || 'Owner not available'}\n${appointment.reason || 'Appointment'}\n${formatTime(appointment.start_time)}`);
-      return;
-    }
-
-    const statusByAction = {
-      confirm: 'Confirmed',
-      checkin: 'Checked In',
-      reschedule: 'Reschedule Request',
-      cancel: 'Cancelled',
-      noshow: 'No Show',
-    };
-
-    const nextStatus = statusByAction[action];
-    if (!nextStatus) return;
-    setAppointments((current) => current.map((item) => (
-      item.id === appointment.id ? { ...item, status: nextStatus } : item
-    )));
-    setPage(1);
+    setWorkflow({ appointment, action });
   };
 
   const handleScheduleAppointment = (form) => {
@@ -271,25 +346,20 @@ export default function AppointmentManagementPage({ user }) {
       status: 'Pending',
     }, ...current]);
     setShowNewAppointment(false);
+    setDateFrom('');
+    setDateTo('');
     setTab('all');
     setPage(1);
   };
 
   if (!canView) {
     return (
-      <div style={s.main}>
-        <Topbar user={user} title="Appointment Management" subtitle="Manage bookings, cancellations, and follow-ups" />
+      <div className="appointment-management-page" style={s.main}>
+        <Topbar user={user} title="Appointment Management" subtitle="Manage bookings, arrivals, and appointment requests for the clinic." />
         <div style={s.page}>
-          <div style={s.pageActions}><button type="button" style={s.primaryBtn} onClick={() => setShowNewAppointment(true)}><span style={{ width: 13, height: 13, display: 'flex' }}>{Icons.plus}</span>New Appointment</button></div>
-          <div style={s.pageHd}>
-            <div>
-              <div style={s.pageTitle}>Appointment Management</div>
-              <div style={s.pageSub}>You do not have permission to view this page.</div>
-            </div>
-          </div>
-          <div style={{ background: '#fff', border: '1px solid #e8ecf0', borderRadius: 14, padding: 28, color: '#475569' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>Access denied</h2>
-            <p style={{ marginTop: 12 }}>Your role (<strong>{user.role}</strong>) does not currently have permission to view Appointment Management.</p>
+          <div className="appointment-access-denied">
+            <h2>Access denied</h2>
+            <p>Your role (<strong>{user.role}</strong>) does not currently have permission to view Appointment Management.</p>
           </div>
         </div>
       </div>
@@ -298,68 +368,129 @@ export default function AppointmentManagementPage({ user }) {
 
   return (
     <div className="appointment-management-page" style={s.main}>
-      <Topbar user={user} title="Appointments" subtitle="Manage and view all scheduled appointments" />
-      <div style={s.page}>
-        <div style={{ ...s.pageHd, justifyContent: 'flex-end', marginBottom: 14 }}>
-          <button type="button" style={s.primaryBtn} onClick={() => setShowNewAppointment(true)}>New Appointment</button>
-        </div>
-        <div style={s.tabBar}>
-          {tabs.map(item => (
-            <button key={item.id} type="button" onClick={() => { setTab(item.id); setPage(1); }} style={{ ...s.tabBtn, ...(tab === item.id ? s.tabActive : {}) }}>
-              {item.label} <span style={s.tabCount}>{tabCounts[item.id]}</span>
-            </button>
-          ))}
-        </div>
-        <div className="appointment-list-filters" style={s.filters}>
-          <input aria-label="Search appointments" style={s.search} placeholder="Search by patient, owner, or appointment number..." value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} />
-          <label style={s.filterControl}>From<LabDateTimePicker label="Start date" mode="date" value={dateFrom} onChange={date => { setDateFrom(date); setPage(1); }} style={s.filterDateInput} /></label>
-          <label style={s.filterControl}>To<LabDateTimePicker label="End date" mode="date" value={dateTo} onChange={date => { setDateTo(date); setPage(1); }} style={s.filterDateInput} /></label>
-          <select aria-label="Filter by veterinarian" style={s.filterSelect} value={practitionerFilter} onChange={event => { setPractitionerFilter(event.target.value); setPage(1); }}><option value="">All Veterinarians</option>{practitioners.map(name => <option key={name} value={name}>{name}</option>)}</select>
-          <select aria-label="Filter by appointment type" style={s.filterSelect} value={typeFilter} onChange={event => { setTypeFilter(event.target.value); setPage(1); }}><option value="">All Types</option>{appointmentTypes.map(type => <option key={type} value={type}>{type}</option>)}</select>
-          <select aria-label="Filter by status" style={s.filterSelect} value={statusFilter} onChange={event => { setStatusFilter(event.target.value); setPage(1); }}><option value="">All Statuses</option>{appointmentStatuses.map(status => <option key={status} value={status}>{status}</option>)}</select>
-        </div>
-        <div style={s.card}>
-          {loading ? <div style={s.emptyState}>Loading appointments…</div> : error ? <div role="alert" style={{ ...s.emptyState, color: '#b91c1c' }}>{error}</div> : (
-            <div style={s.tableScroll}>
-              <table style={s.table}>
-                <colgroup><col style={{ width: '14%' }} /><col style={{ width: '15%' }} /><col style={{ width: '15%' }} /><col style={{ width: '17%' }} /><col style={{ width: '13%' }} /><col style={{ width: '16%' }} /><col style={{ width: '10%' }} /></colgroup>
-                <thead><tr>{['Date & Time', 'Patient', 'Owner', 'Type', 'Veterinarian', 'Status', 'Actions'].map(label => <th key={label} style={s.th}>{label}</th>)}</tr></thead>
-                <tbody>
-                  {pageAppointments.length === 0 ? <tr><td colSpan={7} style={s.emptyState}>No appointments found.</td></tr> : pageAppointments.map((appt, index) => {
-                    const start = new Date(appt.start_time);
-                    const veterinarian = appt.practitioner || appt.veterinarian || appt.veterinarian_name || '—';
-                    const status = String(appt.status || 'Scheduled');
-                    const statusKey = status.toLowerCase();
-                    const statusColor = statusKey.includes('cancel') ? ['#fee2e2', '#b91c1c'] : statusKey.includes('complete') ? ['#e8eef2', '#486175'] : statusKey.includes('check') ? ['#dff4ed', '#087f63'] : statusKey.includes('pending') ? ['#fff1dc', '#a95b00'] : ['#e9f0ff', '#2563eb'];
-                    return <tr key={appt.id || `${index}-${appt.start_time}`}>
-                      <td style={s.td}><strong>{formatDate(appt.start_time)}</strong><small style={s.cellSubtext}>{formatTime(appt.start_time)}</small></td>
-                      <td style={s.td}><strong>{appt.pet || appt.pet_name || '—'}</strong></td>
-                      <td style={s.td}>{appt.owner || appt.owner_name || '—'}</td>
-                      <td style={s.td}>{appt.reason || appt.type || 'Appointment'}{appt.duration_minutes ? <small style={s.cellSubtext}>({appt.duration_minutes} min)</small> : null}</td>
-                      <td style={s.td}>{veterinarian}</td>
-                      <td style={s.td}><span style={{ ...s.statusPill, background: statusColor[0], color: statusColor[1] }}>{status}</span></td>
-                      <td style={s.td}><button type="button" style={s.moreButton} onClick={() => setOpenActionsId(appt.id)} aria-label={`Actions for ${appt.pet || 'appointment'}`}>...</button></td>
-                    </tr>;
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <div style={s.pagination}>
-            <span>Showing {filteredAppointments.length ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, filteredAppointments.length)} of {filteredAppointments.length} appointments</span>
-            <div style={s.paginationControls}>
-              <button type="button" style={s.pageControl} disabled={page <= 1} onClick={() => setPage(current => current - 1)} aria-label="Previous page">‹</button>
-              <span>{page} / {pageCount}</span>
-              <button type="button" style={s.pageControl} disabled={page >= pageCount} onClick={() => setPage(current => current + 1)} aria-label="Next page">›</button>
-            </div>
+      <Topbar
+        user={user}
+        className="appointment-management-topbar"
+        headerContent={<div className="appointment-page-heading"><h1>Appointment Management</h1><p>Manage bookings, arrivals, and appointment requests for the clinic.</p></div>}
+        actions={<div className="appointment-header-actions">
+          <div className="appointment-date-display">
+            <span className="appointment-date-display-icon">{Icons.calendar}</span>
+            <span className="appointment-date-display-text"><strong>{formatSelectedDate(localDateValue(currentTime))}</strong><small>{currentTime.toLocaleDateString(undefined, { weekday: 'long' })} · {formatClock(currentTime)}</small></span>
           </div>
+        </div>}
+      />
+      <div className="appointment-dashboard">
+        <section className="appointment-stat-grid" aria-label="Appointment summary">
+          <div className="appointment-stat-card appointment-stat-green"><span className="appointment-stat-icon">{Icons.calendar}</span><span className="appointment-stat-copy"><span>Appointments</span><strong>{loading ? '—' : summaryAppointments.length}</strong></span></div>
+          <div className="appointment-stat-card appointment-stat-green"><span className="appointment-stat-icon">{Icons.users}</span><span className="appointment-stat-copy"><span>Checked In</span><strong>{loading ? '—' : checkedInCount}</strong></span></div>
+          <div className="appointment-stat-card appointment-stat-amber"><span className="appointment-stat-icon">{Icons.clock}</span><span className="appointment-stat-copy"><span>Awaiting Arrival</span><strong>{loading ? '—' : awaitingCount}</strong></span></div>
+          <button type="button" className="appointment-stat-card appointment-stat-red appointment-stat-action" onClick={() => { setTab('requests'); setStatusFilter('all'); setPage(1); }}>
+            <span className="appointment-stat-icon">{Icons.list}</span><span className="appointment-stat-copy"><span>Requests Requiring Action</span><strong>{loading ? '—' : requestCount}</strong></span><span className="appointment-stat-chevron">{Icons.chevronRight}</span>
+          </button>
+        </section>
+
+        <div className="appointment-view-toolbar">
+          <nav className="appointment-tabs" aria-label="Appointment views">
+            {tabs.map(item => (
+              <button key={item.id} type="button" aria-pressed={tab === item.id} onClick={() => { setTab(item.id); setStatusFilter('all'); setPage(1); }} className={`appointment-tab${tab === item.id ? ' is-active' : ''}`}>
+                <span>{item.icon}</span>{item.label}{item.id === 'requests' && requestCount > 0 && <b>{requestCount}</b>}
+              </button>
+            ))}
+          </nav>
+          <button type="button" className="appointment-new-button" onClick={() => setShowNewAppointment(true)}><span>{Icons.plus}</span>New Appointment</button>
         </div>
+
+        {error && <div className="appointment-error" role="alert">{error}</div>}
+
+        <div className={`appointment-filter-row${tab === 'today' ? ' appointment-filter-row-today' : ''}`}>
+          <label className="appointment-search"><span>{Icons.search}</span><input aria-label="Search appointments" placeholder="Search by pet name, owner, or doctor..." value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></label>
+          <select title={filterOptionsError || undefined} aria-label="Filter by doctor" value={practitionerFilter} onChange={event => { setPractitionerFilter(event.target.value); setPage(1); }}><option value="">All Doctors</option>{practitioners.map(name => <option key={name} value={name}>{name}</option>)}</select>
+          {tab !== 'today' && <div className="lab-date-range appointment-history-date-range" ref={dateRangeRef}>
+            <button type="button" className="lab-date-range-trigger" aria-label="Choose appointment date range" aria-expanded={dateRangeOpen} onClick={() => setDateRangeOpen(open => !open)}>
+              <span className="lab-date-range-calendar">{Icons.calendar}</span>
+              <span>{dateFrom || dateTo ? `${dateFrom || 'Any date'} – ${dateTo || 'Any date'}` : 'Date Range'}</span>
+              <span className={`lab-date-range-chevron${dateRangeOpen ? ' open' : ''}`} aria-hidden="true" />
+            </button>
+            {dateRangeOpen && <div className="lab-date-range-popover system-date-range-popover" role="group" aria-label="Appointment date range">
+              <DateRangePopoverFields
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                onDateFromChange={date => { setDateFrom(date); setPage(1); }}
+                onDateToChange={date => { setDateTo(date); setPage(1); }}
+                sortOrder={dateRangeSort}
+                onSortOrderChange={order => { setDateRangeSort(order); setPage(1); }}
+                onClear={() => { setDateFrom(''); setDateTo(''); setDateRangeSort('newest'); setPage(1); }}
+                onDone={() => setDateRangeOpen(false)}
+              />
+            </div>}
+          </div>}
+        </div>
+
+        <section className="appointment-status-filter" aria-label="Filter appointments by status">
+          <div className="appointment-status-filter-options" role="group" aria-label="Appointment status">
+            {currentStatusFilters.map(filter => (
+              <button
+                type="button"
+                key={filter.id}
+                aria-pressed={statusFilter === filter.id}
+                className={`appointment-status-filter-option${statusFilter === filter.id ? ' is-active' : ''}`}
+                onClick={() => { setStatusFilter(filter.id); setPage(1); }}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+          <p>{tab === 'requests'
+            ? 'Choose a request type to filter appointment records requiring action.'
+            : tab === 'today'
+              ? "Choose a status to filter today's appointments."
+              : 'Choose a status to filter all appointments.'}</p>
+        </section>
+
+        <section className="appointment-table-card">
+          <header className="appointment-table-heading">
+            <h2>{tab === 'all' ? (dateFrom || dateTo ? dateRangeHeading : 'All Appointments') : tab === 'today' ? "Today's Appointments" : 'Appointment Requests'} <span>({filteredAppointments.length})</span></h2>
+            <div className="appointment-legend"><span><i className="legend-checked" />{checkedInCount} Checked In</span><span><i className="legend-awaiting" />{awaitingCount} Awaiting</span><span><i className="legend-completed" />{summaryAppointments.filter(appt => ['completed', 'complete'].includes(normalizeStatus(appt.status))).length} Completed</span></div>
+          </header>
+          <div className="lab-results-table-wrap clinic-appointments-table-wrap appointment-table-scroll">
+            <table className="lab-results-table clinic-appointments-table">
+              <thead><tr>{['Date & Time', 'Patient', 'Owner', 'Type', 'Veterinarian', 'Status', ''].map(label => <th key={label} aria-label={label || 'Appointment actions'}>{label}</th>)}</tr></thead>
+              <tbody>
+                {loading ? <tr><td colSpan={7} className="appointment-table-empty">Loading appointments…</td></tr>
+                  : pageAppointments.length === 0 ? <tr><td colSpan={7} className="appointment-table-empty">{error ? 'Appointments could not be loaded.' : 'No appointments found for this view.'}</td></tr>
+                    : pageAppointments.map((appt, index) => {
+                      const duration = appointmentDuration(appt);
+                      return <tr key={appt.id || `${index}-${appt.start_time}`} className="clinic-action-row" tabIndex={0}
+                        aria-label={`Open actions for ${appt.pet || 'appointment'}`} aria-haspopup="dialog"
+                        onClick={() => setOpenActionsId(appt.id)}
+                        onKeyDown={event => { if (event.target === event.currentTarget && ['Enter', ' '].includes(event.key)) { event.preventDefault(); setOpenActionsId(appt.id); } }}>
+                        <td data-label="Date & Time"><div className="lab-result-date"><strong>{new Date(appt.start_time).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</strong><span>{formatTime(appt.start_time)}</span></div></td>
+                        <td data-label="Patient" className="lab-result-pet">{appt.pet || appt.pet_name || '—'}</td>
+                        <td data-label="Owner">{appt.owner || appt.owner_name || '—'}</td>
+                        <td data-label="Type"><div className="lab-result-test"><strong>{appt.reason || appt.type || 'Appointment'}</strong>{duration && <span>({duration} min)</span>}</div></td>
+                        <td data-label="Veterinarian">{appt.practitioner || appt.veterinarian || appt.veterinarian_name || 'Unassigned'}</td>
+                        <td data-label="Status"><StatusIndicator status={appointmentStage(appt) === 'pending_confirmation' ? 'pending' : appt.status} label={appointmentStage(appt) === 'pending_confirmation' ? 'Pending Confirmation' : undefined} /></td>
+                        <td data-label="Actions" className="lab-result-actions">
+                          <button type="button" className="lab-row-action-trigger clinic-record-actions-trigger" onClick={event => { event.stopPropagation(); setOpenActionsId(appt.id); }} aria-label={`Open actions for ${appt.pet || 'appointment'}`} aria-haspopup="dialog" title="Appointment actions">{Icons.chevronRight}</button>
+                        </td>
+                      </tr>;
+                    })}
+              </tbody>
+            </table>
+          </div>
+          <footer className="appointment-table-footer">
+            <span>Showing {filteredAppointments.length ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, filteredAppointments.length)} of {filteredAppointments.length} appointments</span>
+            {pageCount > 1 && <div className="appointment-pagination"><button type="button" disabled={page <= 1} onClick={() => setPage(current => current - 1)} aria-label="Previous page">‹</button><span>{page} / {pageCount}</span><button type="button" disabled={page >= pageCount} onClick={() => setPage(current => current + 1)} aria-label="Next page">›</button></div>}
+          </footer>
+        </section>
       </div>
       <AppointmentActionsModal
+        user={user}
         appointment={appointments.find((appointment) => appointment.id === openActionsId)}
         onClose={() => setOpenActionsId(null)}
         onAction={handleAppointmentAction}
       />
+      {workflow && <AppointmentWorkflowDialog key={`${workflow.appointment.id}-${workflow.action}`} {...workflow} user={user} onClose={() => setWorkflow(null)} onSaved={refreshAppointments} />}
       {showNewAppointment && <NewAppointmentModal appointments={appointments} onClose={() => setShowNewAppointment(false)} onSchedule={handleScheduleAppointment} />}
     </div>
   );
@@ -372,7 +503,7 @@ const s = {
   pageHd: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20 },
   pageTitle: { fontFamily: "'DM Sans',sans-serif", fontSize: '1.35rem', fontWeight: 700, letterSpacing: '-.02em', color: '#173d37' },
   pageSub: { fontSize: '.78rem', color: '#526b64', marginTop: 3 },
-  primaryBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px', background: '#005447', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.8rem', fontWeight: 600, cursor: 'pointer' },
+  primaryBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px', background: '#086b50', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.8rem', fontWeight: 600, cursor: 'pointer' },
   statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 14, marginBottom: 20 },
   statCard: { background: '#fff', border: '1px solid #e8ecf0', borderRadius: 14, padding: '16px 20px' },
   requestNotice: { display: 'flex', alignItems: 'center', gap: 12, background: '#fffdf2', border: '1px solid #f4e7b0', borderRadius: 10, padding: '12px 16px', marginBottom: 16 },
@@ -385,9 +516,9 @@ const s = {
   search: { width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '9px 10px', border: '1px solid #dce5e8', borderRadius: 7, fontSize: '.72rem', background: '#fff', outline: 'none', color: '#334155' },
   tabBar: { display: 'flex', alignItems: 'center', overflowX: 'auto', background: 'transparent', borderBottom: '1px solid #e1e9e7', padding: 0, marginBottom: 12, gap: 4, scrollbarWidth: 'none' },
   tabBtn: { flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 12px', border: 'none', borderBottom: '2px solid transparent', borderRadius: '7px 7px 0 0', fontSize: '.76rem', color: '#334155', background: 'transparent', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' },
-  tabActive: { background: '#005447', color: '#fff', borderBottomColor: '#005447' },
+  tabActive: { background: '#086b50', color: '#fff', borderBottomColor: '#013826' },
   tabCount: { color: 'inherit', fontSize: '.68rem', fontWeight: 600, opacity: .82 },
-  filters: { display: 'grid', gridTemplateColumns: 'minmax(180px, 1.6fr) repeat(5, minmax(96px, 1fr))', gap: 8, marginBottom: 14, padding: 10, border: '1px solid #e5ecea', borderRadius: 10, background: '#fff' },
+  filters: { display: 'grid', gridTemplateColumns: 'minmax(180px, 1.6fr) repeat(4, minmax(96px, 1fr))', gap: 8, marginBottom: 14, padding: 10, border: '1px solid #e5ecea', borderRadius: 10, background: '#fff' },
   filterControl: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, padding: '0 8px', border: '1px solid #dce5e8', borderRadius: 7, color: '#526b64', fontSize: '.67rem', whiteSpace: 'nowrap' },
   filterDateInput: { width: '100%', minWidth: 0, border: 0, outline: 0, background: 'transparent', color: '#334155', font: 'inherit', fontSize: '.7rem' },
   filterSelect: { width: '100%', minWidth: 0, padding: '9px 10px', border: '1px solid #dce5e8', borderRadius: 7, background: '#fff', color: '#334155', fontSize: '.72rem' },
@@ -423,10 +554,10 @@ const s = {
   modalActionTextStrong: { fontSize: '.95rem' },
   modalActionChevron: { color: '#40536d', fontSize: '1.25rem', lineHeight: 1 },
   modalAction_positive: { borderColor: '#16a765', background: '#effaf4', color: '#08743d' },
-  modalAction_primary: { borderColor: '#5b8ef0', background: '#f1f6ff', color: '#005447' },
+  modalAction_primary: { borderColor: '#5b8ef0', background: '#f1f6ff', color: '#013826' },
   modalAction_neutral: { borderColor: '#cbd5e1', background: '#f8fafc', color: '#34445b' },
   modalAction_danger: { borderColor: '#ff6674', background: '#fff1f3', color: '#a91524' },
-  modalAction_primary: { borderColor: '#86d7b4', background: '#f1f6ff', color: '#005447' },
+  modalAction_primary: { borderColor: '#86d7b4', background: '#f1f6ff', color: '#013826' },
   modalAction_positive: { borderColor: '#86d7b4', background: '#effaf4', color: '#08743d' },
   modalAction_warning: { borderColor: '#ffc65c', background: '#fff8e8', color: '#805300' },
   modalIcon_positive: { width: 29, height: 29, borderRadius: 50, background: '#139b5e', color: '#fff' },

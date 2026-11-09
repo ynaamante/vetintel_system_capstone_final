@@ -169,7 +169,7 @@ export function DashboardLayout() {
   const pageTitle = location.pathname === '/' ? 'Dashboard Overview' : activeNavigation?.name || 'Super Admin Portal';
 
   return (
-    <div className="flex h-screen bg-[#eef3ff] text-[#102956]">
+    <div className="flex h-screen bg-[#fafbf8] text-[#172b24]">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -180,18 +180,18 @@ export function DashboardLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-52 bg-[#0b2045] border-r border-[#1e3d72] transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:z-auto flex flex-col ${
+        className={`fixed inset-y-0 left-0 z-50 w-52 bg-[#013826] border-r border-[#33755b] transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:z-auto flex flex-col ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex h-16 items-center justify-between px-4 border-b border-[#1e3d72]">
+        <div className="flex h-16 items-center justify-between px-4 border-b border-[#33755b]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#2161e8] rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-[#086b50] rounded-lg flex items-center justify-center">
               <Building2 className="w-4 h-4 text-white" />
             </div>
             <div>
               <div className="font-semibold text-white text-sm">VetIntel</div>
-              <div className="text-[11px] text-[#7da2e2]">Super Admin</div>
+              <div className="text-[11px] text-[#bed6c5]">Super Admin</div>
             </div>
           </div>
           <button
@@ -215,8 +215,8 @@ export function DashboardLayout() {
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                   isActive
-                    ? 'bg-[#2161e8] text-white'
-                    : 'text-[#8eafe6] hover:bg-[#173564] hover:text-white'
+                    ? 'bg-[#0a966b] text-white'
+                    : 'text-[#D2E5DC] hover:bg-[#086b50] hover:text-white'
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -226,29 +226,29 @@ export function DashboardLayout() {
           })}
         </nav>
 
-        <div className="border-t border-[#1e3d72] px-2 py-3">
-          <div className="mb-3 flex items-center gap-3 rounded-lg bg-[#173564] px-3 py-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#2161e8]">
+        <div className="border-t border-[#33755b] px-2 py-3">
+          <div className="mb-3 flex items-center gap-3 rounded-lg bg-[#086b50] px-3 py-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#086b50]">
               {user.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : <span className="text-xs text-white">{initials}</span>}
             </div>
             <div className="min-w-0">
               <p className="truncate text-xs font-semibold text-white">{user.name || 'Super Admin'}</p>
-              <p className="truncate text-[10px] text-[#4f9bff]">{user.email}</p>
+              <p className="truncate text-[10px] text-[#D2E5DC]">{user.email}</p>
             </div>
           </div>
           <Link
             to="/settings"
             onClick={() => setSidebarOpen(false)}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-[#8eafe6] hover:bg-[#173564] hover:text-white"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-[#D2E5DC] hover:bg-[#086b50] hover:text-white"
           >
-            <Settings className="w-4 h-4 text-[#8eafe6]" />
+            <Settings className="w-4 h-4 text-[#D2E5DC]" />
             Settings
           </Link>
           <button
             onClick={handleLogout}
-            className="mt-2 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-[#8eafe6] hover:bg-[#173564] hover:text-white"
+            className="mt-2 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-[#D2E5DC] hover:bg-[#086b50] hover:text-white"
           >
-            <LogOut className="w-4 h-4 text-[#8eafe6]" />
+            <LogOut className="w-4 h-4 text-[#D2E5DC]" />
             Sign Out
           </button>
         </div>
@@ -257,7 +257,7 @@ export function DashboardLayout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top navigation */}
-        <header className="h-14 bg-white border-b border-[#d4e1fb] flex items-center justify-between px-5">
+        <header className="h-14 bg-white border-b border-[#d4e3d7] flex items-center justify-between px-5">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-gray-600 hover:text-gray-900"
@@ -265,7 +265,7 @@ export function DashboardLayout() {
             <Menu className="w-6 h-6" />
           </button>
 
-          <div className="text-sm font-semibold text-[#102956]">{pageTitle}</div>
+          <div className="text-sm font-semibold text-[#172b24]">{pageTitle}</div>
 
           {/* Right side actions */}
           <div className="flex items-center gap-4">
@@ -372,8 +372,8 @@ export function DashboardLayout() {
               )}
             </div>
 
-            <div className="relative pl-4 border-l border-[#d4e1fb] hidden md:flex items-center gap-3">
-              <div className="w-8 h-8 bg-[#2161e8] rounded-full flex items-center justify-center">
+            <div className="relative pl-4 border-l border-[#d4e3d7] hidden md:flex items-center gap-3">
+              <div className="w-8 h-8 bg-[#086b50] rounded-full flex items-center justify-center">
                 <span className="text-sm text-white">{initials}</span>
               </div>
             </div>

@@ -1,108 +1,38 @@
+import LabVisitOverview from '../../components/LabVisitOverview';
+import useLabTestTypes from '../../utils/useLabTestTypes';
+import { appointmentTypes } from '../../utils/appointmentTypes';
+import { appointmentDuration } from '../../utils/serviceDuration';
+import { dateFilterValue, dateInRange } from '../../utils/dateFilters';
+import ClinicRecordAuditEntries from '../../components/ClinicRecordAuditEntries';
+import DoctorBillingOverview from './DoctorBillingOverview';
+import InvoiceCorrectionEditor from './InvoiceCorrectionEditor';
+import InvoiceVoidDecision from './InvoiceVoidDecision';
+import ServiceInventorySummary from '../../components/ServiceInventorySummary';
+import SharedInventoryPanel from '../../components/SharedInventoryPanel';
+import VaccinationVisitEditor from './VaccinationVisitEditor';
+import VisitWorkflowDialog, { visitRequest } from './VisitWorkflowDialog';
+import RecordActionsModal from '../../components/RecordActionsModal';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import jsPDF from 'jspdf';
 import Topbar from '../../components/Topbar';
 import StatusIndicator from '../../components/StatusIndicator';
+import ClinicAttachmentImage from '../../components/ClinicAttachmentImage';
 import { VaccinationVerificationDialog } from '../../components/VaccinationRecordDrawer';
 import FilterSelect from '../../components/FilterSelect';
 import LabDateTimePicker, { getUnavailableAppointmentTimes } from '../../components/LabDateTimePicker';
+import DateRangePopoverFields from '../../components/DateRangePopoverFields';
 import { ModalDialog, ModalHeader, ModalTitle, ModalDescription, ModalFooter, ModalStepper } from '../../components/ModalDialog';
 import { Icons } from '../../icons';
 import { canViewFeature } from '../../utils/permissionUtils';
 import { notifySuccess } from '../../utils/notifications';
 import { validateOwnerFields } from '../../utils/validation';
-import { CLINIC_MOCK_DATA } from '../../data/clinicMockData';
+import { readApiResponse } from '../../utils/apiResponse';
+
 import { formatDateText, formatDateTimeText } from '../../utils/dateFormatting';
 
 // ── DATA ──────────────────────────────────────────────────────────────
-const APPOINTMENTS = [
-  { id: 'APT-001', datetime: 'March 18, 2026 09:00 AM', pet: 'Max',    owner: 'John Smith',    type: 'Checkup',    status: 'confirmed', notes: 'Annual checkup' },
-  { id: 'APT-002', datetime: 'March 18, 2026 10:30 AM', pet: 'Luna',   owner: 'Sarah Johnson', type: 'Vaccination', status: 'confirmed', notes: 'Distemper vaccine' },
-  { id: 'APT-003', datetime: 'March 18, 2026 11:00 AM', pet: 'Charlie',owner: 'Mike Davis',    type: 'Surgery',    status: 'pending',   notes: 'Dental cleaning' },
-  { id: 'APT-004', datetime: 'March 18, 2026 02:00 PM', pet: 'Bella',  owner: 'Emma Wilson',   type: 'Dental',     status: 'confirmed', notes: 'Routine dental' },
-  { id: 'APT-005', datetime: 'March 18, 2026 03:30 PM', pet: 'Rocky',  owner: 'David Brown',   type: 'Checkup',    status: 'confirmed', notes: 'Annual checkup' },
-];
-
-const OWNERS = [
-  { id: 'OWN-001', name: 'John Smith',    phone: '+1 555-0101', email: 'john.smith@email.com',  address: '123 Main St, Springfield', pets: 2 },
-  { id: 'OWN-002', name: 'Sarah Johnson', phone: '+1 555-0102', email: 'sarah.j@email.com',      address: '456 Oak Ave, Springfield',  pets: 1 },
-  { id: 'OWN-003', name: 'Mike Davis',    phone: '+1 555-0103', email: 'mike.davis@email.com',   address: '789 Pine Rd, Springfield',  pets: 3 },
-];
-
-const PETS = [
-  { id: 'PET-001', name: 'Max',     species: 'Dog', breed: 'Golden Retriever', owner: 'John Smith',    age: '3 years',   lastVisit: 'March 1, 2026',   status: 'up-to-date' },
-  { id: 'PET-002', name: 'Luna',    species: 'Cat', breed: 'Persian',          owner: 'Sarah Johnson', age: '5 months',  lastVisit: 'February 28, 2026',    status: 'high-risk'  },
-  { id: 'PET-003', name: 'Charlie', species: 'Dog', breed: 'Labrador',         owner: 'Mike Davis',    age: '7 years',   lastVisit: 'January 15, 2026',    status: 'moderate'   },
-];
-
-const SAMPLE_TREATMENT_PLAN = {
-  id: 'SAMPLE-PLAN-001',
-  isMock: true,
-  status: 'active',
-  title: 'Acute Gastroenteritis Support (Sample)',
-  pet: 'Milo (Sample Patient)',
-  species: 'Dog',
-  age: '4 years',
-  owner: 'Jordan Lee (Sample Owner)',
-  diagnosis: 'Acute gastroenteritis with mild dehydration',
-  diagnosisConfirmation: 'Example assessment based on history and physical examination',
-  severity: 'Moderate',
-  weight: '12.4 kg',
-  allergies: 'No known allergies (sample)',
-  isolationRequired: false,
-  reportedToDiseaseMonitoring: false,
-  sex: 'Male, neutered',
-  vaccines: 'Up to date (sample)',
-  consent: 'Signed (sample)',
-  homeCareInstructions: 'Sent (sample)',
-  estimate: '₱1,850.00 (sample estimate)',
-  monitoring: {
-    temperature: '38.7 °C',
-    temperatureStatus: 'Within expected range',
-    weight: '12.4 kg',
-    hydration: 'Mildly dehydrated · improving',
-    appetite: 'Reduced · monitor',
-    whiteBloodCellCount: '14.2 × 10⁹/L',
-    whiteBloodCellStatus: 'Slightly elevated · recheck if symptoms persist',
-    lastUpdatedAt: '2026-10-11T10:30:00',
-    latestObservation: 'Pet is responding to supportive care. Continue monitoring appetite and hydration at the next assessment.',
-    observations: [
-      {
-        date: '2026-10-11T10:30:00',
-        author: 'Dr. A. Rivera (Sample)',
-        text: 'Pet is responding to supportive care. Continue monitoring appetite and hydration at the next assessment.',
-        temperature: '38.7 °C',
-        weight: '12.4 kg',
-        hydration: 'Mildly dehydrated · improving',
-        appetite: 'Reduced · monitor',
-      },
-    ],
-  },
-  doctor: 'Dr. A. Rivera (Sample)',
-  created: 'October 5, 2026',
-  followUp: 'October 12, 2026',
-  nextActionDue: 'October 6, 2026',
-  completedSteps: 1,
-  totalSteps: 4,
-  stepDetails: [
-    { title: 'Initial assessment and hydration check', detail: 'Review vomiting, stool, appetite, and hydration.', assignee: 'Dr. A. Rivera (Sample)', completedAt: 'October 5, 2026' },
-    { title: 'Start supportive care', detail: 'Provide prescribed fluids and gastrointestinal diet instructions.', assignee: 'Dr. A. Rivera (Sample)', due: 'October 6, 2026' },
-    { title: 'Monitor response at home', detail: 'Record appetite, water intake, vomiting, and stool changes.', assignee: 'Jordan Lee (Sample Owner)', due: 'October 8, 2026' },
-    { title: 'Veterinary follow-up', detail: 'Reassess hydration and recovery; escalate if symptoms worsen.', assignee: 'Dr. A. Rivera (Sample)', due: 'October 12, 2026' },
-  ],
-  medications: [
-    { name: 'Maropitant', dose: '24 mg', route: 'Oral', frequency: 'Once daily for 3 days', duration: '3 days', day: 'Day 1 of 3', nextDue: 'October 6, 2026 · 9:00 AM', status: 'In Progress' },
-    { name: 'Probiotic supplement', dose: '1 sachet', route: 'Oral', frequency: 'Once daily for 5 days', duration: '5 days', day: 'Day 1 of 5', nextDue: 'October 6, 2026 · with food', status: 'In Progress' },
-  ],
-  pastMedications: [],
-  clinicalUpdates: [
-    { date: 'October 5, 2026 · 10:30 AM', author: 'Dr. A. Rivera (Sample)', text: 'Sample update: mild dehydration noted. Supportive care and home monitoring discussed with the owner.' },
-  ],
-};
-
-const VACCINATIONS = CLINIC_MOCK_DATA.vaccinations;
-const TREATMENTS = CLINIC_MOCK_DATA.treatments;
-const LAB_RESULTS = CLINIC_MOCK_DATA.labResults;
+const LAB_RESULTS = [];
 
 function formatClinicDate(value) {
   if (!value || value === '—') return '—';
@@ -207,6 +137,56 @@ function calculateMedicationEndDate(startDate, duration) {
   return date.toISOString().slice(0, 10);
 }
 
+function createInpatientObservationForm() {
+  const localNow = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
+  return {
+    date: localNow.toISOString().slice(0, 10),
+    time: localNow.toISOString().slice(11, 16),
+    temperature: '',
+    weight: '',
+    heart_rate: '',
+    respiratory_rate: '',
+    hydration: 'Normal',
+    appetite: 'Normal',
+    pain_assessment: '',
+    clinical_progress: '',
+    follow_up_action: 'Continue routine monitoring',
+  };
+}
+
+function createPlanMedicationForm(treatmentPlanId = '') {
+  return {
+    name: '', dose: '', unit: 'mg', route: '', routeOther: '',
+    frequency: '', frequencyOther: '', duration: '', quantity: '',
+    date: '', endDate: '', instructions: '', treatmentPlanId,
+  };
+}
+
+function PlanMedicationFields({ form, setForm, treatmentPlans, fixedTreatmentPlan, prescriber }) {
+  const updateField = (field, value) => setForm(previous => ({ ...previous, [field]: value }));
+  const labelStyle = { display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 };
+  const inputStyle = { border: '1px solid #d1d5db', borderRadius: 7, padding: '10px 11px', color: '#111827', fontSize: '.78rem' };
+  const selectStyle = { ...inputStyle, background: '#fff' };
+  return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px 10px', marginTop: 16 }}>
+    <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>Medication name <span className="system-required-star">*</span><input required value={form.name} onChange={event => updateField('name', event.target.value)} placeholder="Search or enter medication name" style={inputStyle} /></label>
+    <label style={labelStyle}>Dose <span className="system-required-star">*</span><input required value={form.dose} onChange={event => updateField('dose', event.target.value)} placeholder="e.g. 250" style={inputStyle} /></label>
+    <label style={labelStyle}>Unit <span className="system-required-star">*</span><input required value={form.unit} onChange={event => updateField('unit', event.target.value)} placeholder="mg" style={inputStyle} /></label>
+    <label style={labelStyle}>Route <span className="system-required-star">*</span><select required value={form.route} onChange={event => setForm(previous => ({ ...previous, route: event.target.value, routeOther: '' }))} style={selectStyle}><option value="">Select route</option>{['Oral', 'Intravenous (IV)', 'Intramuscular (IM)', 'Subcutaneous (SC)', 'Topical', 'Ophthalmic', 'Otic', 'Inhaled', 'Other'].map(route => <option key={route}>{route}</option>)}</select></label>
+    <label style={labelStyle}>Frequency <span className="system-required-star">*</span><select required value={form.frequency} onChange={event => setForm(previous => ({ ...previous, frequency: event.target.value, frequencyOther: '' }))} style={selectStyle}><option value="">Select frequency</option>{['Once daily (q24h)', 'Twice daily (q12h)', 'Three times daily (q8h)', 'Four times daily (q6h)', 'Every 4 hours (q4h)', 'Every 6 hours (q6h)', 'Every 8 hours (q8h)', 'Every 12 hours (q12h)', 'As needed (PRN)', 'Other'].map(frequency => <option key={frequency}>{frequency}</option>)}</select></label>
+    {form.route === 'Other' && <label style={labelStyle}>Specify route <span className="system-required-star">*</span><input required value={form.routeOther} onChange={event => updateField('routeOther', event.target.value)} placeholder="Enter route" style={inputStyle} /></label>}
+    {form.frequency === 'Other' && <label style={labelStyle}>Specify frequency <span className="system-required-star">*</span><input required value={form.frequencyOther} onChange={event => updateField('frequencyOther', event.target.value)} placeholder="Enter frequency" style={inputStyle} /></label>}
+    <label style={labelStyle}>Duration <span className="system-required-star">*</span><input required value={form.duration} onChange={event => updateField('duration', event.target.value)} placeholder="e.g. 7 days" style={inputStyle} /></label>
+    <label style={labelStyle}>Quantity to dispense<input value={form.quantity} onChange={event => updateField('quantity', event.target.value)} placeholder="e.g. 14 tablets" style={inputStyle} /></label>
+    <label style={labelStyle}>Start date <span className="system-required-star">*</span><LabDateTimePicker mode="date" required value={form.date} onChange={date => updateField('date', date)} style={{ ...inputStyle, padding: '9px 10px' }} /></label>
+    <label style={labelStyle}>End date<LabDateTimePicker mode="date" min={form.date || undefined} value={form.endDate} onChange={endDate => updateField('endDate', endDate)} style={{ ...inputStyle, padding: '9px 10px' }} />{!form.endDate && calculateMedicationEndDate(form.date, form.duration) && <small style={{ color: '#64748b', fontWeight: 400 }}>Calculated: {formatDateText(calculateMedicationEndDate(form.date, form.duration))}</small>}</label>
+    <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>Instructions for owner<textarea rows={3} value={form.instructions} onChange={event => updateField('instructions', event.target.value)} placeholder="Enter administration instructions, precautions, or other prescribed directions..." style={{ resize: 'vertical', ...inputStyle, font: 'inherit', fontSize: '.78rem', outlineColor: '#78b7a1' }} /></label>
+    {fixedTreatmentPlan
+      ? <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>Linked treatment plan<select required value={String(fixedTreatmentPlan.id || '')} onChange={() => {}} style={selectStyle}><option value={String(fixedTreatmentPlan.id || '')}>{fixedTreatmentPlan.title || 'No linked treatment plan'}</option></select></label>
+      : <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>Linked treatment plan<select value={form.treatmentPlanId} onChange={event => updateField('treatmentPlanId', event.target.value)} style={selectStyle}><option value="">No linked plan (optional)</option>{(treatmentPlans || []).map(plan => <option key={plan.databaseId} value={plan.databaseId}>{plan.title}</option>)}</select></label>}
+    <div style={{ ...labelStyle, gridColumn: '1 / -1' }}>Prescribed by<div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#013826', fontWeight: 500 }}><span aria-hidden="true">♙</span>{prescriber || 'Current veterinarian'}</div></div>
+  </div>;
+}
+
 function formatMonitoringDate(value) {
   if (!value) return 'Not recorded';
   const date = new Date(value);
@@ -239,6 +219,8 @@ function normalizeVaccination(v) {
     id: v.id || v.vaccination_id,
     pet: v.pet || v.pet_name || '—',
     photo_url: v.photo_url || v.pet_photo_url || v.petPhotoUrl || '',
+    pet_photo_attachment_id: v.pet_photo_attachment_id || v.photo_attachment_id || '',
+    photo_attachment_id: v.photo_attachment_id || v.pet_photo_attachment_id || v.petPhotoAttachmentId || '',
     type: v.type || v.vaccine_name || '—',
     dateGiven: v.dateGiven || v.date_given || '—',
     nextDue: dueValue || '—',
@@ -270,25 +252,7 @@ const CLINIC_INVENTORY = [
   { name: 'Exam Gloves (Medium)', category: 'Supply', stock: '80 pairs', quantity: 80, expiry: 'N/A', status: 'Reorder Soon' },
 ];
 
-const CONSULTATION_PETS = ['Max — John Smith', 'Luna — Sarah Johnson', 'Charlie — Mike Davis'];
-const CONSULTATION_SERVICES = [
-  { name: 'General Consultation', charge: 850 },
-  { name: 'Vaccination Consultation', charge: 650 },
-  { name: 'Dental Examination', charge: 1200 },
-];
-const CONSULTATION_ITEMS = [
-  { name: 'Amoxicillin 500mg', category: 'Medication', unit: 'tablets' },
-  { name: 'Doxycycline 100mg', category: 'Medication', unit: 'tablets' },
-  { name: 'Metronidazole 250mg', category: 'Medication', unit: 'tablets' },
-  { name: 'Meloxicam Oral 1.5mg/ml', category: 'Medication', unit: 'mls' },
-  { name: 'Enrofloxacin 50mg', category: 'Medication', unit: 'tablets' },
-  { name: 'Rabies Vaccine (IMRAB)', category: 'Vaccine', unit: 'vials' },
-  { name: 'DHPP (Distemper Combo)', category: 'Vaccine', unit: 'vials' },
-  { name: 'Feline Distemper (FVRCP)', category: 'Vaccine', unit: 'vials' },
-  { name: 'Bordetella Intranasal', category: 'Vaccine', unit: 'doses' },
-  { name: 'Leptospirosis 4-way', category: 'Vaccine', unit: 'vials' },
-  { name: 'Carprofen 50mg', category: 'Medication', unit: 'tablets' },
-];
+
 const OWNER_ADDRESS_OPTIONS = [
   {
     region: 'Region III',
@@ -343,7 +307,7 @@ const T = {
     width: '100%', padding: '9px 14px 9px 36px',
     border: '1px solid #e8ecf0', borderRadius: 8,
     fontSize: '.78rem', color: '#111827',
-    background: '#f4f6f9', outline: 'none', marginBottom: 20,
+    background: '#f1f6ef', outline: 'none', marginBottom: 20,
   },
   searchWrap: { position: 'relative', marginBottom: 20 },
   searchIcon: { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#64748b', display: 'flex' },
@@ -361,7 +325,7 @@ const T = {
     display: 'flex', alignItems: 'center', gap: 6,
     padding: '7px 14px', border: 'none',
     borderRadius: 8, fontSize: '.75rem', color: '#fff',
-    background: '#005447', cursor: 'pointer', fontWeight: 500,
+    background: '#086b50', cursor: 'pointer', fontWeight: 500,
   },
 };
 
@@ -433,7 +397,8 @@ function ClinicSectionPlaceholder({ label }) {
   );
 }
 
-export function LabResultsTab({ patientName, patientRecord, user, onCountChange, appointments = [] } = {}) {
+export function LabResultsTab({ patientName, patientRecord, user, onCountChange, appointments = [], requestOnly = false, onRequestClose } = {}) {
+  const { testTypes: labTestTypes, diseases: labDiseases, error: labTestTypesError } = useLabTestTypes(user);
   const [search, setSearch] = useState('');
   const [localResults, setLocalResults] = useState([]);
   const [clinicPatients, setClinicPatients] = useState(() => (
@@ -446,7 +411,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
   const [patientsLoading, setPatientsLoading] = useState(false);
   const [clinicVeterinarians, setClinicVeterinarians] = useState([]);
   const [veterinarianLoadError, setVeterinarianLoadError] = useState('');
-  const [newRequestOpen, setNewRequestOpen] = useState(false);
+  const [newRequestOpen, setNewRequestOpen] = useState(requestOnly);
   const [savedLabTest, setSavedLabTest] = useState(null);
   const [isSavingLabTest, setIsSavingLabTest] = useState(false);
   const [requestError, setRequestError] = useState('');
@@ -465,6 +430,8 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
   const pageSize = 10;
   const [actionLabTest, setActionLabTest] = useState(null);
   const [labActionReturn, setLabActionReturn] = useState(null);
+  const [finalizingLabResult, setFinalizingLabResult] = useState(false);
+  const [finalizeLabResultError, setFinalizeLabResultError] = useState('');
   const [resultEditor, setResultEditor] = useState(null);
   const [resultEditorError, setResultEditorError] = useState('');
   const [reportReading, setReportReading] = useState(false);
@@ -622,12 +589,12 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
     if (normalized === 'normal') return 'results-ready';
     return normalized;
   };
-  const getDateInputValue = value => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  };
-  const patientResults = localResults.filter(result => !patientName || result.pet === patientName);
+  const getDateInputValue = dateFilterValue;
+  const patientResults = localResults.filter(result => (
+    patientRecord?.databasePetId
+      ? String(result.patientId || result.pet_id) === String(patientRecord.databasePetId)
+      : !patientName || result.pet === patientName
+  ));
   const scheduledLabAppointments = appointments.filter(appointment => {
     let notes = appointment.notes || {};
     if (typeof notes === 'string') { try { notes = JSON.parse(notes); } catch { notes = {}; } }
@@ -772,7 +739,9 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
     `${patient.name} ${patient.displayId} ${patient.species} ${patient.owner}`.toLowerCase()
       .includes(patientSearch.trim().toLowerCase())
   ));
-  const testOptions = [...new Set([...localResults, ...LAB_RESULTS].map(result => result.testType).filter(Boolean))];
+  const testOptions = [...new Set([...labTestTypes, ...localResults.map(result => result.testType).filter(Boolean)])]
+    .filter(name => !labDiseases.includes(name.trim().toLowerCase()));
+  const filterTestOptions = [...new Set([...testOptions, ...localResults.map(result => result.testType).filter(Boolean)])];
   const matchingTestOptions = testOptions.filter(test => (
     test.toLowerCase().includes(requestForm.testType.trim().toLowerCase())
   ));
@@ -784,6 +753,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
   const closeNewRequest = () => {
     if (isSavingLabTest) return;
     setNewRequestOpen(false);
+    onRequestClose?.();
     setSavedLabTest(null);
     setRequestError('');
     setRequestStep(1);
@@ -1049,7 +1019,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
   const openLabTestActions = result => {
     const patient = clinicPatients.find(item => String(item.id) === String(result.patientId || result.pet_id));
     setLabActionReturn(null);
-    setActionLabTest({ ...result, photo_url: result.photo_url || getPetPhotoUrl(patient) });
+    setActionLabTest({ ...result, photo_url: result.photo_url || getPetPhotoUrl(patient), photo_attachment_id: result.photo_attachment_id || patient?.photo_attachment_id });
   };
   const backToLabTestActions = closeChild => {
     closeChild();
@@ -1067,20 +1037,22 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
     <button
       type="button"
       className="lab-row-action-trigger clinic-record-actions-trigger"
-      aria-label={`Actions for ${result.id}`}
-      aria-haspopup="dialog"
-      onClick={event => { event.stopPropagation(); openLabTestActions(result); }}
+      aria-label={patientRecord ? `View ${result.id}` : `Actions for ${result.id}`}
+      aria-haspopup={patientRecord ? undefined : 'dialog'}
+      onClick={event => { event.stopPropagation(); patientRecord ? openLabTestView(result) : openLabTestActions(result); }}
     >
       {Icons.chevronRight}
     </button>
   );
   const openLabTestView = result => {
     const patient = clinicPatients.find(item => String(item.id) === String(result.patientId || result.pet_id));
-    setLabActionReturn(result);
+    setFinalizeLabResultError('');
+    setLabActionReturn(patientRecord ? null : result);
     setViewResultTab('details');
     setViewResult({
       ...result,
       photo_url: result.photo_url || getPetPhotoUrl(patient),
+      photo_attachment_id: result.photo_attachment_id || patient?.photo_attachment_id,
       breed: result.breed || patient?.breed,
       species: result.species || patient?.species,
       sex: result.sex || patient?.sex,
@@ -1105,6 +1077,29 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
     String(viewResult.status || '').toLowerCase() !== 'cancelled' &&
     (hasRecordedResult || ['results-ready', 'finalized'].includes(String(viewResult.status || '').toLowerCase()))
   );
+  const finalizeLabResult = async () => {
+    if (!viewResult || getStatusKey(viewResult.status) !== 'results-ready' || !resultIsAvailable || finalizingLabResult) return;
+    setFinalizingLabResult(true);
+    setFinalizeLabResultError('');
+    try {
+      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+      const response = await fetch(`${apiUrl}/clinic-records/lab-tests/${encodeURIComponent(viewResult.id)}?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'finalized', lastUpdatedBy: user.name || '' }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || `Unable to finalize lab result (HTTP ${response.status}).`);
+      setLocalResults(previous => previous.map(result => result.id === viewResult.id ? { ...result, ...payload } : result));
+      setViewResult(previous => previous?.id === viewResult.id ? { ...previous, ...payload } : previous);
+      setLabActionReturn(previous => previous?.id === viewResult.id ? { ...previous, ...payload } : previous);
+      notifySuccess('Lab result finalized', `${viewResult.id} is now finalized in the clinic record.`);
+    } catch (error) {
+      setFinalizeLabResultError(error.message || 'Unable to finalize lab result.');
+    } finally {
+      setFinalizingLabResult(false);
+    }
+  };
   const historyTimeline = historyResult ? [
     ...((historyResult.lastUpdatedAt || historyResult.updatedAt) ? [{
       title: 'Result Updated',
@@ -1139,6 +1134,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
   ].sort((first, second) => new Date(second.date).getTime() - new Date(first.date).getTime()) : [];
   return (
     <div className={`lab-results-tab${patientRecord ? ' patient-record-lab-results' : ''}`}>
+      <div hidden={requestOnly}>
       {patientRecord ? (
         <div className="detail-panel-heading patient-lab-results-heading">
           <span>Lab Results</span>
@@ -1215,7 +1211,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
           className={patientRecord ? 'medication-filter-select' : 'lab-records-filter-select'}
           value={testFilter}
           onChange={value => { setTestFilter(value); setPage(1); }}
-          options={[{ value: 'all', label: patientRecord ? 'All type' : 'All Test Types' }, ...testOptions.map(test => ({ value: test, label: test }))]}
+          options={[{ value: 'all', label: patientRecord ? 'All type' : 'All Test Types' }, ...filterTestOptions.map(test => ({ value: test, label: test }))]}
         />
         <div className={`lab-date-range${patientRecord ? ' medication-date-filter' : ''}`}>
           <button
@@ -1229,19 +1225,17 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
             <span>Date Range</span>
             <span className={`lab-date-range-chevron${dateRangeOpen ? ' open' : ''}`} aria-hidden="true" />
           </button>
-          {dateRangeOpen && <div className="lab-date-range-popover" role="group" aria-label="Date range and sorting">
-            <label>From<LabDateTimePicker label="Start date" mode="date" value={dateFrom} max={dateTo || undefined} onChange={date => { setDateFrom(date); setPage(1); }} /></label>
-            <label>To<LabDateTimePicker label="End date" mode="date" value={dateTo} min={dateFrom || undefined} onChange={date => { setDateTo(date); setPage(1); }} /></label>
-            <label>Sort order
-              <select aria-label="Sort lab tests" value={sortOrder} onChange={event => { setSortOrder(event.target.value); setPage(1); }}>
-                <option value="newest">Newest to Oldest</option>
-                <option value="oldest">Oldest to Newest</option>
-              </select>
-            </label>
-            <div className="lab-date-range-actions">
-              <button type="button" onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}>Clear</button>
-              <button type="button" onClick={() => setDateRangeOpen(false)}>Done</button>
-            </div>
+          {dateRangeOpen && <div className="lab-date-range-popover system-date-range-popover" role="group" aria-label="Date range and sorting">
+            <DateRangePopoverFields
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateFromChange={date => { setDateFrom(date); setPage(1); }}
+              onDateToChange={date => { setDateTo(date); setPage(1); }}
+              sortOrder={sortOrder}
+              onSortOrderChange={order => { setSortOrder(order); setPage(1); }}
+              onClear={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
+              onDone={() => setDateRangeOpen(false)}
+            />
           </div>}
         </div>
       </div>
@@ -1277,7 +1271,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
               <tbody>
                 {paginatedResults.map(result => {
                   const time = String(result.date).match(/\b\d{1,2}:\d{2}\s(?:AM|PM)\b/i)?.[0];
-                  const openActions = () => openLabTestActions(result);
+                  const openActions = () => patientRecord ? openLabTestView(result) : openLabTestActions(result);
                   return <tr key={result.id} className="clinic-action-row" tabIndex={0} onClick={openActions} onKeyDown={event => handleClinicActionRowKeyDown(event, openActions)}>
                     <td data-label="Pet" className="lab-result-pet">{result.pet}</td>
                     <td data-label="Test"><div className="lab-result-test"><strong>{result.testType}</strong><span>{result.id}</span></div></td>
@@ -1294,7 +1288,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
           <div className="lab-results-card-grid">
             {paginatedResults.map(result => {
               const time = String(result.date).match(/\b\d{1,2}:\d{2}\s(?:AM|PM)\b/i)?.[0];
-              const openActions = () => openLabTestActions(result);
+              const openActions = () => patientRecord ? openLabTestView(result) : openLabTestActions(result);
               return <article className="lab-results-card clinic-action-row" key={result.id} tabIndex={0} onClick={openActions} onKeyDown={event => handleClinicActionRowKeyDown(event, openActions)}>
                 <div className="lab-results-card-heading">
                   <div className="lab-card-identity">
@@ -1328,8 +1322,9 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
         aria-label="Upload lab report"
         onChange={handleReportUpload}
       />
+      </div>
       {newRequestOpen && <div style={modalStyles.backdrop} onClick={() => { if (!isSavingLabTest) closeNewRequest(); }}>
-        <form className="lab-add-test-dialog lab-wizard-dialog" role="dialog" aria-modal="true" aria-labelledby="new-lab-request-title" onSubmit={submitNewRequest} onClick={event => event.stopPropagation()} style={{ ...modalStyles.dialog, width: 'min(820px, 100%)', height: selectedPatient ? 'min(700px, calc(100dvh - 32px))' : 'min(510px, calc(100dvh - 32px))', maxHeight: 'calc(100dvh - 32px)', overflow: 'hidden', padding: 'clamp(16px, 3vw, 26px)' }}>
+        <form className="lab-add-test-dialog lab-wizard-dialog lab-intake-wizard" role="dialog" aria-modal="true" aria-labelledby="new-lab-request-title" onSubmit={submitNewRequest} onClick={event => event.stopPropagation()} style={{ ...modalStyles.dialog, width: 'min(1000px, calc(100vw - 32px))', height: selectedPatient ? 'min(740px, calc(100dvh - 32px))' : 'min(510px, calc(100dvh - 32px))', maxHeight: 'calc(100dvh - 32px)', overflow: 'hidden', padding: 'clamp(16px, 3vw, 26px)' }}>
           <button type="button" className="lab-add-test-close" onClick={closeNewRequest} disabled={isSavingLabTest}>Close</button>
           <header className="lab-wizard-header">
             <div>
@@ -1341,13 +1336,13 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
             {['Patient', 'Test Details', 'Review & Save'].map((label, index) => {
               const step = index + 1;
               return <li key={label} className={requestStep === step ? 'active' : requestStep > step ? 'complete' : ''}>
-                <span>{step}</span><strong>{label}</strong>
+                <span>{requestStep > step ? '\u2713' : step}</span><strong>{label}</strong>
               </li>;
             })}
           </ol>
           <div className="lab-wizard-body">
             {requestStep === 1 && <section className="lab-wizard-section">
-              <div className="lab-wizard-patient-search-block">
+              {!selectedPatient && <div className="lab-wizard-patient-search-block">
                 <label className="lab-wizard-field">
                   <span>Find Patient</span>
                   <span className="lab-wizard-search-control">
@@ -1390,13 +1385,11 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
                     </button>
                   ))}
                 </div>}
-              </div>
+              </div>}
               {patientLoadError && <div role="alert" className="lab-wizard-error">{patientLoadError}</div>}
               {selectedPatient && <div className="lab-wizard-patient-summary">
-                <div className="lab-wizard-patient-overview">
-                  {selectedPatient.photo_url
-                    ? <img className="lab-wizard-pet-photo" src={selectedPatient.photo_url} alt="" />
-                    : <span className="lab-wizard-pet-photo lab-wizard-pet-initial">{selectedPatient.name.slice(0, 1).toUpperCase() || 'P'}</span>}
+                <section className="lab-patient-information"><h4>Patient Information</h4><div className="lab-wizard-patient-overview">
+                  <ClinicAttachmentImage className="lab-wizard-pet-photo" src={selectedPatient.photo_url} attachmentId={selectedPatient.photo_attachment_id} user={user} fallback={<span className="lab-wizard-pet-photo lab-wizard-pet-initial">{selectedPatient.name.slice(0, 1).toUpperCase() || 'P'}</span>} alt="" />
                   <div className="lab-wizard-patient-identity">
                     <strong>{selectedPatient.name}</strong>
                     <span>Patient ID: {selectedPatient.displayId}</span>
@@ -1410,8 +1403,8 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
                     setRequestForm(previous => ({ ...previous, patientId: '', pet: '' }));
                     setPatientSearch('');
                   }}>Change Patient</button>
-                </div>
-                <div className="lab-wizard-owner-card">
+                </div></section>
+                <div className="lab-owner-visit-row"><div className="lab-wizard-owner-card">
                   <h4>Owner Information</h4>
                   <div className="lab-wizard-owner-details">
                     <span className="lab-wizard-owner-avatar">{selectedPatient.owner.slice(0, 1).toUpperCase() || 'O'}</span>
@@ -1421,7 +1414,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
                       <span>{Icons.mail}<span>{selectedPatient.ownerEmail || selectedPatientOwner?.email || 'Email not recorded'}</span></span>
                     </div>
                   </div>
-                </div>
+                </div><LabVisitOverview patientId={selectedPatient.id} user={user} /></div>
                 <div className="lab-wizard-additional-patient-details">
                   <h4>Clinical Alerts &amp; Relevant History</h4>
                   <p className="lab-clinical-history-intro">Relevant information from the patient's existing record</p>
@@ -1463,11 +1456,12 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
                 </div>
               </div>}
             </section>}
-            {requestStep === 2 && <section className="lab-wizard-section">
-              <h3>Test Information</h3>
+            {requestStep === 2 && <section className="lab-wizard-section lab-test-details-step">
+              <div className="lab-test-design-card"><h3>Test Information</h3>
               <div className="lab-wizard-test-grid">
                 <div className="lab-wizard-field lab-wizard-test-type">
                   <span>Test Type <b className="system-required-star">*</b></span>
+                  {labTestTypesError && <span role="alert">{labTestTypesError}</span>}
                   <span className="lab-wizard-search-control">
                     {Icons.search}
                     <input
@@ -1546,10 +1540,6 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
                   />
                   {veterinarianLoadError && <small role="alert">{veterinarianLoadError}</small>}
                 </label>
-                <div className="lab-wizard-system-field">
-                  <span>Test ID</span>
-                  <strong>Will be generated after saving</strong>
-                </div>
                 <div className="lab-wizard-system-field lab-wizard-order-date">
                   <span>Order Date &amp; Time</span>
                   <LabDateTimePicker
@@ -1559,9 +1549,12 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
                     onChange={orderDateTime => setRequestForm(previous => ({ ...previous, orderDateTime }))}
                   />
                 </div>
+                <div className="lab-wizard-system-field">
+                  <span>Test ID</span>
+                  <strong>Will be generated after saving</strong>
+                </div>
               </div>
-              <hr className="lab-wizard-divider" />
-              <h3>Specimen &amp; Collection Information</h3>
+              </div><div className="lab-test-design-card"><h3>Specimen &amp; Collection Information</h3>
               <div className="lab-wizard-fields-grid">
                 <label className="lab-wizard-field">
                   <span>Specimen Type <small>(Optional)</small></span>
@@ -1625,7 +1618,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
                   <small>{requestForm.notes.length}/500</small>
                 </label>
               </div>
-            </section>}
+            </div></section>}
             {requestStep === 3 && <section className="lab-wizard-section lab-wizard-review-page">
               <header className="lab-wizard-review-header">
                 <span className="lab-wizard-review-icon">{Icons.clipboard}</span>
@@ -1636,13 +1629,11 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
               </header>
               <section className="lab-wizard-review-group">
                 <div className="lab-wizard-review-group-heading">
-                  <h4>Patient</h4>
+                  <h4>Patient Information</h4>
                   <button type="button" onClick={() => { setRequestError(''); setRequestStep(1); }}><span aria-hidden="true">{Icons.edit}</span>Edit patient</button>
                 </div>
                 <div className="lab-wizard-review-patient">
-                  {selectedPatient?.photo_url
-                    ? <img src={selectedPatient.photo_url} alt="" />
-                    : <span className="lab-wizard-review-patient-avatar">{selectedPatient?.name?.slice(0, 1).toUpperCase() || 'P'}</span>}
+                  <ClinicAttachmentImage src={selectedPatient?.photo_url} attachmentId={selectedPatient?.photo_attachment_id} user={user} fallback={<span className="lab-wizard-review-patient-avatar">{selectedPatient?.name?.slice(0, 1).toUpperCase() || 'P'}</span>} alt="" />
                   <div>
                     <strong>{selectedPatient?.name || 'Patient not selected'}</strong>
                     <span>Patient ID: {selectedPatient?.displayId || 'Not available'} <b>·</b> {selectedPatient?.species || 'Species not recorded'} <b>·</b> {selectedPatient?.sex || 'Sex not recorded'}</span>
@@ -1655,11 +1646,11 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
                   <button type="button" onClick={() => { setRequestError(''); setRequestStep(2); }}><span aria-hidden="true">{Icons.edit}</span>Edit details</button>
                 </div>
                 <dl className="lab-wizard-review-list">
-                  <div><dt>Test type</dt><dd>{requestForm.testType || 'Not selected'}</dd></div>
-                  <div><dt>Priority</dt><dd><span className="lab-wizard-review-priority">{requestForm.priority}</span></dd></div>
-                  <div><dt>Ordering veterinarian</dt><dd>{requestForm.veterinarian || 'Not selected'}</dd></div>
-                  <div><dt>Reason for testing</dt><dd>{requestForm.indication.trim() || 'Not provided'}</dd></div>
-                  {requestForm.notes.trim() && <div><dt>Clinical notes</dt><dd>{requestForm.notes.trim()}</dd></div>}
+                  <div className="lab-review-test-type"><dt>Test type</dt><dd>{requestForm.testType || 'Not selected'}</dd></div>
+                  <div className="lab-review-priority"><dt>Priority</dt><dd><span className="lab-wizard-review-priority">{requestForm.priority}</span></dd></div>
+                  <div className="lab-review-veterinarian"><dt>Ordering veterinarian</dt><dd>{requestForm.veterinarian || 'Not selected'}</dd></div>
+                  <div className="lab-review-reason"><dt>Reason for testing</dt><dd>{requestForm.indication.trim() || 'Not provided'}</dd></div>
+                  {requestForm.notes.trim() && <div className="lab-review-notes"><dt>Clinical notes</dt><dd>{requestForm.notes.trim()}</dd></div>}
                 </dl>
               </section>
               <section className="lab-wizard-review-group">
@@ -1668,13 +1659,13 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
                   <button type="button" onClick={() => { setRequestError(''); setRequestStep(2); }}><span aria-hidden="true">{Icons.edit}</span>Edit details</button>
                 </div>
                 <dl className="lab-wizard-review-list">
-                  <div><dt>Specimen type</dt><dd>{(requestForm.specimenType === 'Other' ? requestForm.specimenTypeOther.trim() : requestForm.specimenType) || 'To be recorded'}</dd></div>
-                  <div><dt>Collection date/time</dt><dd>{requestForm.collectionDate && requestForm.collectionTime
+                  <div className="lab-review-specimen"><dt>Specimen type</dt><dd>{(requestForm.specimenType === 'Other' ? requestForm.specimenTypeOther.trim() : requestForm.specimenType) || 'To be recorded'}</dd></div>
+                  <div className="lab-review-collection-date"><dt>Collection date/time</dt><dd>{requestForm.collectionDate && requestForm.collectionTime
                     ? `${formatClinicDate(requestForm.collectionDate)} · ${requestForm.collectionTime}`
                     : 'Not collected yet'}</dd></div>
-                  {requestForm.collectionMethod && <div><dt>Collection method / site</dt><dd>{requestForm.collectionMethod === 'Other' ? requestForm.collectionMethodOther.trim() : requestForm.collectionMethod}</dd></div>}
-                  <div><dt>Collector</dt><dd>{requestForm.collector || 'Not selected'}</dd></div>
-                  {requestForm.sampleId.trim() && <div><dt>Sample ID / Accession</dt><dd>{requestForm.sampleId.trim()}</dd></div>}
+                  {requestForm.collectionMethod && <div className="lab-review-collection-method"><dt>Collection method / site</dt><dd>{requestForm.collectionMethod === 'Other' ? requestForm.collectionMethodOther.trim() : requestForm.collectionMethod}</dd></div>}
+                  <div className="lab-review-collector"><dt>Collector</dt><dd>{requestForm.collector || 'Not selected'}</dd></div>
+                  {requestForm.sampleId.trim() && <div className="lab-review-sample-id"><dt>Sample ID / Accession</dt><dd>{requestForm.sampleId.trim()}</dd></div>}
                 </dl>
               </section>
               <div className="lab-wizard-review-after-save">
@@ -1714,10 +1705,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
           </div>
           <div style={modalStyles.vaccinationActionsPet}>
             <div style={modalStyles.vaccinationActionsPetInfo}>
-              {actionLabTest.photo_url ? <>
-                <img src={actionLabTest.photo_url} alt={`${actionLabTest.pet || 'Pet'} profile`} style={modalStyles.vaccinationActionsPetImage} onError={event => { event.currentTarget.style.display = 'none'; if (event.currentTarget.nextElementSibling) event.currentTarget.nextElementSibling.style.display = 'grid'; }} />
-                <span aria-hidden="true" style={{ ...modalStyles.vaccinationActionsPetImage, display: 'none', placeItems: 'center', background: '#e7f5f2', color: '#005447', fontWeight: 700 }}>{String(actionLabTest.pet || 'P').slice(0, 1).toUpperCase()}</span>
-              </> : <span aria-hidden="true" style={{ ...modalStyles.vaccinationActionsPetImage, display: 'grid', placeItems: 'center', background: '#e7f5f2', color: '#005447', fontWeight: 700 }}>{String(actionLabTest.pet || 'P').slice(0, 1).toUpperCase()}</span>}
+              <ClinicAttachmentImage src={actionLabTest.photo_url} attachmentId={actionLabTest.photo_attachment_id} user={user} alt={`${actionLabTest.pet || 'Pet'} profile`} style={modalStyles.vaccinationActionsPetImage} fallback={<span aria-hidden="true" style={{ ...modalStyles.vaccinationActionsPetImage, display: 'grid', placeItems: 'center', background: '#e7f4ec', color: '#013826', fontWeight: 700 }}>{String(actionLabTest.pet || 'P').slice(0, 1).toUpperCase()}</span>} />
               <div>
                 <div style={modalStyles.vaccinationActionsPetName}>{actionLabTest.testType || 'Lab Test'}</div>
                 <div style={modalStyles.vaccinationActionsPetMeta}>
@@ -1771,7 +1759,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
                 </div>
               </header>
               <section className="lab-result-entry-patient">
-                <span className="lab-result-entry-avatar">{String(resultEditor.pet || 'P').slice(0, 1).toUpperCase()}</span>
+                <ClinicAttachmentImage src={resultEditor.photo_url} attachmentId={resultEditor.photo_attachment_id} user={user} alt={`${resultEditor.pet || 'Pet'} profile`} className="lab-result-entry-avatar" fallback={<span className="lab-result-entry-avatar">{String(resultEditor.pet || 'P').slice(0, 1).toUpperCase()}</span>} />
                 <div><strong>{resultEditor.pet || 'Patient'}</strong><span>{[resultEditor.species, resultEditor.breed, resultEditor.age, resultEditor.sex, resultEditor.patientId ? `ID: ${String(resultEditor.patientId).startsWith('P-') ? resultEditor.patientId : `P-${String(resultEditor.patientId).padStart(4, '0')}`}` : ''].filter(Boolean).join(' · ') || resultEditor.testType}</span></div>
                 <div className="lab-result-entry-owner">{Icons.user}<span><small>Owner</small><strong>{resultEditor.owner || 'Not recorded'}</strong>{resultEditor.ownerPhone && <small>{resultEditor.ownerPhone}</small>}</span></div>
               </section>
@@ -1901,8 +1889,8 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
           </div>
         </form>
       </div>}
-      {viewResult && <div className="lab-test-view-backdrop" onClick={() => { setViewResult(null); setLabActionReturn(null); }}>
-        <div className={`lab-test-view-dialog${viewResultTab === 'result' ? ' has-result-tab' : ''}`} role="dialog" aria-modal={patientRecord ? 'false' : 'true'} aria-labelledby="lab-test-view-title" onClick={event => event.stopPropagation()}>
+      {viewResult && <div className={`lab-test-view-backdrop${patientRecord ? ' is-patient-drawer' : ''}`} onClick={() => { setViewResult(null); setLabActionReturn(null); }} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setViewResult(null); setLabActionReturn(null); } }}>
+        <div className={`lab-test-view-dialog${viewResultTab === 'result' ? ' has-result-tab' : ''}`} role={patientRecord ? 'complementary' : 'dialog'} aria-modal={patientRecord ? undefined : 'true'} aria-labelledby="lab-test-view-title" tabIndex={-1} ref={element => { if (element && patientRecord && !element.contains(document.activeElement)) element.focus(); }} onClick={event => event.stopPropagation()}>
           <header className="lab-test-view-header">
             <div>
               <div className="lab-test-view-title-row">
@@ -1916,9 +1904,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
           </header>
           <div className="lab-test-view-patient">
             <span className="lab-test-view-pet-avatar">
-              {viewResult.photo_url
-                ? <img src={viewResult.photo_url} alt="" />
-                : <span>{Icons.pet}</span>}
+              <ClinicAttachmentImage src={viewResult.photo_url} attachmentId={viewResult.photo_attachment_id} user={user} alt="" fallback={<span>{Icons.pet}</span>} />
             </span>
             <div className="lab-test-view-pet-info">
               <strong>{viewResult.pet || 'Patient'}{viewResult.sex && /^male\b/i.test(viewResult.sex) ? <span className="lab-test-view-sex">♂</span> : null}</strong>
@@ -1977,7 +1963,13 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
               </> : <div className="lab-test-view-no-result"><strong>No test result has been recorded.</strong><p>When the laboratory findings are available, enter the summary, values, and veterinarian interpretation here.</p></div>}
             </section>}
           </div>
-          <footer className="lab-test-view-footer">{labActionReturn && <button type="button" className="lab-test-view-back-button" onClick={() => backToLabTestActions(() => setViewResult(null))}>Back to actions</button>}<button type="button" className="lab-test-view-close-button" onClick={() => { setViewResult(null); setLabActionReturn(null); }}>Close</button></footer>
+          <footer className="lab-test-view-footer">
+            {finalizeLabResultError && <p role="alert" className="lab-clinical-history-error">{finalizeLabResultError}</p>}
+            {labActionReturn && <button type="button" className="lab-test-view-back-button" onClick={() => backToLabTestActions(() => setViewResult(null))}>Back to actions</button>}
+            {resultIsAvailable && getStatusKey(viewResult.status) === 'results-ready'
+              ? <button type="button" className="lab-test-view-close-button" disabled={finalizingLabResult} onClick={finalizeLabResult}>{finalizingLabResult ? 'Finalizing...' : 'Finalize Lab Result'}</button>
+              : <button type="button" className="lab-test-view-close-button" onClick={() => { setViewResult(null); setLabActionReturn(null); }}>Close</button>}
+          </footer>
         </div>
       </div>}
       {historyResult && <div className="lab-audit-backdrop" onClick={() => { setHistoryResult(null); setLabActionReturn(null); }}>
@@ -2028,7 +2020,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
           </p>
           <div style={{ ...modalStyles.footer, marginTop: 20 }}>
             <button type="button" style={modalStyles.cancel} onClick={() => backToLabTestActions(() => setLabTestConfirmation(null))}>{labActionReturn ? 'Back to actions' : 'Keep test'}</button>
-            <button type="button" style={{ ...T.primaryBtn, padding: '9px 14px', fontSize: '.76rem', background: labTestConfirmation.action === 'archive' && !labTestConfirmation.result.archived ? '#a33b2e' : '#005447' }} onClick={confirmLabTestAction}>
+            <button type="button" style={{ ...T.primaryBtn, padding: '9px 14px', fontSize: '.76rem', background: labTestConfirmation.action === 'archive' && !labTestConfirmation.result.archived ? '#a33b2e' : '#013826' }} onClick={confirmLabTestAction}>
               {labTestConfirmation.action === 'archive' ? (labTestConfirmation.result.archived ? 'Restore test' : 'Archive test') : 'Cancel test'}
             </button>
           </div>
@@ -2047,13 +2039,22 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
   const [doctorOptions, setDoctorOptions] = useState([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
   const [recordsError, setRecordsError] = useState('');
-  const [careLogs, setCareLogs] = useState({ observations: [], medications: [] });
+  const [careLogs, setCareLogs] = useState({ observations: [], medications: [], attachments: [] });
   const [loadingCare, setLoadingCare] = useState(false);
-  const [careForm, setCareForm] = useState({ clinical_progress: '', temperature: '', heart_rate: '', respiratory_rate: '', hydration: '', appetite: '', pain_assessment: '' });
-  const [medicationForm, setMedicationForm] = useState({ prescription_id: '', medication: '', dose: '', status: 'administered', notes: '' });
+  const [showObservationForm, setShowObservationForm] = useState(false);
+  const [showDischargeForm, setShowDischargeForm] = useState(false);
+  const [careForm, setCareForm] = useState(createInpatientObservationForm);
+  const [addPlanMedicationOpen, setAddPlanMedicationOpen] = useState(false);
+  const [planMedicationForm, setPlanMedicationForm] = useState(createPlanMedicationForm());
+  const [planMedicationError, setPlanMedicationError] = useState('');
+  const [savingPlanMedication, setSavingPlanMedication] = useState(false);
   const [dischargeForm, setDischargeForm] = useState({ discharge_assessment: '', home_instructions: '', outstanding_concerns: '', follow_up_recommendations: '' });
   const [savingCare, setSavingCare] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [showFullInpatientRecord, setShowFullInpatientRecord] = useState(false);
+  const inpatientMonitoringRef = useRef(null);
+  const inpatientMedicationRef = useRef(null);
+  const inpatientDischargeRef = useRef(null);
   const [admitOpen, setAdmitOpen] = useState(Boolean(externalAdmissionRequest));
   const [admitError, setAdmitError] = useState('');
   const [admitForm, setAdmitForm] = useState({ pet_id: '', ward: '', admitted_at: getLocalDateTimeInputValue(), admission_reason: '', urgency_level: 'Normal', presenting_complaint: '', provisional_diagnosis: '', initial_assessment: '', patient_weight: '', temperature: '', heart_rate: '', respiratory_rate: '', physical_notes: '', known_allergies: '', relevant_medical_history: '', expected_discharge_at: '', attending_veterinarian_id: '', treatment_plan_id: '', consent_status: 'obtained', authorized_by: '', consent_date_time: getLocalDateTimeInputValue(), consent_scope: 'Hospital admission and inpatient care', consent_notes: 'Owner agrees to hospital admission and the recommended treatment plan. No additional concerns at this time.', estimated_cost: '', estimated_add_ons: '', authorized_limit: '' });
@@ -2073,6 +2074,15 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
     if (!response.ok) throw new Error(payload.error || `Request failed (HTTP ${response.status}).`);
     return payload;
   };
+  const normalizeCareLogs = data => ({
+    observations: Array.isArray(data?.observations) ? data.observations : [],
+    medications: Array.isArray(data?.medications) ? data.medications : [],
+    attachments: Array.isArray(data?.attachments) ? data.attachments : [],
+  });
+  useEffect(() => {
+    setAddPlanMedicationOpen(false);
+    setPlanMedicationError('');
+  }, [selectedRecord?.databaseId]);
   const loadStays = async () => {
     if (!user?.token || !user?.clinic_id) return;
     setLoadingRecords(true);
@@ -2087,7 +2097,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
       setClinicPets(pets);
       setTreatmentPlans(plans);
       setDoctorOptions(staff.filter(member => ['doctor', 'veterinarian', 'assistant_doctor'].includes(String(member.role || '').trim().toLowerCase().replace(/[\\s-]+/g, '_'))));
-      setLocalRecords(stays.map(stay => ({
+      const mappedStays = stays.map(stay => ({
         ...stay,
         id: `INP-${stay.id}`,
         databaseId: stay.id,
@@ -2099,8 +2109,10 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
         discharge: stay.expected_discharge_at ? formatDateText(stay.expected_discharge_at) : 'Not scheduled',
         doctor: stay.veterinarian || 'Not assigned',
         status: stay.status === 'active' ? 'admitted' : 'discharged',
-      })));
+      }));
+      setLocalRecords(mappedStays);
       setRecordsError('');
+      return mappedStays;
     } catch (error) {
       setRecordsError(error.message || 'Unable to load inpatient records.');
     } finally {
@@ -2140,6 +2152,9 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
   });
   const petOptions = clinicPets;
   const selectedAdmissionPet = clinicPets.find(pet => String(pet.id) === String(admitForm.pet_id));
+  const selectedRecordPet = selectedRecord
+    ? clinicPets.find(pet => String(pet.id) === String(selectedRecord.pet_id))
+    : null;
   const visiblePetOptions = clinicPets.filter(pet => `${pet.name} ${pet.id} ${pet.breed || ''} ${pet.owner || ''}`.toLowerCase().includes(patientSearch.trim().toLowerCase()));
   const linkedAdmissionPlan = treatmentPlans.find(plan => String(plan.id) === String(admitForm.treatment_plan_id));
   const wardOptions = ['Ward A - Cage 1', 'Ward A - Cage 2', 'Ward A - Cage 3', 'Ward B - Cage 1', 'Ward B - Cage 2'];
@@ -2258,26 +2273,165 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
     let active = true;
     setLoadingCare(true);
     request(`/clinic-records/inpatient-stays/${selectedRecord.databaseId}/care?clinic_id=${encodeURIComponent(user.clinic_id)}`)
-      .then(data => { if (active) setCareLogs(data); })
+      .then(data => { if (active) setCareLogs(normalizeCareLogs(data)); })
       .catch(error => { if (active) setRecordsError(error.message || 'Unable to load inpatient care logs.'); })
       .finally(() => { if (active) setLoadingCare(false); });
     return () => { active = false; };
   }, [selectedRecord?.databaseId]);
-  const submitCareLog = async (event, type) => {
+  const uploadInpatientAttachment = async event => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !selectedRecord?.databaseId || savingCare) return;
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowedTypes.includes(file.type) || file.size > 4 * 1024 * 1024) {
+      setRecordsError('Choose a PDF, JPG, or PNG file no larger than 4 MB.');
+      return;
+    }
+    setSavingCare(true);
+    try {
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Unable to read the selected file.'));
+        reader.readAsDataURL(file);
+      });
+      await request(`/clinic-records/inpatient-stays/${selectedRecord.databaseId}/attachments?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
+        method: 'POST',
+        body: JSON.stringify({ filename: file.name, content_type: file.type, data }),
+      });
+      const care = await request(`/clinic-records/inpatient-stays/${selectedRecord.databaseId}/care?clinic_id=${encodeURIComponent(user.clinic_id)}`);
+      setCareLogs(normalizeCareLogs(care));
+      setRecordsError('');
+      notifySuccess('Attachment uploaded', `${file.name} was added to the inpatient record.`);
+    } catch (error) {
+      setRecordsError(error.message || 'Unable to upload this inpatient attachment.');
+    } finally {
+      setSavingCare(false);
+    }
+  };
+  const downloadInpatientAttachment = async attachment => {
+    try {
+      const response = await fetch(`${apiUrl}/clinic-records/attachments/${encodeURIComponent(attachment.id)}/content?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      if (!response.ok) throw new Error(`Unable to download attachment (HTTP ${response.status}).`);
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.filename || 'inpatient-attachment';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setRecordsError(error.message || 'Unable to download this inpatient attachment.');
+    }
+  };
+  const openInpatientPlanMedication = () => {
+    setPlanMedicationError('');
+    setPlanMedicationForm(createPlanMedicationForm(String(selectedRecord?.treatment_plan_id || '')));
+    setAddPlanMedicationOpen(true);
+  };
+  const saveInpatientPlanMedication = async event => {
+    event.preventDefault();
+    if (!selectedRecord?.pet_id || savingPlanMedication) {
+      setPlanMedicationError('The inpatient patient could not be identified. Reload the record and try again.');
+      return;
+    }
+    const route = planMedicationForm.route === 'Other' ? planMedicationForm.routeOther.trim() : planMedicationForm.route;
+    const frequency = planMedicationForm.frequency === 'Other' ? planMedicationForm.frequencyOther.trim() : planMedicationForm.frequency;
+    if (!planMedicationForm.name.trim() || !planMedicationForm.dose.trim() || !planMedicationForm.unit.trim()
+      || !route || !frequency || !planMedicationForm.duration.trim() || !planMedicationForm.date) {
+      setPlanMedicationError('Complete all required medication details before saving.');
+      return;
+    }
+    const startDate = planMedicationForm.date;
+    const endDate = planMedicationForm.endDate || calculateMedicationEndDate(startDate, planMedicationForm.duration);
+    if (endDate && endDate < startDate) {
+      setPlanMedicationError('End date cannot be before the start date.');
+      return;
+    }
+    setSavingPlanMedication(true);
+    setPlanMedicationError('');
+    try {
+      const savedMedication = await request(`/clinic-records/treatments?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          pet_id: selectedRecord.pet_id,
+          inpatient_stay_id: selectedRecord.databaseId,
+          ...(selectedRecord.treatment_plan_id ? { treatment_plan_id: selectedRecord.treatment_plan_id } : {}),
+          medication: planMedicationForm.name.trim(),
+          dosage: `${planMedicationForm.dose.trim()} ${planMedicationForm.unit.trim()}`,
+          quantity: planMedicationForm.quantity.trim() || undefined,
+          instructions: planMedicationForm.instructions.trim() || undefined,
+          route,
+          frequency,
+          start_date: startDate,
+          end_date: endDate || undefined,
+        }),
+      });
+      const updatedRecord = {
+        ...selectedRecord,
+        treatment_plan_medications: [...(selectedRecord.treatment_plan_medications || []), savedMedication],
+      };
+      setSelectedRecord(updatedRecord);
+      setLocalRecords(previous => previous.map(record => record.databaseId === updatedRecord.databaseId ? updatedRecord : record));
+      setAddPlanMedicationOpen(false);
+      setPlanMedicationForm(createPlanMedicationForm());
+      notifySuccess('Medication added to inpatient record', `${planMedicationForm.name.trim()} was saved for ${selectedRecord.pet}.`);
+      try {
+        const refreshedRecords = await loadStays();
+        const refreshedRecord = refreshedRecords?.find(record => record.databaseId === selectedRecord.databaseId);
+        if (refreshedRecord) {
+          const medications = refreshedRecord.treatment_plan_medications || [];
+          const medicationIsListed = medications.some(item => String(item.id) === String(savedMedication.id));
+          const updatedRefreshedRecord = medicationIsListed
+            ? refreshedRecord
+            : { ...refreshedRecord, treatment_plan_medications: [...medications, savedMedication] };
+          setSelectedRecord(updatedRefreshedRecord);
+          setLocalRecords(previous => previous.map(record => record.databaseId === updatedRefreshedRecord.databaseId ? updatedRefreshedRecord : record));
+        }
+      } catch (refreshError) {
+        setRecordsError(refreshError.message || 'Medication was saved, but the inpatient record could not be refreshed.');
+      }
+    } catch (error) {
+      setPlanMedicationError(error.message || 'Unable to add medication to the inpatient record.');
+    } finally {
+      setSavingPlanMedication(false);
+    }
+  };
+  const openInpatientObservationForm = () => {
+    setCareForm(createInpatientObservationForm());
+    setShowObservationForm(true);
+  };
+  const submitCareLog = async event => {
     event.preventDefault();
     if (!selectedRecord?.databaseId || savingCare) return;
     setSavingCare(true);
-    const isMedication = type === 'medications';
     try {
-      await request(`/clinic-records/inpatient-stays/${selectedRecord.databaseId}/${type}?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
-        method: 'POST', body: JSON.stringify(isMedication ? medicationForm : careForm),
+      const observationDate = new Date(`${careForm.date}T${careForm.time}`);
+      if (!careForm.date || !careForm.time || Number.isNaN(observationDate.getTime()) || observationDate > new Date()) {
+        throw new Error('Enter a valid observation date and time that is not in the future.');
+      }
+      await request(`/clinic-records/inpatient-stays/${selectedRecord.databaseId}/observations?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          ...careForm,
+          observed_at: observationDate.toISOString(),
+          clinical_progress: careForm.clinical_progress.trim(),
+        }),
       });
       const data = await request(`/clinic-records/inpatient-stays/${selectedRecord.databaseId}/care?clinic_id=${encodeURIComponent(user.clinic_id)}`);
-      setCareLogs(data);
-      if (isMedication) setMedicationForm({ prescription_id: '', medication: '', dose: '', status: 'administered', notes: '' });
-      else setCareForm({ clinical_progress: '', temperature: '', heart_rate: '', respiratory_rate: '', hydration: '', appetite: '', pain_assessment: '' });
+      setCareLogs(normalizeCareLogs(data));
+      if (selectedRecord.treatment_plan_id) {
+        const refreshedRecords = await loadStays();
+        const refreshedRecord = refreshedRecords?.find(record => record.databaseId === selectedRecord.databaseId);
+        if (refreshedRecord) setSelectedRecord(refreshedRecord);
+      }
+      setCareForm(createInpatientObservationForm());
+      setShowObservationForm(false);
       setRecordsError('');
-      notifySuccess(isMedication ? 'Medication event recorded' : 'Inpatient observation recorded', 'The entry is timestamped and attributed to your account.');
+      notifySuccess('Inpatient observation recorded', 'The entry is timestamped and attributed to your account.');
     } catch (error) {
       setRecordsError(error.message || 'Unable to save this inpatient record.');
     } finally {
@@ -2293,6 +2447,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
       });
       const updatedRecord = { ...selectedRecord, ...result, status: 'discharged' };
       setSelectedRecord(updatedRecord);
+      setShowDischargeForm(false);
       setLocalRecords(previous => previous.map(item => item.databaseId === updatedRecord.databaseId ? { ...item, ...updatedRecord } : item));
       await loadStays();
       setRecordsError('');
@@ -2305,9 +2460,43 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
   };
   const openInpatientRecord = record => {
     setSelectedRecord(record);
+    setCareLogs({ observations: [], medications: [], attachments: [] });
+    setShowFullInpatientRecord(false);
+    setShowObservationForm(false);
+    setShowDischargeForm(false);
     setDischargeForm({ discharge_assessment: '', home_instructions: '', outstanding_concerns: '', follow_up_recommendations: '' });
     setRecordsError('');
   };
+  const openFullInpatientRecord = focusRef => {
+    setShowFullInpatientRecord(true);
+    if (focusRef === inpatientMonitoringRef) openInpatientObservationForm();
+    if (focusRef === inpatientDischargeRef) setShowDischargeForm(true);
+    if (focusRef) window.setTimeout(() => focusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+  };
+  const recentInpatientActivity = [
+    { key: 'admission', at: selectedRecord?.admitted_at || selectedRecord?.admitted_on, title: 'Admission record created', detail: selectedRecord?.ward },
+    ...careLogs.observations.map(entry => ({ key: `observation-${entry.id}`, at: entry.observed_at, title: 'Clinical observation recorded', detail: entry.clinical_progress })),
+    ...careLogs.medications.map(entry => ({ key: `medication-${entry.id}`, at: entry.event_at, title: 'Medication administration recorded', detail: `${entry.medication} · ${entry.status}` })),
+  ].filter(entry => entry.at).sort((left, right) => (Date.parse(right.at) || 0) - (Date.parse(left.at) || 0));
+  const treatmentPlanMonitoring = selectedRecord?.treatment_plan_monitoring && typeof selectedRecord.treatment_plan_monitoring === 'object' && !Array.isArray(selectedRecord.treatment_plan_monitoring)
+    ? selectedRecord.treatment_plan_monitoring
+    : {};
+  const treatmentPlanObservations = [
+    ...(Array.isArray(treatmentPlanMonitoring.observations) ? treatmentPlanMonitoring.observations : []),
+    ...(Array.isArray(selectedRecord?.treatment_plan_clinical_updates) ? selectedRecord.treatment_plan_clinical_updates : []),
+  ].filter((observation, index, observations) => observation && observations.findIndex(item => (
+    item.date === observation.date && item.text === observation.text
+  )) === index).sort((left, right) => (Date.parse(right.date) || 0) - (Date.parse(left.date) || 0));
+  const treatmentPlanMetricEntries = [
+    ['Temperature', treatmentPlanMonitoring.temperature && `${treatmentPlanMonitoring.temperature}${treatmentPlanMonitoring.temperatureStatus ? ` · ${treatmentPlanMonitoring.temperatureStatus}` : ''}`],
+    ['Weight', treatmentPlanMonitoring.weight && `${treatmentPlanMonitoring.weight} kg`],
+    ['Heart rate', treatmentPlanMonitoring.heart_rate && `${treatmentPlanMonitoring.heart_rate} bpm`],
+    ['Respiratory rate', treatmentPlanMonitoring.respiratory_rate && `${treatmentPlanMonitoring.respiratory_rate} /min`],
+    ['Hydration', treatmentPlanMonitoring.hydration],
+    ['Appetite', treatmentPlanMonitoring.appetite],
+    ['Pain assessment', treatmentPlanMonitoring.pain_assessment],
+    ['White blood cell count', treatmentPlanMonitoring.whiteBloodCellCount && `${treatmentPlanMonitoring.whiteBloodCellCount}${treatmentPlanMonitoring.whiteBloodCellStatus ? ` · ${treatmentPlanMonitoring.whiteBloodCellStatus}` : ''}`],
+  ].filter(([, value]) => value);
   return (
     <div className="clinic-management-tab clinic-inpatient-tab" style={{ ...T.wrap, padding: '20px 20px 18px', borderRadius: 14 }}>
       <div className="lab-results-header">
@@ -2412,7 +2601,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
               </label>
             ))}
             {selectedAdmissionPet && <div className="clinic-inpatient-selected-pet clinic-inpatient-admit-span">
-              {selectedAdmissionPet.photo_url ? <img src={selectedAdmissionPet.photo_url} alt="" /> : <span className="clinic-inpatient-pet-fallback">{selectedAdmissionPet.name?.slice(0, 1) || 'P'}</span>}
+              <ClinicAttachmentImage src={selectedAdmissionPet.photo_url} attachmentId={selectedAdmissionPet.photo_attachment_id} user={user} fallback={<span className="clinic-inpatient-pet-fallback">{selectedAdmissionPet.name?.slice(0, 1) || 'P'}</span>} alt="" />
               <div className="clinic-inpatient-pet-summary"><strong>{selectedAdmissionPet.name} <span>{selectedAdmissionPet.species || 'Pet'}</span></strong><small>{[selectedAdmissionPet.breed, selectedAdmissionPet.sex, selectedAdmissionPet.age, selectedAdmissionPet.weight && `${selectedAdmissionPet.weight} kg`].filter(Boolean).join(' · ')}</small><small>Patient ID: P-{String(selectedAdmissionPet.id).padStart(4, '0')}</small></div>
               <span className="clinic-inpatient-allergy">Allergies: {selectedAdmissionPet.allergies || 'Not recorded'}</span>
             </div>}
@@ -2459,7 +2648,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
             <strong style={{ gridColumn: '1 / -1', marginTop: 3, color: '#193a32', fontSize: '.78rem' }}>Treatment Plan</strong>
             <label style={{ display: 'grid', gridColumn: '1 / -1', gap: 6, color: '#202020', fontSize: '.73rem', fontWeight: 600 }}>
               Link Treatment Plan (optional)
-              <select value={treatmentPlanMode === 'new' ? '__new__' : treatmentPlanMode === 'existing' ? admitForm.treatment_plan_id : ''} onChange={event => { const value = event.target.value; setTreatmentPlanMode(value === '__new__' ? 'new' : value ? 'existing' : 'none'); setPendingNewPlanId(''); setAdmitForm(previous => ({ ...previous, treatment_plan_id: value === '__new__' ? '' : value })); }} style={{ width: '100%', border: '1px solid #d8e9e1', borderRadius: 9, background: '#fff', color: '#111827', padding: '10px 13px', fontSize: '.75rem' }}>
+              <select value={treatmentPlanMode === 'new' ? '__new__' : treatmentPlanMode === 'existing' ? admitForm.treatment_plan_id : ''} onChange={event => { const value = event.target.value; setTreatmentPlanMode(value === '__new__' ? 'new' : value ? 'existing' : 'none'); setPendingNewPlanId(''); setAdmitForm(previous => ({ ...previous, treatment_plan_id: value === '__new__' ? '' : value })); }} style={{ width: '100%', border: '1px solid #bed6c5', borderRadius: 9, background: '#fff', color: '#111827', padding: '10px 13px', fontSize: '.75rem' }}>
                 <option value="">No linked plan</option>
                 {treatmentPlans.filter(plan => String(plan.pet_id) === String(admitForm.pet_id) && !plan.archived).map(plan => <option key={plan.id} value={plan.id}>{plan.title} ({plan.status})</option>)}
                 <option value="__new__">Create new treatment plan...</option>
@@ -2469,13 +2658,13 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
             {treatmentPlanMode === 'new' && <>
               {pendingNewPlanId && <div role="status" style={{ gridColumn: '1 / -1', color: '#315b49', fontSize: '.7rem' }}>Treatment plan created and will be linked to this admission.</div>}
               <label style={{ display: 'grid', gridColumn: '1 / -1', gap: 6, color: '#202020', fontSize: '.73rem', fontWeight: 600 }}>New Plan Title*
-                <input required value={newPlanForm.title} onChange={event => setNewPlanForm(previous => ({ ...previous, title: event.target.value }))} placeholder="e.g. Post-operative recovery" style={{ border: '1px solid #d8e9e1', borderRadius: 7, padding: '9px 12px', color: '#111827', fontSize: '.75rem' }} />
+                <input required value={newPlanForm.title} onChange={event => setNewPlanForm(previous => ({ ...previous, title: event.target.value }))} placeholder="e.g. Post-operative recovery" style={{ border: '1px solid #bed6c5', borderRadius: 7, padding: '9px 12px', color: '#111827', fontSize: '.75rem' }} />
               </label>
               <label style={{ display: 'grid', gridColumn: '1 / -1', gap: 6, color: '#202020', fontSize: '.73rem', fontWeight: 600 }}>Plan Diagnosis*
-                <input required value={newPlanForm.diagnosis} onChange={event => setNewPlanForm(previous => ({ ...previous, diagnosis: event.target.value }))} placeholder="Treatment plan diagnosis" style={{ border: '1px solid #d8e9e1', borderRadius: 7, padding: '9px 12px', color: '#111827', fontSize: '.75rem' }} />
+                <input required value={newPlanForm.diagnosis} onChange={event => setNewPlanForm(previous => ({ ...previous, diagnosis: event.target.value }))} placeholder="Treatment plan diagnosis" style={{ border: '1px solid #bed6c5', borderRadius: 7, padding: '9px 12px', color: '#111827', fontSize: '.75rem' }} />
               </label>
               <label style={{ display: 'grid', gridColumn: '1 / -1', gap: 6, color: '#202020', fontSize: '.73rem', fontWeight: 600 }}>First Planned Step*
-                <input required value={newPlanForm.first_step} onChange={event => setNewPlanForm(previous => ({ ...previous, first_step: event.target.value }))} placeholder="First treatment or monitoring step" style={{ border: '1px solid #d8e9e1', borderRadius: 7, padding: '9px 12px', color: '#111827', fontSize: '.75rem' }} />
+                <input required value={newPlanForm.first_step} onChange={event => setNewPlanForm(previous => ({ ...previous, first_step: event.target.value }))} placeholder="First treatment or monitoring step" style={{ border: '1px solid #bed6c5', borderRadius: 7, padding: '9px 12px', color: '#111827', fontSize: '.75rem' }} />
               </label>
               <div style={{ gridColumn: '1 / -1', color: '#64748b', fontSize: '.68rem' }}>This creates one Treatment Plan for the selected patient. Plan steps are managed there, not duplicated in the admission.</div>
             </>}
@@ -2484,7 +2673,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
             <strong style={{ gridColumn: '1 / -1', marginTop: 3, color: '#193a32', fontSize: '.78rem' }}>Hospitalization Plan</strong>
             <label style={{ display: 'grid', gap: 6, color: '#202020', fontSize: '.73rem', fontWeight: 600 }}>
               Expected Discharge Date
-              <LabDateTimePicker mode="date" value={admitForm.expected_discharge_at} onChange={expected_discharge_at => setAdmitForm(previous => ({ ...previous, expected_discharge_at }))} style={{ border: '1px solid #d8e9e1', borderRadius: 9, background: '#fff', color: '#111827', padding: '10px 13px', fontSize: '.75rem', outline: 'none' }} />
+              <LabDateTimePicker mode="date" value={admitForm.expected_discharge_at} onChange={expected_discharge_at => setAdmitForm(previous => ({ ...previous, expected_discharge_at }))} style={{ border: '1px solid #bed6c5', borderRadius: 9, background: '#fff', color: '#111827', padding: '10px 13px', fontSize: '.75rem', outline: 'none' }} />
             </label>
             </>}
             {activeAdmissionTab === 3 && <><label style={{ display: 'grid', gap: 6, color: '#202020', fontSize: '.73rem', fontWeight: 600 }}>
@@ -2573,7 +2762,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
           </div>
           {activeAdmissionTab === 5 && <aside id="inpatient-admission-summary-panel" role="tabpanel" aria-labelledby="inpatient-admission-tab-5" className="clinic-inpatient-admit-summary clinic-inpatient-admit-summary-tab" aria-label="Admission summary">
             <h3>Patient Summary</h3>
-            {selectedAdmissionPet && <div className="clinic-inpatient-summary-pet">{selectedAdmissionPet.photo_url ? <img src={selectedAdmissionPet.photo_url} alt="" /> : <span>{selectedAdmissionPet.name?.slice(0, 1) || 'P'}</span>}<div><strong>{selectedAdmissionPet.name}</strong><small>{[selectedAdmissionPet.species, selectedAdmissionPet.breed, selectedAdmissionPet.age].filter(Boolean).join(' · ')}</small><small>Patient ID: P-{String(selectedAdmissionPet.id).padStart(4, '0')}</small></div></div>}
+            {selectedAdmissionPet && <div className="clinic-inpatient-summary-pet"><ClinicAttachmentImage src={selectedAdmissionPet.photo_url} attachmentId={selectedAdmissionPet.photo_attachment_id} user={user} fallback={<span>{selectedAdmissionPet.name?.slice(0, 1) || 'P'}</span>} alt="" /><div><strong>{selectedAdmissionPet.name}</strong><small>{[selectedAdmissionPet.species, selectedAdmissionPet.breed, selectedAdmissionPet.age].filter(Boolean).join(' · ')}</small><small>Patient ID: P-{String(selectedAdmissionPet.id).padStart(4, '0')}</small></div></div>}
             <section><h4>Owner</h4><strong>{selectedAdmissionPet?.owner || 'Not selected'}</strong><small>{selectedAdmissionPet?.owner_phone || 'Phone not recorded'}</small><small>{selectedAdmissionPet?.owner_email || 'Email not recorded'}</small></section>
             <section><h4>Admission Details</h4><div><span>Date &amp; Time</span><strong>{admitForm.admitted_at ? formatDateTimeText(admitForm.admitted_at, 'en-US', admitForm.admitted_at) : 'Not set'}</strong></div><div><span>Reason</span><strong>{admitForm.admission_reason || 'Not entered'}</strong></div><div><span>Urgency</span><strong>{admitForm.urgency_level}</strong></div><div><span>Attending Vet</span><strong>{doctorOptions.find(doctor => String(doctor.id) === String(admitForm.attending_veterinarian_id))?.name || 'Not assigned'}</strong></div></section>
             <section><h4>Hospitalization Plan</h4><div><span>Ward / Cage</span><strong>{admitForm.ward || 'Not assigned'}</strong></div><div><span>Expected Discharge</span><strong>{admitForm.expected_discharge_at ? formatDateText(admitForm.expected_discharge_at) : 'Not scheduled'}</strong></div></section>
@@ -2595,78 +2784,335 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
           </ModalFooter>
         </ModalDialog>
       </div>}
-      {selectedRecord && <div style={modalStyles.backdrop} onClick={() => setSelectedRecord(null)}>
-        <div className="clinic-inpatient-record-dialog" role="dialog" aria-modal="true" aria-labelledby="inpatient-record-title" onClick={event => event.stopPropagation()} style={{ ...modalStyles.dialog, overflowY: 'auto' }}>
-          <button type="button" aria-label="Close inpatient record" onClick={() => setSelectedRecord(null)} style={modalStyles.close}>{Icons.close}</button>
-          <div style={{ paddingRight: 24 }}><h2 id="inpatient-record-title" style={{ margin: 0, color: '#111827', fontSize: '1.05rem', fontWeight: 700 }}>Inpatient Record</h2><div style={{ marginTop: 6, color: '#64748b', fontSize: '.72rem' }}>{selectedRecord.id} - {selectedRecord.pet}</div></div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '17px 28px', marginTop: 20 }}>
-            {[['Pet', selectedRecord.pet], ['Owner', selectedRecord.owner], ['Ward / Cage', selectedRecord.ward], ['Doctor', selectedRecord.doctor], ['Admitted', selectedRecord.admitted], ['Expected Discharge', selectedRecord.discharge]].map(([label, value]) => <div key={label}><div style={{ color: '#718096', fontSize: '.7rem' }}>{label}</div><div style={{ marginTop: 4, color: '#111827', fontSize: '.76rem', fontWeight: 600 }}>{value}</div></div>)}
-          </div>
-          <div style={{ marginTop: 18, padding: '13px 12px', border: '1px solid #dce1e7', borderRadius: 10 }}><div style={{ color: '#718096', fontSize: '.7rem' }}>Diagnosis</div><div style={{ marginTop: 8, color: '#111827', fontSize: '.78rem', fontWeight: 600 }}>{selectedRecord.diagnosis}</div></div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12, padding: '13px 12px', border: '1px solid #dce1e7', borderRadius: 9 }}><div><div style={{ color: '#718096', fontSize: '.7rem' }}>Admission authorization</div><strong style={{ display: 'block', marginTop: 5, color: '#111827', fontSize: '.74rem', textTransform: 'capitalize' }}>{selectedRecord.consent_status || 'Pending'}</strong></div><div><div style={{ color: '#718096', fontSize: '.7rem' }}>Estimated hospitalization cost</div><strong style={{ display: 'block', marginTop: 5, color: '#111827', fontSize: '.74rem' }}>{selectedRecord.estimated_cost == null ? 'Not estimated' : `₱${Number(selectedRecord.estimated_cost).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}</strong></div>{selectedRecord.consent_notes && <p style={{ gridColumn: '1 / -1', margin: 0, color: '#526571', fontSize: '.72rem' }}>{selectedRecord.consent_notes}</p>}</div>
-          <div style={{ marginTop: 12, padding: '13px 12px', borderRadius: 10, background: '#f6f8fa' }}><div style={{ color: '#718096', fontSize: '.7rem' }}>Initial Assessment</div><div style={{ marginTop: 8, color: '#111827', fontSize: '.78rem' }}>{selectedRecord.initial_assessment || 'No initial assessment recorded.'}</div></div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px 18px', marginTop: 10, padding: '13px 12px', border: '1px solid #dce8e4', borderRadius: 8 }}><strong style={{ gridColumn: '1 / -1', color: '#145c50', fontSize: '.74rem' }}>Admission assessment</strong>{[['Urgency', selectedRecord.urgency_level], ['Presenting complaint', selectedRecord.presenting_complaint], ['Provisional diagnosis', selectedRecord.provisional_diagnosis], ['Weight', selectedRecord.patient_weight && `${selectedRecord.patient_weight} kg`], ['Temperature', selectedRecord.temperature && `${selectedRecord.temperature} °C`], ['Heart rate', selectedRecord.heart_rate && `${selectedRecord.heart_rate} bpm`], ['Respiratory rate', selectedRecord.respiratory_rate && `${selectedRecord.respiratory_rate} br/min`], ['Known allergies', selectedRecord.known_allergies], ['Relevant medical history', selectedRecord.relevant_medical_history]].filter(([, value]) => value).map(([label, value]) => <div key={label}><div style={{ color: '#718096', fontSize: '.68rem' }}>{label}</div><div style={{ marginTop: 3, color: '#283c38', fontSize: '.73rem', fontWeight: 600 }}>{value}</div></div>)}</div>
-          {selectedRecord.status === 'discharged' && <div style={{ marginTop: 12, padding: '13px 12px', borderRadius: 10, background: '#f2faf6', border: '1px solid #d5e9df' }}><strong style={{ color: '#315b49', fontSize: '.76rem' }}>Discharged {selectedRecord.discharged_at ? `· ${formatDateTimeText(selectedRecord.discharged_at)}` : ''}</strong><div style={{ marginTop: 8, color: '#111827', fontSize: '.74rem' }}>{selectedRecord.discharge_assessment || 'No discharge assessment recorded.'}</div>{selectedRecord.home_instructions && <p style={{ margin: '7px 0 0', color: '#334155', fontSize: '.72rem' }}>Home instructions: {selectedRecord.home_instructions}</p>}{selectedRecord.outstanding_concerns && <p style={{ margin: '7px 0 0', color: '#334155', fontSize: '.72rem' }}>Outstanding concerns: {selectedRecord.outstanding_concerns}</p>}{selectedRecord.follow_up_recommendations && <p style={{ margin: '7px 0 0', color: '#334155', fontSize: '.72rem' }}>Follow-up: {selectedRecord.follow_up_recommendations}</p>}</div>}
-          <section style={{ marginTop: 14, padding: 14, border: '1px solid #dce1e7', borderRadius: 9 }}>
-            <h3 style={{ margin: '0 0 8px', color: '#193a32', fontSize: '.82rem' }}>Linked Treatment Plan</h3>
-            {selectedRecord.treatment_plan_id ? <>
-              <button type="button" onClick={() => onOpenTreatmentPlan?.(selectedRecord)} style={{ padding: 0, border: 0, background: 'transparent', color: '#005447', fontSize: '.78rem', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>{selectedRecord.treatment_plan_title || 'Treatment plan'} · Open plan</button>
-              <span style={{ marginLeft: 8, color: '#64748b', fontSize: '.72rem' }}>{selectedRecord.treatment_plan_status || 'active'}</span>
-              <div style={{ marginTop: 8, display: 'grid', gap: 5 }}>{(Array.isArray(selectedRecord.treatment_plan_steps) ? selectedRecord.treatment_plan_steps : []).map((step, index) => { const detail = typeof step === 'string' ? { title: step } : step; return <div key={`${detail.title || index}-${index}`} style={{ color: '#334155', fontSize: '.72rem' }}>{detail.done ? 'Completed' : 'Planned'} · {detail.title || 'Treatment step'}{detail.due ? ` · Due ${detail.due}` : ''}{detail.assignee ? ` · ${detail.assignee}` : ''}</div>; })}</div>
-              {!!selectedRecord.treatment_plan_medications?.length && <div style={{ marginTop: 10, paddingTop: 9, borderTop: '1px solid #e7ecef' }}><strong style={{ color: '#334155', fontSize: '.7rem' }}>Plan medication schedule</strong>{selectedRecord.treatment_plan_medications.map(medication => <div key={medication.id} style={{ marginTop: 5, color: '#526571', fontSize: '.7rem' }}>{medication.medication} · {medication.dosage || 'Dose not specified'} · {medication.frequency || 'Schedule not specified'} · {medication.status}</div>)}</div>}
-              {selectedRecord.treatment_plan_follow_up && <div style={{ marginTop: 8, color: '#775a14', fontSize: '.7rem' }}>Follow-up pending · {formatDateText(selectedRecord.treatment_plan_follow_up)}</div>}
-            </> : <span style={{ color: '#64748b', fontSize: '.74rem' }}>No treatment plan linked.</span>}
-          </section>
-          <section style={{ marginTop: 14, padding: 14, border: '1px solid #dce1e7', borderRadius: 9 }}>
-            <h3 style={{ margin: '0 0 10px', color: '#193a32', fontSize: '.82rem' }}>Inpatient Monitoring</h3>
-            {loadingCare ? <p style={{ color: '#64748b', fontSize: '.74rem' }}>Loading observations...</p> : careLogs.observations.map(observation => <div key={observation.id} style={{ padding: '8px 0', borderTop: '1px solid #e7ecef', fontSize: '.72rem' }}><strong>{formatDateTimeText(observation.observed_at)}</strong><span style={{ marginLeft: 8, color: '#64748b' }}>by {observation.recorded_by_name || 'Clinic staff'}</span><p style={{ margin: '5px 0', color: '#334155' }}>{observation.clinical_progress}</p><span style={{ color: '#526571' }}>{[observation.temperature && `Temp ${observation.temperature}°`, observation.heart_rate && `HR ${observation.heart_rate}`, observation.respiratory_rate && `RR ${observation.respiratory_rate}`, observation.hydration && `Hydration ${observation.hydration}`, observation.appetite && `Appetite ${observation.appetite}`, observation.pain_assessment && `Pain ${observation.pain_assessment}`].filter(Boolean).join(' · ')}</span></div>)}
-            {!loadingCare && !careLogs.observations.length && <p style={{ color: '#64748b', fontSize: '.72rem' }}>No inpatient observations recorded.</p>}
-            {selectedRecord.status === 'admitted' && <form onSubmit={event => submitCareLog(event, 'observations')} style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-              {[['Temperature °C', 'temperature'], ['Heart rate', 'heart_rate'], ['Respiratory rate', 'respiratory_rate'], ['Hydration', 'hydration'], ['Appetite', 'appetite'], ['Pain assessment', 'pain_assessment']].map(([label, field]) => <label key={field} style={{ display: 'grid', gap: 4, color: '#526571', fontSize: '.67rem' }}>{label}<input value={careForm[field]} onChange={event => setCareForm(previous => ({ ...previous, [field]: event.target.value }))} style={{ minWidth: 0, border: '1px solid #d8e1e5', borderRadius: 6, padding: '7px 8px', color: '#111827' }} /></label>)}
-              <label style={{ gridColumn: '1 / -1', display: 'grid', gap: 4, color: '#526571', fontSize: '.67rem' }}>Clinical Progress<span className="system-required-star">*</span><textarea required value={careForm.clinical_progress} onChange={event => setCareForm(previous => ({ ...previous, clinical_progress: event.target.value }))} rows={2} style={{ border: '1px solid #d8e1e5', borderRadius: 6, padding: 8, color: '#111827', font: 'inherit' }} /></label>
-              <button type="submit" disabled={savingCare} style={{ ...T.primaryBtn, justifySelf: 'start', padding: '8px 11px', fontSize: '.7rem' }}>Record Observation</button>
-            </form>}
-          </section>
-          <section style={{ marginTop: 14, padding: 14, border: '1px solid #dce1e7', borderRadius: 9 }}>
-            <h3 style={{ margin: '0 0 8px', color: '#193a32', fontSize: '.82rem' }}>Medication Administration</h3>
-            <p style={{ margin: '0 0 8px', color: '#64748b', fontSize: '.69rem' }}>Only entries logged here count as doses given; planned medication is not assumed to have been administered.</p>
-            {careLogs.medications.map(entry => <div key={entry.id} style={{ padding: '7px 0', borderTop: '1px solid #e7ecef', fontSize: '.72rem' }}><strong>{entry.medication}</strong> · {entry.dose || 'Dose not specified'} · <b>{entry.status}</b><div style={{ marginTop: 3, color: '#64748b' }}>{formatDateTimeText(entry.event_at)} · {entry.recorded_by_name || 'Clinic staff'}{entry.notes ? ` · ${entry.notes}` : ''}</div></div>)}
-            {!careLogs.medications.length && <p style={{ color: '#64748b', fontSize: '.72rem' }}>No doses or medication outcomes recorded.</p>}
-            {selectedRecord.status === 'admitted' && <form onSubmit={event => submitCareLog(event, 'medications')} style={{ display: 'grid', gridTemplateColumns: '1.2fr .7fr .8fr', gap: 8, marginTop: 9 }}>
-              <select aria-label="Select planned medication (optional)" value={medicationForm.prescription_id} onChange={event => { const chosen = selectedRecord.treatment_plan_medications?.find(item => String(item.id) === event.target.value); setMedicationForm(previous => ({ ...previous, prescription_id: event.target.value, medication: chosen?.medication || previous.medication, dose: chosen?.dosage || previous.dose })); }} style={{ gridColumn: '1 / -1', border: '1px solid #d8e1e5', borderRadius: 6, padding: '8px', color: '#111827' }}><option value="">Select planned medication (optional)</option>{(selectedRecord.treatment_plan_medications || []).map(item => <option key={item.id} value={item.id}>{item.medication} · {item.dosage || 'dose unspecified'} · {item.frequency || 'schedule unspecified'}</option>)}</select>
-              <input required aria-label="Medication" placeholder="Medication" value={medicationForm.medication} onChange={event => setMedicationForm(previous => ({ ...previous, medication: event.target.value, prescription_id: '' }))} style={{ minWidth: 0, border: '1px solid #d8e1e5', borderRadius: 6, padding: '8px', color: '#111827' }} />
-              <input aria-label="Dose" placeholder="Dose" value={medicationForm.dose} onChange={event => setMedicationForm(previous => ({ ...previous, dose: event.target.value }))} style={{ minWidth: 0, border: '1px solid #d8e1e5', borderRadius: 6, padding: '8px', color: '#111827' }} />
-              <select aria-label="Administration status" value={medicationForm.status} onChange={event => setMedicationForm(previous => ({ ...previous, status: event.target.value }))} style={{ border: '1px solid #d8e1e5', borderRadius: 6, padding: '8px', color: '#111827' }}>{['administered', 'missed', 'withheld', 'delayed'].map(status => <option key={status}>{status}</option>)}</select>
-              <input aria-label="Medication event note" placeholder="Note (optional)" value={medicationForm.notes} onChange={event => setMedicationForm(previous => ({ ...previous, notes: event.target.value }))} style={{ gridColumn: '1 / 3', border: '1px solid #d8e1e5', borderRadius: 6, padding: '8px', color: '#111827' }} />
-              <button type="submit" disabled={savingCare} style={{ ...T.primaryBtn, padding: '8px 10px', fontSize: '.7rem' }}>Record Outcome</button>
-            </form>}
-          </section>
-          {selectedRecord.status === 'admitted' && <section style={{ marginTop: 14, padding: 14, border: '1px solid #dce1e7', borderRadius: 9 }}>
-            <h3 style={{ margin: '0 0 9px', color: '#193a32', fontSize: '.82rem' }}>Discharge</h3>
-            <div style={{ display: 'grid', gap: 8 }}>
-              {[
-                ['Discharge Assessment*', 'discharge_assessment'],
-                ['Medications and Instructions for Home', 'home_instructions'],
-                ['Outstanding Concerns', 'outstanding_concerns'],
-                ['Follow-up Recommendations', 'follow_up_recommendations'],
-              ].map(([label, field]) => <label key={field} style={{ display: 'grid', gap: 4, color: '#526571', fontSize: '.68rem' }}>{label}<textarea required={field === 'discharge_assessment'} rows={field === 'discharge_assessment' ? 2 : 1} value={dischargeForm[field]} onChange={event => setDischargeForm(previous => ({ ...previous, [field]: event.target.value }))} style={{ border: '1px solid #d8e1e5', borderRadius: 6, padding: 8, color: '#111827', font: 'inherit' }} /></label>)}
+      {selectedRecord && !showFullInpatientRecord && <div className="clinic-inpatient-summary-backdrop" onClick={() => setSelectedRecord(null)}>
+        <section className="clinic-inpatient-summary-dialog" role="dialog" aria-modal="true" aria-labelledby="inpatient-summary-title" onClick={event => event.stopPropagation()}>
+          <header className="clinic-inpatient-summary-header">
+            <div>
+              <h2 id="inpatient-summary-title">Inpatient Summary</h2>
+              <p>{selectedRecord.id} · {selectedRecord.pet}</p>
             </div>
-          </section>}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16 }}><span style={{ color: '#718096', fontSize: '.72rem' }}>Status:</span><StatusIndicator status={selectedRecord.status === 'admitted' ? 'Admitted' : 'Discharged'} /></div>
-          {recordsError && <p role="alert" style={{ color: '#b42318', fontSize: '.72rem' }}>{recordsError}</p>}
-          <div style={{ ...modalStyles.footer, marginTop: 17 }}><button type="button" style={modalStyles.cancel} onClick={() => setSelectedRecord(null)}>Close</button>{selectedRecord.status === 'admitted' && <button type="button" disabled={savingCare || !dischargeForm.discharge_assessment.trim()} onClick={dischargePatient} style={{ ...T.primaryBtn, display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', fontSize: '.7rem', opacity: savingCare || !dischargeForm.discharge_assessment.trim() ? .6 : 1 }}><span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.check}</span>{savingCare ? 'Saving...' : 'Discharge Patient'}</button>}</div>
-        </div>
+            <span className={`clinic-inpatient-summary-status${selectedRecord.status === 'admitted' ? ' is-admitted' : ' is-discharged'}`}>
+              <span aria-hidden="true" />{selectedRecord.status === 'admitted' ? 'Admitted' : 'Discharged'}
+            </span>
+          </header>
+          <div className="clinic-inpatient-summary-content">
+            <section className="clinic-inpatient-summary-pet">
+              <ClinicAttachmentImage
+                src={getPetPhotoUrl(selectedRecordPet)}
+                attachmentId={selectedRecordPet?.photo_attachment_id}
+                user={user}
+                alt={`${selectedRecord.pet || 'Pet'} profile`}
+                style={{ width: 58, height: 58, flex: '0 0 58px', borderRadius: '50%', objectFit: 'cover' }}
+                fallback={<span className="clinic-inpatient-summary-avatar" aria-hidden="true">{String(selectedRecord.pet || 'P').slice(0, 1).toUpperCase()}</span>}
+              />
+              <div>
+                <strong>{selectedRecord.pet || 'Patient not recorded'}</strong>
+                <span>{[selectedRecordPet?.species, selectedRecord.patient_weight ? `${selectedRecord.patient_weight} kg` : selectedRecordPet?.weight].filter(Boolean).join(' · ') || 'Patient details not recorded'}</span>
+              </div>
+            </section>
+            <section className="clinic-inpatient-summary-details">
+              {[
+                ['Owner', selectedRecord.owner],
+                ['Attending Veterinarian', selectedRecord.doctor],
+                ['Ward / Cage', selectedRecord.ward],
+                ['Diagnosis', selectedRecord.diagnosis],
+                ['Admission Date', selectedRecord.admitted],
+                ['Expected Discharge', selectedRecord.discharge],
+              ].map(([label, value]) => <div className="clinic-inpatient-summary-detail" key={label}>
+                <span>{label}</span>
+                <strong>{value || 'Not recorded'}</strong>
+              </div>)}
+            </section>
+            <section className="clinic-inpatient-summary-authorization">
+              <div><span>Admission Authorization</span><strong className="is-authorization">{String(selectedRecord.consent_status || 'Pending').replace(/[_-]+/g, ' ')}</strong></div>
+              <div><span>Estimated Hospitalization Cost</span><strong>{selectedRecord.estimated_cost == null ? 'Not estimated' : `₱${Number(selectedRecord.estimated_cost).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}</strong></div>
+            </section>
+            <section className="clinic-inpatient-summary-card">
+              <h3>Initial Assessment</h3>
+              <p>{selectedRecord.initial_assessment || 'No initial assessment recorded.'}</p>
+            </section>
+            <section className="clinic-inpatient-summary-card clinic-inpatient-summary-assessment">
+              <h3>Admission Assessment</h3>
+              <div className="clinic-inpatient-summary-assessment-grid">
+                {[
+                  ['Urgency', selectedRecord.urgency_level],
+                  ['Presenting Complaint', selectedRecord.presenting_complaint],
+                  ['Provisional Diagnosis', selectedRecord.provisional_diagnosis],
+                ].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value || 'Not recorded'}</strong></div>)}
+              </div>
+              <p><span>Known Allergies:</span> {selectedRecord.known_allergies || 'None recorded'}</p>
+            </section>
+            <section className="clinic-inpatient-summary-action-row">
+              <div><h3>Latest Monitoring</h3><p>{loadingCare ? 'Loading observations…' : careLogs.observations[0]?.clinical_progress || 'No observations recorded yet.'}</p></div>
+              {selectedRecord.status === 'admitted' && <button type="button" className="is-primary" onClick={() => openFullInpatientRecord(inpatientMonitoringRef)}>Add Observation</button>}
+            </section>
+            <section className="clinic-inpatient-summary-action-row">
+              <div><h3>Medication Administration</h3><p>{careLogs.medications.length ? `${careLogs.medications.length} medication record${careLogs.medications.length === 1 ? '' : 's'} recorded.` : 'No doses or medication outcomes recorded.'}</p></div>
+              <button type="button" className="is-link" onClick={() => openFullInpatientRecord(inpatientMedicationRef)}>View Medication Log</button>
+            </section>
+            <section className="clinic-inpatient-summary-action-row">
+              <div><h3>Treatment Plan</h3><p>{selectedRecord.treatment_plan_id ? selectedRecord.treatment_plan_title || 'Treatment plan linked.' : 'No treatment plan linked.'}</p></div>
+              <button type="button" className="is-link" disabled={!selectedRecord.treatment_plan_id} onClick={() => onOpenTreatmentPlan?.(selectedRecord)}>View Treatment Plans</button>
+            </section>
+            <section className={`clinic-inpatient-summary-discharge${selectedRecord.status === 'discharged' ? ' is-discharged' : ''}`}>
+              <div><h3>Discharge</h3><span>Status</span><strong>{selectedRecord.status === 'admitted' ? 'Not ready for discharge' : 'Discharged'}</strong></div>
+              {selectedRecord.status === 'admitted' && <button type="button" className="is-link" onClick={() => openFullInpatientRecord(inpatientDischargeRef)}>Complete Discharge</button>}
+            </section>
+          </div>
+          <footer className="clinic-inpatient-summary-footer">
+            <button type="button" className="clinic-inpatient-summary-close" onClick={() => setSelectedRecord(null)}>Close</button>
+            <button type="button" className="clinic-inpatient-summary-full" onClick={() => openFullInpatientRecord()}>View Full Inpatient Record</button>
+          </footer>
+        </section>
       </div>}
+      {selectedRecord && showFullInpatientRecord && createPortal(<div className="clinic-inpatient-details-portal">
+        <section className="clinic-inpatient-details-page" role="dialog" aria-modal="true" aria-labelledby="inpatient-record-title">
+        <div className="clinic-inpatient-details-toolbar">
+          <button type="button" className="clinic-inpatient-details-back" onClick={() => { setSelectedRecord(null); setShowFullInpatientRecord(false); }}>← Back to Inpatient Records</button>
+          <div className="clinic-inpatient-details-toolbar-right">
+            <div className="clinic-inpatient-details-search"><span aria-hidden="true">{Icons.search}</span><span>Search patients, owners, or records...</span></div>
+            <div className="clinic-inpatient-details-user"><span>{user?.initials || String(user?.name || 'U').slice(0, 2).toUpperCase()}</span><div><strong>{user?.name || 'Clinic staff'}</strong><small>{user?.role || 'Clinic staff'}</small></div></div>
+          </div>
+        </div>
+        <header className="clinic-inpatient-details-hero">
+          <div className="clinic-inpatient-details-identity">
+            <ClinicAttachmentImage
+              src={getPetPhotoUrl(selectedRecordPet)}
+              attachmentId={selectedRecordPet?.photo_attachment_id}
+              user={user}
+              alt={`${selectedRecord.pet || 'Pet'} profile`}
+              style={{ width: 60, height: 60, flex: '0 0 60px', borderRadius: '50%', objectFit: 'cover' }}
+              fallback={<span aria-hidden="true">{String(selectedRecord.pet || 'P').slice(0, 1).toUpperCase()}</span>}
+            />
+            <div className="clinic-inpatient-details-name">
+              <div><h2 id="inpatient-record-title">{selectedRecord.pet || 'Patient not recorded'}</h2><span className={`clinic-inpatient-details-status${selectedRecord.status === 'admitted' ? ' is-admitted' : ' is-discharged'}`}>{selectedRecord.status === 'admitted' ? 'Admitted' : 'Discharged'}</span></div>
+              <p>{selectedRecord.id} · {[selectedRecordPet?.species, selectedRecordPet?.breed, selectedRecordPet?.age || calculatePatientAge(selectedRecordPet?.birth_date || selectedRecordPet?.birthDate)].filter(Boolean).join(' · ')}{selectedRecord.owner ? ` · Owner: ${selectedRecord.owner}` : ''}</p>
+            </div>
+          </div>
+          <dl className="clinic-inpatient-details-meta">
+            {[
+              ['Weight', selectedRecord.patient_weight ? `${selectedRecord.patient_weight} kg` : selectedRecordPet?.weight ? `${selectedRecordPet.weight} kg` : 'Not recorded'],
+              ['Ward / Cage', selectedRecord.ward],
+              ['Attending veterinarian', selectedRecord.doctor],
+              ['Admitted', selectedRecord.admitted],
+              ['Expected discharge', selectedRecord.discharge],
+            ].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || 'Not recorded'}</dd></div>)}
+          </dl>
+        </header>
+        {recordsError && <p className="clinic-inpatient-details-error" role="alert">{recordsError}</p>}
+        <div className="clinic-inpatient-details-grid">
+          <div className="clinic-inpatient-details-main">
+            <section className="clinic-inpatient-details-card">
+              <div className="clinic-inpatient-details-card-heading"><h3>Admission &amp; Clinical Assessment</h3></div>
+              <div className="clinic-inpatient-details-assessment-grid">
+                {[
+                  ['Urgency', selectedRecord.urgency_level],
+                  ['Known allergies', selectedRecord.known_allergies || 'None recorded'],
+                  ['Presenting complaint', selectedRecord.presenting_complaint],
+                  ['Admission authorization', String(selectedRecord.consent_status || 'Pending').replace(/[_-]+/g, ' ')],
+                  ['Provisional diagnosis', selectedRecord.provisional_diagnosis || selectedRecord.diagnosis],
+                  ['Initial assessment', selectedRecord.initial_assessment || 'Not recorded'],
+                ].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value || 'Not recorded'}</strong></div>)}
+              </div>
+            </section>
+
+            <section className="clinic-inpatient-details-card" ref={inpatientMonitoringRef}>
+              <div className="clinic-inpatient-details-card-heading">
+                <h3>Inpatient Monitoring</h3>
+                {selectedRecord.status === 'admitted' && <button type="button" className="clinic-inpatient-details-primary" onClick={openInpatientObservationForm}>＋ Record observation</button>}
+              </div>
+              <div className="clinic-inpatient-details-table-wrap">
+                <table className="clinic-inpatient-details-table">
+                  <thead><tr>{['Date / time', 'Temperature (°C)', 'Weight (kg)', 'Heart rate (bpm)', 'Respiratory rate (/min)', 'Hydration', 'Appetite', 'Clinical progress'].map(label => <th key={label}>{label}</th>)}</tr></thead>
+                  <tbody>
+                    {careLogs.observations.map(observation => <tr key={observation.id}>
+                      <td>{formatDateTimeText(observation.observed_at)}<small>{observation.recorded_by_name || 'Clinic staff'}</small></td>
+                      <td>{observation.temperature || '—'}</td><td>{observation.weight || '—'}</td><td>{observation.heart_rate || '—'}</td><td>{observation.respiratory_rate || '—'}</td>
+                      <td>{observation.hydration || '—'}</td><td>{observation.appetite || '—'}</td><td>{observation.clinical_progress || '—'}{observation.pain_assessment && <small>Pain: {observation.pain_assessment}</small>}{observation.follow_up_action && <small>Follow-up: {observation.follow_up_action}</small>}</td>
+                    </tr>)}
+                    {!loadingCare && !careLogs.observations.length && <tr><td className="clinic-inpatient-details-empty" colSpan="8">No inpatient observations recorded.</td></tr>}
+                    {loadingCare && <tr><td className="clinic-inpatient-details-empty" colSpan="8">Loading observations…</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+              {selectedRecord.treatment_plan_id && <div className="clinic-inpatient-plan-monitoring">
+                <h4>Linked Treatment Plan Monitoring</h4>
+                <p className="clinic-inpatient-details-muted">Observations added in either linked record are shared with the treatment plan and are not duplicated.</p>
+                {treatmentPlanMetricEntries.length > 0 && <dl className="clinic-inpatient-plan-monitoring-metrics">
+                  {treatmentPlanMetricEntries.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+                </dl>}
+                {treatmentPlanMonitoring.latestObservation && <p className="clinic-inpatient-plan-monitoring-note"><strong>Latest plan observation:</strong> {treatmentPlanMonitoring.latestObservation}</p>}
+                {treatmentPlanObservations.length > 0
+                  ? <ul className="clinic-inpatient-plan-monitoring-history">{treatmentPlanObservations.map((observation, index) => {
+                    const values = [
+                      observation.temperature && `Temperature: ${observation.temperature}`,
+                      observation.weight && `Weight: ${observation.weight} kg`,
+                      observation.heart_rate && `Heart rate: ${observation.heart_rate} bpm`,
+                      observation.respiratory_rate && `Respiratory rate: ${observation.respiratory_rate} /min`,
+                      observation.hydration && `Hydration: ${observation.hydration}`,
+                      observation.appetite && `Appetite: ${observation.appetite}`,
+                      observation.pain_assessment && `Pain: ${observation.pain_assessment}`,
+                    ].filter(Boolean);
+                    return <li key={`${observation.date || 'observation'}-${index}`}>
+                      <strong>{observation.date ? formatDateTimeText(observation.date) : 'Date not recorded'}</strong>
+                      {observation.author && <small>{observation.author}</small>}
+                      {observation.text && <span>{observation.text}</span>}
+                      {values.length > 0 && <span>{values.join(' · ')}</span>}
+                    </li>;
+                  })}</ul>
+                  : !treatmentPlanMonitoring.latestObservation && <p className="clinic-inpatient-details-muted">No monitoring observations have been recorded in the linked plan.</p>}
+              </div>}
+            </section>
+
+            <section className="clinic-inpatient-details-card" ref={inpatientMedicationRef}>
+              <div className="clinic-inpatient-details-card-heading">
+                <h3>Medication Administration</h3>
+                {selectedRecord.status === 'admitted' && <button type="button" className="clinic-inpatient-details-primary" onClick={openInpatientPlanMedication}>Add medication</button>}
+              </div>
+              <div className="clinic-inpatient-plan-medications">
+                <h4>Prescribed Medications · {selectedRecord.treatment_plan_title || 'Patient prescriptions'}</h4>
+                {(selectedRecord.treatment_plan_medications || []).length > 0
+                  ? <div className="clinic-inpatient-details-table-wrap"><table className="clinic-inpatient-details-table">
+                    <thead><tr><th>Medication</th><th>Dose</th><th>Route</th><th>Frequency</th><th>Schedule</th><th>Plan status</th></tr></thead>
+                    <tbody>{selectedRecord.treatment_plan_medications.map(item => <tr key={item.id}>
+                      <td>{item.medication || 'Medication not specified'}{item.instructions && <small>{item.instructions}</small>}</td>
+                      <td>{item.dosage || 'Not specified'}</td>
+                      <td>{item.route || '—'}</td>
+                      <td>{item.frequency || 'Not specified'}</td>
+                      <td>{item.start_date || item.end_date ? `${item.start_date ? formatDateText(String(item.start_date).slice(0, 10)) : 'Start not set'} – ${item.end_date ? formatDateText(String(item.end_date).slice(0, 10)) : 'No end date'}` : 'Not scheduled'}</td>
+                      <td><span className={`clinic-inpatient-medication-status is-${String(item.status || 'active').toLowerCase()}`}>{item.status || 'Active'}</span></td>
+                    </tr>)}</tbody>
+                  </table></div>
+                  : <p className="clinic-inpatient-details-muted">No prescribed medications are listed for this inpatient record.</p>}
+                <p className="clinic-inpatient-details-muted">Prescriptions are not dose records. Actual administration outcomes are listed separately below.</p>
+              </div>
+
+              {careLogs.medications.length ? <div className="clinic-inpatient-details-table-wrap"><table className="clinic-inpatient-details-table clinic-inpatient-medication-table">
+                <thead><tr><th>Medication</th><th>Dose</th><th>Route</th><th>Last recorded</th><th>Status</th></tr></thead>
+                <tbody>{careLogs.medications.map(entry => <tr key={entry.id}><td>{entry.medication}<small>{entry.notes || ''}</small></td><td>{entry.dose || 'Not specified'}</td><td>{entry.route || entry.route_name || '—'}</td><td>{formatDateTimeText(entry.event_at)}<small>{entry.recorded_by_name || 'Clinic staff'}</small></td><td><span className={`clinic-inpatient-medication-status is-${String(entry.status || '').toLowerCase()}`}>{entry.status}</span></td></tr>)}</tbody>
+              </table></div> : <p className="clinic-inpatient-details-muted">{loadingCare ? 'Loading medication records…' : 'No doses or medication outcomes recorded.'}</p>}
+            </section>
+
+            <section className="clinic-inpatient-details-card clinic-inpatient-discharge-card" ref={inpatientDischargeRef}>
+              <div className="clinic-inpatient-details-card-heading">
+                <h3>Discharge &amp; Handover</h3>
+                {selectedRecord.status === 'admitted' && <button type="button" className="clinic-inpatient-details-primary" onClick={() => setShowDischargeForm(current => !current)}>{showDischargeForm ? 'Cancel' : 'Prepare discharge'}</button>}
+                {selectedRecord.status === 'discharged' && <span className="clinic-inpatient-discharge-state is-discharged">Discharged</span>}
+              </div>
+              {selectedRecord.status === 'admitted' && !showDischargeForm && <div className="clinic-inpatient-discharge-summary">
+                <div><span>Discharge status</span><strong><span className="clinic-inpatient-discharge-state">Not discharged</span></strong></div>
+                <div><span>Discharge assessment</span><strong>{selectedRecord.discharge_assessment || 'Not recorded'}</strong></div>
+                <div><span>Home instructions</span><strong>{selectedRecord.home_instructions || 'Not recorded'}</strong></div>
+                <div><span>Follow-up recommendations</span><strong>{selectedRecord.follow_up_recommendations || 'Not scheduled'}</strong></div>
+              </div>}
+              {selectedRecord.status === 'admitted' && showDischargeForm
+                ? <form className="clinic-inpatient-details-form clinic-inpatient-discharge-form" onSubmit={event => { event.preventDefault(); dischargePatient(); }}>
+                  {[
+                    ['Discharge assessment', 'discharge_assessment', true],
+                    ['Medications and instructions for home', 'home_instructions'],
+                    ['Outstanding concerns', 'outstanding_concerns'],
+                    ['Follow-up recommendations', 'follow_up_recommendations'],
+                  ].map(([label, field, required]) => <label key={field}>{label}{required && <span className="system-required-star">*</span>}<textarea required={Boolean(required)} rows={required ? 2 : 1} value={dischargeForm[field]} onChange={event => setDischargeForm(previous => ({ ...previous, [field]: event.target.value }))} /></label>)}
+                  <div className="clinic-inpatient-discharge-actions"><button type="button" className="clinic-inpatient-details-secondary" onClick={() => setShowDischargeForm(false)}>Cancel</button><button type="submit" className="clinic-inpatient-details-primary" disabled={savingCare || !dischargeForm.discharge_assessment.trim()}>{savingCare ? 'Saving…' : 'Discharge patient'}</button></div>
+                </form>
+                : selectedRecord.status === 'discharged' && <div className="clinic-inpatient-discharge-summary">
+                  <div><span>Discharge status</span><strong><span className="clinic-inpatient-discharge-state is-discharged">Discharged</span></strong></div>
+                  <div><span>Discharged</span><strong>{selectedRecord.discharged_at ? formatDateTimeText(selectedRecord.discharged_at) : 'Date not recorded'}</strong></div>
+                  <div><span>Discharge assessment</span><strong>{selectedRecord.discharge_assessment || 'Not recorded'}</strong></div>
+                  <div><span>Home instructions</span><strong>{selectedRecord.home_instructions || 'Not recorded'}</strong></div>
+                  <div><span>Follow-up recommendations</span><strong>{selectedRecord.follow_up_recommendations || 'Not scheduled'}</strong></div>
+                </div>}
+            </section>
+          </div>
+
+          <aside className="clinic-inpatient-details-sidebar">
+            <section className="clinic-inpatient-details-card clinic-inpatient-current-status">
+              <h3>Current Status</h3>
+              <dl>
+                <div><dt>Inpatient status</dt><dd><span className={`clinic-inpatient-details-status${selectedRecord.status === 'admitted' ? ' is-admitted' : ' is-discharged'}`}>{selectedRecord.status === 'admitted' ? 'Admitted' : 'Discharged'}</span></dd></div>
+                <div><dt>Last observation</dt><dd>{careLogs.observations[0]?.observed_at ? formatDateTimeText(careLogs.observations[0].observed_at) : 'Not recorded'}</dd></div>
+                <div><dt>Attending veterinarian</dt><dd>{selectedRecord.doctor || 'Not recorded'}</dd></div>
+                <div><dt>Ward / Cage</dt><dd>{selectedRecord.ward || 'Not assigned'}</dd></div>
+              </dl>
+              {selectedRecord.status === 'admitted' && selectedRecord.discharge === 'Not scheduled' && <div className="clinic-inpatient-discharge-warning"><strong>Expected discharge not scheduled</strong><span>Complete ongoing treatment and assessment.</span></div>}
+            </section>
+            <section className="clinic-inpatient-details-card clinic-inpatient-linked-plan">
+              <h3>Linked Treatment Plan</h3>
+              {selectedRecord.treatment_plan_id ? <>
+                <button type="button" onClick={() => onOpenTreatmentPlan?.(selectedRecord)}>{selectedRecord.treatment_plan_title || 'Open treatment plan'} <span aria-hidden="true">↗</span></button>
+                <span className="clinic-inpatient-plan-status">{selectedRecord.treatment_plan_status || 'Active'}</span>
+                {!!selectedRecord.treatment_plan_steps?.length && <ul>{selectedRecord.treatment_plan_steps.slice(0, 4).map((step, index) => { const detail = typeof step === 'string' ? { title: step } : step; return <li key={`${detail.title || index}-${index}`}>{detail.done ? 'Completed' : 'Planned'} · {detail.title || 'Treatment step'}</li>; })}</ul>}
+              </> : <p className="clinic-inpatient-details-muted">No treatment plan linked.</p>}
+            </section>
+            <section className="clinic-inpatient-details-card clinic-inpatient-recent-activity">
+              <h3>Recent Activity</h3>
+              {recentInpatientActivity.length ? <ol>{recentInpatientActivity.slice(0, 5).map(entry => <li key={entry.key}><div><strong>{entry.title}</strong><span>{entry.detail || 'Inpatient record updated'}</span></div><time>{formatDateTimeText(entry.at)}</time></li>)}</ol> : <p className="clinic-inpatient-details-muted">No recent activity recorded.</p>}
+            </section>
+            <section className="clinic-inpatient-details-card clinic-inpatient-attachments">
+              <div className="clinic-inpatient-details-card-heading"><h3>Attachments</h3><label className="clinic-inpatient-details-secondary clinic-inpatient-add-file">Add file<input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={uploadInpatientAttachment} disabled={savingCare} /></label></div>
+              {careLogs.attachments.length
+                ? <ul>{careLogs.attachments.map(attachment => <li key={attachment.id}><button type="button" onClick={() => downloadInpatientAttachment(attachment)}>{attachment.filename || 'Inpatient file'} <span aria-hidden="true">↓</span></button><small>{String(attachment.content_type || '').split('/').pop()?.toUpperCase()}{attachment.uploaded_at ? ` · ${formatDateTimeText(attachment.uploaded_at)}` : ''}</small></li>)}</ul>
+                : <p className="clinic-inpatient-details-muted">No files attached.</p>}
+            </section>
+          </aside>
+        </div>
+        </section>
+      </div>, document.body)}
+      {selectedRecord && showObservationForm && createPortal(<div style={{ ...modalStyles.backdrop, zIndex: 1450 }} onClick={() => !savingCare && setShowObservationForm(false)}>
+        <ModalDialog as="form" size="standard" role="dialog" aria-modal="true" aria-labelledby="inpatient-observation-title" onClick={event => event.stopPropagation()} onSubmit={submitCareLog} style={{ ...modalStyles.dialog, position: 'relative', width: 'min(760px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', padding: '25px 28px 22px' }}>
+          <h2 id="inpatient-observation-title" style={{ margin: 0, color: '#1f2937', fontSize: '1.15rem' }}>Record inpatient observation</h2>
+          <p style={{ margin: '6px 0 0', paddingBottom: 14, borderBottom: '1px solid #e5eeea', color: '#64748b', fontSize: '.78rem' }}>Record current measurements and clinical notes for {selectedRecord.pet}.</p>
+          <div className="clinic-inpatient-details-form clinic-inpatient-observation-form" style={{ marginTop: 16 }}>
+            <label>Observation date<span className="system-required-star">*</span><LabDateTimePicker mode="date" required max={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)} value={careForm.date} onChange={date => setCareForm(previous => ({ ...previous, date }))} /></label>
+            <label>Time<span className="system-required-star">*</span><LabDateTimePicker mode="time" required value={careForm.time} onChange={time => setCareForm(previous => ({ ...previous, time }))} /></label>
+            {[['Temperature (°C)', 'temperature', 'number', '0', '60', '0.1'], ['Weight (kg)', 'weight', 'number', '0', undefined, '0.01'], ['Heart rate (bpm)', 'heart_rate', 'number', '0', undefined, '1'], ['Respiratory rate (/min)', 'respiratory_rate', 'number', '0', undefined, '1']].map(([label, field, type, min, max, step]) => <label key={field}>{label}<input type={type} min={min} max={max} step={step} value={careForm[field]} onChange={event => setCareForm(previous => ({ ...previous, [field]: event.target.value }))} /></label>)}
+            {[
+              ['Hydration assessment', 'hydration', ['Normal', 'Mildly dehydrated', 'Moderately dehydrated', 'Severely dehydrated', 'Not assessed']],
+              ['Appetite', 'appetite', ['Normal', 'Reduced', 'No appetite', 'Not assessed']],
+            ].map(([label, field, options]) => <fieldset key={field} style={{ display: 'grid', alignContent: 'start', gap: 5, margin: 0, padding: 0, border: 0 }}>
+              <legend style={{ marginBottom: 4, color: '#475569', fontSize: 12, fontWeight: 650 }}>{label}</legend>
+              {options.map(option => <label key={option} style={{ display: 'flex', alignItems: 'center', gap: 7, minHeight: 27, fontWeight: 400 }}><input type="radio" name={`inpatient-${field}`} value={option} checked={careForm[field] === option} onChange={() => setCareForm(previous => ({ ...previous, [field]: option }))} />{option}</label>)}
+            </fieldset>)}
+            <label>Pain assessment<input value={careForm.pain_assessment} onChange={event => setCareForm(previous => ({ ...previous, pain_assessment: event.target.value }))} /></label>
+            <label className="clinic-inpatient-details-form-wide">Clinical notes<span className="system-required-star">*</span><textarea required maxLength={4500} value={careForm.clinical_progress} onChange={event => setCareForm(previous => ({ ...previous, clinical_progress: event.target.value }))} rows={3} /></label>
+            <fieldset className="clinic-inpatient-details-form-wide" style={{ display: 'grid', gap: 5, margin: 0, padding: 0, border: 0 }}>
+              <legend style={{ marginBottom: 4, color: '#475569', fontSize: 12, fontWeight: 650 }}>Follow-up action</legend>
+              {['Continue routine monitoring', 'Reassessment required', 'Immediate veterinary review'].map(option => <label key={option} style={{ display: 'flex', alignItems: 'center', gap: 7, minHeight: 27, fontWeight: 400 }}><input type="radio" name="inpatient-follow_up_action" value={option} checked={careForm.follow_up_action === option} onChange={() => setCareForm(previous => ({ ...previous, follow_up_action: option }))} />{option}</label>)}
+            </fieldset>
+          </div>
+          <p className="clinic-inpatient-details-muted" style={{ margin: '12px 0 0' }}>Leave a measurement blank if it was not taken. When this stay has a linked plan, this observation is saved in both records.</p>
+          <div style={{ ...modalStyles.footer, marginTop: 20 }}>
+            <button type="button" disabled={savingCare} onClick={() => setShowObservationForm(false)} style={modalStyles.cancel}>Cancel</button>
+            <button type="submit" className="clinic-inpatient-details-primary" disabled={savingCare}>{savingCare ? 'Saving…' : 'Save observation'}</button>
+          </div>
+        </ModalDialog>
+      </div>, document.body)}
+      {selectedRecord && addPlanMedicationOpen && createPortal(<div style={{ ...modalStyles.backdrop, zIndex: 1450 }} onClick={() => !savingPlanMedication && setAddPlanMedicationOpen(false)}>
+        <ModalDialog as="form" size="standard" role="dialog" aria-modal="true" aria-labelledby="inpatient-add-medication-title" onClick={event => event.stopPropagation()} onSubmit={saveInpatientPlanMedication} style={{ ...modalStyles.dialog, position: 'relative', width: 'min(500px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', padding: '25px 28px 22px' }}>
+          <button type="button" disabled={savingPlanMedication} onClick={() => setAddPlanMedicationOpen(false)} style={{ position: 'absolute', top: 20, right: 24, border: 0, background: 'transparent', color: '#475569', padding: 4, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer' }}>Close</button>
+          <h2 id="inpatient-add-medication-title" style={{ margin: 0, color: '#1f2937', fontSize: '1.15rem' }}>Add Medication</h2>
+          <div style={{ marginTop: 6, paddingBottom: 14, borderBottom: '1px solid #e5eeea', color: '#64748b', fontSize: '.78rem' }}>Add a prescribed medication to {selectedRecord.pet}&apos;s treatment record.</div>
+          {planMedicationError && <div role="alert" style={{ marginTop: 14, padding: 10, border: '1px solid #fecaca', borderRadius: 8, background: '#fff7f7', color: '#b42318', fontSize: '.75rem' }}>{planMedicationError}</div>}
+          <PlanMedicationFields
+            form={planMedicationForm}
+            setForm={setPlanMedicationForm}
+            fixedTreatmentPlan={selectedRecord.treatment_plan_id ? { id: selectedRecord.treatment_plan_id, title: selectedRecord.treatment_plan_title } : null}
+            treatmentPlans={[]}
+            prescriber={user?.name || selectedRecord.doctor}
+          />
+          <div style={{ ...modalStyles.footer, marginTop: 20 }}><button type="button" disabled={savingPlanMedication} onClick={() => setAddPlanMedicationOpen(false)} style={modalStyles.cancel}>Cancel</button><button type="submit" disabled={savingPlanMedication} style={{ ...T.primaryBtn, padding: '10px 14px', fontSize: '.78rem' }}>{savingPlanMedication ? 'Saving…' : 'Save Medication'}</button></div>
+        </ModalDialog>
+      </div>, document.body)}
     </div>
   );
 }
 
-export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, onStandalonePlanClose, appointments = [] } = {}) {
+export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, onStandalonePlanClose, appointments = [], createOnly = false, initialPlan = {}, onCreateClose, onCreated, portalTarget } = {}) {
   const [recordFilter, setRecordFilter] = useState('All Plans');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [patientFilter, setPatientFilter] = useState(patientName || 'all');
-  const [createPlanOpen, setCreatePlanOpen] = useState(false);
+  const [createPlanOpen, setCreatePlanOpen] = useState(createOnly);
   const [createPlanError, setCreatePlanError] = useState('');
   const [createTreatmentRecordOpen, setCreateTreatmentRecordOpen] = useState(false);
   const [createTreatmentRecordError, setCreateTreatmentRecordError] = useState('');
@@ -2675,10 +3121,10 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
   const [createPlanForm, setCreatePlanForm] = useState(() => ({
     pet: patientName || '',
     title: '',
-    diagnosis: '',
+    diagnosis: initialPlan.diagnosis || '',
     severity: 'Moderate',
-    veterinarianId: '',
-    followUp: '',
+    veterinarianId: initialPlan.veterinarianId || '',
+    followUp: initialPlan.followUp || '',
     steps: [{ title: '', due: '' }],
     includeMedication: false,
     medication: { name: '', dosage: '', route: '', frequency: '', quantity: '', instructions: '', startDate: '', endDate: '' },
@@ -2798,7 +3244,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
       }
     });
     return () => controller.abort();
-  }, [user?.clinic_id, user?.token, clinicalRecordsVersion]);
+  }, [user?.clinic_id, user?.token, clinicalRecordsVersion, standalonePlanRequest?.planId]);
   useEffect(() => {
     if (!standalonePlanRequest?.planId) return;
     const plan = savedPlans.find(item => String(item.databaseId) === String(standalonePlanRequest.planId));
@@ -2807,7 +3253,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
     setFullPlanOpen(true);
   }, [standalonePlanRequest, savedPlans]);
 
-  const allPlans = [...savedPlans, SAMPLE_TREATMENT_PLAN].map(plan => ({ ...plan, ...(planOverrides[plan.id] || {}) }));
+  const allPlans = savedPlans.map(plan => ({ ...plan, ...(planOverrides[plan.id] || {}) }));
   const scheduledTreatmentAppointments = appointments.filter(appointment => {
     let notes = appointment.notes || {};
     if (typeof notes === 'string') { try { notes = JSON.parse(notes); } catch { notes = {}; } }
@@ -2919,7 +3365,6 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
   const selectedPatient = selectedPlan && (
     clinicPets.find(pet => String(pet.id) === String(selectedPlan.pet_id))
     || clinicPets.find(pet => pet.name === selectedPlan.pet)
-    || PETS.find(pet => pet.name === selectedPlan.pet)
     || selectedPlan
   );
   const selectedPatientAge = selectedPatient?.age || (() => {
@@ -3177,8 +3622,11 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
       time: localDate.toISOString().slice(11, 16),
       temperature: '',
       weight: '',
+      heart_rate: '',
+      respiratory_rate: '',
       hydration: 'Normal',
       appetite: 'Normal',
+      pain_assessment: '',
       observation: '',
       followUpAction: 'Continue routine monitoring',
     });
@@ -3214,7 +3662,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
       const author = user.name || selectedPlan.doctor || 'Clinic staff';
       const currentMonitoring = selectedPlan.monitoring || {};
       const observationValues = Object.fromEntries(
-        ['temperature', 'weight', 'hydration', 'appetite']
+        ['temperature', 'weight', 'heart_rate', 'respiratory_rate', 'hydration', 'appetite', 'pain_assessment']
           .map(key => [key, monitoringForm[key].trim()])
       );
       const updatedValues = Object.fromEntries(
@@ -3224,14 +3672,15 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
         ? currentMonitoring.observations.map(observation => ({
           date: observation.date,
           author: observation.author || '',
-          text: [
-            observation.text || '',
-            observation.followUpAction ? `Follow-up action: ${observation.followUpAction}` : '',
-          ].filter(Boolean).join('\n'),
+          text: observation.text || '',
           temperature: observation.temperature || '',
           weight: observation.weight || '',
+          heart_rate: observation.heart_rate || '',
+          respiratory_rate: observation.respiratory_rate || '',
           hydration: observation.hydration || '',
           appetite: observation.appetite || '',
+          pain_assessment: observation.pain_assessment || '',
+          followUpAction: observation.followUpAction || '',
         }))
         : selectedPlanClinicalUpdates.map(update => ({
           date: update.date,
@@ -3247,11 +3696,12 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
         author,
         text: observationText,
         ...observationValues,
+        followUpAction: monitoringForm.followUpAction,
       };
       const monitoring = {
         ...Object.fromEntries([
-          'temperature', 'temperatureStatus', 'weight', 'hydration', 'appetite',
-          'whiteBloodCellCount', 'whiteBloodCellStatus',
+          'temperature', 'temperatureStatus', 'weight', 'heart_rate', 'respiratory_rate',
+          'hydration', 'appetite', 'pain_assessment', 'whiteBloodCellCount', 'whiteBloodCellStatus',
         ].filter(key => currentMonitoring[key] !== undefined).map(key => [key, currentMonitoring[key]])),
         ...updatedValues,
         lastUpdatedAt: recordedAt,
@@ -3342,6 +3792,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
     notifySuccess('Treatment plan updated', `${selectedPlan.pet}'s treatment plan changes were saved and logged.`);
   };
   const closeCreatePlan = () => {
+    if (createOnly) { if (!savingPlan) onCreateClose?.(); return; }
     setCreatePlanOpen(false);
     setCreatePlanError('');
     setCreatePlanForm({
@@ -3370,7 +3821,9 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
       setCreatePlanError('Enter a medication name and dosage, or turn off the optional medication section.');
       return;
     }
-    const petRecord = clinicPets.find(pet => pet.name === createPlanForm.pet);
+    const petRecord = createOnly && initialPlan.petId
+      ? clinicPets.find(pet => String(pet.id) === String(initialPlan.petId))
+      : clinicPets.find(pet => pet.name === createPlanForm.pet);
     if (!user?.token || !user?.clinic_id || !petRecord?.id) {
       setCreatePlanError('Select a saved clinic patient before creating a treatment plan.');
       return;
@@ -3405,6 +3858,11 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || 'Unable to save the treatment plan.');
+      if (createOnly) {
+        onCreated?.(payload);
+        window.dispatchEvent(new Event('vetintel:appointment-updated'));
+        return;
+      }
       setSearch('');
       setStatusFilter('all');
       setPatientFilter('all');
@@ -3505,7 +3963,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
     }
   };
   return (
-    <div style={standalonePlanRequest ? { display: 'none' } : { ...T.wrap, padding: '20px 20px 20px', borderRadius: 14 }}>
+    <div style={standalonePlanRequest || createOnly ? { display: 'none' } : { ...T.wrap, padding: '20px 20px 20px', borderRadius: 14 }}>
       <div style={{ ...T.hd, margin: '0 0 26px' }}>
         <div>
           <div style={{ ...T.title, fontSize: '.9rem', fontWeight: 600 }}>Treatments &amp; Plans</div>
@@ -3534,7 +3992,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
           <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by pet name, owner, or diagnosis..." style={{ ...T.search, marginBottom: 0, padding: '9px 12px 9px 34px', fontSize: '.74rem' }} />
         </div>
         <span style={{ position: 'relative', display: 'block' }}>
-          <select value={patientFilter} onChange={event => setPatientFilter(event.target.value)} style={{ width: '100%', height: 36, appearance: 'none', border: '1px solid #e2e8f0', borderRadius: 8, background: '#f4f6f9', color: '#111827', padding: '0 34px 0 12px', fontSize: '.74rem', outline: 'none', cursor: 'pointer' }}>
+          <select value={patientFilter} onChange={event => setPatientFilter(event.target.value)} style={{ width: '100%', height: 36, appearance: 'none', border: '1px solid #e2e8f0', borderRadius: 8, background: '#f1f6ef', color: '#111827', padding: '0 34px 0 12px', fontSize: '.74rem', outline: 'none', cursor: 'pointer' }}>
             <option value="all">All Patients</option>{patientOptions.map(patient => <option key={patient} value={patient}>{patient}</option>)}
           </select>
           <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none', fontSize: 15, lineHeight: 1 }}>⌄</span>
@@ -3550,16 +4008,15 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
             {combinedRecords.map(record => {
               const plan = record.kind === 'plan' ? record.plan : null;
               const displayDate = record.date || '—';
-              const patient = PETS.find(item => item.name === record.patient)
-                || clinicPets.find(item => item.name === record.patient);
+              const patient = clinicPets.find(item => item.name === record.patient);
               const openPlan = () => {
                 setArchivePlanError('');
                 setSelectedPlan(plan);
                 setSelectedPlanTab('Plan Details');
               };
               return <tr key={record.id} className="clinic-action-row" tabIndex={0} onClick={openPlan} onKeyDown={event => handleClinicActionRowKeyDown(event, openPlan)}>
-                <td style={{ ...T.td, padding: '13px 9px' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9 }}><div style={{ width: 32, height: 32, flexShrink: 0, borderRadius: '50%', background: '#e7f5f2', color: '#005447', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '.78rem' }}>{String(record.patient || '?').slice(0, 1)}</div><div><div style={{ color: '#111827', fontWeight: 700, fontSize: '.78rem' }}>{record.patient}</div><div style={{ color: '#64748b', fontSize: '.68rem' }}>{plan?.species || patient?.species || 'Patient record'}</div></div></div></td>
-                <td style={{ ...T.td, padding: '13px 9px', color: '#005447', fontWeight: 700, fontSize: '.78rem' }}><div>{record.title}</div><div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 5, marginTop: 3, color: '#64748b', fontWeight: 400, fontSize: '.68rem' }}><span>{plan.isMock ? 'Reference sample · not saved' : `Plan · ${plan.id}`}</span></div></td>
+                <td style={{ ...T.td, padding: '13px 9px' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9 }}><div style={{ width: 32, height: 32, flexShrink: 0, borderRadius: '50%', background: '#e7f4ec', color: '#013826', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '.78rem' }}>{String(record.patient || '?').slice(0, 1)}</div><div><div style={{ color: '#111827', fontWeight: 700, fontSize: '.78rem' }}>{record.patient}</div><div style={{ color: '#64748b', fontSize: '.68rem' }}>{plan?.species || patient?.species || 'Patient record'}</div></div></div></td>
+                <td style={{ ...T.td, padding: '13px 9px', color: '#013826', fontWeight: 700, fontSize: '.78rem' }}><div>{record.title}</div><div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 5, marginTop: 3, color: '#64748b', fontWeight: 400, fontSize: '.68rem' }}><span>{plan.isMock ? 'Reference sample · not saved' : `Plan · ${plan.id}`}</span></div></td>
                 <td style={{ ...T.tdMuted, padding: '13px 9px', color: '#475569', fontSize: '.7rem' }}>{record.diagnosis}</td>
                 <td style={{ ...T.tdMuted, padding: '13px 9px', color: '#475569', fontSize: '.7rem', lineHeight: 1.45 }}>{record.details}</td>
                 <td style={{ ...T.td, padding: '13px 9px' }}><StatusIndicator status={plan?.archived ? 'Archived' : record.status} /></td>
@@ -3580,7 +4037,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
       </div>
       {clinicalRecordsError && <div role="alert" style={{ marginTop: 12, padding: '10px 12px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#b91c1c', fontSize: '.78rem' }}>{clinicalRecordsError}</div>}
       {createPlanOpen && createPortal(<div style={modalStyles.backdrop} onClick={closeCreatePlan}>
-        <ModalDialog as="form" size="large" role="dialog" aria-modal="true" aria-labelledby="create-plan-title" onSubmit={saveNewPlan} onClick={event => event.stopPropagation()} style={{ ...modalStyles.dialog, width: 'min(720px, calc(100vw - 24px))', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', padding: '26px 28px 22px', fontSize: '1rem' }}>
+        <ModalDialog as="form" size="large" role="dialog" aria-modal="true" aria-labelledby="create-plan-title" onSubmit={saveNewPlan} onClick={event => event.stopPropagation()} style={{ ...modalStyles.dialog, minHeight: 0, width: 'min(720px, calc(100vw - 24px))', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', padding: '26px 28px 22px', fontSize: '1rem' }}>
           <button type="button" aria-label="Close create treatment plan" onClick={closeCreatePlan} style={modalStyles.close}>{Icons.close}</button>
           <div style={{ paddingRight: 25 }}>
             <h2 id="create-plan-title" style={{ margin: 0, color: '#193a32', fontSize: '1.4rem', fontWeight: 700 }}>Create Treatment Plan</h2>
@@ -3589,22 +4046,22 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px 16px', marginTop: 19 }}>
             <label style={{ display: 'grid', gap: 7, color: '#193a32', fontSize: '1rem', fontWeight: 600 }}>
               Patient (Pet)*
-              <select required value={createPlanForm.pet} onChange={event => setCreatePlanForm(previous => ({ ...previous, pet: event.target.value }))} style={{ width: '100%', minWidth: 0, height: 48, border: '1px solid #d8e9e1', borderRadius: 9, background: '#fff', color: '#193a32', padding: '0 14px', fontSize: '1rem', outlineColor: '#78b7a1' }}>
+              <select required disabled={createOnly} value={createPlanForm.pet} onChange={event => setCreatePlanForm(previous => ({ ...previous, pet: event.target.value }))} style={{ width: '100%', minWidth: 0, height: 48, border: '1px solid #bed6c5', borderRadius: 9, background: '#fff', color: '#193a32', padding: '0 14px', fontSize: '1rem', outlineColor: '#78b7a1' }}>
                 <option value="" disabled>Select patient</option>
                 {patientOptions.map(patient => <option key={patient} value={patient}>{patient}</option>)}
               </select>
             </label>
             <label style={{ display: 'grid', gap: 7, color: '#193a32', fontSize: '1rem', fontWeight: 600 }}>
               Plan title*
-              <input required value={createPlanForm.title} onChange={event => setCreatePlanForm(previous => ({ ...previous, title: event.target.value }))} placeholder="e.g. Post-surgery recovery" style={{ width: '100%', minWidth: 0, height: 48, boxSizing: 'border-box', border: '1px solid #d8e9e1', borderRadius: 9, padding: '0 14px', color: '#193a32', font: 'inherit', fontWeight: 400, outlineColor: '#78b7a1' }} />
+              <input required value={createPlanForm.title} onChange={event => setCreatePlanForm(previous => ({ ...previous, title: event.target.value }))} placeholder="e.g. Post-surgery recovery" style={{ width: '100%', minWidth: 0, height: 48, boxSizing: 'border-box', border: '1px solid #bed6c5', borderRadius: 9, padding: '0 14px', color: '#193a32', font: 'inherit', fontWeight: 400, outlineColor: '#78b7a1' }} />
             </label>
             <label style={{ display: 'grid', gap: 7, color: '#193a32', fontSize: '1rem', fontWeight: 600 }}>
               Diagnosis*
-              <input required value={createPlanForm.diagnosis} onChange={event => setCreatePlanForm(previous => ({ ...previous, diagnosis: event.target.value }))} placeholder="Enter diagnosis or reason for care" style={{ width: '100%', minWidth: 0, height: 48, boxSizing: 'border-box', border: '1px solid #d8e9e1', borderRadius: 9, padding: '0 14px', color: '#193a32', font: 'inherit', fontWeight: 400, outlineColor: '#78b7a1' }} />
+              <input required value={createPlanForm.diagnosis} onChange={event => setCreatePlanForm(previous => ({ ...previous, diagnosis: event.target.value }))} placeholder="Enter diagnosis or reason for care" style={{ width: '100%', minWidth: 0, height: 48, boxSizing: 'border-box', border: '1px solid #bed6c5', borderRadius: 9, padding: '0 14px', color: '#193a32', font: 'inherit', fontWeight: 400, outlineColor: '#78b7a1' }} />
             </label>
             <label style={{ display: 'grid', gap: 7, color: '#193a32', fontSize: '1rem', fontWeight: 600 }}>
               Severity
-              <select value={createPlanForm.severity} onChange={event => setCreatePlanForm(previous => ({ ...previous, severity: event.target.value }))} style={{ width: '100%', height: 48, border: '1px solid #d8e9e1', borderRadius: 9, background: '#fff', color: '#193a32', padding: '0 14px', fontSize: '1rem', outlineColor: '#78b7a1' }}>
+              <select value={createPlanForm.severity} onChange={event => setCreatePlanForm(previous => ({ ...previous, severity: event.target.value }))} style={{ width: '100%', height: 48, border: '1px solid #bed6c5', borderRadius: 9, background: '#fff', color: '#193a32', padding: '0 14px', fontSize: '1rem', outlineColor: '#78b7a1' }}>
                 <option>Low</option><option>Mild</option><option>Moderate</option><option>Severe</option><option>High</option>
               </select>
             </label>
@@ -3612,14 +4069,14 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
               Attending veterinarian
               <select value={createPlanForm.veterinarianId} onChange={event => {
                 setCreatePlanForm(previous => ({ ...previous, veterinarianId: event.target.value }));
-              }} style={{ width: '100%', height: 48, border: '1px solid #d8e9e1', borderRadius: 9, background: '#fff', color: '#193a32', padding: '0 14px', fontSize: '1rem', outlineColor: '#78b7a1' }}>
+              }} style={{ width: '100%', height: 48, border: '1px solid #bed6c5', borderRadius: 9, background: '#fff', color: '#193a32', padding: '0 14px', fontSize: '1rem', outlineColor: '#78b7a1' }}>
                 <option value="">{clinicVeterinarians.length ? 'Select veterinarian' : 'No active veterinarians found'}</option>
                 {clinicVeterinarians.map(veterinarian => <option key={veterinarian.id} value={veterinarian.id}>{veterinarian.name} ({veterinarian.role})</option>)}
               </select>
             </label>
             <label style={{ display: 'grid', gap: 7, color: '#193a32', fontSize: '1rem', fontWeight: 600 }}>
               Expected follow-up
-              <LabDateTimePicker mode="date" value={createPlanForm.followUp} onChange={followUp => setCreatePlanForm(previous => ({ ...previous, followUp }))} style={{ width: '100%', height: 48, boxSizing: 'border-box', border: '1px solid #d8e9e1', borderRadius: 9, background: '#fff', color: '#193a32', padding: '0 14px', font: 'inherit', outlineColor: '#78b7a1' }} />
+              <LabDateTimePicker mode="date" value={createPlanForm.followUp} onChange={followUp => setCreatePlanForm(previous => ({ ...previous, followUp }))} style={{ width: '100%', height: 48, boxSizing: 'border-box', border: '1px solid #bed6c5', borderRadius: 9, background: '#fff', color: '#193a32', padding: '0 14px', font: 'inherit', outlineColor: '#78b7a1' }} />
             </label>
           </div>
           <section style={{ display: 'grid', gap: 10, marginTop: 20 }}>
@@ -3628,12 +4085,12 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
                 <h3 style={{ margin: 0, color: '#193a32', fontSize: '1.1rem' }}>Treatment steps<span className="system-required-star">*</span></h3>
                 <p style={{ margin: '4px 0 0', color: '#526b64', fontSize: '.9rem', lineHeight: 1.4 }}>Add the actions that make up this care plan.</p>
               </div>
-              <button type="button" onClick={() => setCreatePlanForm(previous => ({ ...previous, steps: [...previous.steps, { title: '', due: '' }] }))} style={{ ...modalStyles.cancel, minHeight: 44, padding: '8px 13px', color: '#005447', fontSize: '.95rem' }}>＋ Add step</button>
+              <button type="button" onClick={() => setCreatePlanForm(previous => ({ ...previous, steps: [...previous.steps, { title: '', due: '' }] }))} style={{ ...modalStyles.cancel, minHeight: 44, padding: '8px 13px', color: '#013826', fontSize: '.95rem' }}>＋ Add step</button>
             </div>
             {createPlanForm.steps.map((step, index) => (
               <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(145px, .55fr) auto', gap: 9, alignItems: 'center' }}>
-                <input aria-label={`Treatment step ${index + 1}`} value={step.title} onChange={event => setCreatePlanForm(previous => ({ ...previous, steps: previous.steps.map((item, stepIndex) => stepIndex === index ? { ...item, title: event.target.value } : item) }))} placeholder={`Step ${index + 1} · e.g. Initial assessment`} style={{ width: '100%', minWidth: 0, height: 48, boxSizing: 'border-box', border: '1px solid #d8e9e1', borderRadius: 9, padding: '0 14px', color: '#193a32', font: 'inherit', fontSize: '1rem', outlineColor: '#78b7a1' }} />
-                <LabDateTimePicker mode="date" label={`Treatment step ${index + 1} due date`} value={step.due} onChange={due => setCreatePlanForm(previous => ({ ...previous, steps: previous.steps.map((item, stepIndex) => stepIndex === index ? { ...item, due } : item) }))} style={{ width: '100%', minWidth: 0, height: 48, boxSizing: 'border-box', border: '1px solid #d8e9e1', borderRadius: 9, padding: '0 10px', color: '#193a32', font: 'inherit', fontSize: '.95rem', outlineColor: '#78b7a1' }} />
+                <input aria-label={`Treatment step ${index + 1}`} value={step.title} onChange={event => setCreatePlanForm(previous => ({ ...previous, steps: previous.steps.map((item, stepIndex) => stepIndex === index ? { ...item, title: event.target.value } : item) }))} placeholder={`Step ${index + 1} · e.g. Initial assessment`} style={{ width: '100%', minWidth: 0, height: 48, boxSizing: 'border-box', border: '1px solid #bed6c5', borderRadius: 9, padding: '0 14px', color: '#193a32', font: 'inherit', fontSize: '1rem', outlineColor: '#78b7a1' }} />
+                <LabDateTimePicker mode="date" label={`Treatment step ${index + 1} due date`} value={step.due} onChange={due => setCreatePlanForm(previous => ({ ...previous, steps: previous.steps.map((item, stepIndex) => stepIndex === index ? { ...item, due } : item) }))} style={{ width: '100%', minWidth: 0, height: 48, boxSizing: 'border-box', border: '1px solid #bed6c5', borderRadius: 9, padding: '0 10px', color: '#193a32', font: 'inherit', fontSize: '.95rem', outlineColor: '#78b7a1' }} />
                 <button
                   type="button"
                   disabled={createPlanForm.steps.length === 1}
@@ -3646,7 +4103,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
                     minHeight: 42,
                     justifyContent: 'center',
                     color: createPlanForm.steps.length === 1 ? '#9aa8a2' : '#b42318',
-                    background: createPlanForm.steps.length === 1 ? '#f4f6f9' : '#fff5f5',
+                    background: createPlanForm.steps.length === 1 ? '#f1f6ef' : '#fff5f5',
                     border: `1px solid ${createPlanForm.steps.length === 1 ? '#e5ebe8' : '#f3d5d5'}`,
                     padding: 7,
                     cursor: createPlanForm.steps.length === 1 ? 'not-allowed' : 'pointer',
@@ -3659,7 +4116,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
               </div>
             ))}
           </section>
-          <section style={{ display: 'grid', gap: 12, marginTop: 22, padding: 16, border: '1px solid #d8e9e1', borderRadius: 10, background: '#f8fbf9' }}>
+          <section style={{ display: 'grid', gap: 12, marginTop: 22, padding: 16, border: '1px solid #bed6c5', borderRadius: 10, background: '#fafbf8' }}>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, color: '#193a32', fontSize: '.95rem', fontWeight: 650, cursor: 'pointer' }}>
               <input
                 type="checkbox"
@@ -3687,16 +4144,16 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
                     value={createPlanForm.medication[key]}
                     onChange={event => setCreatePlanForm(previous => ({ ...previous, medication: { ...previous.medication, [key]: event.target.value } }))}
                     placeholder={placeholder}
-                    style={{ width: '100%', minWidth: 0, height: 43, boxSizing: 'border-box', border: '1px solid #d8e9e1', borderRadius: 8, padding: '0 11px', color: '#193a32', font: 'inherit', fontSize: '.9rem', fontWeight: 400, outlineColor: '#78b7a1' }}
+                    style={{ width: '100%', minWidth: 0, height: 43, boxSizing: 'border-box', border: '1px solid #bed6c5', borderRadius: 8, padding: '0 11px', color: '#193a32', font: 'inherit', fontSize: '.9rem', fontWeight: 400, outlineColor: '#78b7a1' }}
                   />
                 </label>)}
                 <label style={{ display: 'grid', gap: 6, color: '#193a32', fontSize: '.86rem', fontWeight: 600 }}>
                   Start date
-                  <LabDateTimePicker mode="date" value={createPlanForm.medication.startDate} max={createPlanForm.medication.endDate || undefined} onChange={startDate => setCreatePlanForm(previous => ({ ...previous, medication: { ...previous.medication, startDate } }))} style={{ width: '100%', minWidth: 0, height: 43, boxSizing: 'border-box', border: '1px solid #d8e9e1', borderRadius: 8, padding: '0 11px', color: '#193a32', font: 'inherit', outlineColor: '#78b7a1' }} />
+                  <LabDateTimePicker mode="date" value={createPlanForm.medication.startDate} max={createPlanForm.medication.endDate || undefined} onChange={startDate => setCreatePlanForm(previous => ({ ...previous, medication: { ...previous.medication, startDate } }))} style={{ width: '100%', minWidth: 0, height: 43, boxSizing: 'border-box', border: '1px solid #bed6c5', borderRadius: 8, padding: '0 11px', color: '#193a32', font: 'inherit', outlineColor: '#78b7a1' }} />
                 </label>
                 <label style={{ display: 'grid', gap: 6, color: '#193a32', fontSize: '.86rem', fontWeight: 600 }}>
                   End date
-                  <LabDateTimePicker mode="date" value={createPlanForm.medication.endDate} min={createPlanForm.medication.startDate || undefined} onChange={endDate => setCreatePlanForm(previous => ({ ...previous, medication: { ...previous.medication, endDate } }))} style={{ width: '100%', minWidth: 0, height: 43, boxSizing: 'border-box', border: '1px solid #d8e9e1', borderRadius: 8, padding: '0 11px', color: '#193a32', font: 'inherit', outlineColor: '#78b7a1' }} />
+                  <LabDateTimePicker mode="date" value={createPlanForm.medication.endDate} min={createPlanForm.medication.startDate || undefined} onChange={endDate => setCreatePlanForm(previous => ({ ...previous, medication: { ...previous.medication, endDate } }))} style={{ width: '100%', minWidth: 0, height: 43, boxSizing: 'border-box', border: '1px solid #bed6c5', borderRadius: 8, padding: '0 11px', color: '#193a32', font: 'inherit', outlineColor: '#78b7a1' }} />
                 </label>
                 <label style={{ display: 'grid', gridColumn: '1 / -1', gap: 6, color: '#193a32', fontSize: '.86rem', fontWeight: 600 }}>
                   Instructions
@@ -3705,27 +4162,33 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
                     value={createPlanForm.medication.instructions}
                     onChange={event => setCreatePlanForm(previous => ({ ...previous, medication: { ...previous.medication, instructions: event.target.value } }))}
                     placeholder="Instructions for administering this medication"
-                    style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '1px solid #d8e9e1', borderRadius: 8, padding: 10, color: '#193a32', font: 'inherit', fontSize: '.9rem', fontWeight: 400, outlineColor: '#78b7a1' }}
+                    style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '1px solid #bed6c5', borderRadius: 8, padding: 10, color: '#193a32', font: 'inherit', fontSize: '.9rem', fontWeight: 400, outlineColor: '#78b7a1' }}
                   />
                 </label>
               </div>
             </>}
           </section>
-          {createPlanError && <div role="alert" style={{ marginTop: 12, color: '#b42318', fontSize: '.74rem' }}>{createPlanError}</div>}
+          {(createPlanError || clinicalRecordsError) && <div role="alert" style={{ marginTop: 12, color: '#b42318', fontSize: '.74rem' }}>{createPlanError || clinicalRecordsError}</div>}
           <div style={{ ...modalStyles.footer, marginTop: 20 }}>
             <button type="button" onClick={closeCreatePlan} style={{ ...modalStyles.cancel, minHeight: 46, padding: '10px 16px', fontSize: '.95rem' }}>Cancel</button>
             <button type="submit" disabled={savingPlan} style={{ ...T.primaryBtn, display: 'flex', alignItems: 'center', gap: 8, minHeight: 46, padding: '10px 16px', fontSize: '.95rem', borderRadius: 8, opacity: savingPlan ? .7 : 1 }}><span style={{ width: 16, height: 16, display: 'flex' }}>{Icons.plus}</span>{savingPlan ? 'Saving…' : 'Create Plan'}</button>
           </div>
         </ModalDialog>
-      </div>, document.body)}
+      </div>, portalTarget || document.body)}
       {selectedPlan && !fullPlanOpen && <div style={modalStyles.backdrop} onClick={() => setSelectedPlan(null)}>
         <div role="dialog" aria-modal="true" aria-labelledby="treatment-plan-details-title" onClick={event => event.stopPropagation()} style={{ ...modalStyles.dialog, position: 'relative', display: 'flex', flexDirection: 'column', width: 'min(760px, calc(100vw - 20px))', maxHeight: 'calc(100vh - 20px)', overflow: 'hidden', padding: 0, borderRadius: 16 }}>
           <button type="button" aria-label="Close treatment plan details" onClick={() => setSelectedPlan(null)} style={{ ...modalStyles.close, zIndex: 1, top: 18, right: 20, width: 'auto', height: 'auto', fontSize: '.8rem', fontWeight: 600 }}>Close</button>
           <header style={{ flex: '0 0 auto', padding: '22px 30px 12px', background: '#fff' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 13, paddingRight: 26 }}>
-              <div style={{ position: 'relative', width: 52, height: 52, flex: '0 0 52px', overflow: 'hidden', borderRadius: '50%', background: '#e7f5f2', color: '#005447', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.15rem', fontWeight: 700 }}>
+              <div style={{ position: 'relative', width: 52, height: 52, flex: '0 0 52px', overflow: 'hidden', borderRadius: '50%', background: '#e7f4ec', color: '#013826', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.15rem', fontWeight: 700 }}>
                 {selectedPlan.pet.trim().slice(0, 1).toUpperCase()}
-                {(selectedPatient?.photo_url || selectedPatient?.photoUrl) && <img src={selectedPatient.photo_url || selectedPatient.photoUrl} alt={`${selectedPlan.pet} profile`} onError={event => { event.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />}
+                <ClinicAttachmentImage
+                  src={getPetPhotoUrl(selectedPatient)}
+                  attachmentId={selectedPatient?.photo_attachment_id}
+                  user={user}
+                  alt={`${selectedPlan.pet} profile`}
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                />
               </div>
               <div style={{ minWidth: 0 }}><h2 id="treatment-plan-details-title" style={{ margin: 0, color: '#1f2937', fontSize: '1.25rem' }}>{selectedPlan.pet} <StatusIndicator status={selectedPlan.status} style={{ marginLeft: 7, verticalAlign: 'middle', fontSize: '.78rem' }} /></h2><div style={{ marginTop: 4, color: '#64748b', fontSize: '.82rem' }}>{selectedPatient?.species || 'Pet'} · {selectedPatientAge || '—'} · Owner: {selectedPatient?.owner || selectedPlan.owner || '—'}</div></div>
             </div>
@@ -3739,7 +4202,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
             Reference sample only — this is not a real patient record and cannot be edited or saved.
           </div>}
           <nav aria-label="Treatment plan sections" style={{ display: 'flex', flex: '0 0 auto', gap: 0, padding: '0 30px', borderBottom: '1px solid #e2e8f0', background: '#fff' }}>
-            {[['Plan Details', 'Plan'], ['Medications', 'Medications'], ['Notes', 'Notes']].map(([tab, label]) => <button key={tab} type="button" aria-current={selectedPlanTab === tab ? 'page' : undefined} onClick={() => setSelectedPlanTab(tab)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginRight: 25, padding: '11px 0 10px', border: 0, borderBottom: selectedPlanTab === tab ? '3px solid #005447' : '3px solid transparent', background: 'transparent', color: selectedPlanTab === tab ? '#005447' : '#64748b', fontWeight: selectedPlanTab === tab ? 700 : 500, fontSize: '.8rem', cursor: 'pointer' }}>{label}{tab === 'Medications' && <span style={{ borderRadius: 6, padding: '2px 5px', background: '#edf5f2', color: '#526663', fontSize: '.65rem' }}>{currentMedicationCount}</span>}{tab === 'Notes' && <span style={{ borderRadius: 6, padding: '2px 5px', background: '#edf5f2', color: '#526663', fontSize: '.65rem' }}>{currentNoteCount}</span>}</button>)}
+            {[['Plan Details', 'Plan'], ['Medications', 'Medications'], ['Notes', 'Notes']].map(([tab, label]) => <button key={tab} type="button" aria-current={selectedPlanTab === tab ? 'page' : undefined} onClick={() => setSelectedPlanTab(tab)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginRight: 25, padding: '11px 0 10px', border: 0, borderBottom: selectedPlanTab === tab ? '3px solid #013826' : '3px solid transparent', background: 'transparent', color: selectedPlanTab === tab ? '#013826' : '#64748b', fontWeight: selectedPlanTab === tab ? 700 : 500, fontSize: '.8rem', cursor: 'pointer' }}>{label}{tab === 'Medications' && <span style={{ borderRadius: 6, padding: '2px 5px', background: '#edf5f2', color: '#526663', fontSize: '.65rem' }}>{currentMedicationCount}</span>}{tab === 'Notes' && <span style={{ borderRadius: 6, padding: '2px 5px', background: '#edf5f2', color: '#526663', fontSize: '.65rem' }}>{currentNoteCount}</span>}</button>)}
           </nav>
           <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: '0 30px 20px', background: '#fff' }}>
           {selectedPlanTab === 'Medications' ? <div style={{ marginTop: 19 }}>
@@ -3756,17 +4219,17 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{selectedPlanMedications.map((medication, index) => {
                 const key = `${selectedPlan.id}-${medication.name}-${index}`;
                 const logged = doseLog[key];
-                return <button key={key} type="button" aria-pressed={!!logged} disabled={!!logged} onClick={() => logMedicationDose(key)} style={{ border: `1px solid ${logged ? '#b7e4d7' : '#dcece5'}`, borderRadius: 7, background: logged ? '#e7f5f2' : '#fff', color: '#005447', padding: '7px 9px', fontSize: '.68rem', cursor: logged ? 'default' : 'pointer' }}>{logged ? '✓' : '○'} {medication.name} · {logged ? `Given ${formatDoseTime(logged)}` : '9:00 AM'}</button>;
+                return <button key={key} type="button" aria-pressed={!!logged} disabled={!!logged} onClick={() => logMedicationDose(key)} style={{ border: `1px solid ${logged ? '#b7e4d7' : '#dcece5'}`, borderRadius: 7, background: logged ? '#e7f4ec' : '#fff', color: '#013826', padding: '7px 9px', fontSize: '.68rem', cursor: logged ? 'default' : 'pointer' }}>{logged ? '✓' : '○'} {medication.name} · {logged ? `Given ${formatDoseTime(logged)}` : '9:00 AM'}</button>;
               })}</div>
             </div>
             <h3 style={{ margin: '20px 0 0', color: '#526663', fontSize: '.72rem', letterSpacing: '.07em', textTransform: 'uppercase' }}>Past medications</h3>
             <div style={{ marginTop: 5, borderTop: '1px solid #dcece5' }}>{(selectedPlan.pastMedications || []).map(item => <div key={item} style={{ padding: '10px 4px', borderBottom: '1px solid #e5eeea', color: '#475569', fontSize: '.72rem' }}>{item}</div>)}</div>
           </div> : selectedPlanTab === 'Notes' ? <div style={{ marginTop: 19 }}>
             {selectedPlan.isMock
-              ? <div style={{ display: 'grid', gap: 9 }}><h3 style={{ margin: 0, color: '#005447', fontSize: '.95rem' }}>Example clinical updates</h3>{selectedPlan.clinicalUpdates.map((note, index) => <div key={`${note.date}-${index}`} style={{ padding: 12, border: '1px solid #eef2f7', borderRadius: 8 }}><div style={{ color: '#334155', fontSize: '.78rem' }}>{note.text}</div><div style={{ marginTop: 5, color: '#64748b', fontSize: '.68rem' }}>{formatDateText(note.date, undefined, note.date)} · {note.author}</div></div>)}</div>
-              : <><div style={{ display: 'grid', gap: 10, padding: 14, border: '1px solid #d8f4e8', borderRadius: 10, background: '#f8fbff' }}><h3 style={{ margin: 0, color: '#005447', fontSize: '.95rem' }}>Add Note</h3><textarea value={planNote} onChange={event => { setPlanNote(event.target.value); setPlanNoteError(''); }} placeholder="Write a note about this patient's condition, treatment, or follow-up..." rows={4} style={{ resize: 'vertical', border: '1px solid #d8f4e8', borderRadius: 8, padding: 11, color: '#111827', fontFamily: 'inherit', fontSize: '.78rem', outline: 'none' }} /></div>
+              ? <div style={{ display: 'grid', gap: 9 }}><h3 style={{ margin: 0, color: '#013826', fontSize: '.95rem' }}>Example clinical updates</h3>{selectedPlan.clinicalUpdates.map((note, index) => <div key={`${note.date}-${index}`} style={{ padding: 12, border: '1px solid #eef2f7', borderRadius: 8 }}><div style={{ color: '#334155', fontSize: '.78rem' }}>{note.text}</div><div style={{ marginTop: 5, color: '#64748b', fontSize: '.68rem' }}>{formatDateText(note.date, undefined, note.date)} · {note.author}</div></div>)}</div>
+              : <><div style={{ display: 'grid', gap: 10, padding: 14, border: '1px solid #d8f4e8', borderRadius: 10, background: '#f8fbff' }}><h3 style={{ margin: 0, color: '#013826', fontSize: '.95rem' }}>Add Note</h3><textarea value={planNote} onChange={event => { setPlanNote(event.target.value); setPlanNoteError(''); }} placeholder="Write a note about this patient's condition, treatment, or follow-up..." rows={4} style={{ resize: 'vertical', border: '1px solid #d8f4e8', borderRadius: 8, padding: 11, color: '#111827', fontFamily: 'inherit', fontSize: '.78rem', outline: 'none' }} /></div>
                 {planNoteError && <div role="alert" style={{ marginTop: 10, color: '#b42318', fontSize: '.75rem' }}>{planNoteError}</div>}
-                <h3 style={{ margin: '22px 0 10px', color: '#005447', fontSize: '.95rem' }}>Patient Notes</h3><div style={{ display: 'grid', gap: 9 }}>{[...(selectedPlan.notes || [])].reverse().map((note, index) => <div key={`${note.date}-${index}`} style={{ padding: 12, border: '1px solid #eef2f7', borderRadius: 8 }}><div style={{ color: '#334155', fontSize: '.78rem' }}>{note.text}</div><div style={{ marginTop: 5, color: '#64748b', fontSize: '.68rem' }}>{formatDateText(note.date, undefined, note.date)} · {note.author || 'Clinic team'}</div></div>)}{!selectedPlan.notes?.length && <p style={{ margin: 0, padding: 12, color: '#64748b', fontSize: '.78rem' }}>No patient notes have been added to this plan.</p>}</div></>}
+                <h3 style={{ margin: '22px 0 10px', color: '#013826', fontSize: '.95rem' }}>Patient Notes</h3><div style={{ display: 'grid', gap: 9 }}>{[...(selectedPlan.notes || [])].reverse().map((note, index) => <div key={`${note.date}-${index}`} style={{ padding: 12, border: '1px solid #eef2f7', borderRadius: 8 }}><div style={{ color: '#334155', fontSize: '.78rem' }}>{note.text}</div><div style={{ marginTop: 5, color: '#64748b', fontSize: '.68rem' }}>{formatDateText(note.date, undefined, note.date)} · {note.author || 'Clinic team'}</div></div>)}{!selectedPlan.notes?.length && <p style={{ margin: 0, padding: 12, color: '#64748b', fontSize: '.78rem' }}>No patient notes have been added to this plan.</p>}</div></>}
           </div> : <>
           <div style={{ marginTop: 18, paddingBottom: 15, borderBottom: '1px solid #e2e8f0' }}><strong style={{ display: 'block', color: '#1f2937', fontSize: '.9rem' }}>{selectedPlan.title}</strong><span style={{ display: 'block', marginTop: 4, color: '#64748b', fontSize: '.72rem' }}>{selectedPlan.id} · Created {selectedPlan.created} · {selectedPlan.doctor}</span></div>
           {nextPlanStep && <div style={{ marginTop: 14, padding: '12px 14px', border: `1px solid ${nextPlanStep.overdue ? '#f2d5a6' : '#d8e9e2'}`, borderRadius: 11, background: nextPlanStep.overdue ? '#fff8eb' : '#f6fbf8' }}>
@@ -3780,12 +4243,12 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
             <div><div style={{ color: '#64748b', fontSize: '.72rem' }}>Start date</div><strong style={{ display: 'block', marginTop: 3, color: '#1f2937', fontSize: '.82rem' }}>{selectedPlan.created}</strong></div>
             <div><div style={{ color: '#64748b', fontSize: '.72rem' }}>Next follow-up</div><strong style={{ display: 'block', marginTop: 3, color: '#1f2937', fontSize: '.82rem' }}>{selectedPlan.followUp || (selectedPlan.status === 'completed' ? 'Completed' : 'Not scheduled')}</strong></div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 21, color: '#005447', fontSize: '.78rem', fontWeight: 700 }}><span>Progress</span><span>{selectedPlanCheckedSteps.filter(Boolean).length} of {selectedPlan.totalSteps} steps</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 21, color: '#013826', fontSize: '.78rem', fontWeight: 700 }}><span>Progress</span><span>{selectedPlanCheckedSteps.filter(Boolean).length} of {selectedPlan.totalSteps} steps</span></div>
           <div style={{ height: 9, marginTop: 7, background: '#e2e8f0', borderRadius: 6, overflow: 'hidden' }}><div style={{ width: `${(selectedPlanCheckedSteps.filter(Boolean).length / selectedPlan.totalSteps) * 100}%`, height: '100%', background: '#139b76', borderRadius: 6, transition: 'width .2s ease' }} /></div>
           <div style={{ display: 'grid', marginTop: 10 }}>
             {selectedPlanSteps.map((step, index) => {
               const stepStatus = step.done ? `Done ${step.completedAt || step.date}` : step.overdue ? 'Overdue' : `Due ${step.due || step.date}`;
-              const stepStatusColor = step.done ? '#005447' : step.overdue ? '#c51f18' : '#1d55bd';
+              const stepStatusColor = step.done ? '#013826' : step.overdue ? '#c51f18' : '#1d55bd';
               return <button key={step.title} type="button" aria-pressed={step.done} disabled={selectedPlan.isMock || savingPlanProgress} onClick={() => savePlanStepProgress(index, !step.done)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '11px 0', border: 0, borderBottom: index < selectedPlanSteps.length - 1 ? '1px solid #e5eeea' : 0, background: 'transparent', textAlign: 'left', cursor: selectedPlan.isMock || savingPlanProgress ? 'wait' : 'pointer' }}>
                 <span style={{ width: 27, height: 27, flex: '0 0 27px', borderRadius: '50%', border: `2px solid ${step.done ? '#0c8b6e' : step.overdue ? '#e42d27' : '#cbd5e1'}`, background: step.done ? '#0c8b6e' : '#fff', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.76rem' }}>{step.done ? '✓' : ''}</span>
                 <span style={{ minWidth: 0, flex: 1 }}><strong style={{ display: 'block', color: '#334155', fontSize: '.78rem' }}>{step.title}</strong><small style={{ display: 'block', marginTop: 3, color: '#64748b', fontSize: '.68rem' }}>{step.assignee || selectedPlan.doctor}</small></span>
@@ -3797,15 +4260,15 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
           </div>
           {archivePlanError && <div role="alert" style={{ flex: '0 0 auto', padding: '8px 28px 0', color: '#b42318', fontSize: '.75rem' }}>{archivePlanError}</div>}
           <footer style={{ display: 'flex', flex: '0 0 auto', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 28px', borderTop: '1px solid #e2e8f0', background: '#fff' }}>
-            <button type="button" onClick={() => setFullPlanOpen(true)} style={{ border: 0, background: 'transparent', color: '#005447', padding: '10px 12px', fontSize: '.76rem', fontWeight: 600, cursor: 'pointer' }}>Open full plan</button>
+            <button type="button" onClick={() => setFullPlanOpen(true)} style={{ border: 0, background: 'transparent', color: '#013826', padding: '10px 12px', fontSize: '.76rem', fontWeight: 600, cursor: 'pointer' }}>Open full plan</button>
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-            {selectedPlan.databaseId && <button type="button" disabled={archivingPlan} onClick={togglePlanArchive} style={{ border: '1px solid #f0c9c7', borderRadius: 9, background: '#fff', color: selectedPlan.archived ? '#005447' : '#b42318', padding: '10px 12px', fontSize: '.75rem', fontWeight: 700, cursor: archivingPlan ? 'wait' : 'pointer' }}>{archivingPlan ? 'Saving…' : selectedPlan.archived ? 'Restore plan' : 'Archive plan'}</button>}
+            {selectedPlan.databaseId && <button type="button" disabled={archivingPlan} onClick={togglePlanArchive} style={{ border: '1px solid #f0c9c7', borderRadius: 9, background: '#fff', color: selectedPlan.archived ? '#013826' : '#b42318', padding: '10px 12px', fontSize: '.75rem', fontWeight: 700, cursor: archivingPlan ? 'wait' : 'pointer' }}>{archivingPlan ? 'Saving…' : selectedPlan.archived ? 'Restore plan' : 'Archive plan'}</button>}
             {selectedPlanTab === 'Plan Details' ? <button type="button" disabled={!nextPlanStep || selectedPlan.isMock || savingPlanProgress} onClick={() => {
               if (!nextPlanStep) return;
               savePlanStepProgress(nextStepIndex, true);
-            }} style={{ border: 0, borderRadius: 9, background: nextPlanStep && !selectedPlan.isMock ? '#005447' : '#d1e5dd', color: '#fff', padding: '11px 17px', fontSize: '.75rem', fontWeight: 700, cursor: nextPlanStep && !selectedPlan.isMock ? 'pointer' : 'default' }}>{savingPlanProgress ? 'Saving…' : selectedPlan.isMock ? 'Reference sample' : nextPlanStep ? 'Complete step' : 'All steps complete'}</button>
-              : selectedPlanTab === 'Medications' ? !selectedPlan.isMock && <button type="button" className="patient-primary-add" onClick={openAddMedication} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, minHeight: 42, whiteSpace: 'nowrap', border: 0, borderRadius: 9, background: '#005447', color: '#fff', padding: '10px 15px', fontSize: '.8rem', fontWeight: 700, cursor: 'pointer' }}><span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 16px', width: 16, height: 16 }}>{Icons.plus}</span>Add medication</button>
-                : !selectedPlan.isMock && <button type="button" disabled={!planNote.trim() || savingPlanNote} onClick={savePlanNote} style={{ border: 0, borderRadius: 9, background: planNote.trim() && !savingPlanNote ? '#005447' : '#d1e5dd', color: '#fff', padding: '11px 17px', fontSize: '.75rem', fontWeight: 700, cursor: planNote.trim() && !savingPlanNote ? 'pointer' : 'default' }}>{savingPlanNote ? 'Saving…' : 'Save note'}</button>}
+            }} style={{ border: 0, borderRadius: 9, background: nextPlanStep && !selectedPlan.isMock ? '#013826' : '#d1e5dd', color: '#fff', padding: '11px 17px', fontSize: '.75rem', fontWeight: 700, cursor: nextPlanStep && !selectedPlan.isMock ? 'pointer' : 'default' }}>{savingPlanProgress ? 'Saving…' : selectedPlan.isMock ? 'Reference sample' : nextPlanStep ? 'Complete step' : 'All steps complete'}</button>
+              : selectedPlanTab === 'Medications' ? !selectedPlan.isMock && <button type="button" className="patient-primary-add" onClick={openAddMedication} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, minHeight: 42, whiteSpace: 'nowrap', border: 0, borderRadius: 9, background: '#086b50', color: '#fff', padding: '10px 15px', fontSize: '.8rem', fontWeight: 700, cursor: 'pointer' }}><span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 16px', width: 16, height: 16 }}>{Icons.plus}</span>Add medication</button>
+                : !selectedPlan.isMock && <button type="button" disabled={!planNote.trim() || savingPlanNote} onClick={savePlanNote} style={{ border: 0, borderRadius: 9, background: planNote.trim() && !savingPlanNote ? '#013826' : '#d1e5dd', color: '#fff', padding: '11px 17px', fontSize: '.75rem', fontWeight: 700, cursor: planNote.trim() && !savingPlanNote ? 'pointer' : 'default' }}>{savingPlanNote ? 'Saving…' : 'Save note'}</button>}
             </div>
           </footer>
         </div>
@@ -3816,22 +4279,12 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
           <h2 id="add-medication-title" style={{ margin: 0, color: '#1f2937', fontSize: '1.15rem' }}>Add Medication</h2>
           <div style={{ marginTop: 6, paddingBottom: 14, borderBottom: '1px solid #e5eeea', color: '#64748b', fontSize: '.78rem' }}>Add a prescribed medication to {selectedPlan.pet}&apos;s treatment record.</div>
           {addMedicationError && <div role="alert" style={{ marginTop: 14, padding: 10, border: '1px solid #fecaca', borderRadius: 8, background: '#fff7f7', color: '#b42318', fontSize: '.75rem' }}>{addMedicationError}</div>}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px 10px', marginTop: 16 }}>
-            <label style={{ gridColumn: '1 / -1', display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>Medication name <span className="system-required-star">*</span><input required value={medicationForm.name} onChange={event => setMedicationForm(previous => ({ ...previous, name: event.target.value }))} placeholder="Search or enter medication name" style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '10px 11px', color: '#111827', fontSize: '.78rem', outlineColor: '#78b7a1' }} /></label>
-            <label style={{ display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>Dose <span className="system-required-star">*</span><input required value={medicationForm.dose} onChange={event => setMedicationForm(previous => ({ ...previous, dose: event.target.value }))} placeholder="e.g. 250" style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '10px 11px', color: '#111827', fontSize: '.78rem', outlineColor: '#78b7a1' }} /></label>
-            <label style={{ display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>Unit <span className="system-required-star">*</span><input required value={medicationForm.unit} onChange={event => setMedicationForm(previous => ({ ...previous, unit: event.target.value }))} placeholder="mg" style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '10px 11px', color: '#111827', fontSize: '.78rem', outlineColor: '#78b7a1' }} /></label>
-            <label style={{ display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>Route <span className="system-required-star">*</span><select required value={medicationForm.route} onChange={event => setMedicationForm(previous => ({ ...previous, route: event.target.value, routeOther: '' }))} style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '10px 11px', background: '#fff', color: '#111827', fontSize: '.78rem' }}><option value="">Select route</option>{['Oral', 'Intravenous (IV)', 'Intramuscular (IM)', 'Subcutaneous (SC)', 'Topical', 'Ophthalmic', 'Otic', 'Inhaled', 'Other'].map(route => <option key={route}>{route}</option>)}</select></label>
-            <label style={{ display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>Frequency <span className="system-required-star">*</span><select required value={medicationForm.frequency} onChange={event => setMedicationForm(previous => ({ ...previous, frequency: event.target.value, frequencyOther: '' }))} style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '10px 11px', background: '#fff', color: '#111827', fontSize: '.78rem' }}><option value="">Select frequency</option>{['Once daily (q24h)', 'Twice daily (q12h)', 'Three times daily (q8h)', 'Four times daily (q6h)', 'Every 4 hours (q4h)', 'Every 6 hours (q6h)', 'Every 8 hours (q8h)', 'Every 12 hours (q12h)', 'As needed (PRN)', 'Other'].map(frequency => <option key={frequency}>{frequency}</option>)}</select></label>
-            {medicationForm.route === 'Other' && <label style={{ display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>Specify route <span className="system-required-star">*</span><input required value={medicationForm.routeOther} onChange={event => setMedicationForm(previous => ({ ...previous, routeOther: event.target.value }))} placeholder="Enter route" style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '10px 11px', color: '#111827', fontSize: '.78rem' }} /></label>}
-            {medicationForm.frequency === 'Other' && <label style={{ display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>Specify frequency <span className="system-required-star">*</span><input required value={medicationForm.frequencyOther} onChange={event => setMedicationForm(previous => ({ ...previous, frequencyOther: event.target.value }))} placeholder="Enter frequency" style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '10px 11px', color: '#111827', fontSize: '.78rem' }} /></label>}
-            <label style={{ display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>Duration <span className="system-required-star">*</span><input required value={medicationForm.duration} onChange={event => setMedicationForm(previous => ({ ...previous, duration: event.target.value }))} placeholder="e.g. 7 days" style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '10px 11px', color: '#111827', fontSize: '.78rem' }} /></label>
-            <label style={{ display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>Quantity to dispense<input value={medicationForm.quantity} onChange={event => setMedicationForm(previous => ({ ...previous, quantity: event.target.value }))} placeholder="e.g. 14 tablets" style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '10px 11px', color: '#111827', fontSize: '.78rem' }} /></label>
-            <label style={{ display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>Start date <span className="system-required-star">*</span><LabDateTimePicker mode="date" required value={medicationForm.date} onChange={date => setMedicationForm(previous => ({ ...previous, date }))} style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '9px 10px', color: '#111827', fontSize: '.78rem' }} /></label>
-            <label style={{ display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>End date<LabDateTimePicker mode="date" min={medicationForm.date || undefined} value={medicationForm.endDate} onChange={endDate => setMedicationForm(previous => ({ ...previous, endDate }))} style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '9px 10px', color: '#111827', fontSize: '.78rem' }} />{!medicationForm.endDate && calculateMedicationEndDate(medicationForm.date, medicationForm.duration) && <small style={{ color: '#64748b', fontWeight: 400 }}>Calculated: {formatDateText(calculateMedicationEndDate(medicationForm.date, medicationForm.duration))}</small>}</label>
-            <label style={{ gridColumn: '1 / -1', display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>Instructions for owner<textarea rows={3} value={medicationForm.instructions} onChange={event => setMedicationForm(previous => ({ ...previous, instructions: event.target.value }))} placeholder="Enter administration instructions, precautions, or other prescribed directions..." style={{ resize: 'vertical', border: '1px solid #d1d5db', borderRadius: 7, padding: '10px 11px', color: '#111827', font: 'inherit', fontSize: '.78rem', outlineColor: '#78b7a1' }} /></label>
-            <label style={{ gridColumn: '1 / -1', display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>Linked treatment plan<select value={medicationForm.treatmentPlanId} onChange={event => setMedicationForm(previous => ({ ...previous, treatmentPlanId: event.target.value }))} style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '10px 11px', background: '#fff', color: '#111827', fontSize: '.78rem' }}><option value="">No linked plan (optional)</option>{savedPlans.filter(plan => String(plan.pet_id) === String(selectedPlan.pet_id)).map(plan => <option key={plan.databaseId} value={plan.databaseId}>{plan.title}</option>)}</select></label>
-            <div style={{ gridColumn: '1 / -1', display: 'grid', gap: 5, color: '#1f2937', fontSize: '.76rem', fontWeight: 700 }}>Prescribed by<div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#005447', fontWeight: 500 }}><span aria-hidden="true">♙</span>{user?.name || selectedPlan.doctor || 'Current veterinarian'}</div></div>
-          </div>
+          <PlanMedicationFields
+            form={medicationForm}
+            setForm={setMedicationForm}
+            treatmentPlans={savedPlans.filter(plan => String(plan.pet_id) === String(selectedPlan.pet_id))}
+            prescriber={user?.name || selectedPlan.doctor}
+          />
           <div style={{ ...modalStyles.footer, marginTop: 20 }}><button type="button" disabled={savingMedication} onClick={() => setAddMedicationOpen(false)} style={modalStyles.cancel}>Cancel</button><button type="submit" disabled={savingMedication} style={{ ...T.primaryBtn, padding: '10px 14px', fontSize: '.78rem' }}>{savingMedication ? 'Saving…' : 'Save Medication'}</button></div>
         </ModalDialog>
       </div>, document.body)}
@@ -3845,35 +4298,35 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
           <div style={{ flex: '1 1 auto', overflowY: 'auto', display: 'grid', alignContent: 'start', gap: 17, padding: '9px 24px 22px' }}>
             <label style={{ display: 'grid', gap: 8, color: '#193a32', fontSize: '.88rem', fontWeight: 600 }}>
               Plan title
-              <input required value={editPlanForm.title} onChange={event => setEditPlanForm(previous => ({ ...previous, title: event.target.value }))} style={{ width: '100%', height: 55, boxSizing: 'border-box', border: '1px solid #d8e9e1', borderRadius: 13, padding: '0 15px', color: '#193a32', font: 'inherit', fontWeight: 400, outlineColor: '#78b7a1' }} />
+              <input required value={editPlanForm.title} onChange={event => setEditPlanForm(previous => ({ ...previous, title: event.target.value }))} style={{ width: '100%', height: 55, boxSizing: 'border-box', border: '1px solid #bed6c5', borderRadius: 13, padding: '0 15px', color: '#193a32', font: 'inherit', fontWeight: 400, outlineColor: '#78b7a1' }} />
             </label>
             <fieldset style={{ display: 'grid', gap: 9, margin: 0, padding: 0, border: 0 }}>
               <legend style={{ marginBottom: 9, color: '#193a32', fontSize: '.88rem', fontWeight: 600 }}>Severity</legend>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>{['Mild', 'Moderate', 'Severe'].map(severity => <button key={severity} type="button" aria-pressed={editPlanForm.severity === severity} onClick={() => setEditPlanForm(previous => ({ ...previous, severity }))} style={{ minWidth: 72, height: 47, border: `1px solid ${editPlanForm.severity === severity ? '#005447' : '#d8e9e1'}`, borderRadius: 13, background: editPlanForm.severity === severity ? '#e7f5f2' : '#fff', color: editPlanForm.severity === severity ? '#005447' : '#38534c', fontSize: '.8rem', cursor: 'pointer' }}>{severity}</button>)}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>{['Mild', 'Moderate', 'Severe'].map(severity => <button key={severity} type="button" aria-pressed={editPlanForm.severity === severity} onClick={() => setEditPlanForm(previous => ({ ...previous, severity }))} style={{ minWidth: 72, height: 47, border: `1px solid ${editPlanForm.severity === severity ? '#013826' : '#bed6c5'}`, borderRadius: 13, background: editPlanForm.severity === severity ? '#e7f4ec' : '#fff', color: editPlanForm.severity === severity ? '#013826' : '#38534c', fontSize: '.8rem', cursor: 'pointer' }}>{severity}</button>)}</div>
             </fieldset>
             <fieldset style={{ display: 'grid', gap: 9, margin: 0, padding: 0, border: 0 }}>
               <legend style={{ marginBottom: 9, color: '#193a32', fontSize: '.88rem', fontWeight: 600 }}>Attending veterinarian</legend>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>{Array.from(new Set([selectedPlan.doctor, ...clinicVeterinarians.map(member => member.name)].filter(Boolean))).map(doctor => <button key={doctor} type="button" aria-pressed={editPlanForm.doctor === doctor} onClick={() => setEditPlanForm(previous => ({ ...previous, doctor }))} style={{ minHeight: 47, border: `1px solid ${editPlanForm.doctor === doctor ? '#005447' : '#d8e9e1'}`, borderRadius: 13, background: editPlanForm.doctor === doctor ? '#e7f5f2' : '#fff', color: editPlanForm.doctor === doctor ? '#005447' : '#38534c', padding: '0 14px', fontSize: '.8rem', cursor: 'pointer' }}>{doctor}</button>)}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>{Array.from(new Set([selectedPlan.doctor, ...clinicVeterinarians.map(member => member.name)].filter(Boolean))).map(doctor => <button key={doctor} type="button" aria-pressed={editPlanForm.doctor === doctor} onClick={() => setEditPlanForm(previous => ({ ...previous, doctor }))} style={{ minHeight: 47, border: `1px solid ${editPlanForm.doctor === doctor ? '#013826' : '#bed6c5'}`, borderRadius: 13, background: editPlanForm.doctor === doctor ? '#e7f4ec' : '#fff', color: editPlanForm.doctor === doctor ? '#013826' : '#38534c', padding: '0 14px', fontSize: '.8rem', cursor: 'pointer' }}>{doctor}</button>)}</div>
             </fieldset>
             <label style={{ display: 'grid', gap: 8, color: '#193a32', fontSize: '.88rem', fontWeight: 600 }}>
               Expected completion
-              <LabDateTimePicker mode="date" value={editPlanForm.completionDate} onChange={completionDate => setEditPlanForm(previous => ({ ...previous, completionDate }))} style={{ width: '100%', height: 55, boxSizing: 'border-box', border: '1px solid #d8e9e1', borderRadius: 13, padding: '0 15px', background: '#fff', color: '#193a32', font: 'inherit', fontWeight: 400, outlineColor: '#78b7a1' }} />
+              <LabDateTimePicker mode="date" value={editPlanForm.completionDate} onChange={completionDate => setEditPlanForm(previous => ({ ...previous, completionDate }))} style={{ width: '100%', height: 55, boxSizing: 'border-box', border: '1px solid #bed6c5', borderRadius: 13, padding: '0 15px', background: '#fff', color: '#193a32', font: 'inherit', fontWeight: 400, outlineColor: '#78b7a1' }} />
             </label>
             {!!editPlanForm.steps.length && <section style={{ display: 'grid', gap: 13 }}>
               <h3 style={{ margin: '3px 0 0', color: '#58716b', fontSize: '.8rem', fontWeight: 750, letterSpacing: '.08em' }}>REMAINING STEPS</h3>
               {editPlanForm.steps.map(step => <div key={step.index} style={{ display: 'grid', gap: 8 }}>
                 <strong style={{ color: '#193a32', fontSize: '.88rem' }}>{step.index + 1}. {step.title}</strong>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <select aria-label={`${step.title} assignee`} value={step.assignee} onChange={event => setEditPlanForm(previous => ({ ...previous, steps: previous.steps.map(item => item.index === step.index ? { ...item, assignee: event.target.value } : item) }))} style={{ minWidth: 0, height: 56, border: '1px solid #d8e9e1', borderRadius: 13, padding: '0 13px', background: '#fff', color: '#38534c', fontSize: '.8rem' }}>{Array.from(new Set([step.assignee, selectedPlan.doctor, ...clinicVeterinarians.map(member => member.name)].filter(Boolean))).map(doctor => <option key={doctor} value={doctor}>{doctor}</option>)}</select>
-                  <input aria-label={`${step.title} due date`} value={step.due} onChange={event => setEditPlanForm(previous => ({ ...previous, steps: previous.steps.map(item => item.index === step.index ? { ...item, due: event.target.value } : item) }))} placeholder="Due date and time" style={{ minWidth: 0, height: 56, boxSizing: 'border-box', border: '1px solid #d8e9e1', borderRadius: 13, padding: '0 13px', color: '#38534c', fontSize: '.8rem', outlineColor: '#78b7a1' }} />
+                  <select aria-label={`${step.title} assignee`} value={step.assignee} onChange={event => setEditPlanForm(previous => ({ ...previous, steps: previous.steps.map(item => item.index === step.index ? { ...item, assignee: event.target.value } : item) }))} style={{ minWidth: 0, height: 56, border: '1px solid #bed6c5', borderRadius: 13, padding: '0 13px', background: '#fff', color: '#38534c', fontSize: '.8rem' }}>{Array.from(new Set([step.assignee, selectedPlan.doctor, ...clinicVeterinarians.map(member => member.name)].filter(Boolean))).map(doctor => <option key={doctor} value={doctor}>{doctor}</option>)}</select>
+                  <input aria-label={`${step.title} due date`} value={step.due} onChange={event => setEditPlanForm(previous => ({ ...previous, steps: previous.steps.map(item => item.index === step.index ? { ...item, due: event.target.value } : item) }))} placeholder="Due date and time" style={{ minWidth: 0, height: 56, boxSizing: 'border-box', border: '1px solid #bed6c5', borderRadius: 13, padding: '0 13px', color: '#38534c', fontSize: '.8rem', outlineColor: '#78b7a1' }} />
                 </div>
               </div>)}
               <p style={{ margin: 0, color: '#58716b', fontSize: '.76rem', lineHeight: 1.45 }}>Changing a due date reschedules the step and clears its overdue flag. Every change is logged in Clinical Updates.</p>
             </section>}
           </div>
           <footer style={{ flex: '0 0 auto', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 22, padding: '16px 24px', borderTop: '1px solid #e1ebe6', background: '#fff' }}>
-            <button type="button" onClick={() => setEditPlanOpen(false)} style={{ border: 0, background: 'transparent', color: '#005447', padding: '10px 8px', fontSize: '.82rem', cursor: 'pointer' }}>Cancel</button>
-            <button type="submit" style={{ minWidth: 123, border: 0, borderRadius: 12, background: '#005447', color: '#fff', padding: '15px 17px', fontSize: '.82rem', fontWeight: 700, cursor: 'pointer' }}>Save changes</button>
+            <button type="button" onClick={() => setEditPlanOpen(false)} style={{ border: 0, background: 'transparent', color: '#013826', padding: '10px 8px', fontSize: '.82rem', cursor: 'pointer' }}>Cancel</button>
+            <button type="submit" style={{ minWidth: 123, border: 0, borderRadius: 12, background: '#086b50', color: '#fff', padding: '15px 17px', fontSize: '.82rem', fontWeight: 700, cursor: 'pointer' }}>Save changes</button>
           </footer>
         </form>
       </div>, document.body)}
@@ -3881,13 +4334,13 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
       {fullPlanOpen && selectedPlan && createPortal(<div style={{ position: 'fixed', inset: 0, zIndex: 1200, overflowY: 'auto', background: '#f4f7fb', padding: '24px 20px 40px', boxSizing: 'border-box' }}>
         <style>{`.full-plan-columns{grid-template-columns:minmax(0,1.35fr) minmax(300px,.8fr)}@media(max-width:900px){.full-plan-columns{grid-template-columns:minmax(0,1fr)!important}}@media(max-width:620px){.full-plan-metadata{grid-template-columns:repeat(2,minmax(0,1fr))!important}.full-plan-metadata>div{border-right:0!important;border-bottom:1px solid #e5eeea}.full-treatment-plan{font-size:15px!important}}`}</style>
         <div className="full-treatment-plan" role="dialog" aria-modal="true" aria-labelledby="full-plan-title" style={{ width: 'min(1180px, 100%)', margin: '0 auto', padding: '4px 0', fontSize: '16px' }}>
-          <button type="button" onClick={() => standalonePlanRequest ? onStandalonePlanClose?.() : setFullPlanOpen(false)} style={{ border: 0, background: 'transparent', color: '#005447', padding: 0, fontSize: '.95rem', fontWeight: 700, cursor: 'pointer' }}>← Back to Treatment Plans</button>
+          <button type="button" onClick={() => standalonePlanRequest ? onStandalonePlanClose?.() : setFullPlanOpen(false)} style={{ border: 0, background: 'transparent', color: '#013826', padding: 0, fontSize: '.95rem', fontWeight: 700, cursor: 'pointer' }}>← Back to Treatment Plans</button>
           <div style={{ marginTop: 18, padding: '25px 27px', border: '1px solid #dcece5', borderRadius: 14, background: '#fff' }}>
             {selectedPlan.isMock && <div role="note" style={{ marginBottom: 18, padding: '10px 12px', border: '1px solid #ead9a7', borderRadius: 8, background: '#fffaf0', color: '#755b16', fontSize: '.8rem' }}><strong>Reference sample only:</strong> this fully filled example is for viewing purposes and is not a real patient record. All details are illustrative.</div>}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ position: 'relative', width: 46, height: 46, flex: '0 0 46px', overflow: 'hidden', borderRadius: '50%', background: '#e7f5f2', color: '#005447', display: 'grid', placeItems: 'center', fontSize: '1.05rem', fontWeight: 800 }}>
+              <div style={{ position: 'relative', width: 46, height: 46, flex: '0 0 46px', overflow: 'hidden', borderRadius: '50%', background: '#e7f4ec', color: '#013826', display: 'grid', placeItems: 'center', fontSize: '1.05rem', fontWeight: 800 }}>
                 {selectedPlan.pet.trim().slice(0, 1).toUpperCase()}
-                {getPetPhotoUrl(selectedPatient) && <img src={getPetPhotoUrl(selectedPatient)} alt={`${selectedPlan.pet} profile`} onError={event => { event.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />}
+                <ClinicAttachmentImage src={getPetPhotoUrl(selectedPatient)} attachmentId={selectedPatient?.photo_attachment_id} user={user} alt={`${selectedPlan.pet} profile`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
               </div>
               <div style={{ minWidth: 0 }}>
                 <h2 id="full-plan-title" style={{ margin: 0, color: '#1f2937', fontSize: '1.35rem' }}>{selectedPlan.pet} <StatusIndicator status={selectedPlan.status} style={{ marginLeft: 7, verticalAlign: 'middle', fontSize: '.86rem' }} /></h2>
@@ -3943,7 +4396,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{selectedPlanMedications.map((medication, index) => {
                     const key = `${selectedPlan.id}-${medication.name}-${index}`;
                     const logged = doseLog[key];
-                    return <button key={key} type="button" aria-pressed={!!logged} disabled={!!logged || selectedPlan.isMock} onClick={() => logMedicationDose(key)} style={{ border: '1px solid #cfe8dc', borderRadius: 8, background: logged ? '#e7f5f2' : '#fff', color: '#005447', padding: '9px 11px', fontSize: '.76rem', cursor: logged || selectedPlan.isMock ? 'default' : 'pointer' }}>{logged ? '✓' : '○'} {medication.name} · {logged ? `Given ${formatDoseTime(logged)}` : '9:00 AM'}</button>;
+                    return <button key={key} type="button" aria-pressed={!!logged} disabled={!!logged || selectedPlan.isMock} onClick={() => logMedicationDose(key)} style={{ border: '1px solid #cfe8dc', borderRadius: 8, background: logged ? '#e7f4ec' : '#fff', color: '#013826', padding: '9px 11px', fontSize: '.76rem', cursor: logged || selectedPlan.isMock ? 'default' : 'pointer' }}>{logged ? '✓' : '○'} {medication.name} · {logged ? `Given ${formatDoseTime(logged)}` : '9:00 AM'}</button>;
                   })}</div>
                 </div>
               </section>
@@ -3952,8 +4405,8 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
                 <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: '.78rem' }}>Owner instructions and notes saved with each medication.</p>
                 <div style={{ display: 'grid', gap: 9, marginTop: 13 }}>
                   {selectedPlanMedications.filter(medication => medication.instructions?.trim()).map((medication, index) => (
-                    <article key={`${medication.id || medication.name}-${index}`} style={{ padding: '12px 13px', border: '1px solid #dcece5', borderLeft: '3px solid #0c8b6e', borderRadius: 9, background: '#f8fbf9' }}>
-                      <strong style={{ display: 'block', color: '#005447', fontSize: '.82rem' }}>{medication.name}</strong>
+                    <article key={`${medication.id || medication.name}-${index}`} style={{ padding: '12px 13px', border: '1px solid #dcece5', borderLeft: '3px solid #0c8b6e', borderRadius: 9, background: '#fafbf8' }}>
+                      <strong style={{ display: 'block', color: '#013826', fontSize: '.82rem' }}>{medication.name}</strong>
                       <p style={{ margin: '6px 0 0', color: '#475569', fontSize: '.8rem', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{medication.instructions}</p>
                     </article>
                   ))}
@@ -3980,8 +4433,11 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
                   const observationFields = [
                     ['temperature', 'Temperature (°C)'],
                     ['weight', 'Weight (kg)'],
+                    ['heart_rate', 'Heart rate (bpm)'],
+                    ['respiratory_rate', 'Respiratory rate (/min)'],
                     ['hydration', 'Hydration'],
                     ['appetite', 'Appetite'],
+                    ['pain_assessment', 'Pain assessment'],
                   ];
                   return <>
                     <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, paddingBottom: 15, borderBottom: '1px solid #e5eeea' }}>
@@ -4017,8 +4473,11 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
                             <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>Time <span className="system-required-star">*</span><LabDateTimePicker mode="time" required value={monitoringForm.time || ''} onChange={time => updateField('time', time)} style={inputStyle} /></label>
                             <label style={labelStyle}>Temperature (°C)<input type="number" min="0" max="60" step="0.1" value={monitoringForm.temperature || ''} onChange={event => updateField('temperature', event.target.value)} placeholder="Enter value" style={inputStyle} /></label>
                             <label style={labelStyle}>Weight (kg)<input type="number" min="0" step="0.01" value={monitoringForm.weight || ''} onChange={event => updateField('weight', event.target.value)} placeholder="e.g. 12.4" style={inputStyle} /></label>
+                            <label style={labelStyle}>Heart rate (bpm)<input type="number" min="0" step="1" value={monitoringForm.heart_rate || ''} onChange={event => updateField('heart_rate', event.target.value)} placeholder="Enter value" style={inputStyle} /></label>
+                            <label style={labelStyle}>Respiratory rate (/min)<input type="number" min="0" step="1" value={monitoringForm.respiratory_rate || ''} onChange={event => updateField('respiratory_rate', event.target.value)} placeholder="Enter value" style={inputStyle} /></label>
                             {radioGroup('hydration', 'Hydration assessment', ['Normal', 'Mildly dehydrated', 'Moderately dehydrated', 'Severely dehydrated', 'Not assessed'])}
                             {radioGroup('appetite', 'Appetite', ['Normal', 'Reduced', 'No appetite', 'Not assessed'])}
+                            <label style={labelStyle}>Pain assessment<input value={monitoringForm.pain_assessment || ''} onChange={event => updateField('pain_assessment', event.target.value)} placeholder="Enter assessment" style={inputStyle} /></label>
                             <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>Clinical notes <span className="system-required-star">*</span><textarea required rows={3} maxLength={4500} value={monitoringForm.observation || ''} onChange={event => updateField('observation', event.target.value)} placeholder="Describe the pet's condition, observed symptoms, and changes since the previous assessment..." style={{ ...inputStyle, minHeight: 112, resize: 'vertical' }} /></label>
                             {radioGroup('followUpAction', 'Follow-up action', ['Continue routine monitoring', 'Reassessment required', 'Immediate veterinary review'])}
                             <p style={{ gridColumn: '1 / -1', margin: 0, color: '#64748b', fontSize: '.85rem', lineHeight: 1.5 }}>The attending veterinarian should assess findings and determine the appropriate action. Leave a measurement blank if it was not taken.</p>
@@ -4049,7 +4508,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
                         {observations.length > 1 ? observations.slice(1).map((observation, index) => <article key={`${observation.date}-${index}`} style={{ padding: '10px 12px', border: '1px solid #e5eeea', borderRadius: 8, background: '#fbfcfb' }}>
                           <strong style={{ color: '#334155', fontSize: '.74rem' }}>{formatMonitoringDate(observation.date)} · {observation.author || 'Clinic staff'}</strong>
                           <p style={{ margin: '5px 0 0', color: '#475569', fontSize: '.76rem', lineHeight: 1.45 }}>{observation.text || 'Measurements recorded.'}</p>
-                          <small style={{ display: 'block', marginTop: 5, color: '#64748b', fontSize: '.7rem' }}>{observation.temperature && `Temperature ${observation.temperature} °C`} {observation.weight && ` · Weight ${observation.weight} kg`} {observation.hydration && ` · Hydration ${observation.hydration}`} {observation.appetite && ` · Appetite ${observation.appetite}`} {observation.followUpAction && ` · Follow-up ${observation.followUpAction}`}</small>
+                          <small style={{ display: 'block', marginTop: 5, color: '#64748b', fontSize: '.7rem' }}>{observation.temperature && `Temperature ${observation.temperature} °C`} {observation.weight && ` · Weight ${observation.weight} kg`} {observation.heart_rate && ` · Heart rate ${observation.heart_rate} bpm`} {observation.respiratory_rate && ` · Respiratory rate ${observation.respiratory_rate} /min`} {observation.hydration && ` · Hydration ${observation.hydration}`} {observation.appetite && ` · Appetite ${observation.appetite}`} {observation.pain_assessment && ` · Pain ${observation.pain_assessment}`} {observation.followUpAction && ` · Follow-up ${observation.followUpAction}`}</small>
                         </article>) : <p style={{ margin: 0, color: '#64748b', fontSize: '.76rem' }}>No previous observations recorded.</p>}
                       </div>
                     </details>
@@ -4078,7 +4537,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
                     ? 'All treatment steps are done. Active medication remains, so the plan remains open.'
                     : 'Treatment steps are complete. You can now formally close the treatment plan.'}
             </div>
-            <button type="button" disabled={savingPlanProgress || planClosureBlocked} onClick={completeTreatmentPlan} style={{ width: '100%', marginTop: 10, border: 0, borderRadius: 8, background: '#005447', color: '#fff', padding: '12px 14px', fontSize: '.8rem', fontWeight: 700, cursor: savingPlanProgress || planClosureBlocked ? 'not-allowed' : 'pointer', opacity: savingPlanProgress || planClosureBlocked ? .55 : 1 }}>{savingPlanProgress ? 'Completing…' : 'Complete Treatment Plan'}</button>
+            <button type="button" disabled={savingPlanProgress || planClosureBlocked} onClick={completeTreatmentPlan} style={{ width: '100%', marginTop: 10, border: 0, borderRadius: 8, background: '#086b50', color: '#fff', padding: '12px 14px', fontSize: '.8rem', fontWeight: 700, cursor: savingPlanProgress || planClosureBlocked ? 'not-allowed' : 'pointer', opacity: savingPlanProgress || planClosureBlocked ? .55 : 1 }}>{savingPlanProgress ? 'Completing…' : 'Complete Treatment Plan'}</button>
           </>}
         </div>
       </div>, document.body)}
@@ -4091,18 +4550,21 @@ function BillingTab({ user, initialInvoiceId = null }) {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [search, setSearch] = useState('');
-  const [showPatientResults, setShowPatientResults] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState(initialInvoiceId);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [invoiceAttachmentError, setInvoiceAttachmentError] = useState('');
+  const [invoiceAttachmentUploading, setInvoiceAttachmentUploading] = useState(false);
+  const [invoiceSendError, setInvoiceSendError] = useState('');
+  const [sendingInvoice, setSendingInvoice] = useState(false);
+  const invoiceAttachmentInputRef = useRef(null);
 
   useEffect(() => {
     if (!user?.token) return;
     const controller = new AbortController();
-    const loadBilling = async () => {
-      setLoading(true);
+    let refreshing = false;
+    const loadBilling = async (silent = false) => {
+      if (refreshing) return;
+      refreshing = true;
+      if (!silent) setLoading(true);
       setError('');
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -4130,11 +4592,15 @@ function BillingTab({ user, initialInvoiceId = null }) {
           setError(loadError.message || 'Unable to load billing records.');
         }
       } finally {
+        refreshing = false;
         if (!controller.signal.aborted) setLoading(false);
       }
     };
     loadBilling();
-    return () => controller.abort();
+    const refresh = () => { if (!document.hidden) loadBilling(true); };
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener('vetintel:billing-updated', refresh);
+    return () => { controller.abort(); window.clearInterval(timer); window.removeEventListener('vetintel:billing-updated', refresh); };
   }, [user?.token, user?.clinic_id]);
 
   const paymentsByInvoice = new Map();
@@ -4143,6 +4609,9 @@ function BillingTab({ user, initialInvoiceId = null }) {
     paymentsByInvoice.set(invoiceId, (paymentsByInvoice.get(invoiceId) || 0) + Number(payment.amount || 0));
   });
   const getBillingStatus = invoice => {
+    if (invoice.metadata?.void_request_status === 'pending') return 'Void Requested';
+    if (invoice.status === 'void') return 'Voided';
+    if (invoice.metadata?.billing_review_status === 'returned') return 'Needs Correction';
     const paid = paymentsByInvoice.get(String(invoice.id)) || 0;
     const total = Number(invoice.total || 0);
     if (String(invoice.status).toLowerCase() === 'paid' || (total > 0 && paid >= total)) return 'Completed';
@@ -4150,210 +4619,394 @@ function BillingTab({ user, initialInvoiceId = null }) {
     if (String(invoice.status).toLowerCase() === 'overdue') return 'Due';
     return 'Unpaid';
   };
-  const filterCounts = ['All', 'Unpaid', 'Due', 'Half Paid', 'Completed'].reduce((counts, label) => {
-    counts[label] = invoices.filter(invoice => label === 'All'
-      ? String(invoice.status).toLowerCase() !== 'void'
-      : getBillingStatus(invoice) === label).length;
-    return counts;
-  }, {});
-  const visibleInvoices = invoices.filter(invoice => {
-    const status = String(invoice.status || '').toLowerCase();
-    if (status === 'void') return false;
-    if (statusFilter !== 'All' && getBillingStatus(invoice) !== statusFilter) return false;
-    const query = search.trim().toLowerCase();
-    if (query && ![invoice.id, invoice.pet, invoice.owner].some(value => String(value || '').toLowerCase().includes(query))) return false;
-    const issuedDate = invoice.issued_at ? new Date(invoice.issued_at).toISOString().slice(0, 10) : '';
-    if (startDate && (!issuedDate || issuedDate < startDate)) return false;
-    if (endDate && (!issuedDate || issuedDate > endDate)) return false;
-    return true;
-  });
-  const awaitingInvoices = invoices.filter(invoice => {
-    const paid = paymentsByInvoice.get(String(invoice.id)) || 0;
-    return String(invoice.status || '').toLowerCase() !== 'void'
-      && Number(invoice.total || 0) > paid;
-  }).filter(invoice => {
-    const query = search.trim().toLowerCase();
-    return !query || [invoice.id, invoice.pet, invoice.owner]
-      .some(value => String(value || '').toLowerCase().includes(query));
-  });
   const selectedInvoice = invoices.find(invoice => String(invoice.id) === String(selectedInvoiceId));
+  const returnedInvoice = selectedInvoice?.status !== 'void' && selectedInvoice?.metadata?.billing_review_status === 'returned';
+  const [correctionDraft,setCorrectionDraft] = useState(null);
+  const [correctionSaving,setCorrectionSaving] = useState(false);
+  const [correctionError,setCorrectionError] = useState('');
+  const [correctionOptions,setCorrectionOptions]=useState({visits:[],staff:[],catalog:[]});
+  const [correctionOptionsError,setCorrectionOptionsError]=useState('');
+  useEffect(()=>{
+    if(!returnedInvoice) return;
+    const controller=new AbortController();
+    const apiUrl=(import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/,'');
+    setCorrectionOptionsError('');
+    Promise.all(['/clinic-records/appointments','/clinics/'+encodeURIComponent(user.clinic_id)+'/staff?status=active','/clinic-records/billing-catalog'].map(path=>fetch(apiUrl+path,{headers:{Authorization:'Bearer '+user.token},signal:controller.signal}).then(async response=>{const payload=await response.json();if(!response.ok || !Array.isArray(payload))throw new Error('Unable to load billing options.');return payload;})))
+      .then(([visits,staff,catalog])=>setCorrectionOptions({visits:visits.filter(visit=>!visit.archived && !['cancelled','canceled','no_show'].includes(visit.status)),staff:staff.filter(member=>['doctor','veterinarian','assistant_doctor'].includes(String(member.role).toLowerCase().replace(/[ -]+/g,'_'))),catalog:catalog.filter(item=>item.active!==false)}))
+      .catch(failure=>{if(failure.name!=='AbortError')setCorrectionOptionsError(failure.message);});
+    return()=>controller.abort();
+  },[returnedInvoice,user.clinic_id,user.token]);
+  useEffect(() => {
+    setCorrectionError('');
+    setCorrectionDraft(selectedInvoice ? {
+      items: (selectedInvoice.items || []).map(item=>({...item})), tax: String(selectedInvoice.tax || 0), note: '', attachments:[], removed_attachment_ids:[],
+      target_appointment_id:String(selectedInvoice.appointment_id || ''),
+      visit_details:{doctor:selectedInvoice.doctor || '',appointment_type:selectedInvoice.appointment_type || (selectedInvoice.items?.[0]?.item_type==='lab_test'?'Laboratory':selectedInvoice.items?.[0]?.item_type || 'Visit'),visit_date:String(selectedInvoice.visit_date || selectedInvoice.consultation_completed_at || selectedInvoice.issued_at || new Date().toISOString()).slice(0,10),appointment_status:selectedInvoice.appointment_status || selectedInvoice.lab_status || 'Finalized'},
+      summary: Object.fromEntries(['chiefComplaint','diagnosis','clinicalFindings','plan'].map(key=>[key,String(selectedInvoice.consultation_notes?.[key] || (key==='chiefComplaint'?selectedInvoice.appointment_reason||selectedInvoice.lab_indication:key==='plan'?selectedInvoice.consultation_notes?.followUpInstructions:'') || '')]))
+    } : null);
+    // Keep unsaved edits when the billing list refreshes in the background.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedInvoiceId, selectedInvoice?.id, returnedInvoice]);
+  const correctionActive = returnedInvoice && correctionDraft;
+  const correctionTotal = correctionDraft ? correctionDraft.items.reduce((sum,item)=>sum+Math.round(Number(item.quantity||0)*Number(item.unit_price||0)*100)/100,0)+Number(correctionDraft.tax||0) : 0;
+  const updateCorrectionItem=(id,key,value)=>setCorrectionDraft(current=>({...current,items:current.items.map(item=>item.id===id?{...item,[key]:value,...(key==='description' && correctionOptions.catalog.find(entry=>entry.name===value)?{item_type:correctionOptions.catalog.find(entry=>entry.name===value).item_type,unit_price:correctionOptions.catalog.find(entry=>entry.name===value).unit_price}:{})}:item)}));
+  const correctionInput=(item,key,label,extra={})=><input form="invoice-correction-form" className="billing-invoice-inline-input" aria-label={label} required disabled={correctionSaving} value={item[key] ?? ''} onChange={event=>updateCorrectionItem(item.id,key,event.target.value)} {...extra}/>;
+  const saveInvoiceCorrection=async event=>{
+    event.preventDefault();
+    if(!correctionActive || correctionSaving) return;
+    setCorrectionSaving(true);setCorrectionError('');
+    try {
+      const apiUrl=(import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/,'');
+      const response=await fetch(apiUrl+'/clinic-records/invoices/'+selectedInvoice.id+'/correct',{method:'POST',headers:{Authorization:'Bearer '+user.token,'Content-Type':'application/json'},body:JSON.stringify({items:correctionDraft.items,tax:correctionDraft.tax,note:correctionDraft.note,clinical_summary:correctionDraft.summary,visit_details:correctionDraft.visit_details,target_appointment_id:correctionDraft.target_appointment_id,attachments:correctionDraft.attachments,removed_attachment_ids:correctionDraft.removed_attachment_ids})});
+      const payload=await response.json();
+      if(!response.ok) throw new Error(payload.error || 'Unable to resubmit invoice.');
+      setInvoices(current=>current.map(invoice=>String(invoice.id)===String(payload.invoice.id)?{...invoice,...payload.invoice}:invoice));
+      setSelectedInvoiceId(null);
+      window.dispatchEvent(new Event('vetintel:billing-updated'));
+    } catch(failure) {setCorrectionError(failure.message);} finally {setCorrectionSaving(false);}
+  };
+  const selectedPetWeight = selectedInvoice?.pet_weight
+    ? (/\b(kg|g|lb|lbs)\b/i.test(String(selectedInvoice.pet_weight))
+      ? String(selectedInvoice.pet_weight)
+      : `${selectedInvoice.pet_weight} kg`)
+    : 'Weight not recorded';
+  const selectedInvoiceBalance = selectedInvoice
+    ? Math.max(0, Number(selectedInvoice.total || 0) - (paymentsByInvoice.get(String(selectedInvoice.id)) || 0))
+    : 0;
+  const selectedPatientOutstandingInvoices = selectedInvoice
+    ? invoices.filter(invoice => (
+      String(invoice.id) !== String(selectedInvoice.id)
+      && (selectedInvoice.pet_id
+        ? String(invoice.pet_id || '') === String(selectedInvoice.pet_id)
+        : Boolean(selectedInvoice.pet && invoice.pet === selectedInvoice.pet && invoice.owner === selectedInvoice.owner))
+      && String(invoice.status || '').toLowerCase() !== 'void'
+      && Number(invoice.total || 0) > (paymentsByInvoice.get(String(invoice.id)) || 0)
+    ))
+    : [];
+  const closeInvoiceDetails = () => {
+    if(correctionSaving || invoiceAttachmentUploading) return;
+    setSelectedInvoiceId(null);
+    setInvoiceAttachmentError('');
+    setInvoiceSendError('');
+  };
+  const invoiceSentToReception = Boolean(selectedInvoice?.metadata?.sent_to_reception);
+  const sendInvoiceToReception = async () => {
+    if (!selectedInvoice || invoiceSentToReception || sendingInvoice) return;
+    setSendingInvoice(true);
+    setInvoiceSendError('');
+    try {
+      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+      const query = `?clinic_id=${encodeURIComponent(user.clinic_id)}`;
+      const response = await fetch(`${apiUrl}/clinic-records/invoices/${encodeURIComponent(selectedInvoice.id)}/send-to-reception${query}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || `Unable to send invoice to reception (HTTP ${response.status}).`);
+      setInvoices(current => current.map(invoice => String(invoice.id) === String(payload.id) ? { ...invoice, ...payload } : invoice));
+    } catch (sendError) {
+      setInvoiceSendError(sendError.message || 'Unable to send invoice to reception.');
+    } finally {
+      setSendingInvoice(false);
+    }
+  };
+  useEffect(() => {
+    if (!selectedInvoiceId) return undefined;
+    const handleKeyDown = event => {
+      if (event.key === 'Escape') {
+        setSelectedInvoiceId(null);
+        setInvoiceAttachmentError('');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedInvoiceId]);
+  const downloadInvoiceAttachment = async attachment => {
+    if (!attachment?.downloadEndpoint || !user?.token) return;
+    setInvoiceAttachmentError('');
+    try {
+      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+      const query = user.clinic_id ? `?clinic_id=${encodeURIComponent(user.clinic_id)}` : '';
+      const response = await fetch(`${apiUrl}${attachment.downloadEndpoint}${query}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Unable to open this attachment.');
+      }
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = attachment.filename || 'visit-attachment';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (downloadError) {
+      console.error(downloadError);
+      setInvoiceAttachmentError(downloadError.message || 'Unable to open this attachment.');
+    }
+  };
+  const uploadInvoiceAttachment = async event => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (correctionActive) {
+      if(!file || correctionSaving)return;
+      if(!['application/pdf','image/jpeg','image/png'].includes(file.type) || file.size>4194304) {setInvoiceAttachmentError('Choose a PDF, JPG, or PNG file up to 4 MB.');return;}
+      if(correctionDraft.attachments.length>=3) {setInvoiceAttachmentError('Add up to three new attachments per submission.');return;}
+      setInvoiceAttachmentUploading(true);setInvoiceAttachmentError('');
+      try {
+        const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('Unable to read attachment.'));reader.readAsDataURL(file);});
+        setCorrectionDraft(current=>({...current,attachments:[...current.attachments,{filename:file.name,content_type:file.type,data}]}));
+      } catch(failure) {setInvoiceAttachmentError(failure.message);} finally {setInvoiceAttachmentUploading(false);}
+      return;
+    }
+    const labTestId = Number(selectedInvoice?.metadata?.lab_test_id);
+    if (!file || !Number.isInteger(labTestId) || labTestId < 1 || invoiceAttachmentUploading) return;
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
+      setInvoiceAttachmentError('Choose a PDF, JPG, or PNG laboratory report.');
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setInvoiceAttachmentError('Laboratory reports must be 4 MB or smaller.');
+      return;
+    }
+    setInvoiceAttachmentUploading(true);
+    setInvoiceAttachmentError('');
+    try {
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Unable to read the selected report file.'));
+        reader.readAsDataURL(file);
+      });
+      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+      const query = user.clinic_id ? `?clinic_id=${encodeURIComponent(user.clinic_id)}` : '';
+      const response = await fetch(`${apiUrl}/clinic-records/lab-tests/${encodeURIComponent(labTestId)}/report${query}`, {
+        method: 'POST',
+        headers: { Authorization: ['Bearer', user.token].join(' '), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, content_type: file.type, data }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || `Unable to upload laboratory report (HTTP ${response.status}).`);
+      const attachment = {
+        id: payload.id,
+        filename: payload.filename || file.name,
+        content_type: payload.content_type || file.type,
+        uploaded_at: payload.uploaded_at || new Date().toISOString(),
+        downloadEndpoint: `/clinic-records/attachments/${payload.id}/content`,
+      };
+      setInvoices(previous => previous.map(invoice => String(invoice.id) === String(selectedInvoice.id)
+        ? { ...invoice, attachments: [attachment] }
+        : invoice));
+    } catch (uploadError) {
+      console.error(uploadError);
+      setInvoiceAttachmentError(uploadError.message || 'Unable to upload laboratory report.');
+    } finally {
+      setInvoiceAttachmentUploading(false);
+    }
+  };
   const selectedConsultationNotes = selectedInvoice?.consultation_notes
     && typeof selectedInvoice.consultation_notes === 'object'
     ? selectedInvoice.consultation_notes : {};
   const consultationSummaryRows = [
-    ['Complaint', selectedConsultationNotes.chiefComplaint],
+    ['Complaint', selectedConsultationNotes.chiefComplaint || selectedInvoice?.appointment_reason || selectedInvoice?.lab_indication],
     ['Diagnosis', selectedConsultationNotes.diagnosis],
     ['Findings', selectedConsultationNotes.clinicalFindings],
-    ['Treatment', selectedConsultationNotes.treatment],
-    ['Medication', selectedConsultationNotes.medications],
-    ['Vaccines', selectedConsultationNotes.vaccinations],
-    ['Lab tests', selectedConsultationNotes.labTests],
-    ['Follow-up', selectedConsultationNotes.followUpInstructions],
-  ].filter(([, value]) => String(value || '').trim());
-  const fieldStyle = {
-    minWidth: 0, height: 40, boxSizing: 'border-box', padding: '0 8px',
-    border: 0, borderRadius: 7, background: 'transparent',
-    color: '#25384a', font: 'inherit', fontSize: '.76rem', outlineColor: '#005447',
-  };
+    ['Plan', selectedConsultationNotes.plan || selectedConsultationNotes.followUpInstructions],
+  ].map(([label, value]) => [label, String(value || '').trim() || 'Not recorded']);
+  const invoiceServiceType = selectedInvoice?.items?.[0]?.item_type === 'lab_test'
+    ? 'Laboratory'
+    : ({ consultation: 'Check-up', treatment: 'Treatment', medication: 'Treatment', vaccination: 'Vaccination', inpatient: 'Confinement' })[selectedInvoice?.items?.[0]?.item_type]
+      || String(selectedInvoice?.appointment_type || selectedInvoice?.appointment_reason || 'Visit')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\b\w/g, character => character.toUpperCase());
+  const invoiceVisitStatus = selectedInvoice?.appointment_status
+    ? String(selectedInvoice.appointment_status).replace(/[_-]+/g, ' ').replace(/\b\w/g, character => character.toUpperCase())
+    : selectedInvoice?.lab_status
+      ? String(selectedInvoice.lab_status).replace(/[_-]+/g, ' ').replace(/\b\w/g, character => character.toUpperCase())
+      : 'Completed';
   const currency = value => `₱${Number(value || 0).toFixed(2)}`;
   const invoiceDate = value => value ? formatDateText(value, undefined, '—') : '—';
 
   return (
-    <section style={{ color: '#203444' }}>
-      <header style={{ margin: '0 0 18px', padding: '0 2px' }}>
-        <h1 style={{ margin: 0, color: '#203444', fontSize: '1.35rem', fontWeight: 700, letterSpacing: '-.02em' }}>Billing</h1>
-        <p style={{ margin: '4px 0 0', color: '#718198', fontSize: '.8rem' }}>View and manage patient bills, track payments, and monitor outstanding balances.</p>
-      </header>
-      <div style={{ padding: 16, border: '1px solid #e0e7ee', borderRadius: 10, background: '#fff' }}>
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ position: 'relative', width: '100%', marginBottom: 10 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 9, height: 42, padding: '0 12px', border: `1px solid ${showPatientResults ? '#3b82f6' : '#d8e9e1'}`, borderRadius: 9, background: '#fff', color: '#668078', boxShadow: showPatientResults ? '0 0 0 2px #dbeafe' : 'none' }}>
-              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="10.8" cy="10.8" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>
-              <input
-                aria-label="Search or select a patient who needs to pay"
-                aria-expanded={showPatientResults}
-                aria-controls="billing-awaiting-patients"
-                type="search"
-                value={search}
-                onFocus={() => setShowPatientResults(true)}
-                onBlur={() => setTimeout(() => setShowPatientResults(false), 120)}
-                onChange={event => {
-                  setSearch(event.target.value);
-                  setSelectedInvoiceId(null);
-                  setShowPatientResults(true);
-                }}
-                placeholder="Search or select a patient who needs to pay..."
-                style={{ width: '100%', minWidth: 0, border: 0, outline: 0, color: '#2c4050', font: 'inherit', fontSize: '.76rem' }}
-              />
-            </label>
-            {showPatientResults && !loading && !error && <div id="billing-awaiting-patients" role="listbox" aria-label="Patients awaiting billing" style={{ position: 'absolute', zIndex: 5, top: 'calc(100% + 4px)', left: 0, right: 0, maxHeight: 280, overflowY: 'auto', border: '1px solid #dce4eb', borderRadius: 10, background: '#fff', boxShadow: '0 8px 20px rgba(26, 42, 58, .12)' }}>
-              <div style={{ padding: '10px 12px 5px', color: '#8293a7', fontSize: '.63rem', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase' }}>Awaiting billing</div>
-              {awaitingInvoices.length ? awaitingInvoices.map(invoice => {
-                const balance = Math.max(0, Number(invoice.total || 0) - (paymentsByInvoice.get(String(invoice.id)) || 0));
-                return <button
-                  key={invoice.id}
-                  type="button"
-                  role="option"
-                  aria-selected={String(selectedInvoiceId) === String(invoice.id)}
-                  onMouseDown={event => event.preventDefault()}
-                  onClick={() => {
-                    setSelectedInvoiceId(invoice.id);
-                    setShowPatientResults(false);
-                  }}
-                  style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', border: 0, borderTop: '1px solid #f0f3f6', background: String(selectedInvoiceId) === String(invoice.id) ? '#f0f8f5' : '#fff', color: '#203444', textAlign: 'left', cursor: 'pointer' }}
-                >
-                  <span style={{ minWidth: 0 }}>
-                    <strong style={{ display: 'block', overflow: 'hidden', fontSize: '.8rem', fontWeight: 600, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invoice.pet || 'Patient'}</strong>
-                    <span style={{ display: 'block', marginTop: 2, overflow: 'hidden', color: '#718198', fontSize: '.7rem', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invoice.owner || 'Owner not listed'} · {invoice.consultation_id ? '1 visit' : `Invoice #${invoice.id}`}</span>
-                  </span>
-                  <strong style={{ flexShrink: 0, color: '#40546a', fontSize: '.78rem' }}>{currency(balance)}</strong>
-                </button>;
-              }) : <div style={{ padding: '10px 12px 14px', color: '#718198', fontSize: '.76rem' }}>No patients are awaiting payment.</div>}
-            </div>}
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
-            <div role="group" aria-label="Filter invoices by payment status" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 7 }}>
-              {['All', 'Unpaid', 'Due', 'Half Paid', 'Completed'].map(label => <button
-                key={label}
-                type="button"
-                aria-pressed={statusFilter === label}
-                onClick={() => setStatusFilter(label)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 7, height: 40, padding: '0 12px',
-                  border: `1px solid ${statusFilter === label ? '#9bcbbd' : '#d8e9e1'}`,
-                  borderRadius: 999, background: statusFilter === label ? '#e7f5f2' : '#fff',
-                  color: statusFilter === label ? '#005447' : '#38534c', font: 'inherit',
-                  fontSize: '.76rem', fontWeight: statusFilter === label ? 700 : 500, cursor: 'pointer',
-                }}
-              >{label}<span style={{ display: 'grid', minWidth: 21, height: 21, padding: '0 5px', placeItems: 'center', borderRadius: 12, background: statusFilter === label ? '#c9e4db' : '#edf2f0', color: statusFilter === label ? '#005447' : '#526b64', fontSize: '.68rem', fontWeight: 700 }}>{filterCounts[label] || 0}</span></button>)}
-            </div>
-          <div role="group" aria-label="Filter invoices by date" style={{ display: 'flex', flex: '0 1 310px', minWidth: 260, alignItems: 'center', gap: 8 }}>
-            <label style={{ display: 'flex', flex: 1, minWidth: 0, alignItems: 'center', gap: 7, height: 42, padding: '0 9px', border: '1px solid #d8e9e1', borderRadius: 9, background: '#fff', color: '#668078' }}>
-              <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M7.5 3v4M16.5 3v4M3.5 10h17" /></svg>
-              <input aria-label="Start date" type="date" value={startDate} max={endDate || undefined} onChange={event => setStartDate(event.target.value)} style={{ ...fieldStyle, width: '100%' }} />
-            </label>
-            <label style={{ display: 'flex', flex: 1, minWidth: 0, alignItems: 'center', gap: 7, height: 42, padding: '0 9px', border: '1px solid #d8e9e1', borderRadius: 9, background: '#fff', color: '#668078' }}>
-              <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M7.5 3v4M16.5 3v4M3.5 10h17" /></svg>
-              <input aria-label="End date" type="date" value={endDate} min={startDate || undefined} onChange={event => setEndDate(event.target.value)} style={{ ...fieldStyle, width: '100%' }} />
-            </label>
-          </div>
-          </div>
-        </div>
+    <section>
+      <DoctorBillingOverview invoices={invoices} loading={loading} error={error} onSelect={id => { setSelectedInvoiceId(id); setInvoiceAttachmentError(''); }} />
+        {selectedInvoice && createPortal(<div
+          role="presentation"
+          onMouseDown={event => { if (event.target === event.currentTarget) closeInvoiceDetails(); }}
+          style={{ position: 'fixed', inset: 0, zIndex: 1400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(15, 23, 42, .52)' }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="billing-invoice-dialog-title"
+            className={`billing-invoice-dialog${correctionActive?" billing-summary-edit-dialog":""}`}
+            onMouseDown={event => event.stopPropagation()}
+            style={{ display: 'flex', width: 'min(700px, calc(100vw - 32px))', maxHeight: 'calc(100dvh - 32px)', flexDirection: 'column', overflow: 'hidden', border: '1px solid #dce6e3', borderRadius: 14, background: '#fff', boxShadow: '0 20px 60px rgba(15, 23, 42, .28)', color: '#203444' }}
+          >
+            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderBottom: '1px solid #e6eceb', background: '#fbfdfc' }}>
+              <div style={{ display: 'flex', minWidth: 0, alignItems: 'center', gap: 10 }}>
+                <div style={{ minWidth: 0 }}>
+                  {correctionActive && <><h2 className="billing-summary-edit-title">Edit Billing Summary</h2><p className="billing-summary-edit-subtitle">Update the billing details, charges, or notes before sending to the receptionist.</p></>}
+                  <h2 id="billing-invoice-dialog-title" style={{ margin: 0, overflow: 'hidden', color: '#203444', fontSize: '1rem', fontWeight: 700, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedInvoice.items?.[0]?.description || `Invoice #${selectedInvoice.id}`}</h2>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 7, marginTop: 3, color: '#718198', fontSize: '.75rem' }}>
+                    <span>{invoiceDate(selectedInvoice.consultation_completed_at || selectedInvoice.visit_date || selectedInvoice.issued_at)}</span>
+                    <span style={{ padding: '3px 8px', borderRadius: 999, background: '#e7f4ec', color: '#086b50', fontWeight: 700 }}>In Billing · {getBillingStatus(selectedInvoice)}</span>
+                  </div>
+                </div>
+              </div>
+              <button type="button" onClick={closeInvoiceDetails} aria-label="Close invoice details" style={{ flex: '0 0 auto', padding: '8px 13px', border: '1px solid #dce4e8', borderRadius: 8, background: '#fff', color: '#40546a', font: 'inherit', fontSize: '.78rem', fontWeight: 650, cursor: 'pointer' }}>Close</button>
+            </header>
+            <div className="billing-invoice-dialog-content" style={{ display: 'grid', width: '100%', boxSizing: 'border-box', flex: '1 1 auto', minHeight: 0, gap: 10, overflowY: 'auto', padding: '12px 14px' }}>
+              {selectedInvoice.status === 'void' && <InvoiceCorrectionEditor key={selectedInvoice.id} invoice={selectedInvoice} user={user} onCancel={closeInvoiceDetails} onSaved={payload => {
+                setInvoices(current => {
+                  const updated = payload.replacement ? payload.invoice : { ...selectedInvoice, ...payload.invoice };
+                  return payload.replacement ? [...current.map(invoice => String(invoice.id) === String(payload.original_invoice_id) ? { ...invoice, metadata: { ...invoice.metadata, replacement_invoice_id: payload.invoice.id } } : invoice), updated] : current.map(invoice => String(invoice.id) === String(updated.id) ? updated : invoice);
+                });
+                setSelectedInvoiceId(payload.invoice.id);
+              }} />}
+              {correctionActive && <p className="billing-invoice-return-reason"><strong>Returned for correction:</strong> {selectedInvoice.metadata?.billing_review_reason || 'No reason recorded.'}</p>}
+              <section style={{ padding: '13px 15px', border: '1px solid #e5ecea', borderRadius: 10, background: '#fff' }}>
+                <h3 style={{ margin: '0 0 8px', color: '#203444', fontSize: '.9rem', fontWeight: 700 }}>Visit details{correctionActive && <button type="button" className="billing-summary-section-edit" onClick={event=>event.currentTarget.closest("section").querySelector("input,select,textarea")?.focus()}>Edit</button>}</h3>
+                {correctionActive ? <div className="billing-summary-visit-grid">
+                  <label className="billing-summary-patient"><span>Patient</span><ClinicAttachmentImage attachmentId={correctionDraft.target_appointment_id===String(selectedInvoice.appointment_id || '')?selectedInvoice.pet_photo_attachment_id:null} user={user} alt="Patient" style={{width:40,height:40,borderRadius:"50%",objectFit:"cover"}} fallback={<span className="billing-summary-patient-initial" aria-hidden="true">{String(correctionOptions.visits.find(visit=>String(visit.id)===correctionDraft.target_appointment_id)?.pet || selectedInvoice.pet || "P").slice(0,1)}</span>}/><select form="invoice-correction-form" className="billing-invoice-inline-input" disabled={correctionSaving} value={correctionDraft.target_appointment_id} onChange={event=>{const visit=correctionOptions.visits.find(item=>String(item.id)===event.target.value);setCorrectionDraft(current=>({...current,target_appointment_id:event.target.value,visit_details:{...current.visit_details,visit_date:String(visit?.start_time || current.visit_details.visit_date).slice(0,10),doctor:visit?.practitioner || current.visit_details.doctor}}));}}><option value={String(selectedInvoice.appointment_id || '')}>{selectedInvoice.pet || 'Current patient'}</option>{correctionOptions.visits.filter(visit=>String(visit.id)!==String(selectedInvoice.appointment_id)).map(visit=><option key={visit.id} value={visit.id}>{visit.pet} ? {String(visit.start_time || '').slice(0,10)}</option>)}</select><small>{correctionDraft.target_appointment_id===String(selectedInvoice.appointment_id || '')?[selectedInvoice.species,selectedInvoice.breed,selectedPetWeight].filter(Boolean).join(' / '):'Selected patient visit'}</small></label>
+                  <label><span>Owner</span><select form="invoice-correction-form" className="billing-invoice-inline-input" aria-label="Owner" disabled={correctionSaving} value={correctionOptions.visits.find(visit=>String(visit.id)===correctionDraft.target_appointment_id)?.owner || selectedInvoice.owner || ''} onChange={event=>{const visit=correctionOptions.visits.find(item=>item.owner===event.target.value);if(visit)setCorrectionDraft(current=>({...current,target_appointment_id:String(visit.id),visit_details:{...current.visit_details,doctor:visit.practitioner || current.visit_details.doctor,visit_date:String(visit.start_time || current.visit_details.visit_date).slice(0,10)}}));}}>{[...new Set([selectedInvoice.owner || '',...correctionOptions.visits.map(visit=>visit.owner).filter(Boolean)])].map(owner=><option key={owner} value={owner}>{owner || 'Not recorded'}</option>)}</select><small>{correctionDraft.target_appointment_id===String(selectedInvoice.appointment_id || '')?selectedInvoice.owner_phone || '':''}</small></label>
+                  <label><span>Attending veterinarian</span><select form="invoice-correction-form" className="billing-invoice-inline-input" disabled={correctionSaving} value={correctionDraft.visit_details.doctor} onChange={event=>setCorrectionDraft(current=>({...current,visit_details:{...current.visit_details,doctor:event.target.value}}))}><option value={selectedInvoice.doctor || ''}>{selectedInvoice.doctor || 'Not recorded'}</option>{correctionOptions.staff.filter(member=>member.name!==selectedInvoice.doctor).map(member=><option key={member.id} value={member.name}>{member.name}</option>)}</select></label>
+                  <label><span>Appointment type</span><select form="invoice-correction-form" className="billing-invoice-inline-input" disabled={correctionSaving} value={correctionDraft.visit_details.appointment_type} onChange={event=>setCorrectionDraft(current=>({...current,visit_details:{...current.visit_details,appointment_type:event.target.value}}))}>{[...new Set([correctionDraft.visit_details.appointment_type,'Check-up','Laboratory','Vaccination','Treatment','Confinement'])].map(type=><option key={type}>{type}</option>)}</select></label>
+                  <label><span>Visit date</span><input form="invoice-correction-form" className="billing-invoice-inline-input" type="date" required disabled={correctionSaving} value={correctionDraft.visit_details.visit_date} onChange={event=>setCorrectionDraft(current=>({...current,visit_details:{...current.visit_details,visit_date:event.target.value}}))}/></label>
+                  <label><span>Visit status</span><select form="invoice-correction-form" className="billing-invoice-inline-input" disabled={correctionSaving} value={correctionDraft.visit_details.appointment_status} onChange={event=>setCorrectionDraft(current=>({...current,visit_details:{...current.visit_details,appointment_status:event.target.value}}))}>{[...new Set([correctionDraft.visit_details.appointment_status,'Finalized','Completed','In progress'])].map(status=><option key={status}>{status}</option>)}</select></label>
+                  {correctionOptionsError && <p role="alert">{correctionOptionsError}</p>}
+                </div> : <>                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 0 }}>
+                  <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', alignItems: 'center', borderBottom: '1px solid #edf1f0' }}>
+                    <div style={{ display: 'flex', minWidth: 0, alignItems: 'center', gap: 10, padding: '8px 9px' }}>
+                      <ClinicAttachmentImage
+                        attachmentId={selectedInvoice.pet_photo_attachment_id}
+                        user={user}
+                        alt=""
+                        style={{ width: 48, height: 48, flex: '0 0 auto', borderRadius: '50%', objectFit: 'cover' }}
+                        fallback={<span aria-hidden="true" style={{ display: 'grid', width: 48, height: 48, flex: '0 0 auto', placeItems: 'center', borderRadius: '50%', background: '#eaf3f0', color: '#086b50', fontSize: '.95rem', fontWeight: 700 }}>{String(selectedInvoice.pet || 'P').slice(0, 1).toUpperCase()}</span>}
+                      />
+                      <div style={{ minWidth: 0 }}>
+                        <div className="billing-invoice-field-label" style={{ color: '#7a8a9b', fontSize: '.72rem' }}>Patient</div>
+                        <div className="billing-invoice-field-value" style={{ overflow: 'hidden', color: '#263d4d', fontSize: '.83rem', fontWeight: 700, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedInvoice.pet || '—'}</div>
+                        <div className="billing-invoice-profile-meta" style={{ overflow: 'hidden', color: '#718198', fontSize: '.68rem', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[selectedInvoice.species, selectedInvoice.breed, calculatePatientAge(selectedInvoice.birth_date), selectedPetWeight].filter(Boolean).join(' · ')}</div>
+                      </div>
+                    </div>
+                    <div style={{ minWidth: 0, padding: '8px 9px' }}>
+                      <div className="billing-invoice-field-label" style={{ color: '#7a8a9b', fontSize: '.72rem' }}>Owner</div>
+                      <div className="billing-invoice-field-value" style={{ overflow: 'hidden', color: '#263d4d', fontSize: '.83rem', fontWeight: 700, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedInvoice.owner || '—'}</div>
+                      <div className="billing-invoice-profile-meta" style={{ overflow: 'hidden', color: '#718198', fontSize: '.68rem', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedInvoice.owner_phone || 'Contact not recorded'}</div>
+                    </div>
+                  </div>
+                  {[
+                    ['Attending veterinarian', selectedInvoice.doctor ? `Dr. ${selectedInvoice.doctor}` : 'Not recorded'],
+                    ['Appointment type', invoiceServiceType],
+                    ['Visit date', invoiceDate(selectedInvoice.visit_date || selectedInvoice.consultation_completed_at || selectedInvoice.issued_at)],
+                    ['Visit status', invoiceVisitStatus],
+                  ].map(([label, value], index) => <div key={label} style={{ minWidth: 0, padding: '9px 9px', borderBottom: index < 2 ? '1px solid #edf1f0' : 0 }}>
+                    <div className="billing-invoice-field-label" style={{ marginBottom: 3, color: '#7a8a9b', fontSize: '.72rem' }}>{label}</div>
+                    <div className="billing-invoice-field-value" style={{ overflowWrap: 'anywhere', color: '#263d4d', fontSize: '.82rem', fontWeight: 600 }}>{value}</div>
+                  </div>)}
+                </div></>}
+              </section>
 
-        {selectedInvoice && <section aria-label="Selected patient bill" style={{ marginBottom: 16, overflow: 'hidden', border: '1px solid #dce4eb', borderRadius: 9, background: '#fff' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '14px 16px', borderBottom: '1px solid #e8edf2' }}>
-            <div>
-              <h2 style={{ margin: 0, color: '#203c4c', fontSize: '1.05rem', fontWeight: 700 }}>{selectedInvoice.pet || 'Patient'}</h2>
-              <div style={{ marginTop: 3, color: '#526579', fontSize: '.76rem' }}>Owner: {selectedInvoice.owner || '—'}</div>
-            </div>
-            <div style={{ color: '#526579', fontSize: '.74rem', textAlign: 'right' }}>
-              <div>{invoiceDate(selectedInvoice.consultation_completed_at || selectedInvoice.issued_at)}</div>
-              {selectedInvoice.doctor && <div style={{ marginTop: 3 }}>Dr. {selectedInvoice.doctor}</div>}
-              <div style={{ marginTop: 3 }}>Invoice #{selectedInvoice.id}</div>
-            </div>
-          </div>
-          <div style={{ padding: 14 }}>
-            <div style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 6, background: '#f1f6f8', color: '#526d83', fontSize: '.69rem', fontWeight: 700, letterSpacing: '.03em' }}>CLINICAL FINDINGS</div>
-            {consultationSummaryRows.length ? <div style={{ marginBottom: 14 }}>
-              {consultationSummaryRows.map(([label, value]) => <div key={label} style={{ display: 'grid', gridTemplateColumns: 'minmax(95px, 17%) 1fr', gap: 12, padding: '8px 9px', borderBottom: '1px solid #e6edf2', color: '#40546a', fontSize: '.76rem' }}>
-                <span style={{ color: '#7188a2' }}>{label}</span><span style={{ whiteSpace: 'pre-wrap' }}>{value}</span>
-              </div>)}
-            </div> : <p style={{ margin: '8px 2px 14px', color: '#718198', fontSize: '.76rem' }}>No consultation notes were saved for this bill.</p>}
-            <div style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 6, background: '#f1f6f8', color: '#526d83', fontSize: '.69rem', fontWeight: 700, letterSpacing: '.03em' }}>SERVICES, TESTS, MEDICINES & VACCINES</div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', minWidth: 440, borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead><tr>{['Description', 'Type', 'Qty / Rate', 'Amount'].map(label => <th key={label} style={{ padding: '8px 9px', background: '#f8fafc', color: '#607184', fontSize: '.68rem', fontWeight: 700 }}>{label}</th>)}</tr></thead>
-                <tbody>{(selectedInvoice.items || []).map(item => <tr key={item.id}>
-                  <td style={billingStyles.cell}>{item.description || 'Service'}</td>
-                  <td style={billingStyles.cell}>{({ consultation: 'Service', treatment: 'Treatment', medication: 'Medication', vaccination: 'Vaccine', lab_test: 'Test', inpatient: 'Inpatient' })[item.item_type] || 'Service'}</td>
-                  <td style={billingStyles.cell}>{item.quantity} × {currency(item.unit_price)}</td>
-                  <td style={{ ...billingStyles.cell, textAlign: 'right' }}>{currency(item.line_total)}</td>
-                </tr>)}</tbody>
-                <tfoot><tr>
-                  <th colSpan="3" style={{ padding: '11px 9px', background: '#f1f6f8', color: '#203c4c', fontSize: '.82rem', textAlign: 'left' }}>Total</th>
-                  <th style={{ padding: '11px 9px', background: '#f1f6f8', color: '#203c4c', fontSize: '.82rem', textAlign: 'right' }}>{currency(selectedInvoice.total)}</th>
-                </tr></tfoot>
-              </table>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, marginTop: 9, color: '#526579', fontSize: '.74rem' }}>
-              <span>Paid: {currency(paymentsByInvoice.get(String(selectedInvoice.id)) || 0)}</span>
-              <strong style={{ color: '#203c4c' }}>Balance due: {currency(Math.max(0, Number(selectedInvoice.total || 0) - (paymentsByInvoice.get(String(selectedInvoice.id)) || 0)))}</strong>
-            </div>
-          </div>
-        </section>}
+              <section style={{ padding: '13px 15px', border: '1px solid #e5ecea', borderRadius: 10, background: '#fff' }}>
+                <h3 style={{ margin: '0 0 8px', color: '#203444', fontSize: '.9rem', fontWeight: 700 }}>Clinical summary{correctionActive && <button type="button" className="billing-summary-section-edit" onClick={event=>event.currentTarget.closest("section").querySelector("input,select,textarea")?.focus()}>Edit</button>}</h3>
+                <div style={{ overflow: 'hidden', border: '1px solid #e7ecec', borderRadius: 7 }}>
+                  {consultationSummaryRows.map(([label, value], index) => <div key={label} style={{ display: 'grid', gridTemplateColumns: 'minmax(100px, 18%) minmax(0, 1fr)', gap: 0, minHeight: 34, borderBottom: index < consultationSummaryRows.length - 1 ? '1px solid #edf1f0' : 0, color: '#40546a', fontSize: '.78rem' }}>
+                    <span className="billing-invoice-summary-label" style={{ padding: '9px 10px', background: '#f5f7f8', color: '#7188a2' }}>{label}</span><span className="billing-invoice-summary-value" style={{ padding: '9px 10px', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{correctionActive ? <textarea rows={1} ref={field=>{if(field){field.style.height="0px";field.style.height=Math.max(26,field.scrollHeight+2)+"px";}}} form="invoice-correction-form" className="billing-invoice-inline-input" aria-label={label} placeholder="Not recorded" maxLength={10000} disabled={correctionSaving} value={correctionDraft.summary[["chiefComplaint","diagnosis","clinicalFindings","plan"][index]]} onChange={event=>{const key=["chiefComplaint","diagnosis","clinicalFindings","plan"][index];setCorrectionDraft(current=>({...current,summary:{...current.summary,[key]:event.target.value}}));}}/> : value}</span>
+                  </div>)}
+                </div>
+              </section>
 
-        {loading ? <div role="status" style={{ display: 'grid', minHeight: 280, placeItems: 'center', border: '1px dashed #dce4eb', borderRadius: 8, color: '#728198', fontSize: '.84rem' }}>Loading billing records…</div>
-          : error ? <div role="alert" style={{ display: 'grid', minHeight: 220, placeItems: 'center', border: '1px solid #fecaca', borderRadius: 8, background: '#fffafa', color: '#b42318', fontSize: '.84rem' }}>{error}</div>
-            : visibleInvoices.length === 0 ? <div style={{ display: 'flex', minHeight: 286, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, border: '1px dashed #dce4eb', borderRadius: 8, textAlign: 'center' }}>
-              <svg aria-hidden="true" width="54" height="60" viewBox="0 0 54 60" fill="none"><path d="M12 3h22l12 12v34a5 5 0 0 1-5 5H12a5 5 0 0 1-5-5V8a5 5 0 0 1 5-5Z" stroke="#93a1b2" strokeWidth="2.5" /><path d="M34 4v12h12M16 26h19M16 34h16" stroke="#b6c1cd" strokeWidth="2.5" strokeLinecap="round" /><circle cx="42" cy="45" r="9" fill="#8795a6" /><path d="M38 45h8" stroke="white" strokeWidth="2" strokeLinecap="round" /></svg>
-              <strong style={{ color: '#263d4d', fontSize: '1rem', fontWeight: 600 }}>No billing records found</strong>
-              <span style={{ color: '#718198', fontSize: '.78rem' }}>Try adjusting your search, date range, or filters.</span>
-            </div> : <div style={{ overflowX: 'auto', border: '1px solid #e4eaf0', borderRadius: 8 }}>
-              <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead><tr>{['Invoice', 'Patient', 'Owner', 'Date', 'Items', 'Amount', 'Paid', 'Balance', 'Status'].map(label => <th key={label} style={{ padding: '12px 14px', borderBottom: '1px solid #e5ebf1', background: '#f8fafc', color: '#607184', fontSize: '.69rem', fontWeight: 700 }}>{label}</th>)}</tr></thead>
-                <tbody>{visibleInvoices.map(invoice => {
-                  const paid = paymentsByInvoice.get(String(invoice.id)) || 0;
-                  const balance = Math.max(0, Number(invoice.total || 0) - paid);
-                  const status = getBillingStatus(invoice);
-                  return <tr key={invoice.id}>
-                    <td style={billingStyles.cell}>#{invoice.id}</td>
-                    <td style={billingStyles.cell}>{invoice.pet || '—'}</td>
-                    <td style={billingStyles.cell}>{invoice.owner || '—'}</td>
-                    <td style={billingStyles.cell}>{invoiceDate(invoice.issued_at)}</td>
-                    <td style={billingStyles.cell}>
-                      <details><summary style={{ color: '#087f65', cursor: 'pointer' }}>{invoice.items?.length || 0} item{invoice.items?.length === 1 ? '' : 's'}</summary>
-                        <div style={{ minWidth: 200, padding: '6px 0', color: '#526579', fontSize: '.72rem' }}>{(invoice.items || []).map(item => <div key={item.id}>{item.description} × {item.quantity} · {currency(item.line_total)}</div>)}</div>
-                      </details>
-                    </td>
-                    <td style={billingStyles.cell}>{currency(invoice.total)}</td>
-                    <td style={billingStyles.cell}>{currency(paid)}</td>
-                    <td style={billingStyles.cell}>{currency(balance)}</td>
-                    <td style={billingStyles.cell}><span style={{ padding: '4px 9px', borderRadius: 15, background: status === 'Completed' ? '#e6f5ee' : '#fff5dc', color: status === 'Completed' ? '#16744b' : '#896414', fontSize: '.7rem', fontWeight: 700 }}>{status}</span></td>
-                  </tr>;
-                })}</tbody>
-              </table>
-            </div>}
-      </div>
+              <section style={{ padding: '13px 15px', border: '1px solid #e5ecea', borderRadius: 10, background: '#fff' }}>
+                <h3 style={{ margin: '0 0 8px', color: '#203444', fontSize: '.9rem', fontWeight: 700 }}>{correctionActive?'Charges':'To be paid'}</h3>
+                {correctionActive && <button className="billing-summary-add-item" type="button" disabled={correctionSaving || correctionDraft.items.length>=100} onClick={()=>setCorrectionDraft(current=>({...current,items:[...current.items,{id:Math.min(0,...current.items.map(item=>Number(item.id)))-1,description:'',item_type:'consultation',quantity:1,unit_price:0}]}))}>+ Add Item</button>}
+                <div style={{ overflowX: 'auto' }}>
+                  <table className={correctionActive?'billing-summary-charges-table':undefined} style={{ width: '100%', minWidth: 380, borderCollapse: 'collapse', textAlign: 'left' }}>
+                    {correctionActive && <colgroup>{['36%','21%','8%','14%','16%','5%'].map(width=><col key={width} style={{width}}/>)}</colgroup>}
+                    <thead><tr>{['Description', 'Type', 'Qty', 'Unit price', 'Amount',...(correctionActive?['']:[])].map(label => <th key={label} style={{ padding: '8px 8px', borderBottom: '1px solid #e4ebe9', background: '#f8fafb', color: '#748496', fontSize: '.72rem', fontWeight: 700 }}>{label}</th>)}</tr></thead>
+                    <tbody>{(correctionActive ? correctionDraft.items : selectedInvoice.items || []).map((item,index) => <tr key={item.id}>
+                      <td style={{ ...billingStyles.cell, padding: '9px 8px', fontSize: '.76rem' }}>{correctionActive ? correctionInput(item,'description','Description '+(index+1),{maxLength:500,list:'invoice-charge-catalog'}) : item.description || 'Service'}</td>
+                      <td style={{ ...billingStyles.cell, padding: '9px 8px', fontSize: '.74rem' }}>{correctionActive ? <select form="invoice-correction-form" className="billing-invoice-inline-input" aria-label={'Type '+(index+1)} disabled={correctionSaving} value={item.item_type} onChange={event=>updateCorrectionItem(item.id,'item_type',event.target.value)}>{Object.entries({consultation:'Service',treatment:'Treatment',medication:'Medication',vaccination:'Vaccine',lab_test:'Laboratory Test',inpatient:'Inpatient',product:'Product'}).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select> : (({ consultation: 'Service', treatment: 'Treatment', medication: 'Medication', vaccination: 'Vaccine', lab_test: 'Laboratory Test', inpatient: 'Inpatient' })[item.item_type] || 'Service')}</td>
+                      <td style={{ ...billingStyles.cell, padding: '9px 8px', fontSize: '.76rem' }}>{correctionActive ? correctionInput(item,'quantity','Quantity '+(index+1),{type:'number',min:'0.01',max:'10000',step:'0.01'}) : item.quantity}</td>
+                      <td style={{ ...billingStyles.cell, padding: '9px 8px', fontSize: '.76rem' }}>{correctionActive ? correctionInput(item,'unit_price','Unit price '+(index+1),{type:'number',min:'0',max:'1000000',step:'0.01'}) : currency(item.unit_price)}</td>
+                      <td style={{ ...billingStyles.cell, padding: '9px 8px', fontSize: '.76rem', textAlign: 'right' }}>{currency(correctionActive ? Math.round(Number(item.quantity||0)*Number(item.unit_price||0)*100)/100 : item.line_total)}</td>
+                      {correctionActive && <td><button type="button" className="billing-summary-remove" aria-label={'Remove charge '+(index+1)} disabled={correctionSaving || correctionDraft.items.length===1} onClick={()=>setCorrectionDraft(current=>({...current,items:current.items.filter(line=>line.id!==item.id)}))}>&#128465;</button></td>}
+                    </tr>)}</tbody>
+                    <tfoot>{correctionActive ? <tr><th colSpan={6} className="billing-summary-total-cell"><div className="billing-summary-total-bar"><span>Total</span><strong>{currency(correctionTotal)}</strong></div></th></tr> : <tr><th colSpan="4" style={{ padding: '9px 8px', background: '#eef7f4', color: '#203c4c', fontSize: '.78rem', textAlign: 'left' }}>Total</th><th style={{ padding: '9px 8px', background: '#eef7f4', color: '#203c4c', fontSize: '.8rem', textAlign: 'right' }}>{currency(selectedInvoice.total)}</th></tr>}</tfoot>
+                  </table>
+                </div>
+                {correctionActive && <label className="billing-invoice-inline-tax">Tax (PHP)<input form="invoice-correction-form" className="billing-invoice-inline-input" type="number" required min="0" max="1000000" step="0.01" disabled={correctionSaving} value={correctionDraft.tax} onChange={event=>setCorrectionDraft(current=>({...current,tax:event.target.value}))}/></label>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 9, color: '#526579', fontSize: '.74rem' }}>
+                  <span>Paid: {currency(paymentsByInvoice.get(String(selectedInvoice.id)) || 0)}</span>
+                  <strong style={{ color: '#203c4c' }}>Balance due: {currency(correctionActive ? Math.max(0,correctionTotal-(paymentsByInvoice.get(String(selectedInvoice.id))||0)) : selectedInvoiceBalance)}</strong>
+                </div>
+              </section>
+
+              <section hidden={Boolean(correctionActive)} style={{ padding: '13px 15px', border: '1px solid #f1e4dc', borderRadius: 10, background: '#fffaf7' }}>
+                <h3 style={{ margin: '0 0 9px', color: '#203444', fontSize: '.9rem', fontWeight: 700 }}>Outstanding balances</h3>
+                {selectedPatientOutstandingInvoices.length ? <div style={{ display: 'grid', gap: 5 }}>
+                  {selectedPatientOutstandingInvoices.map(invoice => {
+                    const balance = Math.max(0, Number(invoice.total || 0) - (paymentsByInvoice.get(String(invoice.id)) || 0));
+                    return <button key={invoice.id} type="button" onClick={() => { setInvoiceAttachmentError(''); setSelectedInvoiceId(invoice.id); }} style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', alignItems: 'center', gap: 10, padding: '10px 11px', border: '1px solid #f2e8e2', borderRadius: 8, background: '#fff', color: '#40546a', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
+                      <span style={{ color: '#7b8b99', fontSize: '.74rem' }}>#{invoice.id}</span>
+                      <span style={{ minWidth: 0, overflow: 'hidden', fontSize: '.76rem', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invoice.items?.[0]?.description || 'Previous invoice'} · {invoiceDate(invoice.issued_at)}</span>
+                      <strong style={{ color: '#9a4935', fontSize: '.78rem' }}>{currency(balance)}</strong>
+                    </button>;
+                  })}
+                </div> : <p style={{ margin: 0, color: '#718198', fontSize: '.76rem' }}>No other unpaid invoices for this patient.</p>}
+              </section>
+
+              <section style={{ padding: '13px 15px', border: '1px solid #e5ecea', borderRadius: 10, background: '#fff' }}>
+                <div className="billing-invoice-attachments-header">
+                  <h3 style={{ margin: 0, color: '#203444', fontSize: '.9rem', fontWeight: 700 }}>Attachments</h3>
+                  {(correctionActive || (Number.isInteger(Number(selectedInvoice.metadata?.lab_test_id)) && Number(selectedInvoice.metadata?.lab_test_id) > 0)) && (
+                    <>
+                      <input ref={invoiceAttachmentInputRef} type="file" accept="application/pdf,image/jpeg,image/png" onChange={uploadInvoiceAttachment} hidden />
+                      <button
+                        type="button"
+                        className="billing-invoice-add-file"
+                        onClick={() => invoiceAttachmentInputRef.current?.click()}
+                        disabled={invoiceAttachmentUploading || correctionSaving}
+                      >
+                        {invoiceAttachmentUploading ? 'Uploading…' : 'Add file'}
+                      </button>
+                    </>
+                  )}
+                </div>
+                {((selectedInvoice.attachments || []).filter(file=>!correctionActive || !correctionDraft.removed_attachment_ids.includes(file.id))).map(attachment=><div className="billing-summary-file-row" key={attachment.id}><button type="button" className="billing-invoice-attachment" onClick={()=>downloadInvoiceAttachment(attachment)}><span className="billing-invoice-attachment-info"><strong>{attachment.filename || 'Visit attachment'}</strong><small>{String(attachment.content_type || '').split('/').pop()?.toUpperCase() || 'FILE'}</small></span><span aria-hidden="true">&#8595;</span></button>{correctionActive && <button type="button" className="billing-summary-remove" aria-label={'Remove attachment '+attachment.filename} disabled={correctionSaving} onClick={()=>setCorrectionDraft(current=>({...current,removed_attachment_ids:[...current.removed_attachment_ids,attachment.id]}))}>&#128465;</button>}</div>)}
+                {correctionActive && correctionDraft.attachments.map((file,index)=><div className="billing-summary-file-row" key={index}><span>{file.filename} <small>Ready to upload</small></span><button type="button" className="billing-summary-remove" aria-label={'Remove attachment '+file.filename} disabled={correctionSaving} onClick={()=>setCorrectionDraft(current=>({...current,attachments:current.attachments.filter((_,i)=>i!==index)}))}>&#128465;</button></div>)}
+                {!selectedInvoice.attachments?.length && !correctionDraft?.attachments?.length && <p style={{margin:0,fontSize:'.76rem',color:'#718198'}}>No files are attached to this visit.</p>}
+                {invoiceAttachmentError && <p role="alert" style={{ margin: '8px 0 0', color: '#b42318', fontSize: '.75rem' }}>{invoiceAttachmentError}</p>}
+              </section>
+              {correctionActive && <section className="billing-summary-notes"><label>Doctor&#8217;s Notes <span>(Optional)</span><textarea form="invoice-correction-form" className="billing-invoice-inline-input" maxLength={1000} disabled={correctionSaving} value={correctionDraft.note} onChange={event=>setCorrectionDraft(current=>({...current,note:event.target.value}))} placeholder="Add notes for the receptionist (e.g., special instructions, discount, or billing remarks)..."/></label></section>}
+              <datalist id="invoice-charge-catalog">{correctionOptions.catalog.map(item=><option key={item.id} value={item.name}/>)}</datalist>
+            </div>
+            {(selectedInvoice.metadata?.void_request_status === 'pending' || (selectedInvoice.status === 'void' && !selectedInvoice.metadata?.void_request_status)) && <InvoiceVoidDecision key={'void-'+selectedInvoice.id} invoice={selectedInvoice} user={user} onSaved={updated=>setInvoices(current=>current.map(invoice=>String(invoice.id)===String(updated.id)?{...invoice,...updated}:invoice))}/> }
+            {correctionActive && <form id="invoice-correction-form" className="billing-invoice-send-footer billing-invoice-correction-footer" onSubmit={saveInvoiceCorrection}>
+
+              {correctionError && <p role="alert" className="doctor-billing-error">{correctionError}</p>}
+              <div className="doctor-correction-actions"><button type="button" disabled={correctionSaving} onClick={closeInvoiceDetails}>Cancel</button><button type="submit" className="billing-invoice-send-button" disabled={correctionSaving || invoiceAttachmentUploading}>{correctionSaving?'Sending...':<><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M22 2 9 15M22 2l-8 20-5-7-7-5Z"/></svg> Send to Receptionist</>}</button></div>
+            </form>}
+            {selectedInvoice.status !== 'void' && selectedInvoice.metadata?.void_request_status !== 'pending' && selectedInvoice.metadata?.billing_review_status !== 'returned' && <footer className="billing-invoice-send-footer">
+              <div className="billing-invoice-send-copy">
+                <strong>{invoiceSentToReception ? 'Sent to Billing' : 'Send to Billing'}</strong>
+                <p>{invoiceSentToReception
+                  ? 'This invoice is in the receptionist billing queue and is ready for payment processing.'
+                  : 'Send this invoice to the receptionist billing queue for payment processing.'}</p>
+                {invoiceSendError && <p role="alert" style={{ color: '#b42318' }}>{invoiceSendError}</p>}
+              </div>
+              {invoiceSentToReception
+                ? <span role="status" className="billing-invoice-sent-status" aria-label="Bill sent to receptionist billing">Bill Sent</span>
+                : <button type="button" disabled={sendingInvoice} onClick={sendInvoiceToReception} className="billing-invoice-send-button">
+                  {sendingInvoice ? 'Sending…' : 'Send to Receptionist'}
+                </button>}
+            </footer>}
+          </section>
+        </div>, document.body)}
+
     </section>
   );
 }
@@ -4362,109 +5015,7 @@ const billingStyles = {
   cell: { padding: '13px 14px', borderBottom: '1px solid #edf1f5', color: '#304456', fontSize: '.77rem', verticalAlign: 'top' },
 };
 
-function InventoryTab() {
-  const [category, setCategory] = useState('All Items');
-  const [requested, setRequested] = useState([]);
-  const [restockItem, setRestockItem] = useState(null);
-  const [restockQuantity, setRestockQuantity] = useState('');
-  const [restockNote, setRestockNote] = useState('');
-  const categories = ['All Items', 'Medication', 'Vaccine', 'Supply'];
-  const filtered = category === 'All Items' ? CLINIC_INVENTORY : CLINIC_INVENTORY.filter(item => item.category === category);
-  const requestRestock = (item, quantity, note) => {
-    setRequested(items => items.includes(item.name) ? items : [...items, item.name]);
-    notifySuccess(
-      'Restock request submitted',
-      `${quantity} ${item.unit} requested for ${item.name}.${note ? ` Note: ${note}` : ''}`,
-    );
-  };
-  const getInventoryStatus = item => {
-    if (item.expiry !== 'N/A') {
-      const expiryDate = new Date(`${item.expiry}T00:00:00`);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (!Number.isNaN(expiryDate.getTime()) && expiryDate < today) return 'Expired';
-      if (!Number.isNaN(expiryDate.getTime()) && (expiryDate.getTime() - today.getTime()) / 86400000 <= 30) return 'Expiring Soon';
-    }
-    if (item.quantity === 0) return 'Out of Stock';
-    return item.status;
-  };
-  const statusTone = status => ({
-    'Healthy Stock': { color: '#005447', dot: '#10b981' },
-    'Low Stock': { color: '#a34b00', dot: '#f59e0b' },
-    'Critical Stock': { color: '#a34b00', dot: '#f59e0b' },
-    'Reorder Soon': { color: '#a34b00', dot: '#f59e0b' },
-    'Out of Stock': { color: '#b42318', dot: '#ef4444' },
-    'Expired': { color: '#b42318', dot: '#ef4444' },
-    'Expiring Soon': { color: '#a34b00', dot: '#f59e0b' },
-  }[status] || { color: '#374151', dot: '#94a3b8' });
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '11px 13px', marginBottom: 14, color: '#b45309' }}>
-        <span style={{ width: 16, height: 16, display: 'flex', flexShrink: 0 }}>{Icons.trendDown || Icons.refresh}</span>
-        <div><div style={{ fontSize: '.76rem', fontWeight: 600 }}>View-Only Access</div><div style={{ marginTop: 4, fontSize: '.72rem' }}>As a doctor you can view stock status and submit restock requests. All stock adjustments are managed by the owner.</div></div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
-        {[
-          ['Total Items', CLINIC_INVENTORY.length, '#005447'],
-          ['In Stock', CLINIC_INVENTORY.filter(item => item.status === 'Healthy Stock').length, '#16a34a'],
-          ['Low / Critical', CLINIC_INVENTORY.filter(item => ['Low Stock', 'Critical Stock'].includes(item.status)).length, '#c2410c'],
-          ['Out of Stock', CLINIC_INVENTORY.filter(item => item.status === 'Out of Stock').length, '#dc2626'],
-        ].map(([label, value, color]) => (
-          <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '14px 20px' }}>
-            <div style={{ color: '#94a3b8', fontSize: '.68rem' }}>{label}</div>
-            <div style={{ color, fontSize: '1.45rem', fontWeight: 700, marginTop: 3 }}>{value}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        {categories.map(item => <button key={item} type="button" onClick={() => setCategory(item)} style={{ border: 'none', borderRadius: 8, padding: '7px 12px', background: category === item ? '#005447' : '#eef2f7', color: category === item ? '#fff' : '#64748b', fontSize: '.72rem', fontWeight: 600, cursor: 'pointer' }}>{item}</button>)}
-      </div>
-      <div style={inventoryTable.wrap}>
-      <table style={inventoryTable.table}>
-        <thead><tr>{[['Item Name', '25%'], ['Category', '14%'], ['Current Stock', '14%'], ['Expiry', '12%'], ['Status', '16%'], ['Action', '19%']].map(([label, width]) => <th key={label} style={{ ...inventoryTable.heading, width }}>{label}</th>)}</tr></thead>
-        <tbody>{filtered.map(item => {
-          const status = getInventoryStatus(item);
-          const tone = statusTone(status);
-          const needsRestock = ['Low Stock', 'Critical Stock', 'Out of Stock', 'Expired', 'Reorder Soon'].includes(status);
-          const stockColor = status === 'Expired' || status === 'Out of Stock' ? '#dc2626' : ['Low Stock', 'Critical Stock', 'Reorder Soon'].includes(status) ? '#b45309' : '#111827';
-          return <tr key={item.name} style={{ background: ['Expired', 'Out of Stock'].includes(status) ? '#fff0ee' : '#fff' }}>
-            <td style={{ ...inventoryTable.cell, fontWeight: 700 }}>{item.name}</td>
-            <td style={inventoryTable.cell}><span style={inventoryTable.category}>{item.category}</span></td>
-            <td style={{ ...inventoryTable.cell, color: stockColor, fontWeight: 700 }}>{item.stock}</td>
-            <td style={inventoryTable.cell}>{item.expiry}</td>
-            <td style={inventoryTable.cell}><span style={{ ...inventoryTable.status, color: tone.color }}>{status === 'Expired' ? <i style={inventoryTable.expiredMark}>×</i> : <i style={{ ...inventoryTable.statusDot, background: tone.dot }} />}{status}</span></td>
-            <td style={inventoryTable.cell}>{needsRestock
-              ? <button type="button" disabled={requested.includes(item.name)} onClick={() => { setRestockItem(item); setRestockQuantity(''); setRestockNote(''); }} style={{ ...inventoryTable.restockButton, ...(requested.includes(item.name) ? inventoryTable.restockSubmitted : {}) }}><span style={inventoryTable.restockIcon}>{Icons.refresh}</span>{requested.includes(item.name) ? 'Request Submitted' : 'Request Restock'}</button>
-              : <span style={inventoryTable.emptyAction}>—</span>}</td>
-          </tr>;
-        })}</tbody>
-      </table>
-      </div>
-      {restockItem && <div style={inventoryTable.backdrop} role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setRestockItem(null); }}>
-        <form style={inventoryTable.dialog} role="dialog" aria-modal="true" aria-labelledby="restock-dialog-title" onSubmit={event => {
-          event.preventDefault();
-          requestRestock(restockItem, restockQuantity, restockNote.trim());
-          setRestockItem(null);
-          setRestockQuantity('');
-          setRestockNote('');
-        }}>
-          <div style={inventoryTable.dialogHeader}>
-            <h2 id="restock-dialog-title" style={inventoryTable.dialogTitle}>Request Restock</h2>
-            <p style={inventoryTable.dialogSubtitle}>{restockItem.name} · currently {restockItem.stock}</p>
-          </div>
-          <div style={inventoryTable.dialogBody}>
-            <label style={inventoryTable.dialogLabel}>Quantity needed<input autoFocus required type="number" min="1" step="1" value={restockQuantity} onChange={event => setRestockQuantity(event.target.value)} placeholder="e.g. 100" style={inventoryTable.dialogInput} /></label>
-            <label style={inventoryTable.dialogLabel}>Note for the owner (optional)<textarea value={restockNote} onChange={event => setRestockNote(event.target.value)} placeholder="Any urgency or supplier preference..." rows={3} style={inventoryTable.dialogTextarea} /></label>
-          </div>
-          <div style={inventoryTable.dialogFooter}>
-            <button type="button" onClick={() => setRestockItem(null)} style={inventoryTable.dialogCancel}>Cancel</button>
-            <button type="submit" style={inventoryTable.dialogSubmit}>Send Restock Request</button>
-          </div>
-        </form>
-      </div>}
-    </div>
-  );
-}
+function InventoryTab({user}) { return <SharedInventoryPanel user={user} readOnly />; }
 
 const inventoryTable = {
   wrap: { width: '100%', overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 10, background: '#fff' },
@@ -4476,7 +5027,7 @@ const inventoryTable = {
   statusDot: { display: 'inline-block', width: 8, height: 8, borderRadius: '50%', fontStyle: 'normal' },
   expiredMark: { color: '#dc2626', fontSize: '.9rem', fontStyle: 'normal', fontWeight: 700, lineHeight: 1 },
   restockButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, minHeight: 40, padding: '0 13px', border: '1px solid #e2e8f0', borderRadius: 9, background: '#fff', color: '#111827', fontSize: '.7rem', fontWeight: 500, whiteSpace: 'nowrap', cursor: 'pointer' },
-  restockSubmitted: { borderColor: '#b7e4d7', background: '#e7f5f2', color: '#005447' },
+  restockSubmitted: { borderColor: '#b7e4d7', background: '#e7f4ec', color: '#013826' },
   restockIcon: { display: 'inline-flex', width: 14, height: 14 },
   emptyAction: { color: '#94a3b8' },
   backdrop: { position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(15,23,42,.45)' },
@@ -4486,8 +5037,8 @@ const inventoryTable = {
   dialogSubtitle: { margin: '5px 0 0', color: '#64748b', fontSize: '.75rem' },
   dialogBody: { display: 'grid', gap: 14, padding: '16px 20px 18px' },
   dialogLabel: { display: 'grid', gap: 7, color: '#111827', fontSize: '.75rem', fontWeight: 600 },
-  dialogInput: { width: '100%', height: 44, boxSizing: 'border-box', border: 0, borderRadius: 9, padding: '0 13px', background: '#f1f1f3', color: '#111827', font: 'inherit', fontSize: '.75rem', outlineColor: '#005447' },
-  dialogTextarea: { width: '100%', minHeight: 72, boxSizing: 'border-box', resize: 'vertical', border: 0, borderRadius: 9, padding: '12px 13px', background: '#f1f1f3', color: '#111827', font: 'inherit', fontSize: '.75rem', outlineColor: '#005447' },
+  dialogInput: { width: '100%', height: 44, boxSizing: 'border-box', border: 0, borderRadius: 9, padding: '0 13px', background: '#f1f1f3', color: '#111827', font: 'inherit', fontSize: '.75rem', outlineColor: '#013826' },
+  dialogTextarea: { width: '100%', minHeight: 72, boxSizing: 'border-box', resize: 'vertical', border: 0, borderRadius: 9, padding: '12px 13px', background: '#f1f1f3', color: '#111827', font: 'inherit', fontSize: '.75rem', outlineColor: '#013826' },
   dialogFooter: { display: 'grid', gap: 9, padding: '15px 20px 14px', borderTop: '1px solid #e5e7eb' },
   dialogCancel: { minHeight: 45, border: '1px solid #e2e8f0', borderRadius: 9, background: '#fff', color: '#111827', font: 'inherit', fontSize: '.75rem', cursor: 'pointer' },
   dialogSubmit: { minHeight: 45, border: 0, borderRadius: 9, background: '#111318', color: '#fff', font: 'inherit', fontSize: '.75rem', fontWeight: 600, cursor: 'pointer' },
@@ -4496,9 +5047,9 @@ const inventoryTable = {
 const consultationStyles = {
   label: { display: 'flex', flexDirection: 'column', gap: 5, color: '#374151', fontSize: '.72rem', fontWeight: 600, marginBottom: 13 },
   input: { width: '100%', boxSizing: 'border-box', border: '1px solid #e5e7eb', borderRadius: 7, background: '#f1f1f3', padding: '8px 10px', color: '#374151', fontSize: '.74rem', outline: 'none' },
-  choice: { minHeight: 34, padding: '0 11px', border: '1px solid #d8e9e1', borderRadius: 8, background: '#fff', color: '#38534c', fontSize: '.7rem', cursor: 'pointer' },
-  choiceSelected: { borderColor: '#005447', background: '#e7f5f2', color: '#005447' },
-  addMedicineButton: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', minHeight: 46, marginBottom: 14, border: '1px dashed #9ddbc8', borderRadius: 9, background: '#e7f5f2', color: '#005447', fontFamily: 'inherit', fontSize: '.74rem', cursor: 'pointer' },
+  choice: { minHeight: 34, padding: '0 11px', border: '1px solid #bed6c5', borderRadius: 8, background: '#fff', color: '#38534c', fontSize: '.7rem', cursor: 'pointer' },
+  choiceSelected: { borderColor: '#013826', background: '#e7f4ec', color: '#013826' },
+  addMedicineButton: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', minHeight: 46, marginBottom: 14, border: '1px dashed #9ddbc8', borderRadius: 9, background: '#e7f4ec', color: '#013826', fontFamily: 'inherit', fontSize: '.74rem', cursor: 'pointer' },
   medicineCard: { marginBottom: 16, padding: 12, border: '1px solid #dcece5', borderRadius: 11, background: '#fff' },
   medicineGrid: { display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(65px, .7fr) minmax(72px, .7fr) 34px', gap: 8, alignItems: 'end' },
   medicineLabel: { display: 'flex', minWidth: 0, flexDirection: 'column', gap: 5, color: '#374151', fontSize: '.7rem', fontWeight: 600 },
@@ -4507,7 +5058,7 @@ const consultationStyles = {
   doseCalculation: { display: 'grid', gridTemplateColumns: 'minmax(120px, .8fr) minmax(0, 1.2fr)', gap: 9, alignItems: 'end', marginTop: 10 },
   doseRateLabel: { display: 'flex', minWidth: 0, flexDirection: 'column', gap: 5, color: '#526663', fontSize: '.66rem', fontWeight: 600 },
   doseRateInput: { width: '100%', boxSizing: 'border-box', border: '1px solid #e5e7eb', borderRadius: 7, background: '#fff', padding: '7px 9px', color: '#374151', fontSize: '.72rem', outline: 'none' },
-  calculatedDose: { padding: '8px 10px', borderRadius: 8, background: '#e7f5f2', color: '#005447', fontSize: '.68rem', lineHeight: 1.4 },
+  calculatedDose: { padding: '8px 10px', borderRadius: 8, background: '#e7f4ec', color: '#013826', fontSize: '.68rem', lineHeight: 1.4 },
   summaryRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '8px 0', borderBottom: '1px solid #e2ebe7' },
   summaryLabel: { color: '#111827', fontSize: '.7rem' },
   summaryValue: { color: '#111827', fontSize: '.72rem', minHeight: 15, textAlign: 'right' },
@@ -4600,20 +5151,20 @@ const dashboardStyles = {
   dashboardCount: { marginLeft: 5, padding: '3px 6px', borderRadius: 9, background: '#ef4444', color: '#fff', fontSize: '.65rem' },
   alertRow: { display: 'grid', gridTemplateColumns: '22px 40px minmax(0, 1fr) 62px 76px', gap: 9, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #e7edf1', color: '#111827', fontSize: '.8rem' },
   alertDot: { width: 19, height: 19, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', color: '#fff', fontWeight: 700 },
-  alertAvatar: { width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', background: '#e8f3f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#005447', fontWeight: 700 },
+  alertAvatar: { width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', background: '#e8f3f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#013826', fontWeight: 700 },
   alertSpecies: { color: '#111827', fontWeight: 500, fontSize: '.68rem' },
   alertTag: { display: 'inline-block', marginLeft: 7, padding: '3px 7px', borderRadius: 10, background: '#fff1f2', color: '#111827', fontSize: '.58rem', fontWeight: 600, verticalAlign: 'middle' },
   alertDetail: { display: 'block', marginTop: 3, color: '#111827', fontSize: '.64rem', lineHeight: 1.25 },
-  alertViewButton: { justifySelf: 'end', padding: '6px 10px', border: '1px solid #79b8aa', borderRadius: 6, color: '#005447', background: '#fff', fontSize: '.64rem', fontWeight: 600, whiteSpace: 'nowrap' },
+  alertViewButton: { justifySelf: 'end', padding: '6px 10px', border: '1px solid #79b8aa', borderRadius: 6, color: '#013826', background: '#fff', fontSize: '.64rem', fontWeight: 600, whiteSpace: 'nowrap' },
   upcomingRow: { display: 'grid', gridTemplateColumns: '48px minmax(0, 1.15fr) minmax(0, 78px) minmax(0, .85fr) 64px', gap: 7, alignItems: 'center', minHeight: 48, padding: '6px 0', borderBottom: '1px solid #edf2f5', color: '#111827', fontSize: '.68rem' },
-  appointmentAvatar: { width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', background: '#e8f3f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#005447', fontWeight: 700, flexShrink: 0 },
+  appointmentAvatar: { width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', background: '#e8f3f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#013826', fontWeight: 700, flexShrink: 0 },
   appointmentPatient: { display: 'flex', minWidth: 0, alignItems: 'center', gap: 7 },
   appointmentPatientText: { display: 'grid', minWidth: 0, gap: 2, lineHeight: 1.15 },
   appointmentOwner: { color: '#111827', fontSize: '.62rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   appointmentType: { justifySelf: 'start', maxWidth: 78, overflow: 'hidden', textOverflow: 'ellipsis', padding: '4px 8px', borderRadius: 12, background: '#e5f5f1', color: '#111827', fontSize: '.6rem', whiteSpace: 'nowrap' },
   appointmentDoctor: { color: '#111827', fontSize: '.62rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   appointmentStatus: { display: 'inline-flex', alignItems: 'center', justifySelf: 'end', gap: 5, color: '#111827', fontSize: '.62rem', whiteSpace: 'nowrap' },
-  healthDonut: { width: 112, height: 112, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'conic-gradient(#ef5350 0deg 120deg, #f59e0b 120deg 210deg, #eab308 210deg 285deg, #005447 285deg 360deg)', boxShadow: '0 4px 10px rgba(23,59,84,.12)', flexShrink: 0 },
+  healthDonut: { width: 112, height: 112, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'conic-gradient(#ef5350 0deg 120deg, #f59e0b 120deg 210deg, #eab308 210deg 285deg, #013826 285deg 360deg)', boxShadow: '0 4px 10px rgba(23,59,84,.12)', flexShrink: 0 },
   healthDonutInner: { width: 78, height: 78, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: '#fff', color: '#004f43', lineHeight: 1.05, textAlign: 'center', boxShadow: 'inset 0 0 0 1px #edf2f5' },
   healthDonutTotal: { fontSize: '1.45rem', fontWeight: 800 },
   healthDonutLabel: { maxWidth: 58, marginTop: 4, color: '#668096', fontSize: '.58rem', fontWeight: 700, lineHeight: 1.15 },
@@ -4633,22 +5184,18 @@ const dashboardStyles = {
   learnMore: { border: 0, background: 'transparent', padding: 0, color: '#17705b', fontSize: '.62rem', cursor: 'pointer' },
 };
 
-function DashboardTab({ clients = [], pets = [], appointments = [], alerts = [], vaccinations = [], treatments = [], user, onViewAppointments, onViewPets, onViewDiseaseIntelligence, onExportReports }) {
-  const today = new Date();
-  const appointmentRows = appointments
-    .filter(appointment => new Date(appointment.start_time) >= today
-      && !appointment.archived && !['completed', 'cancelled', 'no_show'].includes(String(appointment.status || '').toLowerCase()))
-    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-  const dogs = pets.filter(pet => String(pet.species || '').toLowerCase() === 'dog').length;
-  const cats = pets.filter(pet => String(pet.species || '').toLowerCase() === 'cat').length;
-  const pendingVaccinations = vaccinations.filter(vaccination => vaccination.next_due && new Date(vaccination.next_due) <= today).length;
+function DashboardTab({ summary, user, onViewAppointments, onViewPets, onViewDiseaseIntelligence, onExportReports }) {
+  const appointmentRows = summary?.appointments || [];
+  const alerts = summary?.alerts || [];
+  const pendingVaccinations = summary?.pendingVaccinations || 0;
+  const pendingLabResults = summary?.pendingLabResults || 0;
   const formatAppointmentTime = value => value
     ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '—';
   const summaryCards = [
-    { label: 'Waiting Patients', value: 3, sub: 'In clinic right now', icon: Icons.users, color: '#f59e0b', bg: '#e7f5f2' },
-    { label: 'Vaccinations Due', value: pendingVaccinations || 8, sub: '2 overdue', icon: Icons.syringe, color: '#ef4444', bg: '#d9efea' },
-    { label: 'Lab Results Pending', value: LAB_RESULTS.filter(result => ['ordered', 'in-progress'].includes(String(result.status).toLowerCase())).length || 5, sub: 'Awaiting lab results', icon: Icons.file, color: '#d97706', bg: '#cce8e1' },
+    { label: 'Waiting Patients', value: 3, sub: 'In clinic right now', icon: Icons.users, color: '#f59e0b', bg: '#e7f4ec' },
+    { label: 'Vaccinations Due', value: pendingVaccinations, sub: 'Overdue', icon: Icons.syringe, color: '#ef4444', bg: '#d9efea' },
+    { label: 'Lab Results Pending', value: pendingLabResults, sub: 'Awaiting lab results', icon: Icons.file, color: '#d97706', bg: '#cce8e1' },
     { label: 'Patient Alerts', value: alerts.length, sub: 'Require attention', icon: Icons.info, color: '#dc2626', bg: '#bde0d7' },
   ];
   const panel = { background: '#fff', border: '1px solid #e4edf3', borderRadius: 10, padding: 14 };
@@ -4656,19 +5203,17 @@ function DashboardTab({ clients = [], pets = [], appointments = [], alerts = [],
   return (
     <div className="clinic-dashboard">
       <div className="clinic-dashboard-summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14, marginBottom: 18 }}>
-        {summaryCards.map(card => <div key={card.label} style={{ ...panel, padding: 12, display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#005447', background: '#e7f5f2', borderRadius: 10, flexShrink: 0 }}><span style={{ width: 20, height: 20, display: 'flex', color: '#005447' }}>{card.icon}</span></div><div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: '.72rem', color: '#334155' }}>{card.label}</div><strong style={{ display: 'block', color: '#004f43', fontSize: '1.3rem', lineHeight: 1.25 }}>{card.value}</strong><small style={{ color: card.color, fontSize: '.66rem' }}>{card.sub}</small></div><span aria-hidden="true" style={{ color: '#123047', fontSize: '1.25rem' }}>›</span></div>)}
+        {summaryCards.map(card => <div key={card.label} style={{ ...panel, padding: 12, display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#013826', background: '#e7f4ec', borderRadius: 10, flexShrink: 0 }}><span style={{ width: 20, height: 20, display: 'flex', color: '#013826' }}>{card.icon}</span></div><div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: '.72rem', color: '#334155' }}>{card.label}</div><strong style={{ display: 'block', color: '#004f43', fontSize: '1.3rem', lineHeight: 1.25 }}>{card.value}</strong><small style={{ color: card.color, fontSize: '.66rem' }}>{card.sub}</small></div><span aria-hidden="true" style={{ color: '#123047', fontSize: '1.25rem' }}>›</span></div>)}
       </div>
       <div className="clinic-dashboard-export-row"><button type="button" className="clinic-dashboard-export" onClick={onExportReports}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V10M10 19V5M16 19v-7M22 19V3M2 21h21" /></svg>Export Reports</button></div>
       <div className="clinic-dashboard-columns">
         <section className="dashboard-alerts-card" style={panel}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ ...sectionTitle, fontSize: '1rem', color: '#111827' }}>Patient Alerts <b style={dashboardStyles.dashboardCount}>{alerts.length}</b></span><button type="button" onClick={onViewPets} style={dashboardStyles.dashboardLink}>View All →</button></div>
           {alerts.map(alert => {
-            const patient = pets.find(item => String(item.id) === String(alert.pet_id) || String(item.name || '').toLowerCase() === String(alert.pet || '').toLowerCase());
-            const photo = getPetPhotoUrl(patient);
-            const color = alert.severity === 'high' ? '#ef4444' : alert.severity === 'medium' ? '#f59e0b' : '#005447';
+            const color = alert.severity === 'high' ? '#ef4444' : alert.severity === 'medium' ? '#f59e0b' : '#013826';
             return <div key={alert.id} className="dashboard-alert-row" style={dashboardStyles.alertRow}>
               <span style={{ ...dashboardStyles.alertDot, background: color }}>!</span>
-              {photo ? <img src={photo} alt="" style={dashboardStyles.alertAvatar} /> : <span style={dashboardStyles.alertAvatar}>{String(alert.pet).slice(0, 1).toUpperCase()}</span>}
+              <ClinicAttachmentImage attachmentId={alert.pet_photo_attachment_id} user={user} alt="" style={dashboardStyles.alertAvatar} fallback={<span style={dashboardStyles.alertAvatar}>{String(alert.pet).slice(0, 1).toUpperCase()}</span>} />
               <span style={{ minWidth: 0 }}><b style={{ fontSize: '.72rem', color: '#111827' }}>{alert.pet} <small style={dashboardStyles.alertSpecies}>({alert.species})</small></b><span style={{ ...dashboardStyles.alertTag, background: color === '#ef4444' ? '#fff1f2' : color === '#f59e0b' ? '#fff7e6' : '#edf3f8' }}>{alert.tag}</span><small style={dashboardStyles.alertDetail}>{alert.detail}</small></span>
               <time style={{ color: '#111827', fontSize: '.62rem', fontWeight: 500, whiteSpace: 'nowrap' }}>{alert.created_at ? new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</time>
               <button type="button" onClick={onViewPets} style={dashboardStyles.alertViewButton}>View Patient</button>
@@ -4682,12 +5227,9 @@ function DashboardTab({ clients = [], pets = [], appointments = [], alerts = [],
             <strong style={{ ...sectionTitle, fontSize: '1rem', color: '#111827' }}>Upcoming Appointments</strong>
             <button type="button" onClick={onViewAppointments} style={dashboardStyles.dashboardLink}>View All →</button>
           </div>
-          {appointmentRows.slice(0, 4).map((appointment, index) => {
+          {appointmentRows.map((appointment, index) => {
             const patientName = appointment.pet || appointment.pet_name || 'Patient';
-            const patient = pets.find(item => String(item.id) === String(appointment.pet_id || appointment.petId)
-              || String(item.name || '').toLowerCase() === String(patientName).toLowerCase());
-            const photo = appointment.photo_url || appointment.pet_photo_url || getPetPhotoUrl(patient);
-            const owner = appointment.owner || appointment.owner_name || patient?.owner || patient?.owner_name || '';
+            const owner = appointment.owner || appointment.owner_name || '';
             const ownerName = typeof owner === 'object' ? owner.name || '' : owner;
             const appointmentTypeText = String(appointment.appointment_type || appointment.type || appointment.reason || appointment.scheduledService || 'Appointment');
             const appointmentTypeKey = appointmentTypeText.toLowerCase();
@@ -4709,8 +5251,8 @@ function DashboardTab({ clients = [], pets = [], appointments = [], alerts = [],
             return <div key={`${appointment.id || patientName}-${index}`} className="dashboard-appointment-row" style={dashboardStyles.upcomingRow}>
               <time style={{ fontWeight: 600, color: '#123047', fontSize: '.62rem' }}>{formatAppointmentTime(appointment.start_time)}</time>
               <span style={dashboardStyles.appointmentPatient}>
-                {photo ? <img src={photo} alt="" style={dashboardStyles.appointmentAvatar} /> : <span style={dashboardStyles.appointmentAvatar}>{String(patientName).slice(0, 1).toUpperCase()}</span>}
-                <span style={dashboardStyles.appointmentPatientText}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><b>{patientName}</b>{(patient?.species || appointment.species) && <small style={{ color: '#111827' }}> ({patient?.species || appointment.species})</small>}</span><small className="dashboard-appointment-owner" style={dashboardStyles.appointmentOwner}>{ownerName}</small></span>
+                <ClinicAttachmentImage attachmentId={appointment.pet_photo_attachment_id} user={user} alt="" style={dashboardStyles.appointmentAvatar} fallback={<span style={dashboardStyles.appointmentAvatar}>{String(patientName).slice(0, 1).toUpperCase()}</span>} />
+                <span style={dashboardStyles.appointmentPatientText}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><b>{patientName}</b>{appointment.species && <small style={{ color: '#111827' }}> ({appointment.species})</small>}</span><small className="dashboard-appointment-owner" style={dashboardStyles.appointmentOwner}>{ownerName}</small></span>
               </span>
               <span className="dashboard-appointment-type" style={dashboardStyles.appointmentType}>{appointmentType}</span>
               <span className="dashboard-appointment-doctor" style={dashboardStyles.appointmentDoctor}>{doctorName}</span>
@@ -4719,7 +5261,7 @@ function DashboardTab({ clients = [], pets = [], appointments = [], alerts = [],
           })}
           {!appointmentRows.length && <p style={{ color: '#64748b', fontSize: '.75rem', padding: '12px 0' }}>No upcoming appointments scheduled.</p>}
         </section>
-        <section className="dashboard-risk-card" style={panel}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><strong style={{ ...sectionTitle, fontSize: '.96rem' }}>Pet Health Risk Monitoring</strong><button type="button" onClick={onViewPets} style={dashboardStyles.dashboardLink}>View Details →</button></div><div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 14 }}><div style={dashboardStyles.healthDonut} aria-label="24 high-risk pets"><div style={dashboardStyles.healthDonutInner}><strong style={dashboardStyles.healthDonutTotal}>24</strong><small style={dashboardStyles.healthDonutLabel}>Monitored Pets</small></div></div><div style={{ display: 'grid', gap: 9 }}>{[['Vaccination overdue', '#ef4444', pendingVaccinations || 8], ['Condition monitoring', '#f59e0b', 6], ['Missed follow-up', '#eab308', 5], ['Abnormal lab results', '#005447', 5], ['Post-treatment monitoring', '#94a3b8', 3]].map(([label, color, count]) => <div key={label} style={dashboardStyles.healthLine}><i style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} /><b style={{ fontSize: '.78rem', color: '#004f43' }}>{count}</b><span>{label}</span></div>)}</div></div></section>
+        <section className="dashboard-risk-card" style={panel}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><strong style={{ ...sectionTitle, fontSize: '.96rem' }}>Pet Health Risk Monitoring</strong><button type="button" onClick={onViewPets} style={dashboardStyles.dashboardLink}>View Details →</button></div><div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 14 }}><div style={dashboardStyles.healthDonut} aria-label="24 high-risk pets"><div style={dashboardStyles.healthDonutInner}><strong style={dashboardStyles.healthDonutTotal}>24</strong><small style={dashboardStyles.healthDonutLabel}>Monitored Pets</small></div></div><div style={{ display: 'grid', gap: 9 }}>{[['Vaccination overdue', '#ef4444', pendingVaccinations], ['Condition monitoring', '#f59e0b', 6], ['Missed follow-up', '#eab308', 5], ['Abnormal lab results', '#013826', pendingLabResults], ['Post-treatment monitoring', '#94a3b8', 3]].map(([label, color, count]) => <div key={label} style={dashboardStyles.healthLine}><i style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} /><b style={{ fontSize: '.78rem', color: '#004f43' }}>{count}</b><span>{label}</span></div>)}</div></div></section>
         <div className="dashboard-info-cards"><section style={{ ...panel, ...dashboardStyles.healthyPetsCard }}><div style={dashboardStyles.petIllustration}><img style={dashboardStyles.petIllustrationImage} src="/healthy-pets.png" alt="Healthy dog and cat" /></div><div><b style={{ color: '#176b45', fontSize: '.82rem' }}>Healthy pets.<br />Safer communities.</b><p style={{ color: '#56806a', fontSize: '.68rem', lineHeight: 1.4, marginTop: 4 }}>Monitor local trends and keep every patient protected.</p></div></section><section style={{ ...panel, background: '#f0faf8' }}><div style={dashboardStyles.protectedHeading}>▣ <span>Clinic data protected</span></div><p style={{ color: '#668096', fontSize: '.66rem' }}>Owner and patient information stays within this clinic.</p><button type="button" style={dashboardStyles.learnMore}>Learn more</button></section></div>
       </div>
     </div>
@@ -4761,13 +5303,14 @@ function LocalAuditTab({ user }) {
   </div>;
 }
 
-function VisitCheckupTab({ visits = [], loading = false, error = '', onNewVisitCheckup }) {
+function VisitCheckupTab({ onOpenVisit, visits = [], loading = false, error = '', onNewVisitCheckup }) {
   const [search, setSearch] = useState('');
   const [visitTypeFilter, setVisitTypeFilter] = useState('all');
   const [visitStatusFilter, setVisitStatusFilter] = useState('all');
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [sortOrder, setSortOrder] = useState('newest');
   const dateRangeRef = useRef(null);
   const dateRangeTriggerRef = useRef(null);
   const dateRangePopoverRef = useRef(null);
@@ -4785,19 +5328,13 @@ function VisitCheckupTab({ visits = [], loading = false, error = '', onNewVisitC
     if (consultationStatus === 'in progress') return 'in-progress';
     return 'scheduled';
   };
-  const visitDateValue = value => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  };
   useEffect(() => {
     if (!dateRangeOpen) return undefined;
     const updatePosition = () => {
       const trigger = dateRangeTriggerRef.current?.getBoundingClientRect();
       if (!trigger) return;
-      const width = Math.min(260, window.innerWidth - 16);
-      const height = dateRangePopoverRef.current?.getBoundingClientRect().height || 180;
+      const width = Math.min(290, window.innerWidth - 16);
+      const height = dateRangePopoverRef.current?.getBoundingClientRect().height || 280;
       const left = Math.max(8, Math.min(trigger.left, window.innerWidth - width - 8));
       const top = trigger.bottom + height + 8 <= window.innerHeight
         ? trigger.bottom + 6
@@ -4805,6 +5342,7 @@ function VisitCheckupTab({ visits = [], loading = false, error = '', onNewVisitC
       setDateRangePosition({ top, left, width });
     };
     const closeOutside = event => {
+      if (event.target?.closest?.('.lab-date-time-popover, .lab-date-time-backdrop')) return;
       if (!dateRangeRef.current?.contains(event.target) && !dateRangePopoverRef.current?.contains(event.target)) setDateRangeOpen(false);
     };
     const frame = window.requestAnimationFrame(updatePosition);
@@ -4823,11 +5361,13 @@ function VisitCheckupTab({ visits = [], loading = false, error = '', onNewVisitC
   const filteredVisits = visits.filter(visit => (
     (visitTypeFilter === 'all' || getVisitType(visit) === visitTypeFilter)
     && (visitStatusFilter === 'all' || getVisitStatus(visit) === visitStatusFilter)
-    && (!dateFrom || visitDateValue(visit.visit_date) >= dateFrom)
-    && (!dateTo || visitDateValue(visit.visit_date) <= dateTo)
+    && dateInRange(visit.visit_date, dateFrom, dateTo)
     && [visit.pet, visit.owner, visit.reason, visit.veterinarian, visit.appointment_status, visit.consultation_status]
       .some(value => String(value || '').toLowerCase().includes(search.trim().toLowerCase()))
-  ));
+  )).sort((first, second) => {
+    const difference = new Date(first.visit_date).getTime() - new Date(second.visit_date).getTime();
+    return sortOrder === 'newest' ? -difference : difference;
+  });
   const visitDate = value => {
     if (!value) return { date: '—', time: '' };
     const date = new Date(value);
@@ -4860,13 +5400,17 @@ function VisitCheckupTab({ visits = [], loading = false, error = '', onNewVisitC
           <span>{dateFrom || dateTo ? `${dateFrom || 'Any date'} – ${dateTo || 'Any date'}` : 'Date Range'}</span>
           <span className={`lab-date-range-chevron${dateRangeOpen ? ' open' : ''}`} aria-hidden="true" />
         </button>
-        {dateRangeOpen && createPortal(<div className="lab-date-range-popover clinic-visits-date-range-popover" role="group" aria-label="Visit date range" ref={dateRangePopoverRef} style={dateRangePosition ? { position: 'fixed', ...dateRangePosition, zIndex: 1200 } : { position: 'fixed', visibility: 'hidden', width: 'min(260px, calc(100vw - 16px))', top: 8, left: 8, zIndex: 1200 }}>
-          <label>From<LabDateTimePicker label="Start date" mode="date" value={dateFrom} max={dateTo || undefined} onChange={setDateFrom} /></label>
-          <label>To<LabDateTimePicker label="End date" mode="date" value={dateTo} min={dateFrom || undefined} onChange={setDateTo} /></label>
-          <div className="lab-date-range-actions">
-            <button type="button" onClick={() => { setDateFrom(''); setDateTo(''); }}>Clear</button>
-            <button type="button" onClick={() => setDateRangeOpen(false)}>Done</button>
-          </div>
+        {dateRangeOpen && createPortal(<div className="lab-date-range-popover clinic-visits-date-range-popover system-date-range-popover" role="group" aria-label="Visit date range" ref={dateRangePopoverRef} style={dateRangePosition ? { position: 'fixed', ...dateRangePosition, zIndex: 1200 } : { position: 'fixed', visibility: 'hidden', width: 'min(290px, calc(100vw - 16px))', top: 8, left: 8, zIndex: 1200 }}>
+          <DateRangePopoverFields
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={setDateFrom}
+            onDateToChange={setDateTo}
+            sortOrder={sortOrder}
+            onSortOrderChange={setSortOrder}
+            onClear={() => { setDateFrom(''); setDateTo(''); }}
+            onDone={() => setDateRangeOpen(false)}
+          />
         </div>, document.body)}
       </div>
       <FilterSelect
@@ -4886,22 +5430,23 @@ function VisitCheckupTab({ visits = [], loading = false, error = '', onNewVisitC
     <section className="lab-results-list clinic-appointments-list">
       <div className="lab-results-table-wrap clinic-appointments-table-wrap">
         <table className="lab-results-table clinic-appointments-table">
-          <thead><tr><th>Date &amp; Time</th><th>Patient</th><th>Owner</th><th>Visit / Check-up</th><th>Veterinarian</th><th>Status</th></tr></thead>
+          <thead><tr><th>Date &amp; Time</th><th>Patient</th><th>Owner</th><th>Visit / Check-up</th><th>Veterinarian</th><th>Status</th><th aria-label="Visit actions" /></tr></thead>
           <tbody>
             {filteredVisits.map(visit => {
               const date = visitDate(visit.visit_date);
               const status = visit.consultation_status === 'completed' || visit.appointment_status === 'completed'
                 ? 'Completed' : visit.consultation_status === 'in_progress' ? 'In Consultation' : visit.appointment_status || 'Scheduled';
-              return <tr key={visit.appointment_id}>
+              return <tr key={visit.appointment_id} className="clinic-action-row" tabIndex={0} onClick={() => onOpenVisit(visit.appointment_id)} onKeyDown={event => { if (event.target === event.currentTarget && ['Enter', ' '].includes(event.key)) { event.preventDefault(); onOpenVisit(visit.appointment_id); } }}>
                 <td data-label="Date & Time"><div className="lab-result-date"><strong>{date.date}</strong>{date.time && <span>{date.time}</span>}</div></td>
                 <td data-label="Patient" className="lab-result-pet">{visit.pet || '—'}{visit.species && <small style={{ display: 'block', color: '#64748b' }}>{visit.species}</small>}</td>
                 <td data-label="Owner">{visit.owner || '—'}</td>
                 <td data-label="Visit / Check-up"><div className="lab-result-test"><strong>{getVisitSummary(visit)}</strong><span>{/check\s*-?up/i.test(visit.reason || '') ? 'Check-up' : 'Clinic visit'}</span></div></td>
                 <td data-label="Veterinarian">{visit.veterinarian || '—'}</td>
                 <td data-label="Status"><StatusIndicator status={status} /></td>
+                <td className="lab-result-actions"><button type="button" className="lab-row-action-trigger clinic-record-actions-trigger" aria-label={`Open visit for ${visit.pet}`} onClick={event => { event.stopPropagation(); onOpenVisit(visit.appointment_id); }}>{Icons.chevronRight}</button></td>
               </tr>;
             })}
-            {!loading && !filteredVisits.length && <tr><td className="lab-results-empty" colSpan="6">{search || visitTypeFilter !== 'all' || visitStatusFilter !== 'all' || dateFrom || dateTo ? 'No visits match the selected filters.' : 'No visit or check-up records are available yet.'}</td></tr>}
+            {!loading && !filteredVisits.length && <tr><td className="lab-results-empty" colSpan="7">{search || visitTypeFilter !== 'all' || visitStatusFilter !== 'all' || dateFrom || dateTo ? 'No visits match the selected filters.' : 'No visit or check-up records are available yet.'}</td></tr>}
             {loading && <tr><td className="lab-results-empty" colSpan="6">Loading visit records…</td></tr>}
           </tbody>
         </table>
@@ -4966,7 +5511,7 @@ function RecordDetailsFooter({ onBack, onClose }) {
   </div>;
 }
 
-function VaccinationDetailsModal({ record, onClose, onBack }) {
+function VaccinationDetailsModal({ record, user, onClose, onBack }) {
   const dueDate = record.nextDue && record.nextDue !== '—' ? formatClinicDate(record.nextDue) : 'Not recorded';
   const status = record.status === 'scheduled'
     ? 'Scheduled'
@@ -4978,7 +5523,9 @@ function VaccinationDetailsModal({ record, onClose, onBack }) {
     <div className="clinic-record-details-header"><h2 id="vaccination-details-title" style={modalStyles.title}>Vaccination Details</h2></div>
     <div className="record-details-content">
       <div className="record-details-profile">
-        {record.photo_url ? <img src={record.photo_url} alt={`${record.pet || 'Pet'} profile`} /> : <div className="record-details-avatar" aria-hidden="true">{String(record.pet || 'P').slice(0, 1).toUpperCase()}</div>}
+        <div className="record-details-photo">
+          <ClinicAttachmentImage src={record.photo_url} attachmentId={record.pet_photo_attachment_id} user={user} alt={`${record.pet || 'Pet'} profile`} fallback={<div className="record-details-avatar" aria-hidden="true">{String(record.pet || 'P').slice(0, 1).toUpperCase()}</div>} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+        </div>
         <div><h3>{record.pet || 'Patient not recorded'}</h3><p>{record.type || 'Vaccination'} · {record.owner || 'Owner not recorded'}</p><span>{isScheduled ? `Appointment scheduled ${formatClinicDate(record.dateGiven)}` : `Date given ${formatClinicDate(record.dateGiven)}`} · {record.dose || 'Dose not recorded'}</span></div>
         <aside className="record-detail-status"><b>{record.clinicVerified ? 'Clinic Verified' : status}</b><span>{record.clinicVerified ? `Verified by ${record.verified_by_name || record.lastUpdatedBy || 'Clinic staff'}` : isScheduled ? 'Awaiting service confirmation' : 'Pending verification'}</span></aside>
       </div>
@@ -4999,57 +5546,7 @@ function VaccinationDetailsModal({ record, onClose, onBack }) {
   </OwnerModal>;
 }
 
-function RecordActionsModal({ title, recordLabel, recordName, recordMeta, status, recordPhoto, showPetAvatar = false, hideRecordSubtitle = false, onClose, actions, error }) {
-  return <div style={modalStyles.backdrop} onClick={onClose}>
-    <div role="dialog" aria-modal="true" aria-label={title} onClick={event => event.stopPropagation()} style={modalStyles.vaccinationActionsDialog}>
-      <button type="button" onClick={onClose} style={{ ...modalStyles.vaccinationActionsClose, width: 'auto', height: 'auto', font: 'inherit', fontSize: '.72rem', fontWeight: 600 }}>Close</button>
-      <div style={modalStyles.vaccinationActionsHeader}>
-        <div>
-          <h2 style={modalStyles.vaccinationActionsTitle}>{title}</h2>
-          {!hideRecordSubtitle && <div style={modalStyles.vaccinationActionsSubtitle}>{recordLabel} · {recordName}</div>}
-        </div>
-      </div>
-      <div style={modalStyles.vaccinationActionsPet}>
-        <div style={modalStyles.vaccinationActionsPetInfo}>
-          {showPetAvatar && (recordPhoto ? <>
-            <img src={recordPhoto} alt={`${recordName} profile`} style={modalStyles.vaccinationActionsPetImage} onError={event => { event.currentTarget.style.display = 'none'; if (event.currentTarget.nextElementSibling) event.currentTarget.nextElementSibling.style.display = 'grid'; }} />
-            <span aria-hidden="true" style={{ ...modalStyles.vaccinationActionsPetFallback, display: 'none' }}>{String(recordName || 'P').slice(0, 1).toUpperCase()}</span>
-          </> : <span aria-hidden="true" style={modalStyles.vaccinationActionsPetFallback}>{String(recordName || 'P').slice(0, 1).toUpperCase()}</span>)}
-          <div>
-            <div style={modalStyles.vaccinationActionsPetName}>{recordName}</div>
-            <div style={modalStyles.vaccinationActionsPetMeta}>{recordMeta}</div>
-          </div>
-        </div>
-        {status && <StatusIndicator status={status} />}
-      </div>
-      <div style={modalStyles.vaccinationActionsList}>
-        {actions.map(action => <button
-          type="button"
-          key={action.label}
-          className={`record-action-card vaccination-action-button${action.destructive ? ' record-action-card-destructive' : ''}`}
-          onClick={action.onClick}
-          style={{
-            ...modalStyles.vaccinationActionCard,
-            border: action.destructive ? '1px solid #ffc0c8' : '1px solid #b7e4d7',
-            background: action.destructive ? '#fff5f6' : '#f2fbf8',
-          }}
-        >
-          <span style={modalStyles.vaccinationActionCardText}>
-            <strong style={{ ...modalStyles.vaccinationActionCardTitle, ...(action.destructive ? { color: '#9f263d' } : {}) }}>{action.label}</strong>
-            <small style={modalStyles.vaccinationActionCardDescription}>{action.description}</small>
-          </span>
-        </button>)}
-      </div>
-      {error && <p role="alert" style={{ margin: '10px 0 0', color: '#b91c1c', fontSize: '.74rem' }}>{error}</p>}
-      <div style={modalStyles.vaccinationActionsFooter}>
-        <span style={modalStyles.vaccinationActionsNote}>Choose an action for this {recordLabel.toLowerCase()}.</span>
-        <button type="button" style={modalStyles.vaccinationActionsCancel} onClick={onClose}>Cancel</button>
-      </div>
-    </div>
-  </div>;
-}
-
-function OwnerDetailsModal({ owner, onClose, onBack, initialTab = 'details' }) {
+function OwnerDetailsModal({ owner, user, onClose, onBack, initialTab = 'details' }) {
   const isAudit = initialTab === 'audit';
   return (
     <OwnerModal onClose={onClose} width={isAudit ? 850 : 640} className={`clinic-record-details-modal${isAudit ? ' clinic-record-audit-modal lab-audit-dialog' : ''}`} labelledBy="owner-details-title">
@@ -5062,8 +5559,7 @@ function OwnerDetailsModal({ owner, onClose, onBack, initialTab = 'details' }) {
           <section className="lab-audit-timeline clinic-record-audit-timeline">
             <h3>Activity Timeline</h3>
             <ol>
-              <AuditTimelineEntry date="Apr 20, 2026 · 2:30 PM" dateTime="2026-04-20T14:30:00" title="Updated owner information" detail="Updated owner contact phone number." actor="Dr. Sarah Chen" changes={[{ field: 'Phone Number', previous: '+1 555-0100', next: owner.phone }]} />
-              <AuditTimelineEntry date="Mar 15, 2026 · 10:22 AM" dateTime="2026-03-15T10:22:00" title="Created" detail={`Created new owner record for ${owner.name}.`} actor="Dr. Sarah Chen" />
+              <ClinicRecordAuditEntries user={user} table="clients" recordId={owner.id} />
             </ol>
           </section>
         </div>
@@ -5089,8 +5585,8 @@ function OwnerDetailsModal({ owner, onClose, onBack, initialTab = 'details' }) {
   );
 }
 
-function AddOwnerModal({ onClose, onAdd }) {
-  const [form, setForm] = useState({ name: '', phone: '', email: '', street: '', province: '', city: '', barangay: '', zip: '' });
+function AddOwnerModal({ onClose, onAdd, owner = null }) {
+  const [form, setForm] = useState({ name: owner?.name || '', phone: owner?.phone || '', email: owner?.email || '', address: owner?.address || '', street: '', province: '', city: '', barangay: '', zip: '' });
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -5098,9 +5594,9 @@ function AddOwnerModal({ onClose, onAdd }) {
   const submit = async event => {
     event.preventDefault();
     const { errors: nextErrors, normalized } = validateOwnerFields(form);
-    if (!form.province) nextErrors.province = 'Select a province.';
-    if (!form.city) nextErrors.city = 'Select a municipality.';
-    if (!form.barangay) nextErrors.barangay = 'Select a barangay.';
+    if (!owner && !form.province) nextErrors.province = 'Select a province.';
+    if (!owner && !form.city) nextErrors.city = 'Select a municipality.';
+    if (!owner && !form.barangay) nextErrors.barangay = 'Select a barangay.';
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       setError('Please correct the highlighted fields.');
@@ -5109,7 +5605,7 @@ function AddOwnerModal({ onClose, onAdd }) {
     setError('');
     setSaving(true);
     try {
-      const address = [form.street, form.barangay, form.city, form.province, form.zip].filter(Boolean).join(', ');
+      const address = owner ? form.address.trim() : [form.street, form.barangay, form.city, form.province, form.zip].filter(Boolean).join(', ');
       await onAdd({ ...normalized, address });
     } catch (submitError) {
       if (submitError.fields) setFieldErrors(submitError.fields);
@@ -5122,14 +5618,15 @@ function AddOwnerModal({ onClose, onAdd }) {
   const selectedProvince = selectedRegion?.provinces.find(item => item.name === form.province);
   const selectedMunicipality = selectedProvince?.municipalities.find(item => item.name === form.city);
   return <OwnerModal onClose={onClose} width={600} className="clinic-owner-add-dialog">
-    <h2 style={modalStyles.title}>Add New Owner</h2>
-    <p style={modalStyles.subtitle}>Enter the details of the new pet owner.</p>
+    <h2 style={modalStyles.title}>{owner ? 'Edit Owner' : 'Add New Owner'}</h2>
+    <p style={modalStyles.subtitle}>{owner ? 'Update the owner profile and contact details.' : 'Enter the details of the new pet owner.'}</p>
     <form onSubmit={submit}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <label style={modalStyles.label}><span>Owner Name<span style={modalStyles.required}>*</span></span><input autoFocus value={form.name} onChange={e => update('name', e.target.value)} placeholder="John Doe" style={{ ...modalStyles.input, ...(fieldErrors.name ? modalStyles.invalidInput : {}) }} aria-invalid={Boolean(fieldErrors.name)} />{fieldErrors.name && <small style={modalStyles.fieldError}>{fieldErrors.name}</small>}</label>
         <label style={modalStyles.label}><span>Contact Number<span style={modalStyles.required}>*</span></span><input value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="+1 555-0123" style={{ ...modalStyles.input, ...(fieldErrors.phone ? modalStyles.invalidInput : {}) }} aria-invalid={Boolean(fieldErrors.phone)} />{fieldErrors.phone && <small style={modalStyles.fieldError}>{fieldErrors.phone}</small>}</label>
       </div>
       <label style={modalStyles.label}><span>Email Address<span style={modalStyles.required}>*</span></span><input type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="john.doe@email.com" style={{ ...modalStyles.input, ...(fieldErrors.email ? modalStyles.invalidInput : {}) }} aria-invalid={Boolean(fieldErrors.email)} />{fieldErrors.email && <small style={modalStyles.fieldError}>{fieldErrors.email}</small>}</label>
+      {owner ? <label style={modalStyles.label}><span>Address</span><textarea value={form.address} onChange={e => update('address', e.target.value)} style={modalStyles.input} rows={3} /></label> : <>
       <label style={modalStyles.label}><span>Street / House No. <span style={{ color: '#64748b', fontWeight: 400 }}>(optional)</span></span><input value={form.street} onChange={e => update('street', e.target.value)} placeholder="House number, street, subdivision, or other address details" style={modalStyles.input} /></label>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <label style={modalStyles.label}><span>Province<span style={modalStyles.required}>*</span></span><select value={form.province} onChange={e => setForm(current => ({ ...current, province: e.target.value, city: '', barangay: '', zip: '' }))} style={modalStyles.input}><option value="">Select province</option>{(selectedRegion?.provinces || []).map(item => <option key={item.name} value={item.name}>{item.name}</option>)}</select></label>
@@ -5137,8 +5634,9 @@ function AddOwnerModal({ onClose, onAdd }) {
         <label style={modalStyles.label}><span>Barangay<span style={modalStyles.required}>*</span></span><select value={form.barangay} onChange={e => update('barangay', e.target.value)} disabled={!selectedMunicipality} style={modalStyles.input}><option value="">Select barangay</option>{(selectedMunicipality?.barangays || []).map(barangay => <option key={barangay} value={barangay}>{barangay}</option>)}</select></label>
         <label style={modalStyles.label}><span>ZIP Code</span><input value={selectedMunicipality?.zip || ''} readOnly style={{ ...modalStyles.input, background: '#f8fafc' }} /></label>
       </div>
+      </>}
       {error && <div style={modalStyles.error}>{error}</div>}
-      <div style={modalStyles.footer}><button type="button" onClick={onClose} style={modalStyles.cancel} disabled={saving}>Cancel</button><button type="submit" style={T.primaryBtn} disabled={saving}>{saving ? 'Saving...' : 'Add Owner'}</button></div>
+      <div style={modalStyles.footer}><button type="button" onClick={onClose} style={modalStyles.cancel} disabled={saving}>Cancel</button><button type="submit" style={T.primaryBtn} disabled={saving}>{saving ? 'Saving...' : owner ? 'Save Changes' : 'Add Owner'}</button></div>
     </form>
   </OwnerModal>;
 }
@@ -5174,7 +5672,7 @@ const modalStyles = {
   verifyVaccinationDialog: { position: 'relative', width: 'min(560px, 100%)', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', boxSizing: 'border-box', padding: '22px 24px 18px', border: '1px solid #dcebe5', borderRadius: 14, background: '#fff', boxShadow: '0 20px 55px rgba(15,23,42,.25)', color: '#173d37' },
   verifyVaccinationClose: { position: 'absolute', top: 16, right: 17, display: 'grid', width: 36, height: 36, placeItems: 'center', border: 0, borderRadius: 8, background: 'transparent', color: '#526b70', cursor: 'pointer' },
   verifyVaccinationHeading: { display: 'flex', alignItems: 'center', gap: 11, paddingRight: 34 },
-  verifyVaccinationIcon: { display: 'grid', width: 42, height: 42, flex: '0 0 42px', placeItems: 'center', borderRadius: 11, background: '#e7f5f2', color: '#005447' },
+  verifyVaccinationIcon: { display: 'grid', width: 42, height: 42, flex: '0 0 42px', placeItems: 'center', borderRadius: 11, background: '#e7f4ec', color: '#013826' },
   verifyVaccinationTitle: { margin: 0, color: '#111827', fontSize: '1.12rem', fontWeight: 700, lineHeight: 1.3 },
   verifyVaccinationIntro: { margin: '9px 0 15px', color: '#667085', fontSize: '.8rem', lineHeight: 1.5 },
   verifyVaccinationSummary: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px', padding: 14, borderRadius: 11, background: '#f6f8fa' },
@@ -5185,21 +5683,21 @@ const modalStyles = {
   verifyVaccinationMeaning: { marginTop: 12, padding: '11px 12px', border: '1px solid #b7d5ff', borderRadius: 10, background: '#eff6ff', color: '#1d4ed8', fontSize: '.72rem', lineHeight: 1.45 },
   verifyVaccinationMeaningTitle: { display: 'block', marginBottom: 4, fontSize: '.73rem' },
   verifyVaccinationAttestation: { display: 'flex', alignItems: 'flex-start', gap: 9, marginTop: 13, color: '#475569', fontSize: '.76rem', fontWeight: 600, lineHeight: 1.5, cursor: 'pointer' },
-  verifyVaccinationCheckbox: { width: 18, height: 18, flex: '0 0 18px', margin: '2px 0 0', accentColor: '#005447' },
-  verifyVaccinationEvidence: { display: 'flex', alignItems: 'center', gap: 9, marginTop: 12, padding: 10, border: '1px solid #dcebe5', borderRadius: 9, background: '#f8faf9', color: '#005447', fontSize: '.74rem' },
+  verifyVaccinationCheckbox: { width: 18, height: 18, flex: '0 0 18px', margin: '2px 0 0', accentColor: '#013826' },
+  verifyVaccinationEvidence: { display: 'flex', alignItems: 'center', gap: 9, marginTop: 12, padding: 10, border: '1px solid #dcebe5', borderRadius: 9, background: '#f8faf9', color: '#013826', fontSize: '.74rem' },
   verifyVaccinationEvidenceImage: { width: 48, height: 42, borderRadius: 6, objectFit: 'cover' },
-  verifyVaccinationEvidenceLink: { marginLeft: 'auto', color: '#005447', fontWeight: 650, textDecoration: 'none' },
+  verifyVaccinationEvidenceLink: { marginLeft: 'auto', color: '#013826', fontWeight: 650, textDecoration: 'none' },
   verifyVaccinationAudit: { margin: '12px 0 0', padding: '10px 12px', borderRadius: 9, background: '#f6f8fa', color: '#617184', fontSize: '.72rem', lineHeight: 1.45 },
   verifyVaccinationError: { marginTop: 12, padding: '9px 11px', border: '1px solid #fecaca', borderRadius: 8, background: '#fef2f2', color: '#b91c1c', fontSize: '.74rem', lineHeight: 1.45 },
   verifyVaccinationFooter: { display: 'flex', justifyContent: 'flex-end', gap: 9, marginTop: 14, paddingTop: 13, borderTop: '1px solid #e7eeeb' },
   vaccinationActionsHeader: { display: 'flex', alignItems: 'center', gap: 11, marginBottom: 11, paddingRight: 25 },
-  vaccinationActionsHeaderIcon: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 11, background: '#e7f5f2', color: '#005447' },
+  vaccinationActionsHeaderIcon: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 11, background: '#e7f4ec', color: '#013826' },
   vaccinationActionsTitle: { margin: 0, color: '#004f43', fontSize: '1.05rem', fontWeight: 600, lineHeight: 1.25 },
   vaccinationActionsSubtitle: { marginTop: 4, color: '#111827', fontSize: '.78rem', lineHeight: 1.3 },
   vaccinationActionsPet: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 12px', marginBottom: 11, borderRadius: 10, background: '#f2f8ff' },
   vaccinationActionsPetInfo: { display: 'flex', alignItems: 'center', gap: 11 },
   vaccinationActionsPetImage: { width: 38, height: 38, objectFit: 'cover', borderRadius: '50%' },
-  vaccinationActionsPetFallback: { width: 38, height: 38, flex: '0 0 38px', display: 'grid', placeItems: 'center', borderRadius: '50%', background: '#e7f5f2', color: '#005447', fontWeight: 700 },
+  vaccinationActionsPetFallback: { width: 38, height: 38, flex: '0 0 38px', display: 'grid', placeItems: 'center', borderRadius: '50%', background: '#e7f4ec', color: '#013826', fontWeight: 700 },
   vaccinationActionsPetName: { color: '#004f43', fontSize: '.9rem', fontWeight: 800 },
   vaccinationActionsPetMeta: { marginTop: 2, color: '#111827', fontSize: '.66rem' },
   vaccinationActionsActive: { padding: '6px 10px', borderRadius: 16, background: '#d8f4e8', color: '#087a55', fontSize: '.66rem', fontWeight: 700 },
@@ -5232,8 +5730,8 @@ const modalStyles = {
   proofCaption: { display: 'block', marginBottom: 5, color: '#334155', fontSize: '.62rem' },
   proofButtons: { display: 'flex', gap: 7 },
   smallSecondary: { border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', color: '#111827', padding: '5px 8px', fontSize: '.62rem', cursor: 'pointer' },
-  editAudit: { marginTop: 13, color: '#005447', fontSize: '.64rem' },
-  editAuditEntries: { display: 'grid', gap: 3, marginTop: 7, paddingLeft: 10, borderLeft: '2px solid #dbe3ee', color: '#005447', lineHeight: 1.3 },
+  editAudit: { marginTop: 13, color: '#013826', fontSize: '.64rem' },
+  editAuditEntries: { display: 'grid', gap: 3, marginTop: 7, paddingLeft: 10, borderLeft: '2px solid #dbe3ee', color: '#013826', lineHeight: 1.3 },
   editVaccinationFooter: { display: 'flex', justifyContent: 'flex-end', gap: 7, marginTop: 16 },
   addVaccinationDialog: { position: 'relative', width: 'min(600px, 100%)', maxWidth: '100%', maxHeight: 'calc(100dvh - 24px)', overflowY: 'auto', boxSizing: 'border-box', background: '#fff', borderRadius: 8, padding: '22px 24px 20px', boxShadow: '0 12px 32px rgba(15,23,42,.28)', color: '#111827' },
   addVaccinationTitle: { margin: 0, color: '#111827', fontSize: '1.05rem', fontWeight: 600, lineHeight: 1.25 },
@@ -5254,8 +5752,8 @@ const modalStyles = {
   doctorAppointmentIntro: { margin: '4px 0 12px', color: '#647c75', fontSize: '.72rem', lineHeight: 1.4 },
   doctorAppointmentGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px 10px' },
   doctorAppointmentLabel: { display: 'flex', minWidth: 0, flexDirection: 'column', gap: 4, color: '#1f2937', fontSize: '.7rem', fontWeight: 650 },
-  doctorAppointmentInput: { width: '100%', boxSizing: 'border-box', border: '1px solid #dce7e3', borderRadius: 7, background: '#fff', color: '#1f2937', padding: '7px 10px', font: 'inherit', fontSize: '.72rem', outlineColor: '#005447', minHeight: 36 },
-  doctorAppointmentNotes: { width: '100%', minHeight: 52, boxSizing: 'border-box', resize: 'vertical', border: '1px solid #dce7e3', borderRadius: 7, background: '#fff', color: '#1f2937', padding: '8px 10px', fontFamily: 'inherit', fontSize: '.72rem', outlineColor: '#005447' },
+  doctorAppointmentInput: { width: '100%', boxSizing: 'border-box', border: '1px solid #dce7e3', borderRadius: 7, background: '#fff', color: '#1f2937', padding: '7px 10px', font: 'inherit', fontSize: '.72rem', outlineColor: '#013826', minHeight: 36 },
+  doctorAppointmentNotes: { width: '100%', minHeight: 52, boxSizing: 'border-box', resize: 'vertical', border: '1px solid #dce7e3', borderRadius: 7, background: '#fff', color: '#1f2937', padding: '8px 10px', fontFamily: 'inherit', fontSize: '.72rem', outlineColor: '#013826' },
   doctorAppointmentFooter: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid #e5eee9' },
   doctorAppointmentDisabled: { background: '#d1d5db', color: '#6b7280', cursor: 'not-allowed' },
 };
@@ -5292,6 +5790,7 @@ function OwnersTab({ owners, user, onOwnersChange }) {
   const [selectedOwner, setSelectedOwner] = useState(null);
   const [ownerDetailsTab, setOwnerDetailsTab] = useState('details');
   const [actionOwner, setActionOwner] = useState(null);
+  const [editingOwner, setEditingOwner] = useState(null);
   const [localOwners, setLocalOwners] = useState(null);
   const [archiveError, setArchiveError] = useState('');
   const displayedOwners = localOwners || owners || [];
@@ -5347,6 +5846,16 @@ function OwnersTab({ owners, user, onOwnersChange }) {
     setAddOpen(false);
     notifySuccess('New owner added successfully!', `${payload.name} was saved. Phone verification is still pending.`);
   };
+  const editOwner = async values => {
+    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+    const response = await fetch(apiUrl + '/clinic-records/clients/' + editingOwner.id + '?clinic_id=' + encodeURIComponent(user.clinic_id), {
+      method: 'PUT', headers: { Authorization: 'Bearer ' + user.token, 'Content-Type': 'application/json' }, body: JSON.stringify(values),
+    });
+    const payload = await readApiResponse(response, 'Unable to update owner.');
+    const updated = displayedOwners.map(item => String(item.id) === String(editingOwner.id) ? { ...item, ...payload } : item);
+    setLocalOwners(updated); onOwnersChange?.(updated); setEditingOwner(null); setActionOwner(null);
+    notifySuccess('Owner updated successfully!', '');
+  };
   const exportRows = filtered.length ? filtered : displayedOwners;
   const exportCsv = () => {
     const csv = [['Owner ID', 'Name', 'Contact Number', 'Email', 'Address', 'Pets'], ...exportRows.map(o => [o.id, o.name, o.phone, o.email, o.address, o.pets])].map(row => row.map(value => `"${String(value || '').replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -5361,6 +5870,7 @@ function OwnersTab({ owners, user, onOwnersChange }) {
     pdf.save('owners.pdf'); setShowExport(false);
   };
   return <div className="clinic-management-tab" style={{ ...T.wrap, padding: '20px 20px 18px', borderRadius: 14 }}>
+    {editingOwner && <AddOwnerModal owner={editingOwner} onClose={() => setEditingOwner(null)} onAdd={editOwner} />}
     {addOpen && <AddOwnerModal onClose={() => setAddOpen(false)} onAdd={addOwner} />}
   {actionOwner && <RecordActionsModal
     title="Owner Actions"
@@ -5372,6 +5882,7 @@ function OwnersTab({ owners, user, onOwnersChange }) {
     error={archiveError}
     actions={[
       { label: 'View Details', description: 'Review the owner profile and linked pets.', onClick: () => { setOwnerDetailsTab('details'); setSelectedOwner(actionOwner); } },
+      { label: 'Edit Owner', description: 'Update the owner profile and contact details.', onClick: () => setEditingOwner(actionOwner) },
       { label: 'Audit History', description: 'Review recorded changes to this owner profile.', onClick: () => { setOwnerDetailsTab('audit'); setSelectedOwner(actionOwner); } },
       { label: actionOwner.archived ? 'Restore Owner' : 'Archive Owner', description: actionOwner.archived ? 'Return this owner record to the active list.' : 'Move this owner record out of the active list.', destructive: !actionOwner.archived, onClick: async () => {
         try {
@@ -5384,7 +5895,7 @@ function OwnersTab({ owners, user, onOwnersChange }) {
       } },
     ]}
   />}
-  {selectedOwner && <OwnerDetailsModal
+  {selectedOwner && <OwnerDetailsModal user={user}
     owner={selectedOwner}
     initialTab={ownerDetailsTab}
     onBack={() => setSelectedOwner(null)}
@@ -5447,13 +5958,13 @@ const archiveToggleStyle = {
   fontSize: '.75rem',
 };
 const archiveToggleActiveStyle = {
-  background: '#005447',
-  borderColor: '#005447',
+  background: '#086b50',
+  borderColor: '#013826',
   color: '#fff',
 };
 
 // ── PETS TAB ───────────────────────────────────────────────────────────
-function PetDetailsModal({ pet, onClose, onBack, onUploadPhoto, initialTab = 'details' }) {
+function PetDetailsModal({ pet, user, onClose, onBack, onUploadPhoto, initialTab = 'details' }) {
   const isAudit = initialTab === 'audit';
   const [photoError, setPhotoError] = useState('');
   const [photoSaving, setPhotoSaving] = useState(false);
@@ -5479,9 +5990,9 @@ function PetDetailsModal({ pet, onClose, onBack, onUploadPhoto, initialTab = 'de
     </div>
     {!isAudit ? <div className="record-details-content">
       <div className="record-details-profile">
-        {pet.photo_url
-          ? <img src={pet.photo_url} alt={`${pet.name} profile`} />
-          : <div className="record-details-avatar" aria-hidden="true">{pet.name?.trim()?.charAt(0)?.toUpperCase() || '?'}</div>}
+        <div className="record-details-photo">
+          <ClinicAttachmentImage src={pet.photo_url} attachmentId={pet.photo_attachment_id} user={user} fallback={<div className="record-details-avatar" aria-hidden="true">{pet.name?.trim()?.charAt(0)?.toUpperCase() || '?'}</div>} alt={`${pet.name} profile`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+        </div>
         <div>
           <h3>{pet.name}</h3>
           <p>{[pet.species, pet.breed, pet.sex && pet.sex !== 'unknown' ? pet.sex : ''].filter(Boolean).join(' · ')}</p>
@@ -5513,8 +6024,7 @@ function PetDetailsModal({ pet, onClose, onBack, onUploadPhoto, initialTab = 'de
       <section className="lab-audit-timeline clinic-record-audit-timeline">
         <h3>Activity Timeline</h3>
         <ol>
-          <AuditTimelineEntry date="Apr 22, 2026 · 3:45 PM" dateTime="2026-04-22T15:45:00" title="Updated pet information" detail="Updated pet record during checkup." actor="Dr. Sarah Chen" changes={[{ field: 'Weight', previous: '28 kg', next: pet.weight || '30 kg' }]} />
-          <AuditTimelineEntry date="Mar 15, 2026 · 10:30 AM" dateTime="2026-03-15T10:30:00" title="Created" detail={`Created new pet record for ${pet.name}.`} actor="Dr. Sarah Chen" />
+          <ClinicRecordAuditEntries user={user} table="pets" recordId={pet.id} />
         </ol>
       </section>
     </div>}
@@ -5753,6 +6263,8 @@ function PetsTab({ pets, owners, user, onPetsChange, onOwnersChange }) {
         recordName={actionPet.name || 'Pet'}
         recordMeta={`${actionPet.species || 'Species not recorded'} · ${actionPet.owner || 'Owner not recorded'}`}
         recordPhoto={getPetPhotoUrl(actionPet)}
+        recordPhotoAttachmentId={actionPet.photo_attachment_id}
+        user={user}
         showPetAvatar
         onClose={() => { setActionPet(null); setPetDetailsTab('details'); }}
         error={petActionError}
@@ -5773,6 +6285,7 @@ function PetsTab({ pets, owners, user, onPetsChange, onOwnersChange }) {
       />}
       {petDetails && <PetDetailsModal
         pet={petDetails}
+        user={user}
         initialTab={petDetailsTab}
         onBack={() => setSelectedPet(null)}
         onClose={() => { setSelectedPet(null); setActionPet(null); setPetDetailsTab('details'); }}
@@ -5834,9 +6347,7 @@ function PetsTab({ pets, owners, user, onPetsChange, onOwnersChange }) {
             return <tr key={p.id} className="clinic-action-row" tabIndex={0} onClick={openActions} onKeyDown={event => handleClinicActionRowKeyDown(event, openActions)}>
               <td data-label="Pet ID">{p.id}</td>
               <td data-label="Name"><span className="clinic-pet-table-name">
-                {getPetPhotoUrl(p)
-                  ? <img src={getPetPhotoUrl(p)} alt="" />
-                  : <span className="clinic-pet-table-avatar" aria-hidden="true">{p.name?.trim()?.charAt(0)?.toUpperCase() || '?'}</span>}
+                <ClinicAttachmentImage src={getPetPhotoUrl(p)} attachmentId={p.photo_attachment_id} user={user} fallback={<span className="clinic-pet-table-avatar" aria-hidden="true">{p.name?.trim()?.charAt(0)?.toUpperCase() || '?'}</span>} alt="" />
                 <strong>{p.name || 'Pet name not recorded'}</strong>
               </span></td>
               <td data-label="Species">{p.species || 'Not recorded'}</td>
@@ -5856,7 +6367,7 @@ function PetsTab({ pets, owners, user, onPetsChange, onOwnersChange }) {
 }
 
 // ── APPOINTMENTS TAB ───────────────────────────────────────────────────
-function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = [], user, onAppointmentsChange, onVaccinationsChange, onCreateLabRequest, createVisitRequest }) {
+function AppointmentsTab({ onOpenVisit, onOpenPatient, onOpenVaccinations, onStartConsultation, appointments, pets = [], owners = [], vaccinations = [], user, onAppointmentsChange, onVaccinationsChange, onCreateLabRequest, createVisitRequest }) {
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [localAppointments, setLocalAppointments] = useState(null);
@@ -5873,6 +6384,7 @@ function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = 
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [sortOrder, setSortOrder] = useState('newest');
   const [practitionerFilter, setPractitionerFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [clinicVeterinarians, setClinicVeterinarians] = useState([]);
@@ -6013,9 +6525,7 @@ function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = 
     const isCancelled = ['cancelled', 'canceled'].includes(status);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const dateValue = Number.isNaN(appointmentDate.getTime())
-      ? ''
-      : `${appointmentDate.getFullYear()}-${String(appointmentDate.getMonth() + 1).padStart(2, '0')}-${String(appointmentDate.getDate()).padStart(2, '0')}`;
+    const dateValue = dateFilterValue(getAppointmentDate(appointment));
     const matchesStatus = statusFilter === 'all'
       || (statusFilter === 'cancelled' && isCancelled)
       || (statusFilter === 'upcoming' && !isCancelled && !Number.isNaN(appointmentDate.getTime()) && appointmentDate >= today)
@@ -6024,11 +6534,14 @@ function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = 
     return matchesStatus
       && [appointment.id, appointment.pet, appointment.pet_name, appointment.owner, appointment.owner_name, appointment.type, appointment.reason, appointment.status, getAppointmentPractitioner(appointment)]
         .some(value => String(value || '').toLowerCase().includes(search.trim().toLowerCase()))
-      && (!dateFrom || dateValue >= dateFrom)
-      && (!dateTo || dateValue <= dateTo)
+      && (!dateFrom || dateValue && dateValue >= dateFrom)
+      && (!dateTo || dateValue && dateValue <= dateTo)
       && (practitionerFilter === 'all' || getAppointmentPractitioner(appointment) === practitionerFilter)
       && (typeFilter === 'all' || appointmentTypeCategory(appointment) === typeFilter);
-  }).sort((first, second) => new Date(getAppointmentDate(first)).getTime() - new Date(getAppointmentDate(second)).getTime());
+  }).sort((first, second) => {
+    const difference = new Date(getAppointmentDate(first)).getTime() - new Date(getAppointmentDate(second)).getTime();
+    return sortOrder === 'newest' ? -difference : difference;
+  });
   const practitioners = [...new Set(appointmentRecords.map(getAppointmentPractitioner).filter(Boolean))];
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginatedAppointments = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -6087,13 +6600,17 @@ function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = 
             <span>{dateFrom || dateTo ? `${dateFrom || 'Any date'} – ${dateTo || 'Any date'}` : 'Date Range'}</span>
             <span className={`lab-date-range-chevron${dateRangeOpen ? ' open' : ''}`} aria-hidden="true" />
           </button>
-          {dateRangeOpen && <div className="lab-date-range-popover" role="group" aria-label="Appointment date range">
-            <label>From<LabDateTimePicker label="Start date" mode="date" value={dateFrom} max={dateTo || undefined} onChange={date => { setDateFrom(date); setPage(1); }} /></label>
-            <label>To<LabDateTimePicker label="End date" mode="date" value={dateTo} min={dateFrom || undefined} onChange={date => { setDateTo(date); setPage(1); }} /></label>
-            <div className="lab-date-range-actions">
-              <button type="button" onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}>Clear</button>
-              <button type="button" onClick={() => setDateRangeOpen(false)}>Done</button>
-            </div>
+          {dateRangeOpen && <div className="lab-date-range-popover system-date-range-popover" role="group" aria-label="Appointment date range">
+            <DateRangePopoverFields
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateFromChange={date => { setDateFrom(date); setPage(1); }}
+              onDateToChange={date => { setDateTo(date); setPage(1); }}
+              sortOrder={sortOrder}
+              onSortOrderChange={order => { setSortOrder(order); setPage(1); }}
+              onClear={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
+              onDone={() => setDateRangeOpen(false)}
+            />
           </div>}
         </div>
       </div>
@@ -6150,12 +6667,14 @@ function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = 
         recordName={actionAppointment.pet || actionAppointment.pet_name || 'Patient'}
         recordMeta={`${actionAppointment.type || actionAppointment.reason || 'Appointment'} · ${formatDateTime(actionAppointment).date} · ${formatDateTime(actionAppointment).time || 'Time not set'}`}
         recordPhoto={getPetPhotoUrl(actionAppointment) || getPetPhotoUrl(pets.find(pet => String(pet.id) === String(actionAppointment.pet_id || actionAppointment.petId) || pet.name === (actionAppointment.pet || actionAppointment.pet_name)))}
+        recordPhotoAttachmentId={actionAppointment.pet_photo_attachment_id || pets.find(pet => String(pet.id) === String(actionAppointment.pet_id || actionAppointment.petId) || pet.name === (actionAppointment.pet || actionAppointment.pet_name))?.photo_attachment_id}
+        user={user}
         showPetAvatar
         status={actionAppointment.status || 'scheduled'}
         onClose={() => { setArchiveError(''); setActionAppointment(null); }}
         error={archiveError}
         actions={[
-          { label: 'View Details', description: 'Review the patient, schedule, visit reason, and appointment information.', onClick: () => {
+          { label: 'View Appointment Details', description: 'Review the patient, schedule, visit reason, and appointment information.', onClick: () => {
             const appointmentPet = pets.find(pet => String(pet.id) === String(actionAppointment.pet_id || actionAppointment.petId)
               || String(pet.name || '').trim().toLowerCase() === String(actionAppointment.pet || actionAppointment.pet_name || '').trim().toLowerCase());
             setViewAppointment({ ...actionAppointment, photo_url: actionAppointment.photo_url || getPetPhotoUrl(appointmentPet) });
@@ -6163,6 +6682,7 @@ function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = 
             setArchiveError('');
             setActionAppointment(null);
           } },
+          ...(['scheduled','due','checked_in'].includes(String(actionAppointment.status || '').toLowerCase()) && ['doctor','assistant_doctor','veterinarian'].includes(String(user.role || '').toLowerCase().replace(/[\s-]+/g,'_')) ? [{ label: 'Start Consultation', description: 'Begin consultation and update the receptionist patient queue.', onClick: async () => { try { await onStartConsultation(actionAppointment); setActionAppointment(null); } catch (error) { setArchiveError(error.message); } } }] : []),
           { label: 'Audit History', description: 'Review the recorded activity and changes for this appointment.', onClick: () => { setHistoryAppointment(actionAppointment); setAppointmentAuditError(''); setActionAppointment(null); } },
           { label: showArchived ? 'Restore Appointment' : 'Archive Appointment', description: showArchived ? 'Return this appointment to the active list.' : 'Move this appointment out of the active list.', destructive: !showArchived, onClick: async () => { if (await archiveAppointment(actionAppointment)) setActionAppointment(null); } },
         ]}
@@ -6318,9 +6838,11 @@ function AppointmentsTab({ appointments, pets = [], owners = [], vaccinations = 
   );
 }
 
-function AppointmentLabTestWizard({ pet, owner, user, testType: initialTestType, testOptions = [], veterinarians = [], date, time, veterinarian, onBack, onClose, onSave }) {
+function AppointmentLabTestWizard({ pet, owner, user, testType: initialTestType, testOptions = [], catalogServices = [], veterinarians = [], date, time, veterinarian, onBack, onClose, onSave }) {
+  const { testTypes: labTestTypes, diseases: labDiseases, error: labTestTypesError } = useLabTestTypes(user);
   const [step, setStep] = useState(1);
-  const availableTestOptions = [...new Set([...testOptions, initialTestType].filter(Boolean))];
+  const availableTestOptions = [...new Set([...labTestTypes, ...testOptions, initialTestType].filter(Boolean))]
+    .filter(name => !labDiseases.includes(name.trim().toLowerCase()));
   const [form, setForm] = useState({
     testType: initialTestType || '', indication: '', priority: 'Routine',
     veterinarian: veterinarian || '', orderDateTime: `${date}T${time}`,
@@ -6394,16 +6916,18 @@ function AppointmentLabTestWizard({ pet, owner, user, testType: initialTestType,
   };
 
   return <div style={modalStyles.backdrop} onClick={event => { if (event.target === event.currentTarget && !saving) onBack(); }}>
-    <ModalDialog as="form" size="large" className="lab-add-test-dialog lab-wizard-dialog" role="dialog" aria-modal="true" aria-labelledby="appointment-lab-wizard-title" onSubmit={step === 3 ? save : advance} style={{ ...modalStyles.dialog, width: '760px', maxWidth: 'calc(100vw - 24px)', height: '767px', maxHeight: 'calc(100dvh - 32px)', overflow: 'hidden', padding: 'clamp(16px, 3vw, 26px)' }}>
+    <ModalDialog as="form" size="large" className="lab-add-test-dialog lab-wizard-dialog lab-intake-wizard" role="dialog" aria-modal="true" aria-labelledby="appointment-lab-wizard-title" onSubmit={step === 3 ? save : advance} style={{ ...modalStyles.dialog, width: 'min(1000px, calc(100vw - 32px))', maxWidth: 'calc(100vw - 24px)', height: 'min(740px, calc(100dvh - 32px))', maxHeight: 'calc(100dvh - 32px)', overflow: 'hidden', padding: 'clamp(16px, 3vw, 26px)' }}>
       <button type="button" className="lab-add-test-close" onClick={onClose} disabled={saving}>Close</button>
       <header className="lab-wizard-header">
         <div><h2 id="appointment-lab-wizard-title">Add Lab Test</h2><p>Step {step} of 3 · {['Patient', 'Test Details', 'Review & Save'][step - 1]}</p></div>
       </header>
-      <ModalStepper className="lab-wizard-steps">{['Patient', 'Test Details', 'Review & Save'].map((label, index) => <li key={label} className={step === index + 1 ? 'active' : step > index + 1 ? 'complete' : ''}><span>{index + 1}</span><strong>{label}</strong></li>)}</ModalStepper>
+      <ModalStepper className="lab-wizard-steps">{['Patient', 'Test Details', 'Review & Save'].map((label, index) => <li key={label} className={step === index + 1 ? 'active' : step > index + 1 ? 'complete' : ''}><span>{step > index + 1 ? '\u2713' : index + 1}</span><strong>{label}</strong></li>)}</ModalStepper>
       <div className="lab-wizard-body">
+        {labTestTypesError && <p role="alert">{labTestTypesError}</p>}
+        {catalogServices.find(item=>item.name===form.testType)?.inventory_links?.length>0 && <section className="lab-wizard-section"><strong>Linked Inventory</strong><ServiceInventorySummary service={catalogServices.find(item=>item.name===form.testType)}/></section>}
         {step === 1 && <section className="lab-wizard-section">
           <div className="lab-wizard-patient-summary">
-            <div className="lab-wizard-patient-overview">
+            <section className="lab-patient-information"><h4>Patient Information</h4><div className="lab-wizard-patient-overview">
               {pet?.photo_url ? <img className="lab-wizard-pet-photo" src={pet.photo_url} alt="" /> : <span className="lab-wizard-pet-photo lab-wizard-pet-initial">{pet?.name?.slice(0, 1).toUpperCase() || 'P'}</span>}
               <div className="lab-wizard-patient-identity"><strong>{pet?.name || 'Selected patient'}</strong><span>Patient ID: {pet?.patientId || pet?.displayId || `P-${String(pet?.id || '').padStart(4, '0')}`}</span><span className="lab-wizard-patient-selected">Patient selected</span></div>
               <div className="lab-wizard-patient-fact"><small>Species</small><strong>{pet?.species || 'Not recorded'}</strong></div>
@@ -6411,8 +6935,8 @@ function AppointmentLabTestWizard({ pet, owner, user, testType: initialTestType,
               <div className="lab-wizard-patient-fact"><small>Sex</small><strong>{[pet?.sex || pet?.gender, pet?.reproductive_status || pet?.reproductiveStatus].filter(Boolean).join(' · ') || 'Not recorded'}</strong></div>
               <div className="lab-wizard-patient-fact"><small>Age</small><strong>{pet?.age || (pet?.birth_date || pet?.birthDate ? calculatePatientAge(pet.birth_date || pet.birthDate) : '') || 'Not recorded'}</strong></div>
               <button type="button" onClick={onBack}>Change Patient</button>
-            </div>
-            <div className="lab-wizard-owner-card"><h4>Owner Information</h4><div className="lab-wizard-owner-details"><span className="lab-wizard-owner-avatar">{ownerName.slice(0, 1).toUpperCase()}</span><div className="lab-wizard-owner-name"><strong>{ownerName}</strong><small>Owner</small></div><div className="lab-wizard-owner-contact"><span>{Icons.phone}<span>{owner?.phone || owner?.phone_number || pet?.ownerPhone || 'Phone not recorded'}</span></span><span>{Icons.mail}<span>{owner?.email || owner?.email_address || pet?.ownerEmail || 'Email not recorded'}</span></span></div></div></div>
+            </div></section>
+            <div className="lab-owner-visit-row"><div className="lab-wizard-owner-card"><h4>Owner Information</h4><div className="lab-wizard-owner-details"><span className="lab-wizard-owner-avatar">{ownerName.slice(0, 1).toUpperCase()}</span><div className="lab-wizard-owner-name"><strong>{ownerName}</strong><small>Owner</small></div><div className="lab-wizard-owner-contact"><span>{Icons.phone}<span>{owner?.phone || owner?.phone_number || pet?.ownerPhone || 'Phone not recorded'}</span></span><span>{Icons.mail}<span>{owner?.email || owner?.email_address || pet?.ownerEmail || 'Email not recorded'}</span></span></div></div></div><LabVisitOverview patientId={pet?.id} user={user} /></div>
             <div className="lab-wizard-additional-patient-details">
               <h4>Clinical Alerts &amp; Relevant History</h4><p className="lab-clinical-history-intro">Relevant information from the patient's existing record</p>
               {clinicalAlertsLoading && <p className="lab-clinical-history-state">Loading the patient's clinical record…</p>}
@@ -6424,17 +6948,17 @@ function AppointmentLabTestWizard({ pet, owner, user, testType: initialTestType,
             </div>
           </div>
         </section>}
-        {step === 2 && <section className="lab-wizard-section">
-          <h3>Test Information</h3>
+        {step === 2 && <section className="lab-wizard-section lab-test-details-step">
+          <div className="lab-test-design-card"><h3>Test Information</h3>
           <div className="lab-wizard-test-grid">
-            <div className="lab-wizard-field lab-wizard-test-type"><span>Test Type <b className="system-required-star">*</b></span><span className="lab-wizard-search-control">{Icons.search}<input className="lab-wizard-search-input" required role="combobox" aria-label="Test Type" aria-autocomplete="list" aria-expanded={testTypeOptionsOpen} value={form.testType} onFocus={() => setTestTypeOptionsOpen(true)} onClick={() => setTestTypeOptionsOpen(true)} onBlur={() => setTestTypeOptionsOpen(false)} onKeyDown={event => { if (event.key === 'Escape') setTestTypeOptionsOpen(false); }} onChange={event => { update('testType', event.target.value); setTestTypeOptionsOpen(true); }} placeholder="Search or select a lab test" autoComplete="off" /></span>{testTypeOptionsOpen && <div className="lab-wizard-test-options" role="listbox" aria-label="Available lab tests">{matchingTestOptions.length ? matchingTestOptions.map(test => <button type="button" role="option" aria-selected={form.testType === test} key={test} onMouseDown={event => event.preventDefault()} onClick={() => { update('testType', test); setTestTypeOptionsOpen(false); }}>{test}</button>) : <p>No matching lab tests.</p>}</div>}</div>
+            <div className="lab-wizard-field lab-wizard-test-type"><span>Test Type <b className="system-required-star">*</b></span><span className="lab-wizard-search-control">{Icons.search}<input className="lab-wizard-search-input" required role="combobox" aria-label="Test Type" aria-autocomplete="list" aria-expanded={testTypeOptionsOpen} value={form.testType} onFocus={() => setTestTypeOptionsOpen(true)} onClick={() => setTestTypeOptionsOpen(true)} onBlur={() => setTestTypeOptionsOpen(false)} onKeyDown={event => { if (event.key === 'Escape') setTestTypeOptionsOpen(false); }} onChange={event => { update('testType', event.target.value); setTestTypeOptionsOpen(true); }} placeholder="Search or select a lab test" autoComplete="off" /></span>{testTypeOptionsOpen && <div className="lab-wizard-test-options" role="listbox" aria-label="Available lab tests">{matchingTestOptions.length ? matchingTestOptions.map(test => <button type="button" role="option" aria-selected={form.testType === test} key={test} onMouseDown={event => event.preventDefault()} onClick={() => { update('testType', test); setTestTypeOptionsOpen(false); }}><span style={{display:'block'}}>{test}</span><ServiceInventorySummary service={catalogServices.find(item=>item.name===test)}/></button>) : <p>No matching lab tests.</p>}</div>}</div>
             <fieldset className="lab-wizard-priority"><legend>Priority</legend><div>{['Routine', 'Urgent'].map(value => <button key={value} type="button" aria-pressed={form.priority === value} className={form.priority === value ? 'selected' : ''} onClick={() => update('priority', value)}><span aria-hidden="true" />{value}</button>)}</div></fieldset>
             <label className="lab-wizard-field lab-wizard-field-full"><span>Clinical Indication / Reason for Testing <small>(Optional)</small></span><textarea maxLength={500} rows={2} value={form.indication} onChange={event => update('indication', event.target.value)} placeholder="e.g., vomiting, suspected infection, wellness screening..." /><small>{form.indication.length}/500</small></label>
             <label className="lab-wizard-field"><span>Ordering Veterinarian <b className="system-required-star">*</b></span><FilterSelect className="lab-wizard-filter-select" label="Ordering Veterinarian" value={form.veterinarian} onChange={value => update('veterinarian', value)} options={[{ value: '', label: 'Select veterinarian' }, ...veterinarians.map(value => ({ value, label: value }))]} /></label>
-            <div className="lab-wizard-system-field"><span>Test ID</span><strong>Will be generated after saving</strong></div>
             <div className="lab-wizard-system-field lab-wizard-order-date"><span>Order Date &amp; Time</span><LabDateTimePicker className="lab-wizard-date-time" label="Order Date and Time" value={form.orderDateTime} onChange={value => update('orderDateTime', value)} /></div>
+            <div className="lab-wizard-system-field"><span>Test ID</span><strong>Will be generated after saving</strong></div>
           </div>
-          <hr className="lab-wizard-divider" /><h3>Specimen &amp; Collection Information</h3>
+          </div><div className="lab-test-design-card"><h3>Specimen &amp; Collection Information</h3>
           <div className="lab-wizard-fields-grid">
             <label className="lab-wizard-field"><span>Specimen Type <small>(Optional)</small></span><FilterSelect className="lab-wizard-filter-select" label="Specimen Type" value={form.specimenType} onChange={value => setForm(current => ({ ...current, specimenType: value, specimenTypeOther: value === 'Other' ? current.specimenTypeOther : '' }))} options={[{ value: '', label: 'Select specimen type' }, ...['Whole blood', 'Serum', 'Plasma', 'Urine', 'Feces', 'Swab', 'Other'].map(value => ({ value, label: value }))]} />{form.specimenType === 'Other' && <input className="lab-wizard-other-detail" aria-label="Specify other specimen type" required value={form.specimenTypeOther} onChange={event => update('specimenTypeOther', event.target.value)} placeholder="Enter specimen type" maxLength={120} />}</label>
             <label className="lab-wizard-field"><span>Collection Date &amp; Time <small>(Optional)</small></span><LabDateTimePicker className="lab-wizard-date-time" label="Collection Date and Time" value={form.collectionDate && form.collectionTime ? `${form.collectionDate}T${form.collectionTime}` : ''} onChange={value => { const [collectionDate = '', collectionTime = ''] = value.split('T'); setForm(current => ({ ...current, collectionDate, collectionTime })); }} /></label>
@@ -6442,12 +6966,12 @@ function AppointmentLabTestWizard({ pet, owner, user, testType: initialTestType,
             <label className="lab-wizard-field"><span>Collector <small>(Optional)</small></span><span className="lab-wizard-filter-select-shell">{Icons.user}<FilterSelect className="lab-wizard-filter-select" label="Collector" value={form.collector} onChange={value => update('collector', value)} options={[{ value: '', label: 'Select collector' }, ...veterinarians.map(value => ({ value, label: value }))]} /></span></label>
             <label className="lab-wizard-field lab-wizard-field-full lab-wizard-notes-field"><span>Clinical Notes <small>(Optional)</small></span><textarea className="lab-wizard-notes" maxLength={500} rows={2} value={form.notes} onChange={event => update('notes', event.target.value)} placeholder="Add any relevant notes, such as clinical signs, reason for testing, or special instructions..." /><small>{form.notes.length}/500</small></label>
           </div>
-        </section>}
-        {step === 3 && <section className="lab-wizard-section">
+        </div></section>}
+        {step === 3 && <section className="lab-wizard-section lab-wizard-review-page">
           <header className="lab-wizard-review-header"><span className="lab-wizard-review-icon">{Icons.clipboard}</span><div><h3>Review &amp; Save</h3><p>Step 3 of 3 · Confirm the information before creating the lab test.</p></div></header>
-          <section className="lab-wizard-review-group"><div className="lab-wizard-review-group-heading"><h4>Patient</h4></div><div className="lab-wizard-review-patient">{pet?.photo_url ? <img src={pet.photo_url} alt="" /> : <span className="lab-wizard-review-patient-avatar">{pet?.name?.slice(0, 1).toUpperCase() || 'P'}</span>}<div><strong>{pet?.name || 'Patient not selected'}</strong><span>Patient ID: {pet?.displayId || pet?.id || 'Not available'} · {pet?.species || 'Species not recorded'} · {pet?.sex || 'Sex not recorded'}</span></div></div></section>
-          <section className="lab-wizard-review-group"><div className="lab-wizard-review-group-heading"><h4>Test Information</h4><button type="button" onClick={() => setStep(2)}>Edit details</button></div><dl className="lab-wizard-review-list"><div><dt>Test type</dt><dd>{form.testType}</dd></div><div><dt>Priority</dt><dd><span className="lab-wizard-review-priority">{form.priority}</span></dd></div><div><dt>Ordering veterinarian</dt><dd>{form.veterinarian}</dd></div><div><dt>Order date &amp; time</dt><dd>{form.orderDateTime ? new Date(form.orderDateTime).toLocaleString() : 'Not provided'}</dd></div><div><dt>Reason for testing</dt><dd>{form.indication.trim() || 'Not provided'}</dd></div>{form.notes.trim() && <div><dt>Clinical notes</dt><dd>{form.notes.trim()}</dd></div>}</dl></section>
-          <section className="lab-wizard-review-group"><div className="lab-wizard-review-group-heading"><h4>Specimen &amp; Collection</h4><button type="button" onClick={() => setStep(2)}>Edit details</button></div><dl className="lab-wizard-review-list"><div><dt>Specimen type</dt><dd>{(form.specimenType === 'Other' ? form.specimenTypeOther.trim() : form.specimenType) || 'To be recorded'}</dd></div><div><dt>Collection date/time</dt><dd>{form.collectionDate && form.collectionTime ? `${formatClinicDate(form.collectionDate)} · ${form.collectionTime}` : 'Not collected yet'}</dd></div>{form.collectionMethod && <div><dt>Collection method / site</dt><dd>{form.collectionMethod === 'Other' ? form.collectionMethodOther.trim() : form.collectionMethod}</dd></div>}<div><dt>Collector</dt><dd>{form.collector || 'Not selected'}</dd></div>{form.sampleId.trim() && <div><dt>Sample ID / Accession</dt><dd>{form.sampleId.trim()}</dd></div>}</dl></section>
+          <section className="lab-wizard-review-group"><div className="lab-wizard-review-group-heading"><h4>Patient Information</h4></div><div className="lab-wizard-review-patient">{pet?.photo_url ? <img src={pet.photo_url} alt="" /> : <span className="lab-wizard-review-patient-avatar">{pet?.name?.slice(0, 1).toUpperCase() || 'P'}</span>}<div><strong>{pet?.name || 'Patient not selected'}</strong><span>Patient ID: {pet?.displayId || pet?.id || 'Not available'} · {pet?.species || 'Species not recorded'} · {pet?.sex || 'Sex not recorded'}</span></div></div></section>
+          <section className="lab-wizard-review-group"><div className="lab-wizard-review-group-heading"><h4>Test Information</h4><button type="button" onClick={() => setStep(2)}>Edit details</button></div><dl className="lab-wizard-review-list"><div className="lab-review-test-type"><dt>Test type</dt><dd>{form.testType}</dd></div><div className="lab-review-priority"><dt>Priority</dt><dd><span className="lab-wizard-review-priority">{form.priority}</span></dd></div><div className="lab-review-veterinarian"><dt>Ordering veterinarian</dt><dd>{form.veterinarian}</dd></div><div className="lab-review-order-date"><dt>Order date &amp; time</dt><dd>{form.orderDateTime ? new Date(form.orderDateTime).toLocaleString() : 'Not provided'}</dd></div><div className="lab-review-reason"><dt>Reason for testing</dt><dd>{form.indication.trim() || 'Not provided'}</dd></div>{form.notes.trim() && <div className="lab-review-notes"><dt>Clinical notes</dt><dd>{form.notes.trim()}</dd></div>}</dl></section>
+          <section className="lab-wizard-review-group"><div className="lab-wizard-review-group-heading"><h4>Specimen &amp; Collection</h4><button type="button" onClick={() => setStep(2)}>Edit details</button></div><dl className="lab-wizard-review-list"><div className="lab-review-specimen"><dt>Specimen type</dt><dd>{(form.specimenType === 'Other' ? form.specimenTypeOther.trim() : form.specimenType) || 'To be recorded'}</dd></div><div className="lab-review-collection-date"><dt>Collection date/time</dt><dd>{form.collectionDate && form.collectionTime ? `${formatClinicDate(form.collectionDate)} · ${form.collectionTime}` : 'Not collected yet'}</dd></div>{form.collectionMethod && <div className="lab-review-collection-method"><dt>Collection method / site</dt><dd>{form.collectionMethod === 'Other' ? form.collectionMethodOther.trim() : form.collectionMethod}</dd></div>}<div className="lab-review-collector"><dt>Collector</dt><dd>{form.collector || 'Not selected'}</dd></div>{form.sampleId.trim() && <div className="lab-review-sample-id"><dt>Sample ID / Accession</dt><dd>{form.sampleId.trim()}</dd></div>}</dl></section>
           <div className="lab-wizard-review-after-save">{Icons.info}<div><strong>After saving</strong><p>The lab test will appear in the Lab Tests list with its generated test ID and initial status.</p></div></div>
         </section>}
         {error && <div className="lab-wizard-error" role="alert">{error}</div>}
@@ -6495,31 +7019,14 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
     const controller = new AbortController();
     const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
     const headers = { Authorization: `Bearer ${user.token}` };
-    const normalizedRole = String(user.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-    const seedCatalog = ['owner', 'clinic_owner'].includes(normalizedRole)
-      ? fetch(`${apiUrl}/clinic-records/billing-catalog/seed-defaults`, {
-        method: 'POST',
-        headers,
-        signal: controller.signal,
-      }).then(async response => {
-        const payload = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(payload?.error || 'Unable to load the clinic service catalog.');
-      })
-      : Promise.resolve();
-    seedCatalog.then(() => fetch(`${apiUrl}/clinic-records/billing-catalog?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
-      headers, signal: controller.signal,
-    })).then(async response => {
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !Array.isArray(payload)) throw new Error('Unable to load the clinic service catalog.');
-      setServiceCatalog(payload.filter(item => item
-        && typeof item.name === 'string'
-        && item.name.trim()
-        && item.active !== false
-        && item.item_type !== 'medication'));
-    }).catch(loadError => {
-      if (loadError.name !== 'AbortError') setServiceCatalog([]);
-    });
-    return () => controller.abort();
+    const loadCatalog = () => fetch(`${apiUrl}/clinic-records/billing-catalog?clinic_id=${encodeURIComponent(user.clinic_id)}`, {headers,signal:controller.signal}).then(async response => {
+      const payload=await response.json();
+      if(!response.ok||!Array.isArray(payload))throw new Error('Unable to load clinic services.');
+      setServiceCatalog(payload.filter(item=>item.active!==false && item.catalog_kind!=='product' && item.unit_price!==null));
+    }).catch(error=>{if(error.name!=='AbortError')setServiceCatalog([]);});
+    loadCatalog();
+    window.addEventListener('vetintel:appointment-updated',loadCatalog);
+    return () => {controller.abort();window.removeEventListener('vetintel:appointment-updated',loadCatalog);};
   }, [user?.clinic_id, user?.token]);
   useEffect(() => {
     if (!user?.clinic_id || !user?.token) {
@@ -6566,17 +7073,8 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
     return () => controller.abort();
   }, [selectedPet?.id, user?.clinic_id, user?.token]);
   const appointmentCategory = form.type;
-  const categoryForCatalog = appointmentCategory === 'Check-up' || appointmentCategory === 'Follow-up'
-    ? 'Consultation'
-    : appointmentCategory;
-  const serviceOptions = (Array.isArray(serviceCatalog) ? serviceCatalog : []).filter(item => {
-    if (!item || typeof item.name !== 'string' || !item.name.trim()) return false;
-    const category = item.category || (item.item_type === 'vaccination' ? 'Vaccination' : item.item_type === 'lab_test' ? 'Laboratory' : item.item_type === 'inpatient' ? 'Confinement' : item.item_type === 'consultation' ? 'Consultation' : 'Treatment');
-    if (category !== categoryForCatalog) return false;
-    if (appointmentCategory === 'Check-up') return !/follow[- ]?up/i.test(item.name);
-    if (appointmentCategory === 'Follow-up') return /follow[- ]?up/i.test(item.name);
-    return true;
-  });
+  const serviceOptions = (Array.isArray(serviceCatalog) ? serviceCatalog : []).filter(item =>
+    Array.isArray(item.appointment_categories) && item.appointment_categories.includes(appointmentCategory) && (!selectedPet?.species || !(/\b(canine|dog)\b/i.test(item.name)&&!(/\b(feline|cat)\b/i.test(item.name))&&!['dog','canine'].includes(String(selectedPet.species).toLowerCase())) && !(/\b(feline|cat)\b/i.test(item.name)&&!(/\b(canine|dog)\b/i.test(item.name))&&!['cat','feline'].includes(String(selectedPet.species).toLowerCase()))));
   const selectedCatalogService = serviceOptions.find(item => item.name.trim().toLowerCase() === form.service_name.trim().toLowerCase());
   const matchingServiceOptions = serviceOptions.filter(item => !form.service_name.trim()
     || item.name.toLowerCase().includes(form.service_name.trim().toLowerCase()));
@@ -6610,7 +7108,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
     update('service_name', item.name);
     setServicePickerOpen(false);
   };
-  const isWorkflowType = ['Vaccination', 'Treatment', 'Laboratory', 'Surgery', 'Dental', 'Check-up', 'Follow-up', 'Confinement', 'Grooming', 'General'].includes(appointmentCategory);
+  const isWorkflowType = appointmentTypes.includes(appointmentCategory);
   const isWorkflowDetailsStep = isWorkflowType && step === 2;
   const servicePlaceholder = {
     'Check-up': 'e.g. General Wellness Check-up',
@@ -6623,8 +7121,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
     Grooming: 'e.g. Basic Bath, Full Grooming',
     General: 'e.g. Microchipping, Health Certificate',
   }[appointmentCategory] || 'Specify the service';
-  const durationByType = { 'check-up': 30, consultation: 30, vaccination: 20, surgery: 120, dental: 60, treatment: 30, laboratory: 30, confinement: 30, 'follow-up': 20, grooming: 30, general: 30 };
-  const durationMinutes = durationByType[String(appointmentCategory || '').toLowerCase()] || 30;
+  const durationMinutes = appointmentDuration(selectedCatalogService, appointmentCategory);
   const update = (key, value) => setForm(current => ({ ...current, [key]: value }));
   const updateServiceDetail = (key, value) => setForm(current => ({ ...current, service_details: { ...(current.service_details || {}), [key]: value } }));
   const serviceDetail = key => form.service_details?.[key] || '';
@@ -6639,7 +7136,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
             : true;
   const ready = appointmentBasicsReady && (step === 1
     ? true
-    : Boolean(form.service_name.trim())
+    : Boolean(selectedCatalogService)
       && (form.type !== 'Vaccination' || Boolean(serviceDetail('reason_category').trim()))
       && (form.type !== 'Treatment' || Boolean(form.related_treatment_plan_id || ((form.treatment_plan_title.trim() || form.service_name.trim()) && form.treatment_diagnosis.trim() && treatmentStepsReady && treatmentMedicationReady)))
       && (form.type !== 'Follow-up' || Boolean(form.parent_appointment_id || form.related_treatment_plan_id))
@@ -6730,7 +7227,8 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
       owner={selectedOwner}
       user={user}
       testType={form.service_name}
-      testOptions={[...new Set([...LAB_RESULTS.map(result => result.testType), ...serviceOptions.map(item => item.name)].filter(Boolean))]}
+      testOptions={serviceOptions.map(item => item.name)}
+      catalogServices={serviceOptions}
       veterinarians={[...new Set([...veterinarians.map(member => member.name), user?.name].filter(Boolean))]}
       date={form.date}
       time={form.time}
@@ -6741,6 +7239,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
         ...form,
         type: 'Laboratory',
         service_name: request.testType,
+        service_catalog_item_id: serviceOptions.find(item=>item.name===request.testType)?.id || null,
         practitioner_id: form.practitioner_id,
         practitioner_name: request.requestedBy,
         reason_for_visit: request.indication || 'Laboratory testing',
@@ -6864,7 +7363,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
         style={{ ...modalStyles.doctorAppointmentDialog, ...(isWorkflowDetailsStep ? { width: ['Confinement', 'General'].includes(appointmentCategory) ? 760 : appointmentCategory === 'Grooming' ? 'min(720px, calc(100vw - 32px))' : 'min(620px, calc(100vw - 32px))', maxWidth: 'calc(100vw - 32px)', height: 'auto', boxSizing: 'border-box', maxHeight: ['Confinement', 'Grooming', 'General'].includes(appointmentCategory) ? 'calc(100dvh - 32px)' : 'none', overflowY: ['Confinement', 'Grooming', 'General'].includes(appointmentCategory) ? 'hidden' : 'visible', padding: ['Confinement', 'General'].includes(appointmentCategory) ? '28px 32px 24px' : appointmentCategory === 'Grooming' ? '26px 30px 24px' : '22px 26px 20px' } : {}) }}
       >
         <button type="button" onClick={onClose} style={isWorkflowDetailsStep ? modalStyles.close : { ...modalStyles.vaccinationActionsClose, width: 'auto', height: 'auto', font: 'inherit', fontSize: '.74rem', fontWeight: 600 }}>{isWorkflowDetailsStep ? Icons.close : 'Close'}</button>
-        <h2 id="doctor-new-appointment-title" style={isWorkflowDetailsStep ? { ...modalStyles.addVaccinationTitle, color: '#00695c' } : { ...modalStyles.doctorAppointmentTitle, fontSize: '1.1rem' }}>{isWorkflowDetailsStep ? ({ Vaccination: 'Vaccination Appointment Details', Laboratory: 'Lab Test Details', Treatment: 'Treatment Plan Details', Surgery: 'Surgery Details', Dental: 'Dental Visit Details', 'Check-up': 'Check-up Details', 'Follow-up': 'Follow-up Details', Confinement: 'Confinement Admission Details', Grooming: 'Grooming Details', General: 'General Consultation Details' }[appointmentCategory] || `${appointmentCategory} Details`) : 'New Appointment'}</h2>
+        <h2 id="doctor-new-appointment-title" style={isWorkflowDetailsStep ? { ...modalStyles.addVaccinationTitle, color: '#013826' } : { ...modalStyles.doctorAppointmentTitle, fontSize: '1.1rem' }}>{isWorkflowDetailsStep ? ({ Vaccination: 'Vaccination Appointment Details', Laboratory: 'Lab Test Details', Treatment: 'Treatment Plan Details', Surgery: 'Surgery Details', Dental: 'Dental Visit Details', 'Check-up': 'Check-up Details', 'Follow-up': 'Follow-up Details', Confinement: 'Confinement Admission Details', Grooming: 'Grooming Details', General: 'General Consultation Details' }[appointmentCategory] || `${appointmentCategory} Details`) : 'New Appointment'}</h2>
         <p style={isWorkflowDetailsStep ? { ...modalStyles.addVaccinationIntro, margin: '7px 0 14px', color: '#526b64', fontSize: '.95rem' } : modalStyles.doctorAppointmentIntro}>{isWorkflowDetailsStep ? appointmentCategory === 'Dental' ? 'Record the dental service and what the team needs to know.' : appointmentCategory === 'Vaccination' ? 'Details stay with the appointment until the doctor confirms administration.' : appointmentCategory === 'Surgery' ? 'Schedule the procedure and record the pre-op steps.' : appointmentCategory === 'Laboratory' ? 'Enter the test details for this patient. You can complete the request in the Lab Test tab.' : appointmentCategory === 'Confinement' ? 'Enter the admission details to admit this patient through the appointment workflow.' : appointmentCategory === 'Grooming' ? 'Record the service, the requested style and any handling needs.' : appointmentCategory === 'General' ? 'Record the service and the main concern.' : 'Create a structured care plan and assign follow-up steps to a patient.' : 'Schedule a new appointment for a patient.'}</p>
         {isWorkflowType && appointmentCategory === 'Confinement' && <div className="confinement-step-progress" aria-label={`Confinement admission step ${confinementStep + 1} of 6`}>
           <strong>Step {confinementStep + 1} of 6</strong>
@@ -6920,7 +7419,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
                 setConfinementStep(0);
               }} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}>
                 <option value="">Select appointment type</option>
-                {['Vaccination', 'Treatment', 'Laboratory', 'Surgery', 'Dental', 'Check-up', 'Follow-up', 'Confinement', 'Grooming', 'General'].map(type => <option key={type} value={type}>{type}</option>)}
+                {appointmentTypes.map(type => <option key={type} value={type}>{type}</option>)}
               </select>
             </span>
           </label>
@@ -6947,11 +7446,11 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
               }}
               placeholder="Rabies (IMRAB 3TF)"
               className="doctor-appointment-input service-picker-input"
-              style={{ ...modalStyles.addVaccinationInput, display: 'block', width: '100%', minWidth: 0, minHeight: 0, height: '100%', maxHeight: 'none', boxSizing: 'border-box', padding: '0 42px 0 14px', border: '1px solid #d9e3de', borderRadius: 10, background: '#f7faf8', color: '#1f2d28', fontSize: '15.5px', fontWeight: 500, lineHeight: 'normal' }}
+              style={{ ...modalStyles.addVaccinationInput, display: 'block', width: '100%', minWidth: 0, minHeight: 0, height: '100%', maxHeight: 'none', boxSizing: 'border-box', padding: '0 42px 0 14px', border: '1px solid #bed6c5', borderRadius: 10, background: '#f7faf8', color: '#172b24', fontSize: '15.5px', fontWeight: 500, lineHeight: 'normal' }}
             />
             <button type="button" className="service-picker-toggle" aria-label="Choose from clinic services" aria-expanded={servicePickerOpen} onMouseDown={event => event.preventDefault()} onClick={() => setServicePickerOpen(open => !open)}><span aria-hidden="true" /></button>
             {servicePickerOpen && servicePickerPosition && createPortal(<div className="service-picker-menu" id="appointment-service-options" role="listbox" aria-label="Available clinic services" style={servicePickerPosition}>
-              {matchingServiceOptions.length ? matchingServiceOptions.map((item, index) => <button type="button" role="option" aria-selected={form.service_name === item.name} id={`appointment-service-option-${item.id}`} key={item.id} className={`service-picker-option${servicePickerIndex === index ? ' highlighted' : ''}`} onMouseEnter={() => setServicePickerIndex(index)} onMouseDown={event => event.preventDefault()} onClick={() => chooseService(item)}><strong>{item.name}</strong><span>₱{Number(item.unit_price || 0).toLocaleString('en-PH')} / {item.unit || 'item'}</span></button>) : <div className="service-picker-empty">No matching services in the clinic catalog.</div>}
+              {matchingServiceOptions.length ? matchingServiceOptions.map((item, index) => <button type="button" role="option" aria-selected={form.service_name === item.name} id={`appointment-service-option-${item.id}`} key={item.id} className={`service-picker-option${servicePickerIndex === index ? ' highlighted' : ''}`} onMouseEnter={() => setServicePickerIndex(index)} onMouseDown={event => event.preventDefault()} onClick={() => chooseService(item)}><strong>{item.name}</strong><span>₱{Number(item.unit_price || 0).toLocaleString('en-PH')} / {item.unit || 'item'}</span><ServiceInventorySummary service={item}/></button>) : <div className="service-picker-empty">No matching services in the clinic catalog.</div>}
             </div>, document.body)}
           </span></label>}
           {isWorkflowDetailsStep && appointmentCategory === 'Vaccination' && <label className="vaccination-pet-field"><span>Pet</span><span className="vaccination-patient-card"><span className="vaccination-patient-avatar" aria-hidden="true">{selectedPet?.name?.slice(0, 1) || 'P'}</span><span>{selectedPet?.name || 'Patient not selected'}<span className="vaccination-patient-species"> · {selectedPetSpecies}</span></span></span></label>}
@@ -6989,10 +7488,11 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
                   onMouseEnter={() => setServicePickerIndex(index)}
                   onMouseDown={event => event.preventDefault()}
                   onClick={() => chooseService(item)}
-                ><strong>{item.name}</strong><span>₱{Number(item.unit_price || 0).toLocaleString('en-PH')} / {item.unit || 'item'}</span></button>) : <div className="service-picker-empty">No matching services in the clinic catalog.</div>}
+                ><strong>{item.name}</strong><span>₱{Number(item.unit_price || 0).toLocaleString('en-PH')} / {item.unit || 'item'}</span><ServiceInventorySummary service={item}/></button>) : <div className="service-picker-empty">No matching services in the clinic catalog.</div>}
               </div>, document.body)}
             </span>
           </label>}
+          {isWorkflowDetailsStep && selectedCatalogService && <section style={{gridColumn:'1 / -1',padding:12,border:'1px solid #dce7ec',borderRadius:8,background:'#f5faf8'}}><strong>Linked Inventory</strong><ServiceInventorySummary service={selectedCatalogService}/></section>}
           {appointmentCategory === 'Vaccination' && step === 2 && <>
             <div className="vaccination-reason-field">
               <span className="vaccination-reason-label">Reason for vaccination<span style={modalStyles.required}>*</span></span>
@@ -7012,25 +7512,25 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
             <label className="vaccination-booking-notes" style={{ ...modalStyles.addVaccinationLabel, gridColumn: '1 / -1' }}><span style={modalStyles.addVaccinationLabelText}>Booking notes (optional)</span><textarea rows={2} value={form.notes} onChange={event => update('notes', event.target.value)} placeholder="Optional notes for the scheduled vaccination" style={{ ...modalStyles.addVaccinationInput, minHeight: 54, height: 'auto', maxHeight: 90, padding: '8px 10px' }} /></label>
           </>}
           {appointmentCategory === 'Treatment' && step === 2 && <>
-            <label className="treatment-plan-patient-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Patient (Pet)<span style={modalStyles.required}>*</span></span><input readOnly value={selectedPet?.name || ''} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }} /></label>
-            <label className="treatment-plan-existing-field" style={{ ...modalStyles.addVaccinationLabel, gridColumn: '1 / -1' }}><span style={modalStyles.addVaccinationLabelText}>Existing Treatment Plan</span><select value={form.related_treatment_plan_id} onChange={event => update('related_treatment_plan_id', event.target.value)} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }}><option value="">Create a new plan for this care episode</option>{treatmentPlans.map(plan => <option key={plan.id} value={plan.id}>{plan.title} · {plan.status || 'Active'}</option>)}</select><small>Choose an existing plan to avoid creating a duplicate.</small></label>
+            <label className="treatment-plan-patient-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Patient (Pet)<span style={modalStyles.required}>*</span></span><input readOnly value={selectedPet?.name || ''} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #bed6c5', background: '#fff', fontSize: '1rem' }} /></label>
+            <label className="treatment-plan-existing-field" style={{ ...modalStyles.addVaccinationLabel, gridColumn: '1 / -1' }}><span style={modalStyles.addVaccinationLabelText}>Existing Treatment Plan</span><select value={form.related_treatment_plan_id} onChange={event => update('related_treatment_plan_id', event.target.value)} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #bed6c5', background: '#fff', fontSize: '1rem' }}><option value="">Create a new plan for this care episode</option>{treatmentPlans.map(plan => <option key={plan.id} value={plan.id}>{plan.title} · {plan.status || 'Active'}</option>)}</select><small>Choose an existing plan to avoid creating a duplicate.</small></label>
             {!form.related_treatment_plan_id && <>
-            <label className="treatment-plan-title-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Plan title<span style={modalStyles.required}>*</span></span><input required value={form.treatment_plan_title || (form.service_name ? `${form.service_name} Plan` : '')} onChange={event => update('treatment_plan_title', event.target.value)} placeholder="e.g. Post-surgery recovery" style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }} /></label>
-            <label className="treatment-plan-diagnosis-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Diagnosis<span style={modalStyles.required}>*</span></span><input required value={form.treatment_diagnosis} onChange={event => update('treatment_diagnosis', event.target.value)} placeholder="Enter diagnosis or reason for care" style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }} /></label>
+            <label className="treatment-plan-title-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Plan title<span style={modalStyles.required}>*</span></span><input required value={form.treatment_plan_title || (form.service_name ? `${form.service_name} Plan` : '')} onChange={event => update('treatment_plan_title', event.target.value)} placeholder="e.g. Post-surgery recovery" style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #bed6c5', background: '#fff', fontSize: '1rem' }} /></label>
+            <label className="treatment-plan-diagnosis-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Diagnosis<span style={modalStyles.required}>*</span></span><input required value={form.treatment_diagnosis} onChange={event => update('treatment_diagnosis', event.target.value)} placeholder="Enter diagnosis or reason for care" style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #bed6c5', background: '#fff', fontSize: '1rem' }} /></label>
             <label className="treatment-plan-severity-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Severity</span><FilterSelect className="treatment-plan-select" label="Severity" value={form.treatment_severity} onChange={value => update('treatment_severity', value)} options={[['mild', 'Mild'], ['moderate', 'Moderate'], ['severe', 'Severe'], ['critical', 'Critical']].map(([value, label]) => ({ value, label }))} /></label>
             <label className="treatment-plan-veterinarian-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Attending veterinarian</span><FilterSelect className="treatment-plan-select" label="Attending veterinarian" value={form.practitioner_id} onChange={value => update('practitioner_id', value)} options={[{ value: '', label: 'Select veterinarian' }, ...veterinarians.map(member => ({ value: String(member.id), label: member.name }))]} /></label>
-            <label className="treatment-plan-follow-up-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Expected follow-up</span><LabDateTimePicker className="treatment-plan-date" mode="date" displayFormat="input" value={form.treatment_follow_up} onChange={date => update('treatment_follow_up', date)} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '1rem' }} /></label>
+            <label className="treatment-plan-follow-up-field" style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Expected follow-up</span><LabDateTimePicker className="treatment-plan-date" mode="date" displayFormat="input" value={form.treatment_follow_up} onChange={date => update('treatment_follow_up', date)} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #bed6c5', background: '#fff', fontSize: '1rem' }} /></label>
             <section className="treatment-plan-steps-section" style={{ gridColumn: '1 / -1', display: 'grid', gap: 10, marginTop: 4 }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}><div><strong style={{ color: '#193a32', fontSize: '1.1rem' }}>Treatment steps<span style={modalStyles.required}>*</span></strong><p style={{ margin: '4px 0 0', color: '#526b64', fontSize: '.9rem' }}>Add the actions that make up this care plan.</p></div><button type="button" onClick={() => update('treatment_plan_steps', [...form.treatment_plan_steps, { title: '', due: '' }])} style={{ ...modalStyles.cancel, minHeight: 42, padding: '8px 13px', color: '#005447', fontSize: '.9rem' }}>＋ Add step</button></div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}><div><strong style={{ color: '#193a32', fontSize: '1.1rem' }}>Treatment steps<span style={modalStyles.required}>*</span></strong><p style={{ margin: '4px 0 0', color: '#526b64', fontSize: '.9rem' }}>Add the actions that make up this care plan.</p></div><button type="button" onClick={() => update('treatment_plan_steps', [...form.treatment_plan_steps, { title: '', due: '' }])} style={{ ...modalStyles.cancel, minHeight: 42, padding: '8px 13px', color: '#013826', fontSize: '.9rem' }}>＋ Add step</button></div>
               {form.treatment_plan_steps.map((planStep, index) => <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(145px, .55fr) auto', gap: 9, alignItems: 'center' }}>
-                <input aria-label={`Treatment step ${index + 1}`} required={index === 0 || Boolean(planStep.title)} value={planStep.title || (index === 0 ? form.treatment_steps || form.service_name : '')} onChange={event => update('treatment_plan_steps', form.treatment_plan_steps.map((item, stepIndex) => stepIndex === index ? { ...item, title: event.target.value } : item))} placeholder={`Step ${index + 1} · e.g. Initial assessment`} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '.95rem' }} />
-                <LabDateTimePicker className="treatment-plan-date" displayFormat="input" mode="date" label={`Treatment step ${index + 1} due date`} value={planStep.due || (index === 0 ? form.date : '')} onChange={due => update('treatment_plan_steps', form.treatment_plan_steps.map((item, stepIndex) => stepIndex === index ? { ...item, due } : item))} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #d8e9e1', background: '#fff', fontSize: '.95rem' }} />
+                <input aria-label={`Treatment step ${index + 1}`} required={index === 0 || Boolean(planStep.title)} value={planStep.title || (index === 0 ? form.treatment_steps || form.service_name : '')} onChange={event => update('treatment_plan_steps', form.treatment_plan_steps.map((item, stepIndex) => stepIndex === index ? { ...item, title: event.target.value } : item))} placeholder={`Step ${index + 1} · e.g. Initial assessment`} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #bed6c5', background: '#fff', fontSize: '.95rem' }} />
+                <LabDateTimePicker className="treatment-plan-date" displayFormat="input" mode="date" label={`Treatment step ${index + 1} due date`} value={planStep.due || (index === 0 ? form.date : '')} onChange={due => update('treatment_plan_steps', form.treatment_plan_steps.map((item, stepIndex) => stepIndex === index ? { ...item, due } : item))} style={{ ...modalStyles.addVaccinationInput, minHeight: 48, border: '1px solid #bed6c5', background: '#fff', fontSize: '.95rem' }} />
                 <button type="button" disabled={form.treatment_plan_steps.length === 1} aria-label={`Remove treatment step ${index + 1}`} onClick={() => update('treatment_plan_steps', form.treatment_plan_steps.filter((_, stepIndex) => stepIndex !== index))} style={{ ...modalStyles.cancel, minWidth: 42, minHeight: 42, padding: 7, color: '#b42318' }}>{Icons.trash}</button>
               </div>)}
             </section>
-            <section className="treatment-plan-medication-section" style={{ gridColumn: '1 / -1', display: 'grid', gap: 12, marginTop: 6, padding: 16, border: '1px solid #d8e9e1', borderRadius: 10, background: '#f8fbf9' }}>
+            <section className="treatment-plan-medication-section" style={{ gridColumn: '1 / -1', display: 'grid', gap: 12, marginTop: 6, padding: 16, border: '1px solid #bed6c5', borderRadius: 10, background: '#fafbf8' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#193a32', fontSize: '.95rem', fontWeight: 650, cursor: 'pointer' }}><input type="checkbox" checked={form.treatment_include_medication} onChange={event => update('treatment_include_medication', event.target.checked)} style={{ width: 18, height: 18, accentColor: '#078673' }} />Add a medication prescription to this treatment plan</label>
-              {form.treatment_include_medication && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px 14px' }}>{[['Medication*', 'name', 'e.g. Amoxicillin'], ['Dosage*', 'dosage', 'e.g. 250 mg'], ['Route', 'route', 'e.g. Oral'], ['Frequency', 'frequency', 'e.g. Twice daily'], ['Quantity', 'quantity', 'e.g. 14 capsules']].map(([label, key, placeholder]) => <label key={key} style={{ display: 'grid', gap: 6, color: '#193a32', fontSize: '.86rem', fontWeight: 600 }}>{label}<input required={key === 'name' || key === 'dosage'} value={form.treatment_medication[key]} onChange={event => update('treatment_medication', { ...form.treatment_medication, [key]: event.target.value })} placeholder={placeholder} style={{ ...modalStyles.addVaccinationInput, minHeight: 43, border: '1px solid #d8e9e1', background: '#fff', fontSize: '.9rem' }} /></label>)}</div>}
+              {form.treatment_include_medication && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px 14px' }}>{[['Medication*', 'name', 'e.g. Amoxicillin'], ['Dosage*', 'dosage', 'e.g. 250 mg'], ['Route', 'route', 'e.g. Oral'], ['Frequency', 'frequency', 'e.g. Twice daily'], ['Quantity', 'quantity', 'e.g. 14 capsules']].map(([label, key, placeholder]) => <label key={key} style={{ display: 'grid', gap: 6, color: '#193a32', fontSize: '.86rem', fontWeight: 600 }}>{label}<input required={key === 'name' || key === 'dosage'} value={form.treatment_medication[key]} onChange={event => update('treatment_medication', { ...form.treatment_medication, [key]: event.target.value })} placeholder={placeholder} style={{ ...modalStyles.addVaccinationInput, minHeight: 43, border: '1px solid #bed6c5', background: '#fff', fontSize: '.9rem' }} /></label>)}</div>}
             </section>
             </>}
           </>}
@@ -7092,7 +7592,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
             {confinementStep === 2 && <><label style={{ ...modalStyles.doctorAppointmentLabel, gridColumn: '1 / -1' }}><span>Linked Treatment Plan</span><select value={form.related_treatment_plan_id} onChange={event => update('related_treatment_plan_id', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option value="">No linked plan</option>{treatmentPlans.map(plan => <option key={plan.id} value={plan.id}>{plan.title} · {plan.status}</option>)}</select></label><p style={{ gridColumn: '1 / -1', color: '#64748b', fontSize: '.75rem' }}>New treatment plans can be created in Treatment Plans; this booking will not create a duplicate plan.</p></>}
             {confinementStep === 3 && <><label className="confinement-ward-field" style={modalStyles.doctorAppointmentLabel}><span>Ward / Cage<span className="doctor-appointment-required">*</span></span><select required value={serviceDetail('ward')} onChange={event => updateServiceDetail('ward', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option value="">Select ward / cage</option>{['Ward A - Cage 1', 'Ward A - Cage 2', 'Ward A - Cage 3', 'Ward B - Cage 1', 'Ward B - Cage 2'].map(ward => <option key={ward}>{ward}</option>)}</select></label><label className="confinement-discharge-date-field" style={modalStyles.doctorAppointmentLabel}><span>Expected Discharge Date<span className="doctor-appointment-required">*</span></span><LabDateTimePicker mode="date" value={serviceDetail('expected_discharge_at')} onChange={value => updateServiceDetail('expected_discharge_at', value)} style={modalStyles.doctorAppointmentInput} /></label>{attendingVeterinarianField}</>}
             {confinementStep === 4 && <><label className="confinement-consent-status-field" style={modalStyles.doctorAppointmentLabel}><span>Consent Status<span className="doctor-appointment-required">*</span></span><select required value={serviceDetail('consent_status') || ''} onChange={event => updateServiceDetail('consent_status', event.target.value)} className="doctor-appointment-input" style={modalStyles.doctorAppointmentInput}><option value="">Select consent status</option><option value="obtained">Obtained</option><option value="pending">Pending</option><option value="declined">Declined</option></select></label>{serviceTextField('Authorized By', 'authorized_by', selectedOwner?.name || 'Owner / authorized representative', { required: true, rows: 1, className: 'confinement-authorized-by-field' })}{serviceTextField('Consent Scope', 'consent_scope', 'Hospital admission and inpatient care', { required: true, full: true, className: 'confinement-consent-scope-field' })}{serviceTextField('Consent Notes', 'consent_notes', 'Consent documentation notes', { full: true, className: 'confinement-consent-notes-field' })}<div className="confinement-consent-upload-field"><span className="confinement-consent-upload-label">Signed consent paper <small>Optional · PDF, JPG, or PNG · up to 4 MB</small></span><div className="confinement-consent-upload-actions">{consentPaperFile && <span className="confinement-consent-file-name" title={consentPaperFile.name}>{consentPaperFile.name}</span>}<label className="confinement-consent-upload-button">{consentPaperFile ? 'Replace file' : 'Choose file'}<input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={handleConsentPaperChange} /></label>{consentPaperFile && <button type="button" className="confinement-consent-remove-file" onClick={() => setConsentPaperFile(null)}>Remove</button>}</div></div></>}
-            {confinementStep === 5 && <div className="confinement-final-summary" style={{ gridColumn: '1 / -1', padding: 14, border: '1px solid #d8e9e1', borderRadius: 9, background: '#f4faf8' }}><strong>Patient Summary</strong><p>{selectedPet?.name} · {selectedOwner?.name}</p><p>{serviceDetail('admission_reason') || 'Confinement'} · {serviceDetail('ward') || 'Ward not assigned'} · Consent: {serviceDetail('consent_status') || 'Not recorded'}</p><small>This creates a scheduled appointment only. Admit the patient through the inpatient admission workflow when the stay is confirmed.</small>{consentPaperFile && <ConsentDocumentView document={{ filename: consentPaperFile.name, content_type: consentPaperFile.type, data: consentPaperPreviewUrl }} />}</div>}
+            {confinementStep === 5 && <div className="confinement-final-summary" style={{ gridColumn: '1 / -1', padding: 14, border: '1px solid #bed6c5', borderRadius: 9, background: '#f4faf8' }}><strong>Patient Summary</strong><p>{selectedPet?.name} · {selectedOwner?.name}</p><p>{serviceDetail('admission_reason') || 'Confinement'} · {serviceDetail('ward') || 'Ward not assigned'} · Consent: {serviceDetail('consent_status') || 'Not recorded'}</p><small>This creates a scheduled appointment only. Admit the patient through the inpatient admission workflow when the stay is confirmed.</small>{consentPaperFile && <ConsentDocumentView document={{ filename: consentPaperFile.name, content_type: consentPaperFile.type, data: consentPaperPreviewUrl }} />}</div>}
           </section>}
           {!isWorkflowDetailsStep && form.type !== 'Vaccination' && <label style={modalStyles.doctorAppointmentLabel}>Duration
             <span className="doctor-appointment-control"><input readOnly value={form.type ? `${durationMinutes} minutes` : 'Auto based on type'} className="doctor-appointment-input" style={{ ...modalStyles.doctorAppointmentInput, color: '#64748b' }} /></span>
@@ -7123,17 +7623,19 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
 }
 
 // ── VACCINATIONS TAB ───────────────────────────────────────────────────
-function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onNavigate, onVaccinationsChange, onOpenAppointments, onAppointmentUpdate, onAppointmentArchive }) {
+function VaccinationsTab({ onVisitEnded, onAppointmentRequestHandled, openAppointmentRequest, onWorkflowChanged, vaccinations, appointments = [], user, pets = [], onNavigate, onVaccinationsChange, onOpenAppointments, onAppointmentUpdate, onAppointmentArchive }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showArchived, setShowArchived] = useState(false);
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [sortOrder, setSortOrder] = useState('newest');
   const [practitionerFilter, setPractitionerFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [clinicVeterinarians, setClinicVeterinarians] = useState([]);
   const [localVaccinations, setLocalVaccinations] = useState(null);
+  useEffect(() => { setLocalVaccinations(null); }, [vaccinations]);
   const [archiveError, setArchiveError] = useState('');
   const [historyVaccination, setHistoryVaccination] = useState(null);
   const [selectedVaccination, setSelectedVaccination] = useState(null);
@@ -7141,6 +7643,8 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
   const [actionVaccination, setActionVaccination] = useState(null);
   const [verifyVaccination, setVerifyVaccination] = useState(null);
   const [editVaccination, setEditVaccination] = useState(null);
+  const [editorAppointmentId, setEditorAppointmentId] = useState(null);
+  const openVaccinationEditor = record => { const id = record.appointment_id || record.appointmentId; if (id) { setEditorAppointmentId(id); setActionVaccination(null); setSelectedVaccination(null); setSelectedScheduledAppointment(null); } else setEditVaccination(record); };
   const [addVaccination, setAddVaccination] = useState(null);
   const [editStickerImage, setEditStickerImage] = useState(null);
   const editStickerUploadRef = useRef(null);
@@ -7194,7 +7698,7 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
     }))
     : appointments.some(appointment => !appointment.archived && /vaccin|rabies/i.test(String(appointment.reason || appointment.type || '')))
       ? []
-      : VACCINATIONS));
+      : []));
   const savedVaccinations = vaccinationRecords.map(vaccination => {
     const pet = pets.find(item => String(item.id) === String(vaccination.pet_id));
     return {
@@ -7246,6 +7750,19 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
     };
   });
   const displayedVaccinations = [...savedVaccinations, ...scheduledVaccinations];
+  const openedAppointmentRequest = useRef(null);
+  useEffect(() => {
+    if (!openAppointmentRequest || openedAppointmentRequest.current === openAppointmentRequest.requestId) return;
+    if (openAppointmentRequest.editor) { openedAppointmentRequest.current = openAppointmentRequest.requestId; setEditorAppointmentId(openAppointmentRequest.id); onAppointmentRequestHandled?.(); return; }
+    const target = displayedVaccinations.find(item => String(item.appointment_id || item.appointmentId) === String(openAppointmentRequest.id))
+      || displayedVaccinations.find(item => String(item.pet_id) === String(openAppointmentRequest.pet_id));
+    if (!target) return;
+    openedAppointmentRequest.current = openAppointmentRequest.requestId;
+    setSearch(openAppointmentRequest.pet || '');
+    setStatusFilter('all');
+    setActionVaccination(target);
+    onAppointmentRequestHandled?.();
+  }, [openAppointmentRequest, vaccinations, appointments, localVaccinations]);
   const vaccinationSummaryRecord = selectedScheduledAppointment || selectedVaccination;
   const isScheduledVaccinationSummary = Boolean(
     vaccinationSummaryRecord?.isScheduledAppointment || vaccinationSummaryRecord?.status === 'scheduled'
@@ -7344,6 +7861,8 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
     setSelectedVaccination(updated);
     setVerifyVaccination(null);
     setActionVaccination(null);
+    onWorkflowChanged?.();
+    window.dispatchEvent(new Event('vetintel:appointment-updated'));
     notifySuccess(`Vaccination ${updated.id} verified successfully!`, 'The clinic record is updated and may now be shared with the owner.');
   };
   const filtered = displayedVaccinations.filter(v => {
@@ -7352,14 +7871,17 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
       || v.status === statusFilter
       || (statusFilter === 'overdue' && v.status === 'due');
     const query = search.toLowerCase();
-    const dateValue = String(v.dateGiven || '').slice(0, 10);
+    const dateValue = dateFilterValue(v.dateGiven);
     return Boolean(v.archived) === showArchived && matchesStatus
-      && (!dateFrom || dateValue >= dateFrom)
-      && (!dateTo || dateValue <= dateTo)
+      && (!dateFrom || dateValue && dateValue >= dateFrom)
+      && (!dateTo || dateValue && dateValue <= dateTo)
       && (practitionerFilter === 'all' || v.attendingDoctor === practitionerFilter)
       && (typeFilter === 'all' || String(v.type || '').trim() === typeFilter)
       && [v.id, v.pet, v.type, v.dateGiven, v.nextDue, v.attendingDoctor, v.createdBy, v.lastUpdatedBy, v.dateCreated, v.linkedPatient, v.status, v.batchNumber, v.batch_number, v.lotNumber]
       .some(value => String(value || '').toLowerCase().includes(query));
+  }).sort((first, second) => {
+    const difference = dateFilterValue(first.dateGiven).localeCompare(dateFilterValue(second.dateGiven));
+    return sortOrder === 'newest' ? -difference : difference;
   });
   const count = status => displayedVaccinations.filter(v => Boolean(v.archived) === showArchived && (status === 'overdue' ? ['overdue', 'due'].includes(v.status) : v.status === status)).length;
   const completedCount = count('up-to-date') + count('completed');
@@ -7458,13 +7980,17 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
             <span>{dateFrom || dateTo ? `${dateFrom || 'Any date'} – ${dateTo || 'Any date'}` : 'Date Range'}</span>
             <span className={`lab-date-range-chevron${dateRangeOpen ? ' open' : ''}`} aria-hidden="true" />
           </button>
-          {dateRangeOpen && <div className="lab-date-range-popover" role="group" aria-label="Vaccination date range">
-            <label>From<LabDateTimePicker label="Start date" mode="date" value={dateFrom} max={dateTo || undefined} onChange={setDateFrom} /></label>
-            <label>To<LabDateTimePicker label="End date" mode="date" value={dateTo} min={dateFrom || undefined} onChange={setDateTo} /></label>
-            <div className="lab-date-range-actions">
-              <button type="button" onClick={() => { setDateFrom(''); setDateTo(''); }}>Clear</button>
-              <button type="button" onClick={() => setDateRangeOpen(false)}>Done</button>
-            </div>
+          {dateRangeOpen && <div className="lab-date-range-popover system-date-range-popover" role="group" aria-label="Vaccination date range">
+            <DateRangePopoverFields
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateFromChange={setDateFrom}
+              onDateToChange={setDateTo}
+              sortOrder={sortOrder}
+              onSortOrderChange={setSortOrder}
+              onClear={() => { setDateFrom(''); setDateTo(''); }}
+              onDone={() => setDateRangeOpen(false)}
+            />
           </div>}
         </div>
         <FilterSelect
@@ -7515,7 +8041,14 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
         </thead>
         <tbody>
           {filtered.map(v => {
-            const openActions = () => setActionVaccination(v);
+            const openActions = () => {
+              const pet = pets.find(item => String(item.id) === String(v.pet_id) || item.name === v.pet);
+              setActionVaccination({
+                ...v,
+                photo_url: v.photo_url || getPetPhotoUrl(pet),
+                pet_photo_attachment_id: v.pet_photo_attachment_id || pet?.photo_attachment_id,
+              });
+            };
             return (
             <tr
               key={v.id}
@@ -7537,7 +8070,7 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
                   : <StatusIndicator status="Pending Verification" style={{ fontSize: '.65rem' }} />}
               </td>
               <td style={{ ...T.td, padding: '10px 8px', whiteSpace: 'nowrap' }}>
-                <span style={{ display: 'inline-flex', padding: '4px 7px', borderRadius: 99, background: v.shared ? '#e5f7f1' : '#edf4f7', color: v.shared ? '#005447' : '#526c78', fontSize: '.65rem', fontWeight: 650 }}>{v.isScheduledAppointment ? '—' : v.shared ? 'Shared' : 'Not shared'}</span>
+                <span style={{ display: 'inline-flex', padding: '4px 7px', borderRadius: 99, background: v.shared ? '#e5f7f1' : '#edf4f7', color: v.shared ? '#013826' : '#526c78', fontSize: '.65rem', fontWeight: 650 }}>{v.isScheduledAppointment ? '—' : v.shared ? 'Shared' : 'Not shared'}</span>
               </td>
               <td style={{ ...T.td, padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                 <button
@@ -7558,6 +8091,7 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
       </section>
       {vaccinationSummaryRecord && <VaccinationDetailsModal
         record={vaccinationSummaryRecord}
+        user={user}
         onBack={() => {
           setSelectedScheduledAppointment(null);
           setSelectedVaccination(null);
@@ -7596,14 +8130,13 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
             <div><h2 id="vaccination-actions-title" style={modalStyles.vaccinationActionsTitle}>Vaccination Actions</h2><div style={modalStyles.vaccinationActionsSubtitle}>{actionVaccination.isScheduledAppointment ? `Appointment ${String(actionVaccination.appointmentId || actionVaccination.id).replace(/^appointment-/, '')}` : actionVaccination.id} — {actionVaccination.type} ({actionVaccination.pet})</div></div>
           </div>
           <div style={modalStyles.vaccinationActionsPet}>
-            <div style={modalStyles.vaccinationActionsPetInfo}>{actionVaccination.photo_url ? <>
-              <img src={actionVaccination.photo_url} alt={`${actionVaccination.pet || 'Pet'} profile`} style={modalStyles.vaccinationActionsPetImage} onError={event => { event.currentTarget.style.display = 'none'; if (event.currentTarget.nextElementSibling) event.currentTarget.nextElementSibling.style.display = 'grid'; }} />
-              <span aria-hidden="true" style={{ ...modalStyles.vaccinationActionsPetImage, display: 'none', placeItems: 'center', background: '#e7f5f2', color: '#005447', fontWeight: 700 }}>{String(actionVaccination.pet || 'P').slice(0, 1).toUpperCase()}</span>
-            </> : <span aria-hidden="true" style={{ ...modalStyles.vaccinationActionsPetImage, display: 'grid', placeItems: 'center', background: '#e7f5f2', color: '#005447', fontWeight: 700 }}>{String(actionVaccination.pet || 'P').slice(0, 1).toUpperCase()}</span>}
+            <div style={modalStyles.vaccinationActionsPetInfo}><ClinicAttachmentImage src={actionVaccination.photo_url} attachmentId={actionVaccination.pet_photo_attachment_id} user={user} alt={`${actionVaccination.pet || 'Pet'} profile`} style={modalStyles.vaccinationActionsPetImage} fallback={<span aria-hidden="true" style={{ ...modalStyles.vaccinationActionsPetImage, display: 'grid', placeItems: 'center', background: '#e7f4ec', color: '#013826', fontWeight: 700 }}>{String(actionVaccination.pet || 'P').slice(0, 1).toUpperCase()}</span>} />
               <div><div style={modalStyles.vaccinationActionsPetName}>{actionVaccination.pet || 'Selected Pet'}</div><div style={modalStyles.vaccinationActionsPetMeta}>{actionVaccination.isScheduledAppointment ? `Appointment · ${formatClinicDate(actionVaccination.dateGiven)} · Not administered` : `Patient record · ${actionVaccination.dateGiven || 'Vaccination date'} · ${actionVaccination.dose || 'Dose recorded'}`}</div></div></div>
             <StatusIndicator status={actionVaccination.isScheduledAppointment || actionVaccination.status === 'scheduled' ? actionVaccination.status === 'due' ? 'Due' : 'Scheduled' : 'Active'} />
           </div>
           <div style={modalStyles.vaccinationActionsList}>
+            {(actionVaccination.isScheduledAppointment || actionVaccination.status === 'scheduled') && <button type="button" className="record-action-card vaccination-action-button" onClick={() => openVaccinationEditor(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Confirm Administration</strong><small style={modalStyles.vaccinationActionCardDescription}>Record that this vaccine was administered during the active consultation.</small></span></button>}
+            {archiveError && <p role="alert" style={{ color: '#b91c1c' }}>{archiveError}</p>}
             <button
               type="button"
               className="record-action-card vaccination-action-button"
@@ -7620,17 +8153,17 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
               </span>
             </button>
             {actionVaccination.isScheduledAppointment ? <>
-              <button type="button" className="record-action-card vaccination-action-button" onClick={() => setEditVaccination(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Edit Vaccination</strong><small style={modalStyles.vaccinationActionCardDescription}>Update vaccine details, batch numbers, or next due date.</small></span></button>
+              <button type="button" className="record-action-card vaccination-action-button" onClick={() => openVaccinationEditor(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Edit Vaccination</strong><small style={modalStyles.vaccinationActionCardDescription}>Update vaccine details, batch numbers, or next due date.</small></span></button>
               <button type="button" className="record-action-card vaccination-action-button" onClick={() => setHistoryVaccination(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>View Audit History</strong><small style={modalStyles.vaccinationActionCardDescription}>See the appointment history and vaccine details for this pet.</small></span></button>
               <button type="button" className="record-action-card record-action-card-destructive vaccination-action-button" onClick={() => archiveScheduledAppointment(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #ffc0c8', background: '#fff5f6' }}><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Archive</strong><small style={modalStyles.vaccinationActionCardDescription}>Archive this scheduled vaccination appointment.</small></span></button>
             </> : <>
-            <button type="button" className="record-action-card vaccination-action-button" onClick={() => setEditVaccination(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}>
+            <button type="button" className="record-action-card vaccination-action-button" onClick={() => openVaccinationEditor(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}>
               <span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Edit Vaccination</strong><small style={modalStyles.vaccinationActionCardDescription}>Update vaccination details, batch numbers, or next due date.</small></span>
             </button>
             <button type="button" className="record-action-card vaccination-action-button" onClick={() => setHistoryVaccination(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}>
               <span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>View Audit History</strong><small style={modalStyles.vaccinationActionCardDescription}>See the complete vaccination record and history for this pet.</small></span>
             </button>
-            {!actionVaccination.clinicVerified && <button
+            {!actionVaccination.clinicVerified && actionVaccination.status !== 'scheduled' && <button
               type="button"
               className="record-action-card vaccination-action-button"
               onClick={() => {
@@ -7693,6 +8226,7 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
           </footer>
         </div>
       </div>}
+      {editorAppointmentId && <VaccinationVisitEditor user={user} appointmentId={editorAppointmentId} onClose={() => setEditorAppointmentId(null)} onChanged={onWorkflowChanged} onEnded={id => { setEditorAppointmentId(null); onVisitEnded?.(id); }} />}
       {editVaccination && <div style={modalStyles.backdrop} onClick={() => setEditVaccination(null)}>
         <form role="dialog" aria-modal="true" aria-labelledby="edit-vaccination-title" onClick={event => event.stopPropagation()} onSubmit={async event => {
           event.preventDefault();
@@ -7810,7 +8344,7 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
             <label style={modalStyles.editVaccinationLabel}>Next Due<input value={editVaccination.nextDue || ''} onChange={event => setEditVaccination({ ...editVaccination, nextDue: event.target.value })} style={modalStyles.editVaccinationInput} /></label>
             <label style={{ ...modalStyles.editVaccinationLabel, gridColumn: '1 / -1' }}>{editVaccination.isScheduledAppointment || (editVaccination.status === 'scheduled' && !editVaccination.clinicVerified) ? 'Assigned Veterinarian' : 'Administered By'}<input readOnly={editVaccination.isScheduledAppointment || (editVaccination.status === 'scheduled' && !editVaccination.clinicVerified)} value={editVaccination.attendingDoctor || ''} onChange={event => setEditVaccination({ ...editVaccination, attendingDoctor: event.target.value })} style={modalStyles.editVaccinationInput} /></label>
           </div>
-          <div style={modalStyles.proofImage}><strong><span style={modalStyles.proofIcon}>{Icons.clipboard}</span>Sticker / Proof Image</strong>{editVaccination.isScheduledAppointment || (editVaccination.status === 'scheduled' && !editVaccination.clinicVerified) ? <div style={modalStyles.proofContent}><div style={modalStyles.proofPreview}><span style={modalStyles.proofPreviewMark}>▦</span><span>No sticker</span></div><div><span style={modalStyles.proofCaption}>No sticker image uploaded</span><small style={{ display: 'block', marginTop: 5, color: '#526b64', fontSize: '.66rem' }}>Add the proof image after the veterinarian confirms administration.</small></div></div> : <><input ref={editStickerUploadRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={event => { const file = event.target.files?.[0]; if (file) setEditStickerImage(file); event.target.value = ''; }} style={{ display: 'none' }} /><div style={modalStyles.proofContent}><div style={modalStyles.proofPreview}>{editVaccination.stickerUrl ? <img src={editVaccination.stickerUrl} alt="Current vaccine sticker" style={modalStyles.stickerPreview} /> : <><span style={modalStyles.proofPreviewMark}>▦</span><span>No sticker</span></>}</div><div><span style={modalStyles.proofCaption}>{editStickerImage?.name || editVaccination.stickerFilename || 'Current sticker image'}</span><div style={modalStyles.proofButtons}><button type="button" disabled={!editVaccination.stickerUrl} onClick={() => window.open(editVaccination.stickerUrl, '_blank', 'noopener,noreferrer')} style={modalStyles.smallSecondary}>◉ &nbsp;View Full</button><button type="button" onClick={() => editStickerUploadRef.current?.click()} style={modalStyles.smallSecondary}>↥ &nbsp;Replace</button></div></div></div></>}</div>
+          <div style={modalStyles.proofImage}><strong><span style={modalStyles.proofIcon}>{Icons.clipboard}</span>Sticker / Proof Image</strong>{editVaccination.isScheduledAppointment || (editVaccination.status === 'scheduled' && !editVaccination.clinicVerified) ? <div style={modalStyles.proofContent}><div style={modalStyles.proofPreview}><span style={modalStyles.proofPreviewMark}>&#9638;</span><span>No sticker</span></div><div><span style={modalStyles.proofCaption}>No sticker image uploaded</span><small style={{ display: 'block', marginTop: 5, color: '#526b64', fontSize: '.66rem' }}>Add the proof image after the veterinarian confirms administration.</small></div></div> : <><input ref={editStickerUploadRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={event => { const file = event.target.files?.[0]; if (file) setEditStickerImage(file); event.target.value = ''; }} style={{ display: 'none' }} /><div style={modalStyles.proofContent}><div style={modalStyles.proofPreview}>{editVaccination.stickerUrl ? <img src={editVaccination.stickerUrl} alt="Current vaccine sticker" style={modalStyles.stickerPreview} /> : <><span style={modalStyles.proofPreviewMark}>&#9638;</span><span>No sticker</span></>}</div><div><span style={modalStyles.proofCaption}>{editStickerImage?.name || editVaccination.stickerFilename || 'Current sticker image'}</span><div style={modalStyles.proofButtons}><button type="button" disabled={!editVaccination.stickerUrl} onClick={() => window.open(editVaccination.stickerUrl, '_blank', 'noopener,noreferrer')} style={modalStyles.smallSecondary}>&#9673; &nbsp;View Full</button><button type="button" onClick={() => editStickerUploadRef.current?.click()} style={modalStyles.smallSecondary}>&#8613; &nbsp;Replace</button></div></div></div></>}</div>
           {editVaccination.isScheduledAppointment || editVaccination.status === 'scheduled' ? <details style={modalStyles.editAudit}><summary>Audit Log</summary><div style={modalStyles.editAuditEntries}><div>Appointment Scheduled · {formatClinicDate(editVaccination.dateCreated) || 'Date unavailable'} · {editVaccination.createdBy || 'Clinic team'}</div></div></details> : <details style={modalStyles.editAudit}><summary>Audit Log (5 entries)</summary><div style={modalStyles.editAuditEntries}><div>Sticker Uploaded · {editVaccination.createdBy || 'Clinic staff'} · {editVaccination.dateCreated || '—'}</div><div>Verified · {editVaccination.lastUpdatedBy || 'Clinic staff'} · {editVaccination.dateCreated || '—'}</div><div>Edited · {editVaccination.lastUpdatedBy || 'Clinic staff'} · {editVaccination.dateCreated || '—'}</div><div>Verified · {editVaccination.lastUpdatedBy || 'Clinic staff'} · {editVaccination.dateCreated || '—'}</div></div></details>}
           <div style={modalStyles.editVaccinationFooter}>
             <button type="button" style={modalStyles.cancel} onClick={() => setEditVaccination(null)}>Cancel</button>
@@ -7823,7 +8357,7 @@ function VaccinationsTab({ vaccinations, appointments = [], user, pets = [], onN
 }
 
 // ── TREATMENTS TAB ─────────────────────────────────────────────────────
-export function TreatmentsTab({ treatments, user }) {
+export function TreatmentsTab({ treatments, user, pets = [] }) {
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [localTreatments, setLocalTreatments] = useState(null);
@@ -7833,19 +8367,24 @@ export function TreatmentsTab({ treatments, user }) {
   const [editTreatment, setEditTreatment] = useState(null);
   const [addTreatment, setAddTreatment] = useState(false);
   const [treatmentFormError, setTreatmentFormError] = useState('');
-  const sourceTreatments = localTreatments || (treatments && treatments.length > 0 ? treatments : TREATMENTS);
-  const displayedTreatments = sourceTreatments.map(t => ({
-    ...t,
-    id: t.id || t.treatment_id,
-    date: t.date || t.issued_at || '—',
-    pet: t.pet || t.pet_name || '—',
-    attendingDoctor: t.attendingDoctor || t.attending_doctor || t.doctor || '—',
-    createdBy: t.createdBy || t.created_by || t.attendingDoctor || t.doctor || '—',
-    lastUpdatedBy: t.lastUpdatedBy || t.last_updated_by || t.attendingDoctor || t.doctor || '—',
-    dateCreated: t.dateCreated || t.date_created || t.created_at || t.date || '—',
-    linkedPatient: t.linkedPatient || t.linked_patient || (t.pet && t.owner ? `${t.pet} (${t.owner})` : t.pet) || '—',
-    status: t.status || 'finalized',
-  }));
+  const sourceTreatments = localTreatments || treatments || [];
+  const displayedTreatments = sourceTreatments.map(t => {
+    const pet = pets.find(item => String(item.id) === String(t.pet_id) || item.name === (t.pet || t.pet_name));
+    return {
+      ...t,
+      id: t.id || t.treatment_id,
+      date: t.date || t.issued_at || '—',
+      pet: t.pet || t.pet_name || '—',
+      photo_url: t.photo_url || getPetPhotoUrl(pet),
+      photo_attachment_id: t.photo_attachment_id || pet?.photo_attachment_id,
+      attendingDoctor: t.attendingDoctor || t.attending_doctor || t.doctor || '—',
+      createdBy: t.createdBy || t.created_by || t.attendingDoctor || t.doctor || '—',
+      lastUpdatedBy: t.lastUpdatedBy || t.last_updated_by || t.attendingDoctor || t.doctor || '—',
+      dateCreated: t.dateCreated || t.date_created || t.created_at || t.date || '—',
+      linkedPatient: t.linkedPatient || t.linked_patient || (t.pet && t.owner ? `${t.pet} (${t.owner})` : t.pet) || '—',
+      status: t.status || 'finalized',
+    };
+  });
   const archiveTreatment = async treatment => {
     try {
       const saved = await updateClinicRecordArchive({ user, endpoint: '/clinic-records/treatments', record: treatment, label: 'treatment' });
@@ -7984,11 +8523,11 @@ export function TreatmentsTab({ treatments, user }) {
             <div><h2 id="treatment-actions-title" style={modalStyles.vaccinationActionsTitle}>Treatment Actions</h2><div style={modalStyles.vaccinationActionsSubtitle}>{actionTreatment.id} — {actionTreatment.diagnosis} ({actionTreatment.pet})</div></div>
           </div>
           <div style={modalStyles.vaccinationActionsPet}>
-            <div style={modalStyles.vaccinationActionsPetInfo}><img src="/healthy-pets.png" alt="" style={modalStyles.vaccinationActionsPetImage} /><div><div style={modalStyles.vaccinationActionsPetName}>{actionTreatment.pet || 'Selected Pet'}</div><div style={modalStyles.vaccinationActionsPetMeta}>🐾 Patient record&nbsp; • &nbsp;{actionTreatment.diagnosis || 'Clinical treatment'}&nbsp; • &nbsp;{actionTreatment.date || 'Treatment date'}</div></div></div>
+            <div style={modalStyles.vaccinationActionsPetInfo}><ClinicAttachmentImage src={actionTreatment.photo_url} attachmentId={actionTreatment.photo_attachment_id} user={user} alt={`${actionTreatment.pet || 'Pet'} profile`} style={modalStyles.vaccinationActionsPetImage} fallback={<span aria-hidden="true" style={{ ...modalStyles.vaccinationActionsPetImage, display: 'grid', placeItems: 'center', background: '#e7f4ec', color: '#013826', fontWeight: 700 }}>{String(actionTreatment.pet || 'P').slice(0, 1).toUpperCase()}</span>} /><div><div style={modalStyles.vaccinationActionsPetName}>{actionTreatment.pet || 'Selected Pet'}</div><div style={modalStyles.vaccinationActionsPetMeta}>🐾 Patient record&nbsp; • &nbsp;{actionTreatment.diagnosis || 'Clinical treatment'}&nbsp; • &nbsp;{actionTreatment.date || 'Treatment date'}</div></div></div>
             <StatusIndicator status={actionTreatment.status === 'finalized' ? 'Finalized' : 'Active'} />
           </div>
           <div style={modalStyles.vaccinationActionsList}>
-            <button type="button" onClick={() => setHistoryTreatment(actionTreatment)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}><span style={{ ...modalStyles.vaccinationActionCardIcon, background: '#e7f5f2', color: '#005447' }}><span style={{ width: 24, height: 24, display: 'flex' }}>{Icons.clipboard}</span></span><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>View Audit History</strong><small style={modalStyles.vaccinationActionCardDescription}>See the complete treatment record and history for this pet.</small></span><span style={modalStyles.vaccinationActionArrow}>›</span></button>
+            <button type="button" onClick={() => setHistoryTreatment(actionTreatment)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}><span style={{ ...modalStyles.vaccinationActionCardIcon, background: '#e7f4ec', color: '#013826' }}><span style={{ width: 24, height: 24, display: 'flex' }}>{Icons.clipboard}</span></span><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>View Audit History</strong><small style={modalStyles.vaccinationActionCardDescription}>See the complete treatment record and history for this pet.</small></span><span style={modalStyles.vaccinationActionArrow}>›</span></button>
             <button type="button" onClick={() => setEditTreatment(actionTreatment)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}><span style={{ ...modalStyles.vaccinationActionCardIcon, background: '#d9f3ea', color: '#0d8a69' }}><span style={{ width: 23, height: 23, display: 'flex' }}>{Icons.edit}</span></span><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Edit Treatment</strong><small style={modalStyles.vaccinationActionCardDescription}>Update diagnosis, treatment details, medication, or cost.</small></span><span style={modalStyles.vaccinationActionArrow}>›</span></button>
             {actionTreatment.status !== 'finalized' && <button type="button" onClick={async () => {
               try {
@@ -8084,6 +8623,9 @@ export function TreatmentsTab({ treatments, user }) {
 // ── MAIN LAYOUT ────────────────────────────────────────────────────────
 export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard', initialInvoiceId = null }) {
   const [tab, setTab]           = useState(initialTab);
+  const [openVisitId, setOpenVisitId] = useState(null);
+  const [openVaccinationRequest, setOpenVaccinationRequest] = useState(null);
+  const [workflowRevision, setWorkflowRevision] = useState(0);
   const [inpatientPlanRequest, setInpatientPlanRequest] = useState(null);
   const [visitCheckupRequest, setVisitCheckupRequest] = useState(null);
   const [exportReportsOpen, setExportReportsOpen] = useState(false);
@@ -8097,76 +8639,114 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
   const [visitsLoading, setVisitsLoading] = useState(true);
   const [visitsError, setVisitsError] = useState('');
   const [dashboardAlerts, setDashboardAlerts] = useState([]);
+  const [dashboardSummary, setDashboardSummary] = useState(null);
   const [vaccinations, setVaccinations] = useState([]);
   const [treatments, setTreatments] = useState([]);
+  const loadedClinicRecords = useRef(new Set());
+  const loadedClinicContext = useRef('');
 
 
   const canView = canViewFeature(user.permissions, user.role, 'Pet Profiles');
 
   useEffect(() => {
-    if (!user || !user.token) return;
-    if (!canView) return;
+    if (!user?.token || !canView) {
+      setLoading(false);
+      return undefined;
+    }
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-    const params = new URLSearchParams();
-    if (user.clinic_id) params.set('clinic_id', user.clinic_id);
-    const query = params.toString() ? `?${params.toString()}` : '';
+    const controller = new AbortController();
+    const clinicContext = `${user.clinic_id || ''}:${user.id || ''}:${user.token}`;
+    if (loadedClinicContext.current !== clinicContext) {
+      loadedClinicContext.current = clinicContext;
+      loadedClinicRecords.current.clear();
+      setClients([]);
+      setPets([]);
+      setAppointments([]);
+      setVisits([]);
+      setDashboardAlerts([]);
+      setDashboardSummary(null);
+      setVaccinations([]);
+      setTreatments([]);
+    }
+    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+    const query = user.clinic_id ? `?clinic_id=${encodeURIComponent(user.clinic_id)}` : '';
     const headers = { Authorization: `Bearer ${user.token}` };
+    const records = {
+      clients: { path: `/clinic-records/clients${query}`, save: setClients },
+      pets: { path: `/clinic-records/pets${query}`, save: setPets },
+      appointments: { path: `/clinic-records/appointments${query}`, save: setAppointments },
+      dashboardSummary: { path: `/clinic-records/dashboard/summary${query}`, save: setDashboardSummary },
+      vaccinations: { path: `/clinic-records/vaccinations${query}`, save: setVaccinations },
+      treatments: { path: `/clinic-records/treatments${query}`, save: setTreatments },
+      alerts: { path: `/clinic-records/dashboard/alerts${query}`, save: setDashboardAlerts },
+      visits: { path: `/clinic-records/visits${query}`, save: setVisits },
+    };
+    const requiredByTab = {
+      dashboard: ['dashboardSummary'],
+      owners: ['clients'],
+      pets: ['clients', 'pets'],
+      appointments: ['clients', 'pets', 'appointments', 'vaccinations'],
+      visits: ['visits'],
+      vaccinations: ['appointments', 'pets', 'vaccinations'],
+      plans: ['appointments'],
+      treatments: ['pets', 'treatments'],
+      inpatient: ['appointments'],
+    };
+    const requiredKeys = requiredByTab[tab] || [];
+    // Refresh the compact dashboard snapshot each time the user returns to it.
+    const missingKeys = requiredKeys;
+    setLoading(requiredKeys.some(key => !loadedClinicRecords.current.has(key)));
+    setError(null);
+    if (missingKeys.includes('visits')) {
+      setVisitsLoading(!loadedClinicRecords.current.has('visits'));
+      setVisitsError('');
+    }
 
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [clientsRes, petsRes, apptsRes, vaccRes, treatsRes, alertsRes, visitsRes] = await Promise.all([
-          fetch(`${apiUrl}/clinic-records/clients${query}`, { headers }),
-          fetch(`${apiUrl}/clinic-records/pets${query}`, { headers }),
-          fetch(`${apiUrl}/clinic-records/appointments${query}`, { headers }),
-          fetch(`${apiUrl}/clinic-records/vaccinations${query}`, { headers }),
-          fetch(`${apiUrl}/clinic-records/treatments${query}`, { headers }),
-          fetch(`${apiUrl}/clinic-records/dashboard/alerts${query}`, { headers }),
-          fetch(`${apiUrl}/clinic-records/visits${query}`, { headers }),
-        ]);
-
-        if (!clientsRes.ok || !petsRes.ok || !apptsRes.ok || !vaccRes.ok || !treatsRes.ok || !alertsRes.ok || !visitsRes.ok) {
-          throw new Error('Failed to load clinic records');
+    const loadRecords = async () => {
+      const results = await Promise.allSettled(missingKeys.map(async key => {
+        const response = await fetch(`${apiUrl}${records[key].path}`, { headers, signal: controller.signal });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(payload?.error || `Unable to load ${key} (HTTP ${response.status}).`);
+        if (key === 'dashboardSummary'
+          ? (!payload || !Array.isArray(payload.appointments) || !Array.isArray(payload.alerts))
+          : !Array.isArray(payload)) {
+          throw new Error(`The ${key} endpoint returned an invalid response.`);
         }
-
-        const [clientsData, petsData, apptsData, vaccData, treatsData, alertsData, visitsData] = await Promise.all([
-          clientsRes.json(),
-          petsRes.json(),
-          apptsRes.json(),
-          vaccRes.json(),
-          treatsRes.json(),
-          alertsRes.json(),
-          visitsRes.json(),
-        ]);
-
-        setClients(clientsData || []);
-        setPets(petsData || []);
-        setAppointments(apptsData || []);
-        setVaccinations(vaccData || []);
-        setTreatments(treatsData || []);
-        setDashboardAlerts(alertsData || []);
-        setVisits(visitsData || []);
-        setVisitsError('');
-      } catch (err) {
-        console.error(err);
-        setError('Unable to load clinic records.');
-        setVisitsError('Unable to load clinic visit records.');
-      } finally {
-        setVisitsLoading(false);
-        setLoading(false);
+        if (controller.signal.aborted) return;
+        records[key].save(payload);
+        loadedClinicRecords.current.add(key);
+      }));
+      if (controller.signal.aborted) return;
+      const failed = results.find(result => result.status === 'rejected');
+      if (failed) {
+        console.error(`Failed to load clinic records for the ${tab} tab`, failed.reason);
+        setError(failed.reason?.message || 'Unable to load clinic records.');
+        if (missingKeys.includes('visits')) setVisitsError(failed.reason?.message || 'Unable to load clinic visits.');
       }
+      setLoading(false);
+      if (missingKeys.includes('visits')) setVisitsLoading(false);
     };
 
-    fetchData();
-  }, [user, canView]);
+    loadRecords();
+    return () => controller.abort();
+  }, [user?.token, user?.clinic_id, canView, tab, workflowRevision]);
 
+  const refreshWorkflow = () => setWorkflowRevision(value => value + 1);
+  useEffect(() => {
+    const refresh = () => { if (!document.hidden) setWorkflowRevision(value => value + 1); };
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener('vetintel:appointment-updated', refresh);
+    window.addEventListener('focus', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('vetintel:appointment-updated', refresh); window.removeEventListener('focus', refresh); };
+  }, []);
+  const openPatient = appointment => onNavigate?.('patient-records', { pet_id: appointment.pet_id });
+  const openVaccinations = appointment => { setOpenVisitId(null); setOpenVaccinationRequest({ id: appointment.id, pet_id: appointment.pet_id, pet: appointment.pet, requestId: Date.now(), editor: appointment.openEditor === true }); setTab('vaccinations'); refreshWorkflow(); };
+  const startAppointmentConsultation = async appointment => { await visitRequest(user, appointment.id, { action: 'start' }); window.dispatchEvent(new Event('vetintel:appointment-updated')); if (/vaccin|rabies/i.test(appointment.reason || '')) openVaccinations({ ...appointment, openEditor: true }); else setOpenVisitId(appointment.id); };
   const tabContent = {
-    dashboard:    <DashboardTab clients={clients} pets={pets} appointments={appointments} alerts={dashboardAlerts} vaccinations={vaccinations} treatments={treatments} user={user} onViewAppointments={() => setTab('appointments')} onViewPets={() => setTab('pets')} onViewDiseaseIntelligence={() => onNavigate?.('disease')} onExportReports={() => setExportReportsOpen(true)} />,
+    dashboard:    <DashboardTab summary={dashboardSummary} user={user} onViewAppointments={() => setTab('appointments')} onViewPets={() => setTab('pets')} onViewDiseaseIntelligence={() => onNavigate?.('disease')} onExportReports={() => setExportReportsOpen(true)} />,
     owners:       <OwnersTab owners={clients} user={user} onOwnersChange={setClients} />,
     pets:         <PetsTab pets={pets} owners={clients} user={user} onPetsChange={setPets} onOwnersChange={setClients} />,
-    appointments: <AppointmentsTab appointments={appointments} pets={pets} owners={clients} vaccinations={vaccinations} user={user} createVisitRequest={visitCheckupRequest} onAppointmentsChange={setAppointments} onVaccinationsChange={setVaccinations} onCreateLabRequest={async request => {
+    appointments: <AppointmentsTab onOpenVisit={setOpenVisitId} onOpenPatient={openPatient} onOpenVaccinations={openVaccinations} onStartConsultation={startAppointmentConsultation} appointments={appointments} pets={pets} owners={clients} vaccinations={vaccinations} user={user} createVisitRequest={visitCheckupRequest} onAppointmentsChange={setAppointments} onVaccinationsChange={setVaccinations} onCreateLabRequest={async request => {
       if (!user?.clinic_id || !user?.token) throw new Error('Your account is not assigned to a clinic.');
       const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
       const response = await fetch(`${apiUrl}/clinic-records/lab-tests?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
@@ -8178,21 +8758,22 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
       if (!response.ok) throw new Error(payload.error || 'Unable to save the lab test request.');
       return payload;
     }} />,
-    visits: <VisitCheckupTab visits={visits} loading={visitsLoading} error={visitsError} onNewVisitCheckup={() => { setVisitCheckupRequest({ id: Date.now() }); setTab('appointments'); }} />,
-    vaccinations: <VaccinationsTab vaccinations={vaccinations} appointments={appointments} pets={pets} user={user} onNavigate={onNavigate} onOpenAppointments={() => setTab('appointments')} onVaccinationsChange={setVaccinations}
+    visits: <VisitCheckupTab onOpenVisit={setOpenVisitId} visits={visits} loading={visitsLoading} error={visitsError} onNewVisitCheckup={() => { setVisitCheckupRequest({ id: Date.now() }); setTab('appointments'); }} />,
+    vaccinations: <VaccinationsTab onAppointmentRequestHandled={() => setOpenVaccinationRequest(null)} onVisitEnded={id => { setTab('visits'); setOpenVisitId(id); refreshWorkflow(); }} openAppointmentRequest={openVaccinationRequest} onWorkflowChanged={refreshWorkflow} vaccinations={vaccinations} appointments={appointments} pets={pets} user={user} onNavigate={onNavigate} onOpenAppointments={() => setTab('appointments')} onVaccinationsChange={setVaccinations}
       onAppointmentUpdate={(id, saved) => setAppointments(current => current.map(item => String(item.id) === String(id) ? { ...item, reason: saved.reason, notes: saved.notes } : item))}
       onAppointmentArchive={id => setAppointments(current => current.map(item => String(item.id) === String(id) ? { ...item, archived: true } : item))} />,
     plans:         <TreatmentPlansTab user={user} appointments={appointments} standalonePlanRequest={inpatientPlanRequest} onStandalonePlanClose={() => { setInpatientPlanRequest(null); setTab('inpatient'); }} />,
+    treatments:    <TreatmentsTab treatments={treatments} user={user} pets={pets} />,
     'lab-results': <LabResultsTab user={user} appointments={appointments} />,
     inpatient:     <InpatientTab user={user} appointments={appointments} onOpenTreatmentPlan={record => { setInpatientPlanRequest({ planId: record.treatment_plan_id }); setTab('plans'); }} />,
-    consultation:  <BillingTab user={user} initialInvoiceId={initialInvoiceId} />,
-    inventory:     <InventoryTab />,
+    consultation:  <BillingTab user={user} initialInvoiceId={initialInvoiceId} onNavigate={onNavigate} />,
+    inventory:     <InventoryTab user={user} />,
     
   };
 
   if (!canView) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f6f9' }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f6ef' }}>
         <div style={{ maxWidth: 520, width: '100%', padding: 32, background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', textAlign: 'center' }}>
           <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a' }}>Access denied</h2>
           <p style={{ marginTop: 12, color: '#64748b' }}>You do not have permission to view Clinical Records.</p>
@@ -8205,13 +8786,14 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
   const dashboardDateAction = tab === 'dashboard' ? <div className="clinic-dashboard-date"><span>{Icons.calendar}</span><div><strong>{dashboardDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</strong><small>{dashboardDate.toLocaleDateString('en-US', { weekday: 'long' })} · {dashboardDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</small></div></div> : null;
 
   return (
-    <div className="clinic-records-shell" style={{ flex: 1, minWidth: 0, width: '100%', overflowY: 'auto', overflowX: 'hidden', background: '#f4f6f9', fontSize: '14px', color: '#111827' }}>
+    <div className="clinic-records-shell" style={{ flex: 1, minWidth: 0, width: '100%', overflowY: 'auto', overflowX: 'hidden', background: '#f1f6ef', fontSize: '14px', color: '#111827' }}>
       <Topbar user={user} title="Local Clinic Records" subtitle="Patient records, vaccinations, treatments, consultations, and lab results" actions={dashboardDateAction} className={tab === 'dashboard' ? 'clinic-dashboard-topbar' : ''} />
-      <TabNav active={tab} setTab={setTab} />
+      {openVisitId && <VisitWorkflowDialog user={user} appointmentId={openVisitId} onClose={() => setOpenVisitId(null)} onChanged={refreshWorkflow} onPatient={openPatient} onVaccinations={openVaccinations} onBilling={invoiceId => { setOpenVisitId(null); onNavigate?.('clinic', { tab: 'consultation', invoiceId }); setTab('consultation'); }} />}
+      <TabNav active={tab} setTab={nextTab => { setOpenVaccinationRequest(null); setOpenVisitId(null); setTab(nextTab); }} />
       <div className="clinic-records-content" style={{ padding: '20px 28px', minWidth: 0, boxSizing: 'border-box' }}>
         {showBanner && <PrivacyBanner onClose={() => setShowBanner(false)} />}
         {exportReportsOpen && <ExportReportsModal user={user} reports={{ owners: clients, pets, appointments, vaccinations, treatments }} onClose={() => setExportReportsOpen(false)} />}
-        {loading && (
+        {loading && !(tab === 'dashboard' && dashboardSummary) && (
           <div style={{ padding: 24, background: '#fff', borderRadius: 14, border: '1px solid #e8ecf0', color: '#64748b' }}>
             Loading clinic records...
           </div>
@@ -8221,7 +8803,9 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
             {error}
           </div>
         )}
-        {!loading && !error && (tabContent[tab] || <ClinicSectionPlaceholder label={TABS.find(item => item.id === tab)?.label || 'Clinic Records'} />)}
+        {tab === 'dashboard' && dashboardSummary && tabContent.dashboard}
+        {loading && tab === 'dashboard' && dashboardSummary && <div role="status" style={{ padding: '8px 0', color: '#64748b', fontSize: '.75rem' }}>Refreshing dashboard…</div>}
+        {!loading && !error && !(tab === 'dashboard' && dashboardSummary) && (tabContent[tab] || <ClinicSectionPlaceholder label={TABS.find(item => item.id === tab)?.label || 'Clinic Records'} />)}
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { Icons } from '../icons';
 
 export default function PlaceholderPage({ user, title, subtitle }) {
   return (
-    <div style={{ flex: 1, overflowY: 'auto', background: '#f4f6f9' }}>
+    <div style={{ flex: 1, overflowY: 'auto', background: '#f1f6ef' }}>
       <Topbar user={user} title={title} subtitle={subtitle} />
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '65vh', gap: 10 }}>
         <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: '1px solid #e8ecf0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

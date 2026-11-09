@@ -29,6 +29,7 @@ const STATUS_TONES = {
   draft: 'attention',
   issued: 'attention',
   'due soon': 'attention',
+  upcoming: 'good',
   'low stock': 'attention',
   'reorder soon': 'attention',
   'expiring soon': 'attention',

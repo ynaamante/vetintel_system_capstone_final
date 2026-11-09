@@ -1,3 +1,4 @@
+import { useOwnerNotifications } from '../context/OwnerNotificationsContext';
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -80,8 +81,8 @@ export default function HomeScreen({ navigation }: any) {
     }
   };
 
-  const unread = alerts.filter(a => !a.read).length;
-  const highAlerts = alerts.filter(a => a.severity === 'high' && !a.read);
+  const { notifications, unreadCount: unread } = useOwnerNotifications();
+  const highAlerts = [...notifications, ...alerts].filter(a => a.severity === 'high' && !a.read);
 
   if (loading) {
     return (

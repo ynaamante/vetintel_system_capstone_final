@@ -1,0 +1,33 @@
+.record-payment-dialog { position: fixed; inset: 0; width: min(780px, calc(100vw - 32px)); max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); margin: auto; padding: 0; border: 1px solid var(--border); border-radius: 19px; background: #fff; color: var(--ink); font-family: 'DM Sans', sans-serif; box-shadow: 0 24px 80px #10251b44; overflow: hidden; }
+.record-payment-dialog::backdrop { background: #10251b70; }
+.record-payment-dialog > form { display: flex; flex-direction: column; max-height: calc(100dvh - 34px); }
+.record-payment-dialog header { position: relative; padding: 25px 30px 0; flex-shrink: 0; }
+.record-payment-dialog h2 { position: relative; padding-left: 20px; color: var(--color-deep-forest); font-size: 1.75rem; line-height: 1.3; }
+.record-payment-dialog h2::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 7px; border-radius: 5px; background: var(--color-botanical-teal); }
+.record-payment-dialog header p { margin: 7px 30px 0 20px; color: var(--muted); font-size: .94rem; line-height: 1.5; }
+.record-payment-close { position: absolute; top: 18px; right: 20px; width: 32px; height: 32px; background: transparent; border: 0; color: var(--muted); font: inherit; font-size: 1.6rem; cursor: pointer; }
+.record-payment-body { padding: 22px 30px 0; overflow-y: auto; min-height: 0; }
+.record-payment-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-bottom: 20px; border-bottom: 1px solid #e3ebe6; }
+.record-payment-totals > div { display: grid; gap: 5px; padding: 15px 18px; background: #f1f7f3; border-radius: 12px; }
+.record-payment-totals span { color: var(--muted); font-size: .85rem; }
+.record-payment-totals strong { font-size: 1.2rem; }
+.record-payment-totals > div:last-child strong { color: var(--color-botanical-teal); }
+.record-payment-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 24px; margin: 20px 0 24px; }
+.record-payment-fields label { display: block; min-width: 0; font-size: .94rem; font-weight: 600; }
+.record-payment-required { color: var(--red); }
+.record-payment-fields input, .record-payment-fields select, .record-payment-notes textarea, .record-payment-fields .lab-date-time-trigger { display: block; width: 100%; min-height: 43px; margin-top: 8px; padding: 10px 13px; border: 1px solid var(--border); border-radius: 10px; background: white; color: var(--ink); font: inherit; font-size: .94rem; font-weight: 400; }
+.record-payment-fields .lab-date-time-trigger { display: flex; align-items: center; gap: 9px; text-align: left; }
+.record-payment-fields .lab-date-time-trigger svg { width: 18px; height: 18px; flex-shrink: 0; }
+.record-payment-qr-toggle { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; border: 1px solid var(--color-eucalyptus); border-radius: 10px; background: #f1f8f3; color: var(--color-deep-forest); font: inherit; font-size: .94rem; font-weight: 600; text-align: left; cursor: pointer; }
+.record-payment-qr-toggle > span:last-child { font-size: 1.4rem; line-height: 1; }
+.record-payment-qr { display: grid; justify-items: center; gap: 10px; margin-top: 12px; padding: 16px; background: #f6f9f6; border-radius: 10px; color: var(--muted); font-size: .86rem; text-align: center; }
+.record-payment-qr img { width: min(250px, 100%); max-height: 280px; object-fit: contain; }
+.record-payment-notes { display: block; margin-top: 22px; font-size: .94rem; font-weight: 600; }
+.record-payment-notes textarea { min-height: 76px; max-height: 160px; resize: vertical; }
+.record-payment-dialog footer { display: flex; justify-content: flex-end; gap: 14px; padding: 25px 30px; flex-shrink: 0; }
+.record-payment-dialog footer button { min-height: 46px; padding: 11px 22px; border: 1px solid var(--border); border-radius: 10px; background: white; color: var(--ink); font: inherit; font-size: 1rem; font-weight: 600; cursor: pointer; }
+.record-payment-dialog footer .record-payment-submit { min-width: 180px; background: var(--color-botanical-teal); border-color: var(--color-botanical-teal); color: white; }
+.record-payment-dialog button:disabled { opacity: .55; cursor: default; }
+.record-payment-dialog input:focus-visible, .record-payment-dialog select:focus-visible, .record-payment-dialog textarea:focus-visible, .record-payment-dialog button:focus-visible { outline: 2px solid var(--color-eucalyptus); outline-offset: 2px; }
+.record-payment-error { padding: 11px; margin-top: 15px; border-radius: 8px; background: var(--red-light); color: var(--red); font-size: .85rem; }
+@media (max-width: 550px) { .record-payment-dialog header { padding: 20px 18px 0; } .record-payment-dialog h2 { font-size: 1.4rem; } .record-payment-dialog header p { font-size: .82rem; } .record-payment-body { padding: 18px 18px 0; } .record-payment-fields { gap: 16px; grid-template-columns: 1fr; } .record-payment-totals { gap: 7px; } .record-payment-totals > div { padding: 12px 8px; } .record-payment-totals strong { font-size: 1rem; } .record-payment-dialog footer { padding: 18px; } }

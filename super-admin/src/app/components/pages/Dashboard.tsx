@@ -383,19 +383,19 @@ export function Dashboard() {
   const statusClass = (status: string) => status === 'Approved' ? 'bg-[#d8f7e9] text-[#078c63]' : status === 'Under Review' ? 'bg-[#dff2fc] text-[#16759f]' : status === 'Needs Information' ? 'bg-[#eee8ff] text-[#7044b6]' : 'bg-[#fff1c9] text-[#c98200]';
 
   return (
-    <div className="p-5 space-y-5 bg-[#eef3ff] min-h-full">
+    <div className="p-5 space-y-5 bg-[#fafbf8] min-h-full">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
         {[
-          { label: 'Total Registered Clinics', value: clinicSummary.totalRegisteredClinics, delta: `+${clinicSummary.newClinicsLast30Days} this month`, color: 'bg-[#e8f0ff] text-[#2161e8]' },
+          { label: 'Total Registered Clinics', value: clinicSummary.totalRegisteredClinics, delta: `+${clinicSummary.newClinicsLast30Days} this month`, color: 'bg-[#e7f4ec] text-[#086b50]' },
           { label: 'Active Clinics', value: clinicSummary.activeClinics, delta: '+5 this week', color: 'bg-[#d8f7e9] text-[#079669]' },
           { label: 'Pending Applications', value: clinicSummary.pendingApprovals, delta: '3 urgent', color: 'bg-[#fff1c9] text-[#d98200]' },
           { label: 'Pending Role Requests', value: 5, delta: '2 new today', color: 'bg-[#eee8ff] text-[#7b3fe4]' },
           { label: 'Active Subscriptions', value: 138, delta: '97% retention', color: 'bg-[#e1f3ff] text-[#168fc5]' },
           { label: 'Demo Requests', value: 14, delta: '6 uncontacted', color: 'bg-[#ffe8f2] text-[#d52e7b]' },
         ].map((metric) => (
-          <div key={metric.label} className="bg-white rounded-lg border border-[#cbdcfb] p-4 shadow-none">
+          <div key={metric.label} className="bg-white rounded-lg border border-[#d4e3d7] p-4 shadow-none">
             <div className="flex items-start justify-between gap-3">
-              <div><p className="text-sm text-[#6684b9]">{metric.label}</p><p className="text-3xl font-semibold text-[#102956] mt-2">{metric.value}</p><p className="text-xs text-[#2161e8] mt-1">{metric.delta}</p></div>
+              <div><p className="text-sm text-[#526B62]">{metric.label}</p><p className="text-3xl font-semibold text-[#172b24] mt-2">{metric.value}</p><p className="text-xs text-[#086b50] mt-1">{metric.delta}</p></div>
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${metric.color}`}><span className="w-2 h-2 rounded-full bg-current" /></div>
             </div>
           </div>
@@ -403,19 +403,19 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.8fr_1fr] gap-3">
-        <div className="bg-white rounded-lg border border-[#cbdcfb] overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#d4e1fb]"><h2 className="text-base font-semibold text-[#102956]">Recent Clinic Applications</h2><button onClick={() => navigate('/clinics')} className="text-sm text-[#2161e8]">View all</button></div>
-        <div className="overflow-x-auto"><table className="w-full text-left"><thead className="bg-[#f0f5ff]"><tr>{['Clinic Name', 'Owner', 'Staff', 'Plan', 'Date', 'Status'].map((heading) => <th className="px-3 py-2 text-xs font-semibold text-[#5274b8]" key={heading}>{heading}</th>)}</tr></thead><tbody>{recentApplications.map((row) => <tr className="border-t border-[#e3ecfb]" key={row[0]}>{row.map((value, index) => <td className="px-3 py-3 text-sm text-[#5274b8]" key={index}>{index === row.length - 1 ? <span className={`rounded-full px-2 py-1 ${statusClass(value)}`}>{value}</span> : value}</td>)}</tr>)}</tbody></table></div>
+        <div className="bg-white rounded-lg border border-[#d4e3d7] overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#d4e3d7]"><h2 className="text-base font-semibold text-[#172b24]">Recent Clinic Applications</h2><button onClick={() => navigate('/clinics')} className="text-sm text-[#086b50]">View all</button></div>
+        <div className="overflow-x-auto"><table className="w-full text-left"><thead className="bg-[#e7f4ec]"><tr>{['Clinic Name', 'Owner', 'Staff', 'Plan', 'Date', 'Status'].map((heading) => <th className="px-3 py-2 text-xs font-semibold text-[#526B62]" key={heading}>{heading}</th>)}</tr></thead><tbody>{recentApplications.map((row) => <tr className="border-t border-[#e3ecfb]" key={row[0]}>{row.map((value, index) => <td className="px-3 py-3 text-sm text-[#526B62]" key={index}>{index === row.length - 1 ? <span className={`rounded-full px-2 py-1 ${statusClass(value)}`}>{value}</span> : value}</td>)}</tr>)}</tbody></table></div>
         </div>
-        <div className="bg-white rounded-lg border border-[#cbdcfb] overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#d4e1fb]"><h2 className="text-base font-semibold text-[#102956]">Platform Activity</h2></div>
-        <div>{activityRows.map((activity) => <div className="flex gap-3 px-4 py-3 border-b border-[#d4d4d4]" key={activity.id}><span className="mt-1.5 w-2 h-2 rounded-full bg-[#2161e8] shrink-0" /><div className="flex-1"><p className="text-sm font-semibold text-[#102956]">{recentActivities.length > 0 ? getActivityTitle(activity.action, activity.entity_type) : activity.action}</p><p className="text-xs text-[#6684b9]">{recentActivities.length > 0 ? getActivityDescription(activity) : activity.changes.name}</p></div><span className="text-xs text-[#8ba6d3]">{activity.time || formatTimeAgo(activity.created_at)}</span></div>)}</div>
+        <div className="bg-white rounded-lg border border-[#d4e3d7] overflow-hidden">
+        <div className="px-4 py-3 border-b border-[#d4e3d7]"><h2 className="text-base font-semibold text-[#172b24]">Platform Activity</h2></div>
+        <div>{activityRows.map((activity) => <div className="flex gap-3 px-4 py-3 border-b border-[#d4d4d4]" key={activity.id}><span className="mt-1.5 w-2 h-2 rounded-full bg-[#086b50] shrink-0" /><div className="flex-1"><p className="text-sm font-semibold text-[#172b24]">{recentActivities.length > 0 ? getActivityTitle(activity.action, activity.entity_type) : activity.action}</p><p className="text-xs text-[#526B62]">{recentActivities.length > 0 ? getActivityDescription(activity) : activity.changes.name}</p></div><span className="text-xs text-[#a9d6b7]">{activity.time || formatTimeAgo(activity.created_at)}</span></div>)}</div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-[#cbdcfb] overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#d4e1fb]"><h2 className="text-base font-semibold text-[#102956]">Recent Role Requests</h2><button onClick={() => navigate('/role-requests')} className="text-sm text-[#2161e8]">View all</button></div>
-      <table className="w-full text-left"><thead className="bg-[#f0f5ff]"><tr>{['Clinic', 'Requested Role', 'Users', 'Date', 'Status'].map((heading) => <th className="px-3 py-2 text-xs font-semibold text-[#5274b8]" key={heading}>{heading}</th>)}</tr></thead><tbody>{recentRoleRequests.map((row) => <tr className="border-t border-[#e3ecfb]" key={row[0] + row[1]}>{row.map((value, index) => <td className="px-3 py-3 text-sm text-[#5274b8]" key={index}>{index === row.length - 1 ? <span className={`rounded-full px-2 py-1 ${statusClass(value)}`}>{value}</span> : value}</td>)}</tr>)}</tbody></table>
+      <div className="bg-white rounded-lg border border-[#d4e3d7] overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#d4e3d7]"><h2 className="text-base font-semibold text-[#172b24]">Recent Role Requests</h2><button onClick={() => navigate('/role-requests')} className="text-sm text-[#086b50]">View all</button></div>
+      <table className="w-full text-left"><thead className="bg-[#e7f4ec]"><tr>{['Clinic', 'Requested Role', 'Users', 'Date', 'Status'].map((heading) => <th className="px-3 py-2 text-xs font-semibold text-[#526B62]" key={heading}>{heading}</th>)}</tr></thead><tbody>{recentRoleRequests.map((row) => <tr className="border-t border-[#e3ecfb]" key={row[0] + row[1]}>{row.map((value, index) => <td className="px-3 py-3 text-sm text-[#526B62]" key={index}>{index === row.length - 1 ? <span className={`rounded-full px-2 py-1 ${statusClass(value)}`}>{value}</span> : value}</td>)}</tr>)}</tbody></table>
       </div>
 
       <div className="hidden">

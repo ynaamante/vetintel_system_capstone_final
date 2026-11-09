@@ -1,73 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
-  ReferenceLine, ResponsiveContainer, Cell,
+  ResponsiveContainer, Cell,
 } from 'recharts';
 import Topbar from '../components/Topbar';
 import { Icons } from '../icons';
-import { canExportFeature, canInteractWithFeature, canViewFeature } from '../utils/permissionUtils';
+import { canExportFeature, canViewFeature } from '../utils/permissionUtils';
 import { formatDateText } from '../utils/dateFormatting';
 
-const DISEASE_OPTIONS = ['Parvovirus', 'Kennel Cough', 'Distemper', 'Giardia', 'Leptospirosis'];
 const TIME_OPTIONS    = ['Last 30 Days', 'Last 60 Days', 'Last 90 Days'];
-const REGION_OPTIONS  = ['All Regions', 'East Region', 'West Region', 'North Region'];
-
-const LINE_DATA = [
-  { month: 'September', cases: 38 },
-  { month: 'October', cases: 42 },
-  { month: 'November', cases: 65 },
-  { month: 'December', cases: 78 },
-  { month: 'January', cases: 103 },
-  { month: 'February', cases: 145 },
-];
-
-const CLINIC_DATA = [
-  { name: 'City Pet',      cases: 39, you: false },
-  { name: 'Happy Tails',   cases: 33, you: false },
-  { name: 'Paws & Care',   cases: 28, you: false },
-  { name: 'CLI-001 (You)', cases: 25, you: true  },
-  { name: 'Pet Haven',     cases: 16, you: false },
-  { name: 'Animal Clinic', cases: 8,  you: false },
-];
-
-const RECENT_ALERTS = [
-  {
-    title:    'Threshold Exceeded',
-    desc:     'Cases have risen above safe levels',
-    date:     'March 3, 2026',
-    level:    'high',
-    fullDesc: 'Cases have risen above safe levels',
-    severity: 'HIGH',
-    clinics: [
-      'City Pet Clinic (38 cases)',
-      'Happy Tails Veterinary (32 cases)',
-      'Paws & Care Animal Hospital (28 cases)',
-    ],
-    actions: [
-      'Increase vaccination coverage in affected areas',
-      'Alert nearby clinics to watch for symptoms',
-      'Monitor trend daily for next 2 weeks',
-    ],
-  },
-  {
-    title:    'Growth Rate Increased',
-    desc:     '40% increase detected — month over month',
-    date:     'February 28, 2026',
-    level:    'mod',
-    fullDesc: '40% increase detected — month over month',
-    severity: 'MOD',
-    clinics: [
-      'City Pet Clinic (38 cases)',
-      'Happy Tails Veterinary (32 cases)',
-    ],
-    actions: [
-      'Review vaccination records across clinics',
-      'Send advisory notice to network',
-      'Schedule follow-up assessment in 1 week',
-    ],
-  },
-];
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -83,7 +25,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-/* ── MODAL ── */
+/* â”€â”€ MODAL â”€â”€ */
 function AlertModal({ alert, onClose }) {
   if (!alert) return null;
   const isHigh = alert.severity === 'HIGH';
@@ -154,7 +96,7 @@ function AlertModal({ alert, onClose }) {
             <div style={m.sectionTitle}>Affected Clinics</div>
             {alert.clinics.map((c, i) => (
               <div key={i} style={m.listItem}>
-                <span style={m.bullet}>•</span>
+                <span style={m.bullet}>â€¢</span>
                 {c}
               </div>
             ))}
@@ -164,7 +106,7 @@ function AlertModal({ alert, onClose }) {
             <div style={m.sectionTitle}>Recommended Actions</div>
             {alert.actions.map((a, i) => (
               <div key={i} style={m.listItem}>
-                <span style={m.bullet}>•</span>
+                <span style={m.bullet}>â€¢</span>
                 {a}
               </div>
             ))}
@@ -176,8 +118,7 @@ function AlertModal({ alert, onClose }) {
 
         {/* Footer */}
         <div style={m.footer}>
-          <button style={m.primaryBtn}>Alert Affected Clinics</button>
-          <button style={m.secondaryBtn}>Export Report</button>
+          <button style={m.secondaryBtn} type="button" onClick={onClose}>Close</button>
         </div>
 
       </div>
@@ -185,24 +126,84 @@ function AlertModal({ alert, onClose }) {
   );
 }
 
-/* ── MAIN PAGE ── */
+/* â”€â”€ MAIN PAGE â”€â”€ */
 export default function DiseaseMonitoringPage({ user }) {
-  const [disease,   setDisease]   = useState('Parvovirus');
+  const [disease,   setDisease]   = useState('All Diseases');
   const [timeRange, setTimeRange] = useState('Last 30 Days');
-  const [region,    setRegion]    = useState('All Regions');
-  const [showVacc,  setShowVacc]  = useState(false);
   const [modal,     setModal]     = useState(null);
+  const [summary, setSummary] = useState(null);
+  const [loadError, setLoadError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const days = Number.parseInt(timeRange.match(/\d+/)?.[0] || '30', 10);
+  useEffect(() => {
+    if (!user?.token) {
+      setLoadError('Sign in to load saved disease reports.');
+      setLoading(false);
+      return undefined;
+    }
+    const controller = new AbortController();
+    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+    const query = new URLSearchParams({ days: String(days) });
+    if (disease !== 'All Diseases') query.set('disease', disease);
+    setLoading(true);
+    fetch(`${apiUrl}/disease-intelligence/summary?${query}`, {
+      headers: { Authorization: `Bearer ${user.token}` }, signal: controller.signal,
+    }).then(async response => {
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || `Unable to load disease reports (HTTP ${response.status}).`);
+      setSummary(payload);
+      setLoadError('');
+    }).catch(error => {
+      if (error.name !== 'AbortError') setLoadError(error.message || 'Unable to load disease reports.');
+    }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [user?.token, days, disease]);
+
+  const diseaseOptions = useMemo(() => [...new Set((summary?.disease_options || []).map(item => item.disease).filter(Boolean))], [summary?.disease_options]);
+  const chartData = useMemo(() => (summary?.trend || []).map(item => ({
+    month: new Date(item.case_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    cases: Number(item.cases) || 0,
+  })), [summary?.trend]);
+  const clinicData = (summary?.clinics || []).map(item => ({
+    name: item.clinic_name,
+    cases: Number(item.cases) || 0,
+    you: Boolean(user?.clinic_name && item.clinic_name === user.clinic_name),
+  }));
+  const currentCases = Number(summary?.total_cases) || 0;
+  const previousCases = Number(summary?.previous_cases) || 0;
+  const growthRate = previousCases ? Math.round(((currentCases - previousCases) / previousCases) * 100) : 0;
+  const alerts = (summary?.diseases || []).filter(item => Number(item.cases) >= 3 && Number(item.cases) > Number(item.previous_cases) * 1.4)
+    .map(item => ({
+      title: `${item.disease} increase detected`,
+      desc: `${item.cases} reported cases in this period${item.previous_cases ? `, up ${Math.round(((item.cases - item.previous_cases) / item.previous_cases) * 100)}% from the previous period` : ''}.`,
+      date: new Date().toISOString(),
+      level: 'high',
+      fullDesc: `${item.cases} cases were reported in the selected period, compared with ${item.previous_cases} in the previous period.`,
+      severity: 'HIGH',
+      clinics: clinicData.map(clinic => `${clinic.name} (${clinic.cases} cases)`),
+      actions: ['Review the reported cases and confirm the diagnoses.', 'Follow your clinicâ€™s disease reporting and infection-control procedures.'],
+    }));
 
   const canView = canViewFeature(user.permissions, user.role, 'Disease Monitoring');
   const canExportAlert = canExportFeature(user.permissions, user.role, 'Disease Monitoring');
-  const canAlertClinics = canInteractWithFeature(user.permissions, user.role, 'Disease Monitoring');
+  const exportDiseaseSummary = () => {
+    const rows = [['Disease', 'Cases in selected period', 'Cases in previous period'], ...(summary?.diseases || []).map(item => [item.disease, item.cases, item.previous_cases])];
+    const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'disease-report.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (!canView) {
     return (
       <div style={s.main}>
         <Topbar user={user} title="Disease Monitoring" subtitle="Monitor disease patterns and outbreak alerts" />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', color: '#64748b' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔒</div>
+          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>ðŸ”’</div>
           <div style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>Access Denied</div>
           <div style={{ fontSize: '0.95rem' }}>You don't have permission to view this feature</div>
         </div>
@@ -226,20 +227,21 @@ export default function DiseaseMonitoringPage({ user }) {
               disabled={!canExportAlert}
               style={{
                 ...s.select,
-                background: canExportAlert ? '#f4f6f9' : '#f8fafc',
+                background: canExportAlert ? '#f1f6ef' : '#f8fafc',
                 color: canExportAlert ? '#0f1117' : '#64748b',
                 cursor: canExportAlert ? 'pointer' : 'not-allowed',
               }}
               value={disease}
               onChange={e => setDisease(e.target.value)}
             >
-              {DISEASE_OPTIONS.map(d => <option key={d}>{d}</option>)}
+              <option>All Diseases</option>
+              {diseaseOptions.map(d => <option key={d}>{d}</option>)}
             </select>
             <select
               disabled={!canExportAlert}
               style={{
                 ...s.select,
-                background: canExportAlert ? '#f4f6f9' : '#f8fafc',
+                background: canExportAlert ? '#f1f6ef' : '#f8fafc',
                 color: canExportAlert ? '#0f1117' : '#64748b',
                 cursor: canExportAlert ? 'pointer' : 'not-allowed',
               }}
@@ -247,19 +249,6 @@ export default function DiseaseMonitoringPage({ user }) {
               onChange={e => setTimeRange(e.target.value)}
             >
               {TIME_OPTIONS.map(t => <option key={t}>{t}</option>)}
-            </select>
-            <select
-              disabled={!canExportAlert}
-              style={{
-                ...s.select,
-                background: canExportAlert ? '#f4f6f9' : '#f8fafc',
-                color: canExportAlert ? '#0f1117' : '#64748b',
-                cursor: canExportAlert ? 'pointer' : 'not-allowed',
-              }}
-              value={region}
-              onChange={e => setRegion(e.target.value)}
-            >
-              {REGION_OPTIONS.map(r => <option key={r}>{r}</option>)}
             </select>
           </div>
           <button
@@ -272,48 +261,31 @@ export default function DiseaseMonitoringPage({ user }) {
               cursor: canExportAlert ? 'pointer' : 'not-allowed',
             }}
             disabled={!canExportAlert}
+            onClick={exportDiseaseSummary}
           >
             Export Alert
           </button>
         </div>
 
-        {/* OUTBREAK BANNER */}
-        <div style={s.banner}>
+        {alerts[0] && <div style={s.banner}>
           <div style={s.bannerLeft}>
-            <div style={s.bannerIcon}>
-              <span style={{ width: 16, height: 16, display: 'flex', color: '#dc2626' }}>
-                {Icons.activity}
-              </span>
-            </div>
-            <div>
-              <div style={s.bannerTitle}>{disease} growth exceeded safe threshold (+40%)</div>
-              <div style={s.bannerSub}>Affecting: City Pet, Happy Tails, Paws &amp; Care</div>
-            </div>
+            <div style={s.bannerIcon}><span style={{ width: 16, height: 16, display: 'flex', color: '#dc2626' }}>{Icons.activity}</span></div>
+            <div><div style={s.bannerTitle}>{alerts[0].title}</div><div style={s.bannerSub}>{alerts[0].desc}</div></div>
           </div>
-          <button
-            style={{
-              ...s.alertBtn,
-              opacity: canAlertClinics ? 1 : 0.65,
-              background: canAlertClinics ? '#dc2626' : '#f8fafc',
-              color: canAlertClinics ? '#fff' : '#64748b',
-              border: canAlertClinics ? 'none' : '1px solid #cbd5e1',
-              cursor: canAlertClinics ? 'pointer' : 'not-allowed',
-            }}
-            disabled={!canAlertClinics}
-          >
-            Alert Clinics
-          </button>
-        </div>
+          <button type="button" style={s.alertBtn} onClick={() => setModal(alerts[0])}>View alert</button>
+        </div>}
+        {loadError && <div role="alert" style={{ ...s.card, color: '#b42318' }}>{loadError}</div>}
+        {loading && <div role="status" style={{ ...s.card, color: '#64748b' }}>Loading reported disease casesâ€¦</div>}
 
         {/* GROWTH STATS */}
         <div style={s.statsRow}>
           <div style={s.growthCard}>
-            <div style={s.growthVal}>+40%</div>
-            <div style={s.growthSub}>Compared to last 30 days</div>
+            <div style={s.growthVal}>{growthRate > 0 ? '+' : ''}{growthRate}%</div>
+            <div style={s.growthSub}>Change from the previous {days}-day period</div>
           </div>
           <div style={s.casesCard}>
-            <div style={s.casesVal}>145</div>
-            <div style={s.casesSub}>cases this month</div>
+            <div style={s.casesVal}>{currentCases}</div>
+            <div style={s.casesSub}>reported cases in the selected period</div>
           </div>
         </div>
 
@@ -322,33 +294,16 @@ export default function DiseaseMonitoringPage({ user }) {
           <div style={s.cardHd}>
             <div>
               <div style={s.cardTitle}>Cases vs. Threshold</div>
-              <div style={s.cardDesc}>
-                Compares reported cases against the safe threshold over time, with optional vaccination rate overlay to identify correlations.
-              </div>
+              <div style={s.cardDesc}>Cases reported by clinics for the selected disease and period.</div>
             </div>
-            <div style={s.toggleRow}>
-              <span style={s.toggleLabel}>Show Vaccination Rate</span>
-              <div
-                style={{ ...s.toggle, background: showVacc ? '#005447' : '#e2e8f0' }}
-                onClick={() => setShowVacc(v => !v)}
-              >
-                <div style={{
-                  ...s.toggleThumb,
-                  transform: showVacc ? 'translateX(16px)' : 'translateX(2px)',
-                }} />
-              </div>
-            </div>
+            <div style={s.cardDesc}>{summary?.affected_clinics || 0} clinics reporting</div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={LINE_DATA}>
+            <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#b8c4d3" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <ReferenceLine
-                y={50} stroke="#fca5a5" strokeDasharray="4 4"
-                label={{ value: 'Threshold', position: 'insideTopRight', fontSize: 10, fill: '#dc2626' }}
-              />
               <Line
                 type="monotone" dataKey="cases"
                 stroke="#139b76" strokeWidth={2}
@@ -370,7 +325,7 @@ export default function DiseaseMonitoringPage({ user }) {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={CLINIC_DATA} barSize={40}>
+            <BarChart data={clinicData} barSize={40}>
               <CartesianGrid strokeDasharray="3 3" stroke="#b8c4d3" />
               <XAxis
                 dataKey="name"
@@ -378,8 +333,8 @@ export default function DiseaseMonitoringPage({ user }) {
                   <text
                     x={x} y={y + 12}
                     textAnchor="middle" fontSize={11}
-                    fill={payload.value === 'CLI-001 (You)' ? '#005447' : '#64748b'}
-                    fontWeight={payload.value === 'CLI-001 (You)' ? 600 : 400}
+                    fill={clinicData.find(clinic => clinic.name === payload.value)?.you ? '#013826' : '#64748b'}
+                    fontWeight={clinicData.find(clinic => clinic.name === payload.value)?.you ? 600 : 400}
                   >
                     {payload.value}
                   </text>
@@ -388,9 +343,8 @@ export default function DiseaseMonitoringPage({ user }) {
               />
               <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <ReferenceLine y={30} stroke="#fca5a5" strokeDasharray="4 4" />
               <Bar dataKey="cases" radius={[4, 4, 0, 0]}>
-                {CLINIC_DATA.map((d, i) => (
+                {clinicData.map((d, i) => (
                   <Cell key={i} fill={d.you ? '#1e3a8a' : '#139b76'} />
                 ))}
               </Bar>
@@ -401,7 +355,7 @@ export default function DiseaseMonitoringPage({ user }) {
         {/* RECENT ALERTS */}
         <div style={s.card}>
           <div style={{ ...s.cardTitle, marginBottom: 16 }}>Recent Alerts</div>
-          {RECENT_ALERTS.map((a, i) => (
+          {alerts.length ? alerts.map((a, i) => (
             <div key={i} style={s.alertItem}>
               <div style={s.alertLeft}>
                 <div style={{
@@ -430,7 +384,7 @@ export default function DiseaseMonitoringPage({ user }) {
                 <span style={{ width: 13, height: 13, display: 'flex' }}>{Icons.arrowRight}</span>
               </div>
             </div>
-          ))}
+          )) : <div style={{ color: '#64748b', fontSize: '.8rem' }}>{loading ? 'Checking for disease increasesâ€¦' : 'No disease increases detected from the saved reports in this period.'}</div>}
         </div>
 
       </div>
@@ -441,9 +395,9 @@ export default function DiseaseMonitoringPage({ user }) {
   );
 }
 
-/* ── STYLES ── */
+/* â”€â”€ STYLES â”€â”€ */
 const s = {
-  main: { flex: 1, overflowY: 'auto', background: '#f4f6f9' },
+  main: { flex: 1, overflowY: 'auto', background: '#f1f6ef' },
   page: { padding: '24px 28px' },
   filterBar: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -453,7 +407,7 @@ const s = {
   filters:   { display: 'flex', gap: 10 },
   select: {
     padding: '8px 12px', border: '1px solid #e8ecf0', borderRadius: 8,
-    fontSize: '.82rem', color: '#0f1117', background: '#f4f6f9',
+    fontSize: '.82rem', color: '#0f1117', background: '#f1f6ef',
     outline: 'none', cursor: 'pointer',
   },
   exportBtn: {
@@ -534,7 +488,7 @@ const s = {
   alertDate:   { fontSize: '.68rem', color: '#64748b', marginTop: 3 },
   viewDetails: {
     display: 'flex', alignItems: 'center', gap: 4,
-    fontSize: '.75rem', color: '#005447',
+    fontSize: '.75rem', color: '#013826',
     cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
   },
 };
@@ -608,3 +562,4 @@ const m = {
     fontSize: '.84rem', fontWeight: 500, cursor: 'pointer',
   },
 };
+

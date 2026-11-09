@@ -4,6 +4,7 @@
   "private": true,
   "main": "server.js",
   "scripts": {
+    "dev": "node --watch server.js",
     "start": "node server.js",
     "normalize-roles": "node scripts/normalize_roles.js",
     "create-super-admin": "node scripts/create_super_admin.js"

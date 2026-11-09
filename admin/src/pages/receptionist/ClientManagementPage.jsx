@@ -91,7 +91,7 @@ export default function ClientManagementPage({ user }) {
       <div style={s.page}>
         <div style={s.statsGrid}>
           {[
-            { label: 'Total Clients', value: clients.length, icon: Icons.users, iconBg: '#e7f5f2', iconColor: '#005447' },
+            { label: 'Total Clients', value: clients.length, icon: Icons.users, iconBg: '#e7f4ec', iconColor: '#013826' },
             { label: 'Total Pets', value: totalPets, icon: Icons.pet, iconBg: '#f5f3ff', iconColor: '#7c3aed' },
             { label: 'New This Month', value: newThisMonth, icon: Icons.users, iconBg: '#fffbeb', iconColor: '#d97706' },
             { label: 'Searchable', value: 'Yes', icon: Icons.search, iconBg: '#f0fdf4', iconColor: '#16a34a' },
@@ -166,14 +166,14 @@ export default function ClientManagementPage({ user }) {
 }
 
 const s = {
-  main: { flex: 1, overflowY: 'auto', background: '#f4f6f9' },
+  main: { flex: 1, overflowY: 'auto', background: '#f1f6ef' },
   page: { padding: '24px 28px' },
   statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 },
   statCard: { background: '#fff', border: '1px solid #e8ecf0', borderRadius: 14, padding: '16px 20px' },
   card: { background: '#fff', border: '1px solid #e8ecf0', borderRadius: 14, padding: '20px 24px' },
   searchWrap: { position: 'relative', marginBottom: 20 },
   searchIcon: { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#64748b', display: 'flex' },
-  search: { width: '100%', padding: '10px 14px 10px 36px', border: '1px solid #e8ecf0', borderRadius: 8, fontSize: '.82rem', background: '#f4f6f9', outline: 'none' },
+  search: { width: '100%', padding: '10px 14px 10px 36px', border: '1px solid #e8ecf0', borderRadius: 8, fontSize: '.82rem', background: '#f1f6ef', outline: 'none' },
   tableTitle: { fontSize: '.9rem', fontWeight: 600, color: '#0f1117', marginBottom: 16 },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: { textAlign: 'left', fontSize: '.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.06em', paddingBottom: 10, borderBottom: '1px solid #f1f5f9' },

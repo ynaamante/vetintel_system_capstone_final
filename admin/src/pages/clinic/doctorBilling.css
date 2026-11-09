@@ -1,0 +1,173 @@
+.doctor-billing-overview { display: grid; gap: 16px; color: var(--ink); font-family: 'DM Sans',sans-serif; }
+.doctor-void-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.doctor-void-actions button { padding: 7px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #000; font: inherit; font-size: 12px; cursor: pointer; }
+.doctor-void-actions button:last-child { background: #086b50; border-color: #086b50; color: #fff; }
+.doctor-void-actions button:disabled { opacity: .6; cursor: wait; }
+.doctor-billing-attention,.doctor-billing-records { padding: 20px; border: 1px solid var(--border); border-radius: 15px; background: #fff; }
+.doctor-billing-attention h2 { color: var(--color-deep-forest); font-size: 1.4rem; letter-spacing: -.02em; }
+.doctor-billing-attention > p { margin-top: 5px; color: var(--muted); font-size: .8rem; }
+.doctor-billing-attention-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 10px; }
+.doctor-billing-attention-tabs button { display: flex; gap: 14px; align-items: center; padding: 9px 20px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--color-deep-forest); font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.doctor-billing-attention-tabs .active { background: var(--color-pale-sage); border-color: var(--color-eucalyptus); }
+.doctor-billing-attention-list { border: 1px solid #e4ece7; border-radius: 10px; overflow: hidden; }
+.doctor-billing-attention-row { display: grid; grid-template-columns: minmax(150px,1fr) minmax(220px,2.6fr) auto 16px; align-items: center; gap: 20px; width: 100%; padding: 13px 16px; border: 0; border-bottom: 1px solid #e8eeea; background: #fff; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.doctor-billing-attention-row:last-child { border-bottom: 0; }
+.doctor-billing-attention-row > span:first-child { border-right: 1px solid var(--border); }
+.doctor-billing-attention-row strong { display: block; font-size: .78rem; }
+.doctor-billing-attention-row small { display: block; margin-top: 4px; color: var(--muted); font-size: .7rem; }
+.doctor-billing-attention-row > span:nth-child(2) strong { color: var(--color-botanical-teal); }
+.doctor-billing-toolbar { display: flex; gap: 16px; align-items: center; margin-bottom: 14px; }
+.doctor-billing-toolbar > input { flex: 1; min-width: 0; padding: 11px 13px; border: 1px solid var(--border); border-radius: 20px; background: #fff; color: var(--ink); font: inherit; font-size: .78rem; }
+.doctor-billing-toolbar .lab-date-range-trigger { min-width: 170px; border-radius: 20px; }
+.doctor-billing-pills { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+.doctor-billing-pills button { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border: 1px solid var(--border); border-radius: 999px; background: white; color: var(--ink); font: inherit; font-size: .73rem; font-weight: 600; cursor: pointer; }
+.doctor-billing-pills b { padding: 2px 5px; border-radius: 8px; background: #edf3ef; font-size: .68rem; }
+.doctor-billing-pills .active { background: var(--color-pale-sage); border-color: var(--color-botanical-teal); color: var(--color-deep-forest); }
+.doctor-billing-table-wrap { overflow-x: auto; border: 1px solid #e2ebe5; border-radius: 9px; }
+.doctor-billing-table { width: 100%; min-width: 950px; border-collapse: collapse; font-size: .74rem; text-align: left; }
+.doctor-billing-table th { background: var(--color-pale-sage); padding: 12px 10px; color: var(--color-deep-forest); font-weight: 600; font-size: .7rem; white-space: nowrap; }
+.doctor-billing-table td { padding: 12px 10px; border-bottom: 1px solid #e9eeeb; }
+.doctor-billing-table td:nth-child(n+5):nth-child(-n+7) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.doctor-billing-table tbody tr { cursor: pointer; }
+.doctor-billing-table tbody tr:hover,.doctor-billing-attention-row:hover { background: #f7fbf7; }
+.doctor-billing-badge { display: inline-block; justify-self: start; padding: 4px 10px; border-radius: 999px; background: #eef1ef; color: var(--muted); font-size: .67rem; font-weight: 600; white-space: nowrap; }
+.doctor-billing-badge.needs-correction,.doctor-billing-badge.payment-partially-paid { background: #fff2dc; color: #97600a; }
+.doctor-billing-badge.sent-to-reception { background: #e5e7ff; color: #4b4ba0; }
+.doctor-billing-badge.issued,.doctor-billing-badge.payment-paid { background: var(--color-pale-sage); color: var(--color-botanical-teal); }
+.doctor-billing-badge.payment-unpaid,.doctor-billing-badge.payment-overdue { background: var(--red-light); color: var(--red); }
+.doctor-billing-empty { padding: 20px !important; color: var(--muted); text-align: center; font-size: .78rem; }
+.doctor-billing-error { padding: 12px; color: var(--red); background: var(--red-light); border-radius: 8px; font-size: .78rem; }
+.doctor-invoice-correction { padding: 16px; border: 1px solid #e8cc9f; border-radius: 10px; background: #fffcf5; font-size: .8rem; }
+.doctor-invoice-correction h3 { color: var(--color-deep-forest); margin-bottom: 10px; }
+.doctor-invoice-correction p { margin: 9px 0; line-height: 1.5; }
+.doctor-invoice-correction button { padding: 9px 13px; border: 1px solid var(--border); border-radius: 8px; background: var(--color-botanical-teal); color: white; font: inherit; cursor: pointer; }
+.doctor-invoice-correction button:disabled { opacity: .5; cursor: default; }
+.doctor-correction-table { width: 100%; border-collapse: collapse; }
+.doctor-correction-table th { padding: 8px; text-align: left; font-size: .72rem; }
+.doctor-correction-table td { padding: 5px; }
+.doctor-correction-table td:first-child { width: 55%; }
+.doctor-invoice-correction input,.doctor-invoice-correction textarea { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 7px; background: #fff; color: var(--ink); font: inherit; }
+.doctor-invoice-correction select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 7px; background: white; color: var(--ink); font: inherit; }
+.doctor-invoice-correction form > label { display: grid; gap: 7px; margin-top: 12px; }
+.doctor-invoice-correction textarea { min-height: 70px; resize: vertical; }
+.doctor-correction-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
+.doctor-correction-actions button:first-child { background: white; color: var(--ink); }
+.doctor-billing-overview button:focus-visible,.doctor-billing-table tr:focus-visible,.doctor-invoice-correction input:focus-visible { outline: 2px solid var(--color-botanical-teal); outline-offset: 2px; }
+@media(max-width:800px) { .doctor-billing-attention-row { grid-template-columns: 1fr auto; gap: 12px; } .doctor-billing-attention-row > span:first-child { border: 0; } .doctor-billing-attention-row > span:nth-child(2) { grid-row: 2; grid-column: 1/-1; } .doctor-billing-attention-row > span:last-child { display: none; } .doctor-billing-toolbar { flex-wrap: wrap; } .doctor-billing-attention,.doctor-billing-records { padding: 14px; } }
+
+.doctor-invoice-correction-full { padding: 0; border: 0; background: #fff; }
+.doctor-invoice-correction-full > p { padding: 10px 12px; border-radius: 8px; background: #fff8eb; }
+.doctor-correction-section { padding: 12px; margin: 12px 0; border: 1px solid #e5ecea; border-radius: 10px; }
+.doctor-correction-section label { display: grid; gap: 6px; margin-top: 10px; }
+.doctor-invoice-correction input,.doctor-invoice-correction textarea { box-sizing: border-box; }
+
+.billing-invoice-inline-input { width:100%; box-sizing:border-box; min-width:0; padding:7px 8px; border:1px solid #bfd8cf; border-radius:6px; background:#fff; color:inherit; font:inherit; }
+textarea.billing-invoice-inline-input { min-height:42px; resize:vertical; }
+.billing-invoice-inline-input:focus { outline:2px solid #086b50; outline-offset:1px; }
+.billing-invoice-return-reason { margin:0; padding:9px 12px; background:#fff8eb; border-radius:8px; font-size:.78rem; }
+.billing-invoice-inline-tax { display:flex; align-items:center; justify-content:flex-end; gap:12px; margin-top:10px; font-size:.78rem; }
+.billing-invoice-inline-tax input { width:130px; }
+.billing-invoice-correction-footer { display:block; }
+.billing-invoice-correction-footer label { display:grid; gap:6px; width:100%; font-size:.78rem; }
+.billing-summary-edit-title { margin: 0 0 3px; color: #075035; font-size: 1.05rem; }
+.billing-summary-edit-subtitle { margin: 0 0 12px; color: #526579; font-size: .72rem; }
+.billing-summary-edit-dialog .billing-invoice-dialog-content { gap: 9px !important; }
+.billing-summary-edit-dialog .billing-invoice-dialog-content > section { position: relative; padding: 11px 12px !important; }
+.billing-summary-edit-dialog .billing-invoice-dialog-content h3 { color: #075035 !important; font-size: .82rem !important; }
+.billing-summary-visit-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px 24px; padding: 2px 8px; }
+.billing-summary-visit-grid label { display: grid; gap: 4px; min-width: 0; }
+.billing-summary-visit-grid label > span { text-transform: uppercase; font-size: .6rem; color: #526579; font-weight: 750; letter-spacing: .025em; }
+.billing-summary-visit-grid small { font-size: .65rem; color: #526579; }
+.billing-summary-patient { grid-template-columns: 40px minmax(0,1fr); column-gap: 8px !important; }
+.billing-summary-patient > span:first-child { grid-column: 2; }
+.billing-summary-patient > img,.billing-summary-patient > .billing-summary-patient-initial { grid-column: 1; grid-row: 2 / 4; }
+.billing-summary-patient > select,.billing-summary-patient > small { grid-column: 2; }
+.billing-summary-patient-initial { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #e7f4ec; color: #086b50; }
+.billing-summary-edit-dialog .billing-invoice-inline-input { padding: 4px 7px; font-size: .73rem; border-color: #d0dbe2; border-radius: 5px; }
+.billing-summary-edit-dialog .billing-invoice-summary-value { padding: 4px 7px !important; }
+.billing-summary-edit-dialog .billing-invoice-summary-label { font-size: .62rem; text-transform: uppercase; font-weight: 700; }
+.billing-summary-edit-dialog .billing-invoice-summary-value textarea { min-height: 28px; }
+.billing-summary-edit-dialog table { min-width: 480px !important; }
+.billing-summary-edit-dialog td { padding: 5px !important; }
+.billing-summary-edit-dialog th { font-size: .64rem !important; text-transform: uppercase; }
+.billing-summary-edit-dialog td:first-child { width: 35%; }
+.billing-summary-edit-dialog td:nth-child(2) { width: 21%; }
+.billing-summary-edit-dialog td:nth-child(3) { width: 10%; }
+.billing-summary-edit-dialog td:nth-child(4) { width: 16%; }
+.billing-summary-add-item,.billing-summary-section-edit { border: 1px solid #bfd8cf; border-radius: 5px; padding: 3px 8px; color: #075035; background: #fff; font: inherit; font-size: .7rem; cursor: pointer; }
+.billing-summary-add-item { position: absolute; top: 7px; right: 12px; }
+.billing-summary-section-edit { float: right; }
+.billing-summary-remove { flex-shrink: 0; width: 26px; height: 26px; padding: 0; border: 1px solid #dce4e8; border-radius: 5px; background: #fff; color: #526579; cursor: pointer; }
+.billing-summary-remove:disabled { opacity: .4; cursor: default; }
+.billing-summary-file-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: .74rem; }
+.billing-summary-file-row > .billing-invoice-attachment,.billing-summary-file-row > span { flex: 1; min-width: 0; }
+.billing-summary-file-row small { display: block; color: #718198; font-size: .65rem; }
+.billing-summary-notes { border: 1px solid #e5ecea; border-radius: 10px; }
+.billing-summary-notes label { display: block; color: #075035; font-size: .78rem; font-weight: 700; }
+.billing-summary-notes label > span { color: #526579; font-weight: 400; font-size: .7rem; }
+.billing-summary-notes textarea { display: block; margin-top: 5px; min-height: 56px; font-weight: 400; }
+.billing-summary-edit-dialog .billing-invoice-correction-footer { border-top: 0; padding: 8px 16px 14px; }
+.billing-summary-edit-dialog .doctor-correction-actions { margin-top: 0; }
+.billing-summary-edit-dialog .billing-invoice-send-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.billing-summary-edit-dialog .doctor-correction-actions > button:first-child { padding: 8px 16px; border: 1px solid #dce4e8; border-radius: 7px; background: #fff; color: #203444; cursor: pointer; }
+@media (max-width: 520px) {
+  .billing-summary-visit-grid { gap: 10px; padding: 0; }
+  .billing-summary-edit-subtitle { max-width: 250px; }
+}
+
+/* Compact correction fields and cards, matching the billing summary layout. */
+.billing-invoice-dialog.billing-summary-edit-dialog :is(p,small,label,input,textarea,select,th,td),
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-visit-grid label > span,
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-invoice-summary-label,
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-invoice-summary-value,
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-invoice-attachment-info strong,
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-notes label > span,
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-remove,
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-invoice-inline-tax,
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-invoice-inline-tax + div,
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-invoice-inline-tax + div strong {
+  color: #000 !important;
+}
+.billing-invoice-dialog.billing-summary-edit-dialog input::placeholder,
+.billing-invoice-dialog.billing-summary-edit-dialog textarea::placeholder { color: #000; opacity: 1; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-invoice-summary-value { padding: 3px 6px !important; line-height: 1 !important; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-invoice-summary-value textarea {
+  display: block;
+  min-height: 26px !important;
+  max-height: 160px;
+  padding: 4px 7px !important;
+  line-height: 16px;
+  font-size: 12px;
+  resize: none;
+  overflow-y: auto;
+}
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-charges-table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 580px !important;
+}
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-charges-table :is(th,td) { width: auto; padding: 6px 5px !important; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-charges-table thead th { white-space: nowrap; letter-spacing: .025em !important; font-size: 9px !important; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-charges-table tbody td { font-size: 12px !important; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-charges-table tbody td:nth-child(5) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-charges-table .billing-invoice-inline-input { height: 27px; padding: 3px 5px; font-size: 12px; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-charges-table input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-charges-table input[type="number"]::-webkit-inner-spin-button,
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-charges-table input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-charges-table .billing-summary-total-cell { padding: 0 !important; border: 0; }
+.billing-summary-total-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; box-sizing: border-box; padding: 8px 9px; background: #e0f2e5; color: #000; }
+.billing-summary-total-bar strong { color: #000; font-size: 13px; font-variant-numeric: tabular-nums; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-invoice-attachments-header { min-height: 24px; gap: 8px; margin-bottom: 5px; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-invoice-add-file { min-height: 24px; height: 24px; padding: 2px 8px; border-radius: 5px; font-size: 11px !important; line-height: 18px; color: #000; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-file-row { gap: 6px; margin-top: 4px; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-invoice-attachment { min-height: 36px; padding: 5px 7px; gap: 8px; border-radius: 5px; font-size: 12px !important; color: #000; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-invoice-attachment-info { flex: 1; gap: 2px; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-invoice-attachment-info strong { font-size: 12px; font-weight: 500; line-height: 16px; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-file-row small { font-size: 10px; line-height: 12px; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-remove { width: 23px; height: 23px; font-size: 12px !important; }
+.billing-invoice-dialog.billing-summary-edit-dialog .billing-summary-notes textarea { min-height: 46px; }
+
+.doctor-void-footer { display: block; }
+.doctor-void-footer .doctor-void-actions { margin-top: 0; }
+.doctor-void-footer form { display: grid; gap: 5px; margin-bottom: 10px; color: #000; font-size: 12px; }
+.doctor-void-footer textarea { box-sizing: border-box; width: 100%; min-height: 44px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 5px; color: #000; font: inherit; resize: vertical; }
