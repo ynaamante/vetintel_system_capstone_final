@@ -1251,7 +1251,7 @@ exports.getDiseaseIntelligenceSummary = async (req, res, next) => {
          SELECT d.clinic_id, d.pet_id, BTRIM(d.diagnosis) AS diagnosis, d.recorded_at AS reported_at,
                 d.clinical_assessment->>'severity' AS recorded_severity
          FROM patient_diagnoses d
-         WHERE d.case_classification <> 'ruled_out'
+         WHERE d.case_classification <> 'ruled_out' AND d.record_status = 'finalized'
          UNION ALL
          SELECT tp.clinic_id, tp.pet_id, BTRIM(tp.diagnosis) AS diagnosis, tp.created_at AS reported_at, tp.severity AS recorded_severity
          FROM treatment_plans tp
@@ -1287,6 +1287,7 @@ exports.getDiseaseIntelligenceSummary = async (req, res, next) => {
          JOIN clinics c ON c.id = r.clinic_id
          WHERE r.reported_at >= NOW() - GREATEST($1::int * 2, 185) * INTERVAL '1 day'
            AND r.reported_at <= NOW()
+           AND LOWER(REGEXP_REPLACE(BTRIM(r.diagnosis), '[[:space:]_]+', ' ', 'g')) NOT IN ('needs assessment', 'not assessed', 'assessment pending')
            AND ($2::int IS NULL OR r.clinic_id = $2::int)
            AND ($4::int IS NULL OR r.clinic_id = $4::int)
          GROUP BY r.clinic_id, r.pet_id,
@@ -4353,6 +4354,8 @@ const mapLabTest = row => {
     reportAttachmentId: row.report_attachment_id || null,
     fileName: row.report_filename || metadata.fileName || '',
     reportContentType: row.report_content_type || '',
+    reportUploadedAt: row.report_uploaded_at || null,
+    reportSizeBytes: Number(row.report_size_bytes) || null,
     downloadable: Boolean(row.report_attachment_id || metadata.downloadable),
   };
 };
@@ -4368,12 +4371,12 @@ exports.listLabTests = async (req, res, next) => {
       `SELECT lr.id, lr.pet_id, lr.test_name, lr.results, lr.collected_at, lr.reported_at, lr.metadata,
               p.name AS pet, c.name AS owner,
               report.id AS report_attachment_id, report.filename AS report_filename,
-              report.content_type AS report_content_type
+              report.content_type AS report_content_type, report.uploaded_at AS report_uploaded_at, report.metadata->>'file_size' AS report_size_bytes
        FROM lab_results lr
        JOIN pets p ON p.id = lr.pet_id AND p.clinic_id = lr.clinic_id
        LEFT JOIN clients c ON c.id = p.client_id
        LEFT JOIN LATERAL (
-         SELECT a.id, a.filename, a.content_type FROM attachments a
+         SELECT a.id, a.filename, a.content_type, a.uploaded_at, a.metadata FROM attachments a
          WHERE a.clinic_id = lr.clinic_id AND a.owner_table = 'lab_results'
            AND a.owner_id = lr.id AND a.metadata->>'source' = 'lab_result_report'
          ORDER BY a.uploaded_at DESC, a.id DESC LIMIT 1
@@ -4529,7 +4532,7 @@ exports.uploadLabReport = async (req, res, next) => {
        AND owner_id=$2 AND metadata->>'source'='lab_result_report'
        ORDER BY uploaded_at DESC, id DESC LIMIT 1`, [clinicId, id]
     );
-    const metadata = JSON.stringify({ source: 'lab_result_report', pet_id: test.rows[0].pet_id, uploaded_by: req.user.id });
+    const metadata = JSON.stringify({ source: 'lab_result_report', pet_id: test.rows[0].pet_id, uploaded_by: req.user.id, file_size: bytes.length });
     const saved = existing.rows.length
       ? await db.query(
           `UPDATE attachments SET filename=$1, content_type=$2, url=$3, metadata=$4::jsonb, uploaded_at=now()
@@ -4542,8 +4545,9 @@ exports.uploadLabReport = async (req, res, next) => {
            RETURNING id, filename, content_type, uploaded_at`,
           [clinicId, id, filename, contentType, data, metadata]
         );
+    await db.query("UPDATE lab_results SET metadata = (COALESCE(metadata,'{}'::jsonb) - 'verifiedBy' - 'verifiedByName' - 'verifiedAt') || '{\"verified\":false}'::jsonb WHERE id=$1 AND clinic_id=$2", [id, clinicId]);
     await logAudit({ user_id: req.user.id, role: req.user.role, action: 'upload_report', table_name: 'lab_results', record_id: id, reason: 'Laboratory report uploaded.', ip_address: req.ip || req.connection.remoteAddress });
-    return res.status(201).json({ id: saved.rows[0].id, filename: saved.rows[0].filename, content_type: saved.rows[0].content_type, uploaded_at: saved.rows[0].uploaded_at });
+    return res.status(201).json({ id: saved.rows[0].id, filename: saved.rows[0].filename, content_type: saved.rows[0].content_type, uploaded_at: saved.rows[0].uploaded_at, size_bytes: bytes.length });
   } catch (error) { return next(error); }
 };
 
@@ -4643,12 +4647,20 @@ exports.createLabTest = async (req, res, next) => {
     }
     const pet = await db.query(`SELECT id FROM pets WHERE id=$1 AND clinic_id=$2 AND COALESCE((metadata->>'archived')::boolean, false)=false`, [petId, clinicId]);
     if (!pet.rows.length) return res.status(404).json({ error: 'Patient not found in this clinic.' });
+    const diagnosisId = req.body.diagnosis_id;
+    if (req.body.requestedFromDiagnosis === true && diagnosisId == null) return res.status(422).json({ error: 'A diagnosis laboratory request must include its saved diagnosis link.' });
+    if (diagnosisId != null) {
+      if (!Number.isInteger(diagnosisId) || diagnosisId < 1) return res.status(422).json({ error: 'Invalid linked diagnosis.' });
+      const diagnosis = await db.query('SELECT id FROM patient_diagnoses WHERE id=$1 AND pet_id=$2 AND clinic_id=$3', [diagnosisId, petId, clinicId]);
+      if (!diagnosis.rows.length) return res.status(422).json({ error: 'Linked diagnosis must belong to this patient and clinic.' });
+    }
     const requestedOrderDateTime = req.body.orderDateTime ? new Date(req.body.orderDateTime) : new Date();
     if (Number.isNaN(requestedOrderDateTime.getTime())) {
       return res.status(422).json({ error: 'A valid order date and time are required.' });
     }
     const orderDateTime = requestedOrderDateTime.toISOString();
-    const metadata = { ...req.body, orderDateTime, status: 'ordered', laboratory: 'In-house' };
+    const metadata = { ...req.body, orderDateTime, status: 'ordered', laboratory: 'In-house', verified: false };
+    delete metadata.verifiedBy; delete metadata.verifiedByName; delete metadata.verifiedAt;
     delete metadata.pet_id;
     delete metadata.results;
     const result = await db.query(
@@ -4671,13 +4683,46 @@ exports.updateLabTest = async (req, res, next) => {
     const current = await db.query(`SELECT * FROM lab_results WHERE id=$1 AND clinic_id=$2`, [id, clinicId]);
     if (!current.rows.length) return res.status(404).json({ error: 'Lab test not found.' });
     const old = current.rows[0];
-    const allowed = ['testType', 'indication', 'priority', 'sampleId', 'specimenType', 'collectionDate', 'collectionTime', 'collectionMethod', 'collector', 'notes', 'requestedBy', 'status', 'laboratory', 'summary', 'interpretation', 'measurements', 'resultDate', 'resultTime', 'lastUpdatedBy'];
+    const allowed = ['testType', 'indication', 'priority', 'sampleId', 'specimenType', 'collectionDate', 'collectionTime', 'collectionMethod', 'collector', 'notes', 'requestedBy', 'status', 'laboratory', 'summary', 'interpretation', 'measurements', 'resultDate', 'resultTime', 'lastUpdatedBy', 'testResult', 'testSpecificResults'];
     const metadata = { ...(old.metadata || {}) };
     allowed.forEach(key => { if (Object.prototype.hasOwnProperty.call(req.body, key)) metadata[key] = req.body[key]; });
+    if (Object.hasOwn(req.body, 'diagnosis_id')) {
+      if (!canManageClinicalRecords(req.user?.role)) return res.status(403).json({ error: 'Clinical staff access required to link a diagnosis.' });
+      const diagnosisId = req.body.diagnosis_id;
+      if (!Number.isInteger(diagnosisId) || diagnosisId < 1) return res.status(422).json({ error: 'Select a valid diagnosis.' });
+      const diagnosis = await db.query('SELECT id FROM patient_diagnoses WHERE id=$1 AND pet_id=$2 AND clinic_id=$3', [diagnosisId, old.pet_id, clinicId]);
+      if (!diagnosis.rows.length) return res.status(422).json({ error: 'Linked diagnosis must belong to this patient and clinic.' });
+      if (old.metadata?.diagnosis_id && Number(old.metadata.diagnosis_id) !== diagnosisId) return res.status(409).json({ error: 'This test is already linked to another diagnosis.' });
+      metadata.diagnosis_id = diagnosisId;
+    }
     const results = { ...(old.results || {}) };
     ['summary', 'interpretation', 'measurements'].forEach(key => { if (Object.prototype.hasOwnProperty.call(req.body, key)) results[key] = req.body[key]; });
     const testName = String(req.body.testType || old.test_name || '').trim();
+    if (req.body.testResult != null && !['Positive','Negative','Inconclusive','Not applicable',''].includes(req.body.testResult)) return res.status(422).json({ error: 'Select a valid test result.' });
+    if (Object.hasOwn(req.body, 'testSpecificResults')) {
+      const fieldError = require('../utils/labResultSchema').validateTestSpecificResults(req.body.testSpecificResults, testName);
+      if (fieldError) return res.status(422).json({ error: fieldError });
+    } else if (testName !== old.test_name) { delete metadata.testSpecificResults; }
     const status = String(metadata.status || 'ordered').toLowerCase();
+    if (req.body.verifyResults === true) {
+      if (status !== 'finalized' || !['Positive','Negative','Inconclusive','Not applicable'].includes(metadata.testResult) || !String(results.summary || '').trim() || results.summary === 'Awaiting laboratory result' || !req.body.resultDate || !req.body.resultTime) return res.status(422).json({ error: 'Complete the laboratory result, summary, and result date and time before verification.' });
+      const verifier = await db.query('SELECT name FROM users WHERE id=$1 AND clinic_id=$2', [req.user.id, clinicId]);
+      metadata.verified = true;
+      metadata.verifiedBy = req.user.id;
+      metadata.verifiedByName = verifier.rows[0]?.name || null;
+      metadata.verifiedAt = new Date().toISOString();
+    } else if (['summary','interpretation','measurements','testResult','resultDate','resultTime','status','testType','testSpecificResults'].some(key => {
+      if (!Object.hasOwn(req.body, key)) return false;
+      const previous = ['summary','interpretation','measurements'].includes(key) ? old.results?.[key] : key === 'testType' ? old.test_name : old.metadata?.[key];
+      return !require('node:util').isDeepStrictEqual(req.body[key], previous);
+    })) {
+      // Changes to previously reviewed findings require a fresh verification.
+      metadata.verified = false;
+      delete metadata.verifiedBy;
+      delete metadata.verifiedByName;
+      delete metadata.verifiedAt;
+    }
+
     const hasResultDate = Boolean(req.body.resultDate);
     const hasResultTime = Boolean(req.body.resultTime);
     if (hasResultDate !== hasResultTime) return res.status(422).json({ error: 'Enter both a result date and time.' });
@@ -4700,7 +4745,10 @@ exports.updateLabTest = async (req, res, next) => {
        RETURNING id, pet_id, test_name, results, collected_at, reported_at, metadata`,
       [testName, JSON.stringify(results), req.body.collectionDate && req.body.collectionTime ? `${req.body.collectionDate}T${req.body.collectionTime}:00` : null, status, JSON.stringify(metadata), id, clinicId, resultDateTime]
     );
-    const joined = await db.query(`SELECT p.name AS pet, c.name AS owner FROM pets p LEFT JOIN clients c ON c.id=p.client_id WHERE p.id=$1 AND p.clinic_id=$2`, [old.pet_id, clinicId]);
+    const joined = await db.query(`SELECT p.name AS pet, c.name AS owner, report.id AS report_attachment_id, report.filename AS report_filename, report.content_type AS report_content_type, report.uploaded_at AS report_uploaded_at, report.metadata->>'file_size' AS report_size_bytes
+      FROM pets p LEFT JOIN clients c ON c.id=p.client_id
+      LEFT JOIN LATERAL (SELECT a.* FROM attachments a WHERE a.clinic_id=$2 AND a.owner_table='lab_results' AND a.owner_id=$3 AND a.metadata->>'source'='lab_result_report' ORDER BY a.uploaded_at DESC,a.id DESC LIMIT 1) report ON true
+      WHERE p.id=$1 AND p.clinic_id=$2`, [old.pet_id, clinicId, id]);
     return res.json(mapLabTest({ ...updated.rows[0], ...joined.rows[0] }));
   } catch (error) { return next(error); }
 };

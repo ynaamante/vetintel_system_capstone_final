@@ -295,7 +295,7 @@
 .diagnosis-final-fields textarea { resize: vertical; min-height: 52px; }
 .diagnosis-final-fields small { color: #536781; font-size: 11px; font-weight: 400; }
 .diagnosis-final-fields b, .diagnosis-treatment-row b { color: #b42318; }
-.diagnosis-monitoring-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.diagnosis-monitoring-row { display: grid; grid-template-columns: 1fr; gap: 14px; }
 .diagnosis-status-options { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin: 0; padding: 8px 10px; border: 1px solid #cbd5df; border-radius: 7px; }
 .diagnosis-status-options legend { padding: 0 3px; font-size: 12px; font-weight: 700; }
 .diagnosis-status-options label { display: inline-flex; flex-wrap: nowrap; font-weight: 500; font-size: 11px; }
@@ -360,3 +360,12 @@
   .is-final-diagnosis .diagnosis-consultation-grid { gap: 12px; }
   .patient-diagnosis-dialog.is-final-diagnosis > form > footer { flex-wrap: wrap; padding: 12px 16px 16px; }
 }
+
+.diagnosis-linked-laboratory { display:grid; gap:7px; min-width:0; }
+.diagnosis-linked-laboratory > label { font-weight:600; }
+.diagnosis-linked-laboratory textarea { box-sizing:border-box; width:100%; padding:8px 10px; border:1px solid #cbd5df; border-radius:6px; background:#f7faf8; color:#223e34; font:inherit; resize:vertical; }
+.diagnosis-linked-laboratory summary { cursor:pointer; color:#006a45; font-weight:600; }
+.diagnosis-linked-laboratory ul { padding:0; margin:8px 0; list-style:none; }
+.diagnosis-linked-laboratory li { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid #e1e9e4; }
+.diagnosis-linked-laboratory li small { display:block; margin-top:4px; color:#526b62; }
+.diagnosis-linked-laboratory button { padding:7px 10px; color:#006c42; background:#fff; border:1px solid #9ac8b0; border-radius:6px; white-space:nowrap; }

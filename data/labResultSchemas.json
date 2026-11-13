@@ -1,0 +1,315 @@
+[
+  {
+    "id": "panel",
+    "title": "Blood Panel Results",
+    "patterns": [
+      "complete blood count",
+      "\\bcbc\\b",
+      "blood chemistry",
+      "biochemistry",
+      "hematology"
+    ],
+    "quantitative": true,
+    "fields": [
+      {
+        "key": "panel",
+        "label": "Panel / profile",
+        "kind": "text"
+      },
+      {
+        "key": "specimen",
+        "label": "Specimen",
+        "kind": "text"
+      },
+      {
+        "key": "instrument",
+        "label": "Analyzer / method",
+        "kind": "text"
+      }
+    ]
+  },
+  {
+    "id": "pcr",
+    "title": "PCR Results",
+    "patterns": [
+      "\\bpcr\\b"
+    ],
+    "fields": [
+      {
+        "key": "target",
+        "label": "Target / organism tested",
+        "kind": "text"
+      },
+      {
+        "key": "specimen",
+        "label": "Specimen",
+        "kind": "text"
+      },
+      {
+        "key": "method",
+        "label": "Assay / method",
+        "kind": "text"
+      },
+      {
+        "key": "ct",
+        "label": "Ct value (if reported)",
+        "kind": "text"
+      },
+      {
+        "key": "control",
+        "label": "Control result",
+        "kind": "select",
+        "options": [
+          "Not recorded",
+          "Valid",
+          "Invalid",
+          "Indeterminate"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "antigen",
+    "title": "Antigen Test Results",
+    "patterns": [
+      "antigen"
+    ],
+    "fields": [
+      {
+        "key": "target",
+        "label": "Antigen / organism tested",
+        "kind": "text"
+      },
+      {
+        "key": "specimen",
+        "label": "Specimen",
+        "kind": "text"
+      },
+      {
+        "key": "kit",
+        "label": "Test kit / assay",
+        "kind": "text"
+      },
+      {
+        "key": "control",
+        "label": "Control line",
+        "kind": "select",
+        "options": [
+          "Not recorded",
+          "Present",
+          "Absent",
+          "Invalid"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mat",
+    "title": "Agglutination Test Results",
+    "patterns": [
+      "\\bmat\\b"
+    ],
+    "fields": [
+      {
+        "key": "serovar",
+        "label": "Serovar / antigen tested",
+        "kind": "text"
+      },
+      {
+        "key": "titer",
+        "label": "Reported antibody titer",
+        "kind": "text"
+      },
+      {
+        "key": "specimen",
+        "label": "Specimen",
+        "kind": "text"
+      },
+      {
+        "key": "method",
+        "label": "Laboratory method",
+        "kind": "text"
+      }
+    ]
+  },
+  {
+    "id": "antibody",
+    "title": "Antibody Test Results",
+    "patterns": [
+      "antibody",
+      "serology"
+    ],
+    "fields": [
+      {
+        "key": "target",
+        "label": "Antibody / organism tested",
+        "kind": "text"
+      },
+      {
+        "key": "specimen",
+        "label": "Specimen",
+        "kind": "text"
+      },
+      {
+        "key": "assay",
+        "label": "Assay / method",
+        "kind": "text"
+      },
+      {
+        "key": "titer",
+        "label": "Titer / index (if reported)",
+        "kind": "text"
+      }
+    ]
+  },
+  {
+    "id": "culture",
+    "title": "Culture Results",
+    "patterns": [
+      "culture"
+    ],
+    "fields": [
+      {
+        "key": "specimen",
+        "label": "Specimen / collection site",
+        "kind": "text"
+      },
+      {
+        "key": "growth",
+        "label": "Growth findings",
+        "kind": "text"
+      },
+      {
+        "key": "organism",
+        "label": "Organism identified (if reported)",
+        "kind": "text"
+      },
+      {
+        "key": "method",
+        "label": "Culture method",
+        "kind": "text"
+      },
+      {
+        "key": "findings",
+        "label": "Additional culture findings",
+        "kind": "textarea"
+      }
+    ]
+  },
+  {
+    "id": "fecal",
+    "title": "Fecal Examination Results",
+    "patterns": [
+      "fecal",
+      "faecal"
+    ],
+    "fields": [
+      {
+        "key": "method",
+        "label": "Examination method",
+        "kind": "text"
+      },
+      {
+        "key": "organism",
+        "label": "Organism / parasite observed",
+        "kind": "text"
+      },
+      {
+        "key": "stage",
+        "label": "Eggs / cysts / life stage",
+        "kind": "text"
+      },
+      {
+        "key": "quantity",
+        "label": "Quantity / burden (as reported)",
+        "kind": "text"
+      },
+      {
+        "key": "findings",
+        "label": "Microscopic findings",
+        "kind": "textarea"
+      }
+    ]
+  },
+  {
+    "id": "smear",
+    "title": "Blood Smear Results",
+    "patterns": [
+      "smear"
+    ],
+    "fields": [
+      {
+        "key": "method",
+        "label": "Stain / examination method",
+        "kind": "text"
+      },
+      {
+        "key": "organism",
+        "label": "Organism observed",
+        "kind": "text"
+      },
+      {
+        "key": "burden",
+        "label": "Parasite burden (as reported)",
+        "kind": "text"
+      },
+      {
+        "key": "findings",
+        "label": "Morphology / microscopic findings",
+        "kind": "textarea"
+      }
+    ]
+  },
+  {
+    "id": "reference",
+    "title": "Reference Laboratory Results",
+    "patterns": [
+      "authorized laboratory",
+      "rabies diagnostic"
+    ],
+    "fields": [
+      {
+        "key": "laboratory",
+        "label": "Performing laboratory",
+        "kind": "text"
+      },
+      {
+        "key": "accession",
+        "label": "Report / accession number",
+        "kind": "text"
+      },
+      {
+        "key": "method",
+        "label": "Diagnostic method",
+        "kind": "text"
+      },
+      {
+        "key": "findings",
+        "label": "Reported findings",
+        "kind": "textarea"
+      }
+    ]
+  },
+  {
+    "id": "general",
+    "title": "Test Findings",
+    "patterns": [],
+    "fields": [
+      {
+        "key": "method",
+        "label": "Test method",
+        "kind": "text"
+      },
+      {
+        "key": "specimen",
+        "label": "Specimen",
+        "kind": "text"
+      },
+      {
+        "key": "findings",
+        "label": "Reported findings",
+        "kind": "textarea"
+      }
+    ]
+  }
+]

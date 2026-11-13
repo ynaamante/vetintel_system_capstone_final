@@ -11,6 +11,7 @@ async function main() {
     const disease = `Dashboard persistence test ${Date.now()}`;
     await db.query(`INSERT INTO patient_diagnoses(clinic_id,pet_id,diagnosis,case_classification,clinical_status,clinical_assessment)
       VALUES($1,$2,$3,'suspected','ongoing','{"severity":"High"}'),($1,$2,$3,'confirmed','ongoing','{}'),($1,$2,$4,'ruled_out','ongoing','{}')`, [patient.clinic_id, patient.id, disease, disease + ' excluded']);
+    await db.query("INSERT INTO patient_diagnoses(clinic_id,pet_id,diagnosis,case_classification,clinical_status,record_status) VALUES($1,$2,$3,'suspected','ongoing','draft'),($1,$2,'Needs assessment','suspected','ongoing','finalized')", [patient.clinic_id,patient.id,disease + ' draft']);
     async function get(query = {}, clinic = patient.clinic_id) {
       let status = 200, data;
       await controller.getDiseaseIntelligenceSummary({ user: { role: 'doctor', clinic_id: clinic }, query }, { status(value) { status = value; return this; }, json(value) { data = value; return this; } }, error => { throw error; });
@@ -19,6 +20,7 @@ async function main() {
     for (const days of [30, 60, 90]) {
       const result = await get({ days });
       assert.equal(result.status, 200);
+      assert.ok(!result.data.diseases.some(row => [disease.toLowerCase() + ' draft', 'needs assessment'].includes(row.disease.toLowerCase())));
       const item = result.data.diseases.find(item => item.disease.toLowerCase() === disease.toLowerCase());
       assert.equal(item.cases, 1, 'Same patient/day/disease is deduplicated');
       assert.equal(item.reporting_clinics, 1);

@@ -92,3 +92,25 @@ body.diagnosis-full-page-open > #root { display: none; }
 .diagnosis-record-empty { padding: 0 14px 12px; color: #64746c; }
 @media (max-width: 760px) { .diagnosis-record-columns { grid-template-columns: 1fr; } .diagnosis-record-heading { flex-wrap: wrap; } .diagnosis-record-patient { grid-template-columns: 48px 1fr; } .diagnosis-record-patient > div:nth-of-type(n+2) { padding-left: 0; border: 0; } .diagnosis-record-page, .diagnosis-record-dialog { padding: 14px; } .diagnosis-record-fields > div { grid-template-columns: 1fr 1.3fr; gap: 8px; } }
 @media print { body * { visibility: hidden; } .diagnosis-record-page, .diagnosis-record-page * { visibility: visible; } .diagnosis-record-page { position: absolute; inset: 0; border: 0; } .diagnosis-record button { display: none; } .diagnosis-record-card { break-inside: avoid; } }
+
+
+.diagnosis-lab-summary table { table-layout: fixed; }
+.diagnosis-lab-summary th:first-child { width: 39%; }
+.diagnosis-lab-summary th:nth-child(2) { width: 21%; }
+.diagnosis-lab-summary th:nth-child(3) { width: 16%; }
+.diagnosis-lab-summary th:last-child { width: 32px; }
+.diagnosis-lab-summary th, .diagnosis-lab-summary td { padding: 9px 8px; vertical-align: middle; overflow-wrap: anywhere; }
+.diagnosis-lab-status { display: inline-flex; align-items: center; gap: 5px; }
+.diagnosis-lab-status i { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: #ed7b12; }
+.diagnosis-lab-status.is-ready i { background: #00b967; }
+.diagnosis-lab-status.is-cancelled i { background: #87938d; }
+.diagnosis-lab-outcome.is-positive, .diagnosis-lab-outcome.is-negative { color: #008641; }
+.diagnosis-lab-outcome.is-inconclusive { color: #a66c00; }
+.diagnosis-record .diagnosis-lab-open { display: inline-flex; align-items: center; justify-content: center; padding: 4px; border: 0; background: transparent; color: #50685d; }
+
+.diagnosis-record .diagnosis-lab-summary { width: 100%; min-width: 0; overflow: hidden; }
+.diagnosis-record .diagnosis-lab-summary table { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.diagnosis-lab-summary th, .diagnosis-lab-summary td { box-sizing: border-box; white-space: normal; }
+.diagnosis-lab-row { cursor: pointer; }
+.diagnosis-lab-row:hover { background: #f0f8f3; }
+.diagnosis-lab-row:focus-visible { outline: 2px solid #008641; outline-offset: -2px; background: #f0f8f3; }
