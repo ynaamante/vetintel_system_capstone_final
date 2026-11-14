@@ -1,0 +1,58 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const db=require('../config/db'),policy=require('../utils/rolePermissions');
+const restock=require('../controllers/restockRequestController'),overview=require('../controllers/ownerMonitoringController');
+(async()=>{
+ const client=await db.pool.connect(),query=client.query.bind(client),oldQuery=db.query,oldConnect=db.pool.connect;
+ try{
+  await query('BEGIN');await query(fs.readFileSync(path.join(__dirname,'restock_requests_schema.sql'),'utf8'));
+  db.query=query;db.pool.connect=async()=>({release(){},query:(sql,args)=>query(sql==='BEGIN'?'SAVEPOINT overview_test':sql==='COMMIT'?'RELEASE SAVEPOINT overview_test':sql==='ROLLBACK'?'ROLLBACK TO SAVEPOINT overview_test':sql,args)});
+  const clinics=(await query("SELECT id FROM clinics WHERE lower(COALESCE(metadata->>'status','active'))='active' ORDER BY id LIMIT 2")).rows;
+  assert.equal(clinics.length,2);
+  const users=(await query('SELECT u.id,u.clinic_id,r.name AS role FROM users u JOIN roles r ON r.id=u.role_id WHERE COALESCE(u.is_active,true)')).rows;
+  const ownerBase=users.find(u=>policy.profile(u.role)==='owner'),doctorBase=users.find(u=>policy.profile(u.role)==='doctor');
+  assert.ok(ownerBase&&doctorBase);
+  // Handler-level actors use existing audit users. HTTP identity enforcement is separately covered by test_clinic_rbac.js.
+  const owner={...ownerBase,role:'owner',clinic_id:clinics[0].id,permissions:policy.resolve('owner',{})};
+  const doctor={...doctorBase,role:'doctor',clinic_id:clinics[0].id,permissions:policy.resolve('doctor',{})};
+  const other={...owner,clinic_id:clinics[1].id};
+  const item=(await query("INSERT INTO clinic_inventory_items(clinic_id,sku,name,category,quantity,unit,reorder_level) VALUES($1,$2,'Rollback fixture','Medication',1,'tablet',10) RETURNING id",[owner.clinic_id,`TEST-${Date.now()}`])).rows[0];
+  const foreign=(await query("INSERT INTO clinic_inventory_items(clinic_id,sku,name,category,quantity,unit,reorder_level) VALUES($1,$2,'Foreign rollback fixture','Medication',0,'tablet',5) RETURNING id",[other.clinic_id,`TEST-${Date.now()}`])).rows[0];
+  const invoke=async(handler,actor=owner,body={},params={},query={})=>{let status=200,data;await handler({user:actor,body,params,query},{status(code){status=code;return this;},json(value){data=value;return this;}},error=>{throw error;});return {status,data};};
+  const base=(await invoke(overview.overview)).data;
+  const expected=(await query("SELECT count(*)::int AS count FROM pets WHERE clinic_id=$1 AND NOT COALESCE((metadata->>'archived')::boolean,false)",[owner.clinic_id])).rows[0].count;
+  assert.equal(base.total_patients,expected);assert.equal(base.revenue.length,4);
+  assert.ok(base.revenue.every(month=>typeof month.label==='string'&&Number.isFinite(Number(month.revenue))));
+  const expectedRevenue=(await query("SELECT COALESCE(sum(p.amount),0)::numeric AS amount FROM payments p JOIN invoices i ON i.id=p.invoice_id AND i.clinic_id=p.clinic_id WHERE p.clinic_id=$1 AND lower(i.status::text)<>'void' AND p.paid_at<=now() AND p.paid_at>=(date_trunc('month',now() AT TIME ZONE 'Asia/Manila') AT TIME ZONE 'Asia/Manila')",[owner.clinic_id])).rows[0].amount;
+  assert.equal(Number(base.revenue_this_month),Number(expectedRevenue));
+  const activityDoctor=users.find(u=>policy.profile(u.role)==='doctor'&&u.clinic_id);
+  assert.ok(activityDoctor);
+  const activityOwner={...owner,clinic_id:activityDoctor.clinic_id};
+  const doctorEvent=(await query("INSERT INTO audit_trail(user_id,action,table_name,new_data) VALUES($1,'complete_consultation','appointments',$2::jsonb) RETURNING id",[activityDoctor.id,JSON.stringify({clinic_id:activityDoctor.clinic_id})])).rows[0];
+  const adminEvent=(await query("INSERT INTO audit_trail(user_id,action,table_name,new_data) VALUES($1,'configure_clinic_role','roles',$2::jsonb) RETURNING id",[ownerBase.id,JSON.stringify({clinic_id:activityDoctor.clinic_id})])).rows[0];
+  const outsideEvent=(await query("INSERT INTO audit_trail(user_id,action,table_name,new_data) VALUES($1,'update','appointments',$2::jsonb) RETURNING id",[activityDoctor.id,JSON.stringify({clinic_id:-1})])).rows[0];
+  const activity=(await invoke(overview.overview,activityOwner)).data.activity;
+  assert.ok(activity.some(row=>row.id===doctorEvent.id&&row.action==='Completed consultation'));
+  assert.ok(!activity.some(row=>row.id===adminEvent.id||row.id===outsideEvent.id),'Activity excludes owner administration and other clinics');
+  assert.equal((await invoke(restock.create,doctor,{inventory_item_id:foreign.id,quantity:2})).status,404);
+  assert.equal((await invoke(restock.create,doctor,{inventory_item_id:item.id,quantity:5,urgency:'invalid'})).status,422);
+  assert.equal((await invoke(restock.create,doctor,{inventory_item_id:item.id,quantity:5,notes:'x'.repeat(251)})).status,422);
+  const created=await invoke(restock.create,doctor,{inventory_item_id:item.id,quantity:5,urgency:'urgent',notes:'Please replenish.'});assert.equal(created.status,201);
+  assert.equal(created.data.urgency,'urgent');
+  assert.equal((await invoke(restock.create,doctor,{inventory_item_id:item.id,quantity:5})).status,409);
+  assert.equal((await invoke(overview.overview)).data.pending_restock_requests,base.pending_restock_requests+1);
+  const listed=(await invoke(restock.list)).data.find(row=>row.id===created.data.id);assert.equal(listed.stock_status,'Critical Stock');assert.equal(listed.quantity,5);
+  assert.equal(listed.urgency,'urgent');assert.equal(listed.notes,'Please replenish.');assert.ok(listed.category);assert.ok(listed.requested_by_role);
+  assert.equal((await invoke(restock.review,other,{status:'approved'},{id:created.data.id})).status,404);
+  assert.equal((await invoke(restock.review,doctor,{status:'approved'},{id:created.data.id})).status,403);
+  assert.equal((await invoke(restock.review,owner,{status:'rejected'},{id:created.data.id})).status,422);
+  assert.equal((await invoke(restock.review,owner,{status:'approved'},{id:created.data.id})).status,200);
+  assert.equal((await invoke(restock.review,owner,{status:'fulfilled'},{id:created.data.id})).status,200);
+  assert.equal((await invoke(overview.overview)).data.pending_restock_requests,base.pending_restock_requests);
+  assert.equal((await invoke(restock.review,owner,{status:'approved'},{id:created.data.id})).status,409);
+  assert.equal((await query('SELECT quantity FROM clinic_inventory_items WHERE id=$1',[item.id])).rows[0].quantity,1,'Reviewing a procurement request does not fabricate inventory stock');
+  assert.equal((await invoke(overview.overview,owner,{}, {},{clinic_id:String(other.clinic_id)})).data.clinic_id,owner.clinic_id,'Owner scope ignores another clinic filter');
+  assert.equal((await invoke(overview.overview,doctor)).status,403);
+  assert.ok((await query("SELECT count(*)::int AS count FROM audit_trail WHERE table_name='clinic_restock_requests' AND record_id=$1",[created.data.id])).rows[0].count>=3);
+  console.log('PASS: real owner metrics, four-month revenue, payment totals, clinic isolation, doctor restock requests, duplicate prevention, owner review, status transitions and audit. All fixtures and schema changes rolled back.');
+ }finally{db.query=oldQuery;db.pool.connect=oldConnect;await query('ROLLBACK');client.release();await db.pool.end();}
+})().catch(error=>{console.error(error.stack);process.exitCode=1;});

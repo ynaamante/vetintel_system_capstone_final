@@ -464,6 +464,7 @@ exports.me = async (req, res, next) => {
       role: req.user.role,
       clinic_id: req.user.clinic_id,
       clinic_name: req.user.clinic_name,
+      permissions: req.user.permissions,
     });
   } catch (e) {
     next(e);

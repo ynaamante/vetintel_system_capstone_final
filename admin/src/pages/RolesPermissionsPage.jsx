@@ -1,23 +1,12 @@
+import permissionCatalog from '../../../data/permissionCatalog.json';
+import { permissionAvailable } from '../utils/permissionUtils';
 import { useEffect, useState } from 'react';
 import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
 import { Icons } from '../icons';
 import { formatDateText } from '../utils/dateFormatting';
 
-const PERMISSION_GROUPS = [
-  ['User Management', ['View Users', 'Create Users', 'Edit Users', 'Deactivate Users', 'Assign Roles']],
-  ['Role Management', ['View Roles', 'Create Roles', 'Edit Roles', 'Assign Permissions']],
-  ['Appointments', ['View Appointments', 'Create Appointment', 'Approve Appointment', 'Reschedule Appointment', 'Cancel Appointment', 'Complete Appointment', 'Manage Walk-ins', 'Manage Follow-ups', 'Manage No-shows']],
-  ['Client Management', ['View Clients', 'Create Client', 'Edit Client', 'View Client History']],
-  ['Patient / Pet Records', ['View Pet Records', 'Create Pet Records', 'Edit Pet Records', 'View Medical History']],
-  ['Medical Workflow', ['Create Consultation', 'Edit Consultation', 'Create Prescription', 'Manage Vaccination Records', 'View Laboratory Results']],
-  ['Inventory', ['View Inventory', 'Add Inventory', 'Edit Inventory', 'Restock Inventory', 'Archive Inventory', 'Request Restock', 'View Stock Movement']],
-  ['Billing & Financial', ['View Billing', 'Create Invoice', 'Process Payment', 'View Financial Reports', 'View Revenue']],
-  ['Services', ['View Services', 'Create Services', 'Edit Services', 'Activate / Deactivate Services']],
-  ['Disease Intelligence', ['View Intelligence Dashboard', 'View Disease Monitoring', 'View Risk Monitoring', 'View Community Analytics', 'View Reports', 'View Data Sync Status']],
-  ['Communication', ['View Pet Owner Messages', 'Send Pet Owner Messages', 'Manage Conversations', 'Send Notifications', 'View Notification History']],
-  ['Audit', ['View Audit Trail']],
-];
+const PERMISSION_GROUPS = permissionCatalog.groups;
 
 const emptyPermissions = () => Object.fromEntries(
   PERMISSION_GROUPS.map(([group, items]) => [group, Object.fromEntries(items.map(item => [item, false]))])
@@ -36,11 +25,12 @@ function PermissionModal({ role, onClose, onSave }) {
     return next;
   });
   const [expanded, setExpanded] = useState({});
+  const availableGroups = PERMISSION_GROUPS.map(([group,items])=>[group,items.filter(item=>permissionAvailable(role.name,item))]).filter(([,items])=>items.length);
   const toggle = (group, item) => setPermissions(prev => ({
     ...prev,
     [group]: { ...prev[group], [item]: !prev[group][item] },
   }));
-  const setAll = value => setPermissions(Object.fromEntries(PERMISSION_GROUPS.map(([group, items]) => [group, Object.fromEntries(items.map(item => [item, value]))])));
+  const setAll = value => setPermissions(Object.fromEntries(PERMISSION_GROUPS.map(([group, items]) => [group, Object.fromEntries(items.map(item => [item, value && permissionAvailable(role.name,item)]))])));
 
   return (
     <>
@@ -50,14 +40,14 @@ function PermissionModal({ role, onClose, onSave }) {
           <div><div style={m.kicker}>{role.name}</div><strong>Permission Configuration - {role.name}</strong></div>
           <button type="button" aria-label="Close permission configuration" style={m.close} onClick={onClose}>{Icons.close}</button>
         </div>
-        <div style={m.info}>Default permissions are provided as a starting configuration. You can customize permissions according to your clinic workflow.</div>
-        <div style={m.toolbar}><div><strong>Assign Permissions</strong><small>{permissionCount(permissions)} of {PERMISSION_GROUPS.reduce((n, [, items]) => n + items.length, 0)} permissions enabled</small></div><span><button style={m.lightButton} onClick={() => setAll(true)}>Select All</button><button style={m.lightButton} onClick={() => setAll(false)}>Clear All</button></span></div>
+        <div style={m.info}>Only permissions available to this staff role are shown. Changes apply to your clinic only. Veterinary actions remain restricted to qualified clinical roles.</div>
+        <div style={m.toolbar}><div><strong>Assign Permissions</strong><small>{permissionCount(permissions)} of {availableGroups.reduce((n, [, items]) => n + items.length, 0)} permissions enabled</small></div><span><button style={m.lightButton} onClick={() => setAll(true)}>Select All</button><button style={m.lightButton} onClick={() => setAll(false)}>Clear All</button></span></div>
         <div style={m.scroll}>
-          {PERMISSION_GROUPS.map(([group, items]) => {
+          {availableGroups.map(([group, items]) => {
             const enabled = items.filter(item => permissions[group][item]).length;
             const open = expanded[group] !== false;
             return <div key={group} style={m.group}>
-              <button style={m.groupHeader} onClick={() => setExpanded(prev => ({ ...prev, [group]: !open }))}><span><input type="checkbox" checked={enabled === items.length} onChange={() => setAll(true)} onClick={e => e.stopPropagation()} /> {group}</span><span>{enabled}/{items.length} &nbsp;⌄</span></button>
+              <button style={m.groupHeader} onClick={() => setExpanded(prev => ({ ...prev, [group]: !open }))}><span><input type="checkbox" checked={enabled === items.length} onChange={() => setPermissions(prev=>({...prev,[group]:{...prev[group],...Object.fromEntries(items.map(item=>[item,enabled!==items.length]))}}))} onClick={e => e.stopPropagation()} /> {group}</span><span>{enabled}/{items.length} &nbsp;⌄</span></button>
               {open && <div style={m.items}>{items.map(item => <label key={item} style={{ ...m.item, color: permissions[group][item] ? '#111827' : '#8aa0c0' }}><input type="checkbox" checked={permissions[group][item]} onChange={() => toggle(group, item)} />{item}</label>)}</div>}
             </div>;
           })}
@@ -72,8 +62,8 @@ function RoleViewModal({ role, onClose, staffCount }) {
   const [expanded, setExpanded] = useState({});
   const groups = PERMISSION_GROUPS.map(([group, items]) => [
     group,
-    items.map(item => [item, !!role.permissions?.[group]?.[item]]),
-  ]);
+    items.filter(item=>permissionAvailable(role.name,item)).map(item => [item, !!role.permissions?.[group]?.[item]]),
+  ]).filter(([,items])=>items.length);
   const roleName = role.displayName || role.name;
 
   return (
@@ -180,13 +170,8 @@ export default function RolesPermissionsPage({ user }) {
       setNotification('Unable to load current roles and requests.');
     });
   }, [apiUrl, user.token]);
-  const approvedRoleNames = new Set(
-    roleRequests
-      .filter(request => String(request.status).toLowerCase() === 'approved')
-      .map(request => String(request.requested_role).trim().toLowerCase().replace(/[\s-]+/g, '_')),
-  );
   const visibleRoles = roles
-    .filter(role => approvedRoleNames.has(String(role.name).trim().toLowerCase().replace(/[\s-]+/g, '_')))
+    .filter(role => ['doctor','assistant_doctor','veterinarian','receptionist'].includes(String(role.name).trim().toLowerCase().replace(/[\s-]+/g,'_')))
     .map(role => ({
       ...role,
       displayName: String(role.name).toLowerCase() === 'doctor' ? 'Doctor' : role.name,
@@ -199,18 +184,17 @@ export default function RolesPermissionsPage({ user }) {
     counts[role] = (counts[role] || 0) + 1;
     return counts;
   }, {});
-  const save = permissions => {
-    setRoles(prev => prev.map(role => role.id === selected.id ? { ...role, permissions } : role));
-    if (selected.id && typeof selected.id === 'number') {
-      fetch(`${apiUrl}/roles/${selected.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` }, body: JSON.stringify({ permissions }) })
-        .then(response => response.ok ? response.json() : Promise.reject(new Error('Failed to save permissions')))
-        .catch(error => console.error('Failed to save role permissions', error));
-    }
-    setSelected(null);
-    setNotification(`Permissions for "${selected.displayName || selected.name}" saved successfully.`);
-    window.setTimeout(() => setNotification(''), 3000);
-  };
-  const submitRoleRequest = async form => {
+  const save = async permissions => {
+    try {
+      const response=await fetch(`${apiUrl}/roles/${selected.id}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${user.token}`},body:JSON.stringify({permissions})});
+      const saved=await response.json();
+      if(!response.ok)throw new Error(saved.error||'Unable to save role permissions.');
+      setRoles(prev=>prev.map(role=>role.id===saved.id?saved:role));
+      setSelected(null);
+      setNotification(`Permissions for ${selected.name} saved for your clinic.`);
+      window.dispatchEvent(new Event('vetintel:permissions-updated'));
+    }catch(error){setNotification(error.message);}
+  };  const submitRoleRequest = async form => {
     try {
       const response = await fetch(`${apiUrl}/my-role-requests`, {
         method: 'POST',

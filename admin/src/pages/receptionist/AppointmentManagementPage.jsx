@@ -8,7 +8,7 @@ import AppointmentWorkflowDialog, { appointmentRequest } from './AppointmentWork
 import Topbar from '../../components/Topbar';
 import LabDateTimePicker, { getUnavailableAppointmentTimes } from '../../components/LabDateTimePicker';
 import { Icons } from '../../icons';
-import { canViewFeature } from '../../utils/permissionUtils';
+import { canViewFeature, hasAction } from '../../utils/permissionUtils';
 
 const localDateValue = (value = new Date()) => dateFilterValue(value);
 
@@ -124,7 +124,7 @@ function AppointmentActionsModal({ appointment, user, onClose, onAction }) {
     user={user}
     showPetAvatar
     onClose={onClose}
-    actions={appointmentActions(appointment).map(action => ({
+    actions={appointmentActions(appointment).filter(action=>hasAction(user.permissions,user.role,({confirm:'Approve Appointment',checkin:'Manage Patient Queue',noshow:'Manage No-shows',reschedule:'Reschedule Appointment',cancel:'Cancel Appointment',queue:'View Patient Queue',follow_up:'Manage Follow-ups',rebook:'Create Appointment',history:'View Appointments',view:'View Appointments',visit:'View Appointments',request:'View Appointments'})[action])).map(action => ({
       label: actionDefinitions[action][0], description: actionDefinitions[action][1],
       destructive: ['cancel', 'noshow'].includes(action),
       onClick: () => onAction(appointment, action),
@@ -397,7 +397,7 @@ export default function AppointmentManagementPage({ user }) {
               </button>
             ))}
           </nav>
-          <button type="button" className="appointment-new-button" onClick={() => setShowNewAppointment(true)}><span>{Icons.plus}</span>New Appointment</button>
+          <button type="button" className="appointment-new-button" disabled={!hasAction(user.permissions,user.role,'Create Appointment')} onClick={() => setShowNewAppointment(true)}><span>{Icons.plus}</span>New Appointment</button>
         </div>
 
         {error && <div className="appointment-error" role="alert">{error}</div>}

@@ -390,7 +390,7 @@ export default function MySchedulePage({ user }) {
     if (!showTransferModal || !user?.token || clinicDoctors.length) return undefined;
     const controller = new AbortController();
     const apiUrl = import.meta.env.VITE_API_URL || '';
-    fetch(`${apiUrl}/users`, {
+    fetch(`${apiUrl}/clinic-records/registration-doctors`, {
       headers: { Authorization: `Bearer ${user.token}` },
       signal: controller.signal,
     }).then(async response => {

@@ -2,7 +2,16 @@ const db = require('../config/db');
 const { publish } = require('../utils/clinicEvents');
 const fs = require('fs');
 const path = require('path');
-exports.ensureSchema = () => db.query(fs.readFileSync(path.join(__dirname, '../scripts/patient_diagnoses_schema.sql'), 'utf8'));
+exports.ensureSchema = async () => {
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(fs.readFileSync(path.join(__dirname, '../scripts/patient_diagnoses_schema.sql'), 'utf8'));
+    await client.query(fs.readFileSync(path.join(__dirname, '../scripts/confirmed_surveillance_schema.sql'), 'utf8'));
+    await client.query('COMMIT');
+  } catch (error) { await client.query('ROLLBACK'); throw error; }
+  finally { client.release(); }
+};
 const roles = new Set(['doctor', 'assistant_doctor', 'veterinarian', 'owner', 'clinic_owner', 'super_admin']);
 exports.list = async (req, res, next) => {
   try {

@@ -96,10 +96,11 @@ exports.list = async (req, res, next) => {
     `);
     
     // Parse permissions JSON if stored as string
-    const roles = result.rows.map(role => ({
+    const roles = await Promise.all(result.rows.map(async role => ({
       ...role,
-      permissions: parsePermissions(role.permissions)
-    }));
+      permissions: req.user?.role === 'super_admin' ? parsePermissions(role.permissions)
+        : await require('../services/clinicPermissions').effectiveForRole(role, req.user?.clinic_id)
+    })));
     
     const dedupedRoles = dedupeRoles(roles);
     res.json(dedupedRoles);
@@ -123,7 +124,8 @@ exports.getById = async (req, res, next) => {
     if (result.rows.length === 0) return res.status(404).json({ error: 'Role not found' });
     
     const role = result.rows[0];
-    role.permissions = parsePermissions(role.permissions);
+    role.permissions = req.user?.role === 'super_admin' ? parsePermissions(role.permissions)
+      : await require('../services/clinicPermissions').effectiveForRole(role, req.user?.clinic_id);
     res.json(role);
   } catch (e) {
     next(e);
@@ -184,6 +186,20 @@ exports.create = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
+    const policy=require('../utils/rolePermissions');
+    if(policy.normalize(req.user?.role)!=='super_admin') {
+      if(policy.profile(req.user?.role)!=='owner'||!Number.isInteger(Number(req.user?.clinic_id))||Number(req.user.clinic_id)<1)
+        return res.status(403).json({error:'Clinic owner access required.'});
+      if(Object.keys(req.body).some(key=>key!=='permissions')) return res.status(403).json({error:'Owners may configure staff permissions, not rename platform roles.'});
+      if(!Number.isInteger(Number(req.params.id))||Number(req.params.id)<1)return res.status(400).json({error:'Invalid role id.'});
+      const target=(await db.query('SELECT id,name,permissions FROM roles WHERE id=$1',[Number(req.params.id)])).rows[0];
+      if(!target) return res.status(404).json({error:'Role not found.'});
+      if(!['doctor','receptionist'].includes(policy.profile(target.name))) return res.status(403).json({error:'Only doctor and receptionist staff permissions can be configured.'});
+      try {
+        const permissions=await require('../services/clinicPermissions').saveOverride(req,target,req.body.permissions);
+        return res.json({...target,permissions,clinic_id:req.user.clinic_id});
+      } catch(error) {if(error.status)return res.status(error.status).json({error:error.message});throw error;}
+    }
     const { id } = req.params;
     const numericId = parseInt(id, 10);
     if (Number.isNaN(numericId)) return res.status(400).json({ error: 'invalid role id' });

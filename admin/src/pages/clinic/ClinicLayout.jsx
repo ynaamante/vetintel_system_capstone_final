@@ -27,7 +27,7 @@ import LabDateTimePicker, { getUnavailableAppointmentTimes } from '../../compone
 import DateRangePopoverFields from '../../components/DateRangePopoverFields';
 import { ModalDialog, ModalHeader, ModalTitle, ModalDescription, ModalFooter, ModalStepper } from '../../components/ModalDialog';
 import { Icons } from '../../icons';
-import { canViewFeature } from '../../utils/permissionUtils';
+import { canViewFeature, hasAction } from '../../utils/permissionUtils';
 import { notifySuccess } from '../../utils/notifications';
 import { validateOwnerFields } from '../../utils/validation';
 import { readApiResponse } from '../../utils/apiResponse';
@@ -368,10 +368,10 @@ const TABS = [
   
 ];
 
-function TabNav({ active, setTab }) {
+function TabNav({ active, setTab, items = TABS }) {
   return (
     <nav className="clinic-records-tabnav" aria-label="Clinic records sections">
-      {TABS.map(t => (
+      {items.map(t => (
         <button
           key={t.id}
           type="button"
@@ -856,7 +856,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
       setIsSavingLabTest(false);
     }
   };
-  const openResultEditor = (result, mode) => {
+  const openResultEditor = (result, mode) => { if(!hasAction(user.permissions,user.role,'Record Laboratory Results')) { setResultEditorError('Your role cannot record laboratory results.'); return; }
     const time = String(result.date).match(/\b\d{1,2}:\d{2}\s(?:AM|PM)\b/i)?.[0] || '';
     const parsedTime = time ? new Date(`2000-01-01 ${time}`) : null;
     const resultTimestamp = new Date();
@@ -1163,7 +1163,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
             </button>
           ))}
         </div>
-        <button type="button" className="lab-results-add" onClick={() => { setSavedLabTest(null); setNewRequestOpen(true); }}>
+        <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Order Laboratory Tests')} onClick={() => { setSavedLabTest(null); setNewRequestOpen(true); }}>
           {Icons.plus} Add Lab Test
         </button>
       </div>}
@@ -1182,7 +1182,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
             </button>
           ))}
         </div>
-        <button type="button" className="detail-edit patient-primary-add" onClick={() => { setSavedLabTest(null); setNewRequestOpen(true); }}>
+        <button type="button" className="detail-edit patient-primary-add" disabled={!hasAction(user.permissions,user.role,'Order Laboratory Tests')} onClick={() => { setSavedLabTest(null); setNewRequestOpen(true); }}>
           {Icons.plus} Add Lab Test
         </button>
       </div>}
@@ -2439,7 +2439,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
             onClick={() => setFilter(value)}
           >{label}<span>{count}</span></button>)}
         </div>
-        <button type="button" className="lab-results-add" onClick={() => setAdmitOpen(true)}>{Icons.plus} Admit Patient</button>
+        <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Order Laboratory Tests')} onClick={() => setAdmitOpen(true)}>{Icons.plus} Admit Patient</button>
       </div>
       <div className="lab-filter-bar clinic-inpatient-filter-bar">
         <label className="lab-results-search">
@@ -5221,7 +5221,7 @@ function LocalAuditTab({ user }) {
   </div>;
 }
 
-function VisitCheckupTab({ onOpenVisit, visits = [], loading = false, error = '', onNewVisitCheckup }) {
+function VisitCheckupTab({ user, onOpenVisit, visits = [], loading = false, error = '', onNewVisitCheckup }) {
   const [search, setSearch] = useState('');
   const [visitTypeFilter, setVisitTypeFilter] = useState('all');
   const [visitStatusFilter, setVisitStatusFilter] = useState('all');
@@ -5305,7 +5305,7 @@ function VisitCheckupTab({ onOpenVisit, visits = [], loading = false, error = ''
       <div className="lab-status-filters" role="tablist" aria-label="Filter visits by type">
         {[['all', 'All visits'], ['check-up', 'Check-ups'], ['clinic-visit', 'Clinic visits']].map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={visitTypeFilter === value} className={visitTypeFilter === value ? 'active' : ''} onClick={() => setVisitTypeFilter(value)}>{label}</button>)}
       </div>
-      <button type="button" className="lab-results-add" onClick={onNewVisitCheckup}>{Icons.plus} Visit &amp; Check-up</button>
+      <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Create Consultation')} onClick={onNewVisitCheckup}>{Icons.plus} Visit &amp; Check-up</button>
     </div>
     <div className="lab-filter-bar clinic-visits-filter-bar">
       <label className="lab-results-search">
@@ -5830,7 +5830,7 @@ function OwnersTab({ owners, user, onOwnersChange }) {
         <button type="button" role="tab" aria-selected={!showArchived} className={!showArchived ? 'active' : ''} onClick={() => setShowArchived(false)}>Active<span>{ownerStatusCounts.active}</span></button>
         <button type="button" role="tab" aria-selected={showArchived} className={showArchived ? 'active' : ''} onClick={() => setShowArchived(true)}>Archived<span>{ownerStatusCounts.archived}</span></button>
       </div>
-      <button type="button" className="lab-results-add" onClick={() => setAddOpen(true)}>{Icons.plus} Add New Owner</button>
+      <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Order Laboratory Tests')} onClick={() => setAddOpen(true)}>{Icons.plus} Add New Owner</button>
     </div>
     <label className="lab-results-search clinic-management-search">
       {Icons.search}
@@ -6221,7 +6221,7 @@ function PetsTab({ pets, owners, user, onPetsChange, onOwnersChange }) {
           <button type="button" role="tab" aria-selected={!showArchived} className={!showArchived ? 'active' : ''} onClick={() => setShowArchived(false)}>Active<span>{petStatusCounts.active}</span></button>
           <button type="button" role="tab" aria-selected={showArchived} className={showArchived ? 'active' : ''} onClick={() => setShowArchived(true)}>Archived<span>{petStatusCounts.archived}</span></button>
         </div>
-        <button type="button" className="lab-results-add" onClick={() => setAddOpen(true)}>{Icons.plus} Add New Pet</button>
+        <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Order Laboratory Tests')} onClick={() => setAddOpen(true)}>{Icons.plus} Add New Pet</button>
       </div>
       <div className="lab-filter-bar clinic-pet-filter-bar">
         <label className="lab-results-search clinic-management-search">
@@ -6470,7 +6470,7 @@ function AppointmentsTab({ onOpenVisit, onOpenPatient, onOpenVaccinations, onSta
           <h2 className="lab-results-title">Appointments</h2>
           <p className="lab-results-description">Manage and view all scheduled appointments.</p>
         </div>
-        <button type="button" className="lab-results-add" onClick={() => { setInitialAppointmentType(''); setShowNewAppointment(true); }}>{Icons.plus} New Appointment</button>
+        <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Order Laboratory Tests')} onClick={() => { setInitialAppointmentType(''); setShowNewAppointment(true); }}>{Icons.plus} New Appointment</button>
       </div>
       <div className="clinic-appointment-type-tabs" role="tablist" aria-label="Filter appointments by type">
         {appointmentTypeTabs.map(([value, label]) => <button
@@ -7885,7 +7885,7 @@ function VaccinationsTab({ onVisitEnded, onAppointmentRequestHandled, openAppoin
             </button>
           ))}
         </div>
-        <button type="button" className="lab-results-add" onClick={openAddVaccination}>{Icons.plus} Add Vaccination</button>
+        <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Order Laboratory Tests')} onClick={openAddVaccination}>{Icons.plus} Add Vaccination</button>
       </div>
       <div className="lab-filter-bar clinic-vaccinations-filters">
         <label className="lab-results-search">
@@ -8565,9 +8565,14 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
 
 
   const canView = canViewFeature(user.permissions, user.role, 'Pet Profiles');
+  const tabFeatures={dashboard:'Medical Records',owners:'Client Management',pets:'Pet Profiles',appointments:'Appointment Management',visits:'Medical Records',vaccinations:'Medical Records',plans:'Treatment Plans','lab-results':'Laboratory',inpatient:'Inpatient Care',consultation:'Billing & Payments',inventory:'Inventory Management'};
+  const availableTabs=TABS.filter(item=>canViewFeature(user.permissions,user.role,tabFeatures[item.id]));
+  const canViewTab=availableTabs.some(item=>item.id===tab);
+  const firstAvailableTab=availableTabs[0]?.id;
+  useEffect(()=>{if(!canViewTab&&firstAvailableTab)setTab(firstAvailableTab);},[canViewTab,firstAvailableTab]);
 
   useEffect(() => {
-    if (!user?.token || !canView) {
+    if (!user?.token || !canView || !canViewTab) {
       setLoading(false);
       return undefined;
     }
@@ -8647,7 +8652,7 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
 
     loadRecords();
     return () => controller.abort();
-  }, [user?.token, user?.clinic_id, canView, tab, workflowRevision]);
+  }, [user?.token, user?.clinic_id, user?.id, canView, canViewTab, tab, workflowRevision]);
 
   const refreshWorkflow = () => setWorkflowRevision(value => value + 1);
   useEffect(() => {
@@ -8676,7 +8681,7 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
       if (!response.ok) throw new Error(payload.error || 'Unable to save the lab test request.');
       return payload;
     }} />,
-    visits: <VisitCheckupTab onOpenVisit={setOpenVisitId} visits={visits} loading={visitsLoading} error={visitsError} onNewVisitCheckup={() => { setVisitCheckupRequest({ id: Date.now() }); setTab('appointments'); }} />,
+    visits: <VisitCheckupTab user={user} onOpenVisit={setOpenVisitId} visits={visits} loading={visitsLoading} error={visitsError} onNewVisitCheckup={() => { setVisitCheckupRequest({ id: Date.now() }); setTab('appointments'); }} />,
     vaccinations: <VaccinationsTab onAppointmentRequestHandled={() => setOpenVaccinationRequest(null)} onVisitEnded={id => { setTab('visits'); setOpenVisitId(id); refreshWorkflow(); }} openAppointmentRequest={openVaccinationRequest} onWorkflowChanged={refreshWorkflow} vaccinations={vaccinations} appointments={appointments} pets={pets} user={user} onNavigate={onNavigate} onOpenAppointments={() => setTab('appointments')} onVaccinationsChange={setVaccinations}
       onAppointmentUpdate={(id, saved) => setAppointments(current => current.map(item => String(item.id) === String(id) ? { ...item, reason: saved.reason, notes: saved.notes } : item))}
       onAppointmentArchive={id => setAppointments(current => current.map(item => String(item.id) === String(id) ? { ...item, archived: true } : item))} />,
@@ -8707,7 +8712,7 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
     <div className="clinic-records-shell" style={{ flex: 1, minWidth: 0, width: '100%', overflowY: 'auto', overflowX: 'hidden', background: '#f1f6ef', fontSize: '14px', color: '#111827' }}>
       <Topbar user={user} title="Local Clinic Records" subtitle="Patient records, vaccinations, treatments, consultations, and lab results" actions={dashboardDateAction} className={tab === 'dashboard' ? 'clinic-dashboard-topbar' : ''} />
       {openVisitId && <VisitWorkflowDialog user={user} appointmentId={openVisitId} onClose={() => setOpenVisitId(null)} onChanged={refreshWorkflow} onPatient={openPatient} onVaccinations={openVaccinations} onBilling={invoiceId => { setOpenVisitId(null); onNavigate?.('clinic', { tab: 'consultation', invoiceId }); setTab('consultation'); }} />}
-      <TabNav active={tab} setTab={nextTab => { setOpenVaccinationRequest(null); setOpenVisitId(null); setTab(nextTab); }} />
+      <TabNav items={availableTabs} active={tab} setTab={nextTab => { setOpenVaccinationRequest(null); setOpenVisitId(null); setTab(nextTab); }} />
       <div className="clinic-records-content" style={{ padding: '20px 28px', minWidth: 0, boxSizing: 'border-box' }}>
         {showBanner && <PrivacyBanner onClose={() => setShowBanner(false)} />}
         {exportReportsOpen && <ExportReportsModal user={user} reports={{ owners: clients, pets, appointments, vaccinations, treatments }} onClose={() => setExportReportsOpen(false)} />}
@@ -8723,7 +8728,7 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
         )}
         {tab === 'dashboard' && dashboardSummary && tabContent.dashboard}
         {loading && tab === 'dashboard' && dashboardSummary && <div role="status" style={{ padding: '8px 0', color: '#64748b', fontSize: '.75rem' }}>Refreshing dashboard…</div>}
-        {!loading && !error && !(tab === 'dashboard' && dashboardSummary) && (tabContent[tab] || <ClinicSectionPlaceholder label={TABS.find(item => item.id === tab)?.label || 'Clinic Records'} />)}
+        {!loading && !error && canViewTab && !(tab === 'dashboard' && dashboardSummary) && (tabContent[tab] || <ClinicSectionPlaceholder label={TABS.find(item => item.id === tab)?.label || 'Clinic Records'} />)}
       </div>
     </div>
   );

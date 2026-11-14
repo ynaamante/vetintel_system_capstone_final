@@ -10,7 +10,7 @@ import RecordPaymentDialog from './RecordPaymentDialog';
 import { localPaymentTime } from '../../utils/billingView';
 import { notifySuccess } from '../../utils/notifications';
 import Topbar from '../../components/Topbar';
-import { canViewFeature } from '../../utils/permissionUtils';
+import { canViewFeature, hasAction } from '../../utils/permissionUtils';
 import { formatDateText } from '../../utils/dateFormatting';
 
 function formatCurrency(value) {
@@ -342,7 +342,7 @@ export default function BillingPage({ user }) {
         payments={payments}
         user={user} onClose={() => setViewInvoice(null)}
         onUpdate={updated => { setViewInvoice(updated); setInvoices(current => current.map(invoice => String(invoice.id) === String(updated.id) ? { ...invoice, ...updated } : invoice)); }}
-        onPayment={() => { openPaymentDialog(invoices.find(invoice => String(invoice.id) === String(viewInvoice.id)) || viewInvoice); }}
+        onPayment={hasAction(user.permissions,user.role,'Process Payment') ? () => { openPaymentDialog(invoices.find(invoice => String(invoice.id) === String(viewInvoice.id)) || viewInvoice); } : undefined}
         onDownload={() => printInvoice(invoices.find(invoice => String(invoice.id) === String(viewInvoice.id)) || viewInvoice)}
       />}
       {processingInvoice && <RecordPaymentDialog invoice={invoices.find(invoice => String(invoice.id) === String(processingInvoice.id)) || processingInvoice} form={paymentForm} setForm={setPaymentForm} saving={savingPayment} error={paymentError} user={user} onClose={() => { if (!savingPayment) setProcessingInvoice(null); }} onSubmit={submitPayment} />}
