@@ -10,6 +10,7 @@ function requirements(req) {
  if(p.startsWith('/disease-intelligence/')) {
    if(p==='/disease-intelligence/alert-rules')return one('Configure Alert Rules');
    if(/^\/disease-intelligence\/alerts\/\d+\/review$/.test(p))return [['View Disease Monitoring','View Risk Monitoring'],['Review Disease Alerts']];
+   if(/^\/disease-intelligence\/alerts\/\d+\/history$/.test(p))return [['View Disease Monitoring','View Risk Monitoring']];
    if(p.endsWith('/monitoring-export'))return [['View Disease Monitoring','View Risk Monitoring'],['Export Reports']];
    if(p.endsWith('/report-data'))return [['View Reports'],['Generate Reports']];
    if(p.endsWith('/export-data'))return [['View Intelligence Dashboard','View Disease Monitoring','View Risk Monitoring','View Community Analytics','View Reports'],['Export Reports']];

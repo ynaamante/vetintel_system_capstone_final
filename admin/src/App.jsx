@@ -125,6 +125,9 @@ export default function App() {
   const [user, setUser] = useState(null);
   useEffect(() => { if (user?.token && user?.clinic_id) return watchClinicEvents(user); return undefined; }, [user?.token, user?.clinic_id]);
   const [page, setPage] = useState('dashboard');
+  const [monitoringFilters, setMonitoringFilters] = useState({});
+  const [generatedReports, setGeneratedReports] = useState([]);
+  const navigateSurveillance = (nextPage, filters) => { if (filters) setMonitoringFilters(filters); setPage(nextPage); };
   const [clinicInitialTab, setClinicInitialTab] = useState('dashboard');
   const [clinicInitialInvoiceId, setClinicInitialInvoiceId] = useState(null);
   const [inboxPatientRequest, setInboxPatientRequest] = useState(null);
@@ -248,6 +251,8 @@ export default function App() {
   }, []);
 
   function handleLogin(userData) {
+    setMonitoringFilters({});
+    setGeneratedReports([]);
     const { token, ...rest } = userData;
     const userWithToken = { ...rest, token };
 
@@ -280,6 +285,8 @@ export default function App() {
   }
 
   function handleLogout() {
+    setMonitoringFilters({});
+    setGeneratedReports([]);
     try {
       localStorage.clear();
       sessionStorage.clear();
@@ -346,8 +353,8 @@ export default function App() {
       />
 
       <main className={`admin-content ${page === 'inbox' ? 'inbox-content' : ''} ${page === 'clinics' ? 'owner-overview-content' : ''}`}>
-        {page === 'dashboard' && <DashboardPage user={user} onNavigate={setPage} />}
-        {page === 'disease' && <DiseaseMonitoringPage user={user} />}
+        {page === 'dashboard' && <DashboardPage user={user} initialFilters={monitoringFilters} onFiltersChange={setMonitoringFilters} onNavigate={navigateSurveillance} />}
+        {page === 'disease' && <DiseaseMonitoringPage user={user} initialFilters={monitoringFilters} onFiltersChange={setMonitoringFilters} onNavigate={navigateSurveillance} />}
         {page === 'clinic' && <ClinicLayout user={user} initialTab={clinicInitialTab} initialInvoiceId={clinicInitialInvoiceId} onNavigate={(nextPage, context) => { if (nextPage === 'patient-records') setInboxPatientRequest(context); if (nextPage === 'clinic') { setClinicInitialTab(context?.tab || 'dashboard'); setClinicInitialInvoiceId(context?.invoiceId || null); } setPage(nextPage); }} />}
         {page === 'schedule' && <MySchedulePage user={user} />}
         {page === 'patient-intakes' && <PatientIntakesPage user={user} />}
@@ -371,9 +378,9 @@ export default function App() {
           initialPatient={inboxPatientRequest}
         />}
 
-        {page === 'risk' && <RiskMonitoringPage user={user} />}
+        {page === 'risk' && <RiskMonitoringPage user={user} initialFilters={monitoringFilters} onFiltersChange={setMonitoringFilters} onNavigate={navigateSurveillance} />}
         {page === 'settings' && <SettingsPage user={user} />}
-        {page === 'reports' && <ReportsPage user={user} />}
+        {page === 'reports' && <ReportsPage user={user} initialFilters={monitoringFilters} generatedReports={generatedReports} onReportsChange={setGeneratedReports} />}
 
         {page === 'clinics' && <ClinicOverviewPage user={user} onNavigate={setPage} />}
         {page === 'users' && <UserRoleManagementPage user={user} />}

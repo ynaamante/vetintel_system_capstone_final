@@ -108,6 +108,7 @@ router.get('/disease-intelligence/monitoring',auth.required,require('../controll
 router.get('/disease-intelligence/monitoring-export',auth.required,require('../controllers/diseaseIntelligenceController').monitoring);
 router.put('/disease-intelligence/alert-rules',auth.required,require('../controllers/diseaseIntelligenceController').saveRule);
 router.patch('/disease-intelligence/alerts/:id/review',auth.required,require('../controllers/diseaseIntelligenceController').reviewAlert);
+router.get('/disease-intelligence/alerts/:id/history',auth.required,require('../controllers/diseaseIntelligenceController').alertHistory);
 router.get('/clinic-records/dashboard/summary', auth.required, clinicRecords.getClinicDashboardSummary);
 router.post('/clinic-records/appointments', auth.required, clinicRecords.createAppointment);
 router.patch('/clinic-records/appointments/:id/vaccination-details', auth.required, clinicRecords.updateScheduledVaccinationAppointment);

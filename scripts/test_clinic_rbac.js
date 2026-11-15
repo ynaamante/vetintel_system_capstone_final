@@ -85,6 +85,9 @@ async function main(){
   assert.equal((await call(doctor,'/disease-intelligence/clinic-alerts','POST',{})).status,403,'Viewing or generating does not grant clinic alerts');
   assert.equal((await call(doctor,'/disease-intelligence/follow-up-flags','POST',{})).status,403,'Viewing or generating does not grant follow-up flags');
   assert.equal((await call(reception,'/disease-intelligence/summary')).status,403,'Disease Intelligence is restricted to owners and doctors');
+  assert.equal((await call(null,'/disease-intelligence/alerts/2147483647/history')).status,401,'Review history requires authentication');
+  assert.equal((await call(reception,'/disease-intelligence/alerts/2147483647/history')).status,403,'Reception cannot access review history');
+  assert.equal((await call(owner,'/disease-intelligence/alerts/2147483647/history')).status,404,'Authorized history requests still require a visible clinic signal');
   const invalidIntelligence=structuredClone(receptionConfig);
   invalidIntelligence['Disease Intelligence']['View Reports']=true;
   assert.equal((await call(owner,`/roles/${roleFor('receptionist').id}`,'PUT',{permissions:invalidIntelligence})).status,422,'Owner cannot give receptionist a restricted capability');

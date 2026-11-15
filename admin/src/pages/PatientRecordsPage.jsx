@@ -2,6 +2,7 @@ import '../components/patientOverview.css';
 import PatientIntakeSummary from '../components/PatientIntakeSummary';
 import PatientDiagnosisPanel from '../components/PatientDiagnosisPanel';
 import { dateFilterValue } from '../utils/dateFilters';
+import { hasAction } from '../utils/permissionUtils';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import Topbar from '../components/Topbar';
@@ -1098,7 +1099,10 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
     const query = `?clinic_id=${encodeURIComponent(user.clinic_id)}`;
     const headers = { Authorization: `Bearer ${user.token}` };
     const petsRequest = fetch(`${apiUrl}/clinic-records/pets${query}`, { headers, signal: controller.signal });
-    const clientsRequest = fetch(`${apiUrl}/clinic-records/clients${query}`, { headers, signal: controller.signal });
+    // Patient access does not imply access to the separate client directory.
+    const clientsRequest = hasAction(user.permissions, user.role, 'View Clients')
+      ? fetch(`${apiUrl}/clinic-records/clients${query}`, { headers, signal: controller.signal })
+      : Promise.resolve({ ok: true, json: async () => [] });
     const appointmentsRequest = fetch(`${apiUrl}/clinic-records/appointments${query}`, { headers, signal: controller.signal })
       .then(response => ({ response }), error => ({ error }));
 
@@ -1171,8 +1175,8 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
           client_id: pet.client_id,
           colorName: pet.color || 'Not recorded',
           allergies: pet.allergies || 'Not recorded',
-          phone: owner.phone || '',
-          email: owner.email || '',
+          phone: pet.owner_phone || owner.phone || '',
+          email: pet.owner_email || owner.email || '',
           address: owner.address || '',
           microchip: pet.microchip || 'Not recorded',
           vaccination: 'Not recorded',
@@ -1228,7 +1232,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
 
     loadRecords();
     return () => controller.abort();
-  }, [user?.clinic_id, user?.token]);
+  }, [user?.clinic_id, user?.token, user?.permissions, user?.role]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();

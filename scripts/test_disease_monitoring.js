@@ -8,6 +8,9 @@ const assert=require('node:assert/strict'),db=require('../config/db'),service=re
  await query("UPDATE clinics SET metadata=COALESCE(metadata,'{}'::jsonb)||jsonb_build_object('surveillance_area',$1::text) WHERE id=ANY($2::int[])",['Rollback Region',clinics.map(c=>c.id)]);
  await query('DELETE FROM disease_monitoring_alerts WHERE clinic_id=ANY($1::int[])',[clinics.map(c=>c.id)]);await query('DELETE FROM disease_alert_rules WHERE clinic_id=ANY($1::int[])',[clinics.map(c=>c.id)]);
  const base=await service.read(owner,{disease:'canine_parvovirus',search:'Rollback Region'});assert.equal(base.active_alerts,0);assert.equal(base.rules.length,0);assert.ok(base.trend.every(t=>t.period_end<=base.period.end));
+ const barangays=require('../config/santaMariaBarangays');assert.equal(barangays.length,24);assert.equal(new Set(barangays).size,24);
+ assert.ok(barangays.every(area=>base.area_options.includes(area)),'All 24 barangays remain selectable even without matching cases');
+ assert.ok(barangays.includes('San Jose Patag')&&barangays.includes('Tabing Bakod'));
  const pet=(await query("INSERT INTO pets(name,species,clinic_id) VALUES('Private monitoring fixture','Canine',$1) RETURNING id",[owner.clinic_id])).rows[0];
  const diagnosis=async(clinic,pet,classification='confirmed',status='finalized',historical=false)=>(await query(`INSERT INTO patient_diagnoses(clinic_id,pet_id,diagnosis,case_classification,clinical_status,record_status,recorded_by,recorded_at) VALUES($1,$2,'Canine Parvoviral Enteritis',$3,'ongoing',$4,$5,CASE WHEN $6 THEN date_trunc('week',now() AT TIME ZONE 'Asia/Manila') AT TIME ZONE 'Asia/Manila' - interval '14 days' ELSE now() END) RETURNING id`,[clinic,pet,classification,status,owner.id,historical])).rows[0];
  const record=await diagnosis(owner.clinic_id,pet.id);
@@ -24,9 +27,20 @@ const assert=require('node:assert/strict'),db=require('../config/db'),service=re
  read=await service.read(owner,{disease:'canine_parvovirus'});const alert=read.alerts.find(a=>a.area==='Rollback Region');assert.ok(alert);assert.ok(alert.observed_cases>=alert.threshold);const initialCount=read.alerts.length;
  assert.equal((await service.read(owner,{disease:'canine_parvovirus'})).alerts.length,initialCount,'Repeated reads deduplicate signals');
  assert.equal((await invoke(controller.reviewAlert,other,{status:'resolved'},{id:alert.id})).status,404);
+ assert.equal((await invoke(controller.reviewAlert,owner,{status:'resolved'},{id:alert.id})).status,409,'Review must start before resolution');
+ assert.equal((await invoke(controller.reviewAlert,owner,{status:'new'},{id:alert.id})).status,422,'Review cannot be reset to new');
  assert.equal((await invoke(controller.reviewAlert,owner,{status:'under_review',review_notes:'Investigating'},{id:alert.id})).status,200);
  assert.equal((await service.read(owner,{disease:'canine_parvovirus'})).alerts.find(a=>a.id===alert.id).status,'under_review');
+ assert.equal((await invoke(controller.reviewAlert,owner,{status:'under_review',expected_status:'new',review_notes:'Stale overwrite'},{id:alert.id})).status,409,'Stale status must not overwrite a newer review');
+ const notesSaved=await invoke(controller.reviewAlert,owner,{status:'under_review',expected_status:'under_review',review_notes:'Weekly evidence checked'},{id:alert.id});
+ assert.equal(notesSaved.status,200);assert.equal(notesSaved.data.reviewed_by,owner.id);assert.ok(notesSaved.data.reviewed_by_name);
+ assert.equal((await invoke(controller.alertHistory,other,undefined,{id:alert.id})).status,404,'History is clinic-isolated');
+ assert.equal((await invoke(controller.alertHistory,{...owner,role:'receptionist',permissions:policy.resolve('receptionist',{})},undefined,{id:alert.id})).status,403,'History requires surveillance access');
  assert.equal((await invoke(controller.reviewAlert,owner,{status:'resolved'},{id:alert.id})).status,200);
+ assert.equal((await invoke(controller.reviewAlert,owner,{status:'under_review',review_notes:'Reopening'},{id:alert.id})).status,409,'Resolved signals are read-only');
+ const history=await invoke(controller.alertHistory,owner,undefined,{id:alert.id});
+ assert.equal(history.status,200);assert.equal(history.data.history.length,3);assert.equal(history.data.history[0].status,'resolved');assert.ok(history.data.history.some(entry=>entry.review_notes==='Weekly evidence checked'));
+ assert.ok(history.data.history.every(entry=>entry.reviewer&&!('snapshot' in entry)),'History returns review actions without patient or case snapshots');
  const resolved=await service.read(owner,{disease:'canine_parvovirus'});assert.equal(resolved.alerts.find(a=>a.id===alert.id).status,'resolved');assert.equal(resolved.active_alerts,resolved.alerts.filter(a=>a.status!=='resolved').length);
  assert.equal(resolved.threshold,null,'No combined-area threshold line');
  assert.equal((await service.read(owner,{disease:'canine_parvovirus',area:'Rollback Region'})).threshold,1);
@@ -37,6 +51,35 @@ const assert=require('node:assert/strict'),db=require('../config/db'),service=re
  const full=await service.read(owner,{disease:'canine_parvovirus'});assert.equal(full.total_cases,resolved.total_cases+3,'Complete foreign weekly group is released at three patients');
  await query("UPDATE patient_diagnoses SET case_classification='ruled_out' WHERE id=$1",[foreign[0].id]);const hidden=await service.read(owner,{disease:'canine_parvovirus'});assert.equal(hidden.total_cases,resolved.total_cases);assert.equal(hidden.privacy.has_withheld,true);assert.ok(!hidden.species_counts.some(r=>r.species==='MonitoringPrivacyFixture'));
  const noMatch=await service.read(owner,{disease:'canine_parvovirus',search:'nothing matches this query'});assert.equal(noMatch.total_cases,0);assert.equal(noMatch.alerts.length,0);
+ assert.deepEqual(noMatch.case_summaries,[]);
+ for(const days of [30,60,90]){
+  for(const filters of [{},{clinic_id:String(owner.clinic_id)},{area:'Rollback Region'},{disease:'canine_parvovirus',clinic_id:String(other.clinic_id),area:'Rollback Region'}]){
+   const selected=await service.read(owner,{days,...filters});
+   assert.equal(selected.case_summaries.reduce((n,r)=>n+(r.cases??0),0),selected.total_cases,'Case summaries must reconcile with cards and charts');
+   assert.equal(selected.trend.reduce((n,r)=>n+(r.cases??0),0),selected.total_cases);
+   assert.equal(selected.diseases.reduce((n,r)=>n+r.cases,0),selected.total_cases);
+   assert.equal(selected.active_clinics,selected.clinic_options.length);
+   assert.equal(selected.clinic_participation.reduce((n,r)=>n+(r.cases??0),0),selected.total_cases,'Clinic report totals reconcile with the monitoring snapshot');
+   if(filters.clinic_id)assert.ok(selected.clinic_participation.every(r=>String(r.clinic_id)===filters.clinic_id));
+   if(filters.area)assert.ok(selected.clinic_participation.every(r=>r.area===filters.area));
+   assert.equal(selected.trend[0].case_date,selected.period.start);
+   assert.equal(selected.trend.at(-1).period_end,selected.period.end);
+   if(filters.clinic_id)assert.ok(selected.case_summaries.every(r=>String(r.clinic_id)===filters.clinic_id));
+   if(filters.area)assert.ok(selected.case_summaries.every(r=>r.area===filters.area));
+   if(filters.disease)assert.ok(selected.case_summaries.every(r=>r.disease_key===filters.disease));
+   assert.match(selected.date_basis,/episode date/);
+   assert.match(selected.area_basis,/not the patient/);
+  }
+ }
+ const protectedSummary=hidden.case_summaries.find(r=>r.clinic_id===other.clinic_id&&r.disease_key==='canine_parvovirus');
+ assert.ok(protectedSummary?.has_withheld,'Foreign protected counts must remain marked in the drill-down');
+ // Summary, report-data and export-data routes share this same handler.
+ let dashboard;
+ await controller.summary({user:owner,query:{days:'30',disease:'canine_parvovirus',area:'Rollback Region'}},{setHeader(){},json(value){dashboard=value;}},error=>{throw error;});
+ const monitoring=await service.read(owner,{days:30,disease:'canine_parvovirus',area:'Rollback Region'});
+ assert.equal(dashboard.total_cases,monitoring.total_cases);
+ assert.deepEqual(dashboard.case_summaries,monitoring.case_summaries);
+ assert.equal(dashboard.active_alerts,monitoring.active_alerts);
  assert.ok(!JSON.stringify(hidden).includes('Private monitoring fixture'));assert.ok(!JSON.stringify(hidden).includes('Private foreign fixture'));
- console.log('PASS: confirmed/finalized eligibility, deduplication, exact period bounds, weekly counts, shared filters, foreign suppression, persisted review statuses, active counts and clinic isolation. All fixtures rolled back.');
+ console.log('PASS: confirmed/finalized eligibility, deduplication, exact period bounds, weekly counts, shared filters, foreign suppression, enforced review transitions, stale-status protection, reviewer assignment, clinic-isolated review history, active counts, reconciling case summaries and matching Dashboard/report/monitoring data. All fixtures rolled back.');
 }finally{db.query=oldQuery;db.pool.connect=oldConnect;await query('ROLLBACK');client.release();await db.pool.end();}})().catch(error=>{console.error(error.stack);process.exitCode=1;});
