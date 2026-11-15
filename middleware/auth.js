@@ -34,6 +34,7 @@ function verifyToken(token) {
   }
 
   const expected = crypto.createHmac('sha256', authSecret).update(payloadJson).digest('hex');
+  if (!/^[a-f0-9]{64}$/i.test(signature)) return null;
   const valid = crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signature, 'hex'));
   if (!valid) return null;
 
@@ -73,7 +74,8 @@ module.exports = {
     next();
   },
 
-  required: (req, res, next) => {
+  required: async (req, res, next) => {
+    if(req.currentPrincipalLoaded) return next();
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -81,26 +83,18 @@ module.exports = {
     const token = authHeader.slice(7);
 
     if (process.env.API_TOKEN && token === process.env.API_TOKEN) {
-      req.user = { id: null, role: 'super_admin' };
-      console.log('auth.required: api token matched, granting super_admin');
+      req.user={id:null,role:'super_admin'};
+      req.currentPrincipalLoaded=true;
       return next();
     }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-
-    req.user = {
-      id: payload.id,
-      name: payload.name,
-      email: payload.email,
-      role: payload.role,
-      clinic_id: payload.clinic_id,
-      clinic_name: payload.clinic_name,
-    };
-    console.log('auth.required: user token valid', { userId: req.user.id, role: req.user.role });
-    next();
+    const payload=verifyToken(token);
+    if(!payload)return res.status(403).json({error:'Forbidden'});
+    try {
+      const current=await require('../services/clinicPermissions').loadPrincipal(payload.id);
+      if(!current) return res.status(401).json({error:'Your account is inactive or no longer exists.'});
+      req.user=current; req.currentPrincipalLoaded=true;
+      return next();
+    } catch(error) { return next(error); }
   },
 
   superAdmin: (req, res, next) => {

@@ -80,7 +80,7 @@ export default function RemindersPage({ user, onNavigate }) {
       const rows = await response.json(); if (!response.ok) throw new Error(rows.error || 'Unable to load reminder filter options.');
       if (!Array.isArray(rows)) throw new Error('Invalid reminder filter options response.'); return rows;
     };
-    Promise.allSettled([get('/users'), get('/clinic-records/billing-catalog'), get('/clinic-records/appointments')]).then(results => {
+    Promise.allSettled([get('/clinic-records/registration-doctors'), get('/clinic-records/billing-catalog'), get('/clinic-records/appointments')]).then(results => {
       if (controller.signal.aborted) return;
       const arrays = results.map(result => result.status === 'fulfilled' ? result.value : []);
       setFilterOptions(reminderFilterOptions(...arrays));

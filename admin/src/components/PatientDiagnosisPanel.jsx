@@ -1,3 +1,4 @@
+import { hasAction } from '../utils/permissionUtils';
 import SystemFilterSelect from './FilterSelect';
 import DiagnosisRecordView from './DiagnosisRecordView';
 import LabDateTimePicker from './LabDateTimePicker';
@@ -67,6 +68,16 @@ function DiagnosisDialog({ row, startEditing = false, patientId, patientName, us
   const [symptomInput, setSymptomInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [monitoredDiseases, setMonitoredDiseases] = useState([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    const api = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+    fetch(`${api}/disease-intelligence/catalog`, { headers: { Authorization: `Bearer ${user.token}` }, signal: controller.signal })
+      .then(response => response.ok ? response.json() : [])
+      .then(items => setMonitoredDiseases(items.map(item => item.name)))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [user.token]);
   const assessment = row?.clinical_assessment || {};
   const [form, setForm] = useState({
     diagnosis: row?.record_status === 'draft' && row.diagnosis === 'Assessment pending' ? '' : row?.diagnosis || '',
@@ -184,7 +195,7 @@ function DiagnosisDialog({ row, startEditing = false, patientId, patientName, us
                   </div>
                 </section></div>
               <section className="diagnosis-form-section diagnosis-notes-section"><h3>Clinical Notes</h3><textarea aria-label="Clinical Notes" rows="3" maxLength={1000} placeholder="Add additional clinical notes (optional)" value={form.notes} onChange={event => change('notes', event.target.value)} disabled={busy} /></section>
-            </div> : <div className="diagnosis-final-step"><datalist id="diagnosis-suggestions">{diagnosisOptions.map(value => <option key={value} value={value} />)}</datalist>
+            </div> : <div className="diagnosis-final-step"><datalist id="diagnosis-suggestions">{[...new Set([...monitoredDiseases, ...diagnosisOptions])].map(value => <option key={value} value={value} />)}</datalist>
 <section className="diagnosis-form-section diagnosis-consultation-section">
               <h3>Consultation Details</h3>
               <div className="diagnosis-consultation-grid">
@@ -196,9 +207,9 @@ function DiagnosisDialog({ row, startEditing = false, patientId, patientName, us
             </section>
 <div className="diagnosis-final-columns">
 <section className="diagnosis-form-section"><h3>Diagnosis Information</h3><div className="diagnosis-final-fields">
-<label>Primary Diagnosis <b>*</b><input required maxLength={300} list="diagnosis-suggestions" placeholder="Enter the main disease or medical condition" aria-describedby="primary-diagnosis-help" value={form.diagnosis} onChange={event => change('diagnosis', event.target.value)} disabled={busy} /><small id="primary-diagnosis-help">Identifies the patient's main disease or medical condition.</small></label>
+<label>Primary Diagnosis <b>*</b><input required maxLength={300} list="diagnosis-suggestions" placeholder="Enter the main disease or medical condition" aria-describedby="primary-diagnosis-help" value={form.diagnosis} onChange={event => change('diagnosis', event.target.value)} disabled={busy} /><small id="primary-diagnosis-help">Identifies the patient&apos;s main disease or medical condition.</small></label>
 <label>Secondary Diagnosis <small>(Optional)</small><input maxLength={300} list="diagnosis-suggestions" placeholder="Enter any additional medical conditions" aria-describedby="secondary-diagnosis-help" value={form.clinical_assessment.secondary_diagnosis} onChange={event => changeAssessment('secondary_diagnosis', event.target.value)} disabled={busy} /><small id="secondary-diagnosis-help">Records additional medical conditions, if present.</small></label>
-<fieldset aria-describedby="diagnosis-status-help" className="diagnosis-status-options"><legend>Diagnosis Status <b>*</b></legend>{Object.entries(classifications).map(([value, label]) => <label key={value}><input type="radio" name="diagnosis-status" value={value} checked={form.case_classification === value} onChange={() => { change('case_classification', value); changeAssessment('final_diagnosis', finalDiagnosisLabels[value]); }} disabled={busy} />{label}</label>)}</fieldset><small id="diagnosis-status-help">Indicates whether the diagnosis is suspected, probable, confirmed, or ruled out.</small>
+<fieldset aria-describedby="diagnosis-status-help" className="diagnosis-status-options"><legend>Diagnosis Status <b>*</b></legend>{Object.entries(classifications).map(([value, label]) => <label key={value}><input type="radio" name="diagnosis-status" value={value} checked={form.case_classification === value} onChange={() => { change('case_classification', value); changeAssessment('final_diagnosis', finalDiagnosisLabels[value]); }} disabled={busy || (value==='confirmed' && !hasAction(user.permissions,user.role,'Confirm Diagnosis'))} />{label}</label>)}</fieldset><small id="diagnosis-status-help">Indicates whether the diagnosis is suspected, probable, confirmed, or ruled out.</small>
 <label>Diagnosis Remarks<textarea rows="2" maxLength={1000} placeholder="Add notes about the diagnosis (optional)" value={form.clinical_assessment.diagnosis_remarks} onChange={event => changeAssessment('diagnosis_remarks', event.target.value)} disabled={busy} /></label>
 </div></section>
 <section className="diagnosis-form-section"><h3>Disease Monitoring</h3><div className="diagnosis-final-fields">
@@ -237,13 +248,13 @@ function DiagnosisDialog({ row, startEditing = false, patientId, patientName, us
               if (!response.ok) throw Error(data.error || 'Unable to save assessment draft.');
               if (!Number.isInteger(data.id) || String(data.pet_id) !== String(patientId)) throw Error('The assessment draft was not confirmed.');
               setSavedDiagnosisId(data.id);
-              window.dispatchEvent(new Event('vetintel:appointment-updated'));
+              window.dispatchEvent(new Event('vetintel:appointment-updated')); window.dispatchEvent(new Event('vetintel:diagnosis-updated'));
               setLabRequestOpen(true);
             } catch (saveError) { setError(saveError.message); }
             finally { setBusy(false); }
           }}>Request Lab Test</button>}
           {editing
-            ? <button type="submit" className="is-primary" disabled={busy}>{busy ? 'Saving...' : step === 'assessment' ? 'Continue to Diagnosis' : 'Save Diagnosis'}</button>
+            ? <button type="submit" className="is-primary" disabled={busy || (step==='diagnosis' && !hasAction(user.permissions,user.role,'Finalize Diagnosis'))}>{busy ? 'Saving...' : step === 'assessment' ? 'Continue to Diagnosis' : 'Save Diagnosis'}</button>
             : canWrite && row.database_id && <button type="button" className="is-primary" onClick={() => setEditing(true)}>Edit Diagnosis</button>}
         </footer>
       </form>
@@ -278,7 +289,8 @@ export default function PatientDiagnosisPanel({ patientId, patientName, patient,
   const [selected, setSelected] = useState(null);
   const [fullDiagnosis, setFullDiagnosis] = useState(null);
   const [refresh, setRefresh] = useState(0);
-  const canWrite = ['doctor', 'assistant_doctor', 'veterinarian'].includes(roleOf(user));
+  const canWrite = hasAction(user.permissions,user.role,'Edit Diagnosis');
+  const canCreate = hasAction(user.permissions,user.role,'Create Diagnosis');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -355,8 +367,8 @@ export default function PatientDiagnosisPanel({ patientId, patientName, patient,
     {fullDiagnosis && <DiagnosisRecordView {...viewProps} row={rows.find(item => item.id === fullDiagnosis.id) || fullDiagnosis} full initialPlanId={fullDiagnosis.initialPlanId} initialLabsOpen={fullDiagnosis.initialLabsOpen} onClose={() => setFullDiagnosis(null)} onEdit={() => setSelected({ row: rows.find(item => item.id === fullDiagnosis.id) || fullDiagnosis, startEditing: true })} />}
     <section className="patient-diagnoses" style={fullDiagnosis ? { display: 'none' } : undefined}>
     <header>
-      <div><h2>Diagnoses</h2><p>View and manage the patient's diagnoses and clinical assessments.</p></div>
-      {canWrite && <button type="button" className="diagnosis-add" disabled={!patientId} onClick={() => setSelected({ row: null })}>{Icons.plus} Add Diagnosis</button>}
+      <div><h2>Diagnoses</h2><p>View and manage the patient&apos;s diagnoses and clinical assessments.</p></div>
+      {canCreate && <button type="button" className="diagnosis-add" disabled={!patientId} onClick={() => setSelected({ row: null })}>{Icons.plus} Add Diagnosis</button>}
     </header>
     <div className="diagnosis-filters">
       <label className="diagnosis-search">{Icons.search}<input aria-label="Search diagnoses" placeholder="Search diagnosis, condition, or patient..." value={search} onChange={event => setSearch(event.target.value)} /></label>
@@ -404,7 +416,7 @@ export default function PatientDiagnosisPanel({ patientId, patientName, patient,
       patientName={patientName}
       user={user}
       vets={vets}
-      canWrite={canWrite}
+      canWrite={selected?.row ? canWrite : canCreate}
       diagnosisOptions={[...new Set(rows.map(item => item.diagnosis).filter(Boolean))]}
       renderLabRequest={renderLabRequest}
       renderTreatmentRequest={renderTreatmentRequest}
@@ -412,7 +424,7 @@ export default function PatientDiagnosisPanel({ patientId, patientName, patient,
       onSaved={() => {
         setSelected(null);
         setRefresh(value => value + 1);
-        window.dispatchEvent(new Event('vetintel:appointment-updated'));
+        window.dispatchEvent(new Event('vetintel:appointment-updated')); window.dispatchEvent(new Event('vetintel:diagnosis-updated'));
       }}
     />}
   </section></>;

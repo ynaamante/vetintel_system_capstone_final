@@ -14,6 +14,9 @@ const permissions = require('../controllers/permissionController');
 const settings = require('../controllers/settingsController');
 const adminSurfaces = require('../controllers/adminSurfaceController');
 const auth = require('../middleware/auth');
+const clinicRbac = require('../middleware/clinicRbac');
+router.use((req,res,next)=>clinicRbac.protectedPath(req.path)
+  ? auth.required(req,res,()=>clinicRbac.guard(req,res,next)) : next());
 
 // Auth endpoints
 router.post('/login', users.login);
@@ -87,6 +90,9 @@ router.get('/clinic-records/visits', auth.required, clinicRecords.listVisits);
 router.get('/clinic-records/vaccine-inventory', auth.required, require('../controllers/vaccineInventoryController').list);
 router.put('/clinic-records/billing-catalog/:id/inventory-links', auth.required, require('../controllers/catalogConnections').update);
 router.get('/clinic-records/inventory', auth.required, require('../controllers/inventoryController').list);
+router.get('/clinic-records/restock-requests', auth.required, require('../controllers/restockRequestController').list);
+router.post('/clinic-records/restock-requests', auth.required, require('../controllers/restockRequestController').create);
+router.patch('/clinic-records/restock-requests/:id', auth.required, require('../controllers/restockRequestController').review);
 router.put('/clinic-records/inventory/:id', auth.required, require('../controllers/inventoryController').update);
 router.post('/clinic-records/inventory/import-pdf', auth.required, require('../controllers/inventoryController').importPdf);
 router.post('/clinic-records/vaccine-inventory', auth.required, require('../controllers/vaccineInventoryController').create);
@@ -95,6 +101,13 @@ router.get('/clinic-records/appointments/:id/visit-workflow', auth.required, req
 router.post('/clinic-records/appointments/:id/visit-workflow', auth.required, require('../controllers/visitWorkflowController').act);
 router.get('/clinic-records/dashboard/alerts', auth.required, clinicRecords.listDashboardAlerts);
 router.get('/disease-intelligence/summary', auth.required, clinicRecords.getDiseaseIntelligenceSummary);
+router.get('/disease-intelligence/report-data', auth.required, clinicRecords.getDiseaseIntelligenceSummary);
+router.get('/disease-intelligence/export-data', auth.required, clinicRecords.getDiseaseIntelligenceSummary);
+router.get('/disease-intelligence/catalog', auth.required, require('../controllers/diseaseIntelligenceController').catalog);
+router.get('/disease-intelligence/monitoring',auth.required,require('../controllers/diseaseIntelligenceController').monitoring);
+router.get('/disease-intelligence/monitoring-export',auth.required,require('../controllers/diseaseIntelligenceController').monitoring);
+router.put('/disease-intelligence/alert-rules',auth.required,require('../controllers/diseaseIntelligenceController').saveRule);
+router.patch('/disease-intelligence/alerts/:id/review',auth.required,require('../controllers/diseaseIntelligenceController').reviewAlert);
 router.get('/clinic-records/dashboard/summary', auth.required, clinicRecords.getClinicDashboardSummary);
 router.post('/clinic-records/appointments', auth.required, clinicRecords.createAppointment);
 router.patch('/clinic-records/appointments/:id/vaccination-details', auth.required, clinicRecords.updateScheduledVaccinationAppointment);
@@ -172,6 +185,7 @@ router.delete('/announcements/:id', auth.required, announcements.delete);
 
 // Dashboard endpoints
 router.get('/owner-monitoring/summary', auth.required, require('../controllers/ownerMonitoringController').summary);
+router.get('/owner-monitoring/overview', auth.required, require('../controllers/ownerMonitoringController').overview);
 router.get('/owner-monitoring/data-status', auth.required, require('../controllers/ownerMonitoringController').dataStatus);
 router.get('/owner-monitoring/report', auth.required, require('../controllers/ownerMonitoringController').report);
 router.get('/dashboard/stats', auth.required, dashboard.getDashboardStats);

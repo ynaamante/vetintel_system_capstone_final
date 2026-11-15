@@ -1,3 +1,4 @@
+import { hasAction } from '../utils/permissionUtils';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icons } from '../icons';
@@ -65,7 +66,7 @@ export default function LabTestDrawer({ record, initialTab = 'details', onClose,
         <Card title="Notes"><p>{record.notes || record.indication || 'No clinical notes recorded.'}</p></Card>
         <Card title="Veterinarian Interpretation"><p>{record.interpretation || 'No interpretation recorded.'}</p></Card>
       </section> : <section id="ltd-result-panel" role="tabpanel" aria-labelledby="ltd-result-tab">
-        <LabTestResultPanel key={record.id} record={record} onEdit={onEdit} onView={viewReport} onDownload={downloadReport} />
+        <LabTestResultPanel key={record.id} record={record} onEdit={hasAction(user.permissions,user.role,'Record Laboratory Results') ? onEdit : undefined} onView={viewReport} onDownload={downloadReport} />
       </section>}
     {downloadError && <p role="alert" className="ltd-download-error">{downloadError}</p>}
     </div>

@@ -1,3 +1,4 @@
+import { useSurveillanceRefresh } from '../utils/useSurveillanceRefresh';
 import { jsPDF } from 'jspdf';
 import { csvCell } from '../utils/billingView';
 import { useEffect, useState } from 'react';
@@ -5,7 +6,7 @@ import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
 import { Icons } from '../icons';
 import { canViewFeature } from '../utils/permissionUtils';
-import { canInteractWithFeature } from '../utils/permissionUtils';
+import { hasAction } from '../utils/permissionUtils';
 
 /* ── DATA ── */
 const REPORT_CARDS = [
@@ -68,6 +69,7 @@ const FORMAT_OPTS = ['PDF', 'CSV'];
 
 /* ── MAIN PAGE ── */
 export function ReportsPage({ user }) {
+  const surveillanceRevision = useSurveillanceRefresh();
   const [reportType, setReportType] = useState('Disease Summary');
   const [disease,    setDisease]    = useState('All Diseases');
   const [timeRange,  setTimeRange]  = useState('Last 30 Days');
@@ -78,40 +80,45 @@ export function ReportsPage({ user }) {
   const [DISEASE_OPTS, setDiseaseOptions] = useState(['All Diseases']);
 
   const canView = canViewFeature(user.permissions, user.role, 'Reports');
-  const canGenerateReport = canInteractWithFeature(user.permissions, user.role, 'Reports');
-  const canBuildCustomReport = canInteractWithFeature(user.permissions, user.role, 'Reports');
-  const canManageReportActions = canInteractWithFeature(user.permissions, user.role, 'Reports');
+  const canGenerateReport = hasAction(user.permissions,user.role,'Generate Reports');
+  const canBuildCustomReport = canGenerateReport;
+  const canManageReportActions = hasAction(user.permissions,user.role,'Export Reports');
 
   useEffect(() => {
     if (!canView) return;
     const controller = new AbortController();
     const api = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
-    fetch(api + '/owner-monitoring/report?days=90', { headers: { Authorization: 'Bearer ' + user.token }, signal: controller.signal })
+    fetch(api + '/disease-intelligence/summary?days=90', { headers: { Authorization: 'Bearer ' + user.token }, signal: controller.signal })
       .then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Unable to load report options.'); if (!controller.signal.aborted) setDiseaseOptions(['All Diseases', ...(data.disease_options || []).map(row => row.disease)]); })
       .catch(failure => { if (!controller.signal.aborted) setError(failure.message); });
     return () => controller.abort();
-  }, [canView, user.token, user.clinic_id]);
-  const download = (blob, filename) => {
-    const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
-  async function handleGenerate(title) {
+  }, [canView, user.token, user.clinic_id, surveillanceRevision]);
+  const download = async (blob,filename) => {
+    if(!canManageReportActions){setError('Your role cannot export reports.');return;}
+    try {
+      const api=(import.meta.env.VITE_API_URL||'http://localhost:3000/api').replace(/\/+$/,'');
+      const response=await fetch(`${api}/disease-intelligence/export-data?days=30`,{headers:{Authorization:`Bearer ${user.token}`}});
+      if(!response.ok)throw new Error((await response.json()).error||'Export is not permitted.');
+      const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }catch(failure){setError(failure.message);}
+  };  async function handleGenerate(title) {
     if (!canGenerateReport || generating) return;
     setGenerating(title); setError('');
     try {
       const api = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
       const query = new URLSearchParams({ days: String(parseInt(timeRange.match(/\d+/)?.[0] || '30', 10)) });
       if (disease !== 'All Diseases') query.set('disease', disease);
-      const response = await fetch(api + '/owner-monitoring/report?' + query, { headers: { Authorization: 'Bearer ' + user.token } });
+      const response = await fetch(api + '/disease-intelligence/report-data?' + query, { headers: { Authorization: 'Bearer ' + user.token } });
       const summary = await response.json();
       if (!response.ok) throw new Error(summary.error || 'Unable to load report data.');
       const riskReport = /risk/i.test(title);
       const vaccineReport = /vaccin/i.test(title);
       const clinicReport = /clinic|network/i.test(title);
       const alertReport = /outbreak|alert/i.test(title);
-      const source = riskReport ? summary.risk_distribution : vaccineReport ? summary.vaccination_trend : clinicReport ? summary.clinics : alertReport ? (summary.diseases || []).filter(row => Number(row.cases) >= 3 && Number(row.cases) > Number(row.previous_cases) * 1.4) : summary.diseases;
+      const source = riskReport ? summary.risk_distribution : vaccineReport ? summary.vaccination_trend : clinicReport ? summary.clinics : alertReport ? (summary.alerts || []) : summary.diseases;
       const entries = source || [];
       const columns = [...new Set(entries.flatMap(row => Object.keys(row)))];
-      const rows = [[title], ['Clinic', summary.clinic_id], ['Generated', summary.generated_at], ['Period', timeRange], ['Disease', disease], [], columns, ...entries.map(row => columns.map(key => row[key]))];
+      const rows = [[title], ['Scope', vaccineReport ? 'Your clinic' : 'Participating clinic network'], ['Generated', summary.generated_at], ['Period', timeRange], ['Disease', disease], ['Privacy', summary.privacy?.notice || ''], [], columns, ...entries.map(row => columns.map(key => row[key]))];
       if (!entries.length) rows.push(['No recorded data for these filters.']);
       if (alertReport) rows.push(['Alerts are calculated from recorded case increases, not confirmed outbreaks.']);
       let blob;
@@ -126,7 +133,7 @@ export function ReportsPage({ user }) {
         blob = doc.output('blob');
       }
       const filename = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.' + format.toLowerCase();
-      download(blob, filename);
+      if(canManageReportActions)await download(blob, filename);
       setReports(previous => [{ name: title, type: format, date: new Date(summary.generated_at).toLocaleString('en-PH'), size: (blob.size / 1024).toFixed(1) + ' KB', blob, filename }, ...previous]);
     } catch (failure) { setError(failure.message); } finally { setGenerating(null); }
   }
@@ -138,7 +145,7 @@ export function ReportsPage({ user }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', color: '#64748b' }}>
           <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔒</div>
           <div style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>Access Denied</div>
-          <div style={{ fontSize: '0.95rem' }}>You don't have permission to view this feature</div>
+          <div style={{ fontSize: '0.95rem' }}>You do not have permission to view this feature</div>
         </div>
       </div>
     );

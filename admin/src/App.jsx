@@ -74,7 +74,7 @@ const PAGE_FEATURE_MAP = {
   reports: 'Reports',
   clinics: 'Clinic Overview',
   users: 'User & Role Management',
-  roles: 'User & Role Management',
+  roles: 'Roles & Permissions',
   financial: 'Financial Monitoring',
   inventory: 'Inventory Management',
   services: 'Services Management',
@@ -89,8 +89,10 @@ const isDoctorRole = (role) => ['doctor', 'assistant_doctor', 'veterinarian'].in
 
 const getFirstAllowedPage = (permissions, role) => {
   const allPages = Object.keys(PAGE_FEATURE_MAP);
+  if(isDoctorRole(role)&&canViewFeature(permissions,role,'My Schedule'))return 'schedule';
+  if(normalizeRoleName(role)==='receptionist'&&canViewFeature(permissions,role,'Appointment Management'))return 'appointments';
 
-  if (isDoctorRole(role)) return 'schedule';
+
 
   for (const page of allPages) {
     const feature = PAGE_FEATURE_MAP[page];
@@ -106,46 +108,19 @@ const getFirstAllowedPage = (permissions, role) => {
 const canAccessPage = (pageKey, permissions, role) => {
   if (pageKey === 'settings') return true;
   if (pageKey === 'payment-qr-settings') return ['owner', 'clinic_owner'].includes(normalizeRoleName(role));
-  const normalizedRole = normalizeRoleName(role);
-  if (normalizedRole === 'owner' && ['inventory', 'services'].includes(pageKey)) return true;
-  if (pageKey === 'schedule') return isDoctorRole(role);
-  if (['patient-intakes', 'patient-records'].includes(pageKey)) return isDoctorRole(role);
-  if (['owner', 'doctor', 'receptionist'].includes(normalizedRole) && pageKey === 'inbox') return true;
+  if(['patient-registration','patient-queue','appointments','billing'].includes(pageKey)&&normalizeRoleName(role)!=='receptionist')return false;
+  if(['schedule','patient-intakes','patient-records'].includes(pageKey)&&!isDoctorRole(role))return false;
   const feature = PAGE_FEATURE_MAP[pageKey];
   return feature ? canViewFeature(permissions, role, feature) : false;
 };
 
-const loadRolePermissions = async (roleName, token) => {
-  if (!roleName) return null;
-
-  const apiUrl = import.meta.env.VITE_API_URL || '';
-
-  try {
-    const response = await fetch(`${apiUrl}/roles`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-
-    if (!response.ok) return null;
-
-    const roles = await response.json();
-    const normalizedRole = normalizeRoleName(roleName);
-
-    return (
-      roles.find((role) => {
-        const candidate = normalizeRoleName(role.name);
-
-        return (
-          candidate === normalizedRole ||
-          candidate === normalizedRole.replace(/[-\s]+/g, '_')
-        );
-      })?.permissions ?? null
-    );
-  } catch (error) {
-    console.error('Failed to load role permissions', error);
-    return null;
-  }
+const loadRolePermissions = async (roleName,token) => {
+  if(!roleName||!token)return null;
+  const api=import.meta.env.VITE_API_URL||'';
+  const response=await fetch(`${api}/me`,{headers:{Authorization:`Bearer ${token}`},cache:'no-store'});
+  if(!response.ok)return null;
+  return (await response.json()).permissions||{};
 };
-
 export default function App() {
   const [user, setUser] = useState(null);
   useEffect(() => { if (user?.token && user?.clinic_id) return watchClinicEvents(user); return undefined; }, [user?.token, user?.clinic_id]);
@@ -159,6 +134,30 @@ export default function App() {
   ));
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
   const [toast, setToast] = useState(null);
+  const permissionToken=user?.token;
+  useEffect(()=>{
+    if(!permissionToken)return undefined;
+    const controller=new AbortController();
+    const refresh=async()=>{
+      if(document.hidden)return;
+      try{
+        const response=await fetch(`${import.meta.env.VITE_API_URL||''}/me`,{headers:{Authorization:`Bearer ${permissionToken}`},signal:controller.signal,cache:'no-store'});
+        if(!response.ok){if(response.status===401){setUser(null);localStorage.removeItem('vetintel_token');}return;}
+        const me=await response.json();
+        if(controller.signal.aborted)return;
+        setUser(current=>{
+          if(!current||current.token!==permissionToken)return current;
+          if(JSON.stringify(current.permissions)===JSON.stringify(me.permissions)&&current.role===me.role)return current;
+          const next={...current,...me};localStorage.setItem('vetintel_user',JSON.stringify(next));return next;
+        });
+        setPage(current=>canAccessPage(current,me.permissions,me.role)?current:getFirstAllowedPage(me.permissions,me.role));
+      }catch{/* Retry on the next refresh. */}
+    };
+    const timer=window.setInterval(refresh,15000);
+    window.addEventListener('focus',refresh);
+    window.addEventListener('vetintel:permissions-updated',refresh);
+    return()=>{controller.abort();window.clearInterval(timer);window.removeEventListener('focus',refresh);window.removeEventListener('vetintel:permissions-updated',refresh);};
+  },[permissionToken]);
 
   useEffect(() => subscribeToNotifications(notification => {
     setToast(notification);
@@ -346,7 +345,7 @@ export default function App() {
         }}
       />
 
-      <main className={`admin-content ${page === 'inbox' ? 'inbox-content' : ''}`}>
+      <main className={`admin-content ${page === 'inbox' ? 'inbox-content' : ''} ${page === 'clinics' ? 'owner-overview-content' : ''}`}>
         {page === 'dashboard' && <DashboardPage user={user} onNavigate={setPage} />}
         {page === 'disease' && <DiseaseMonitoringPage user={user} />}
         {page === 'clinic' && <ClinicLayout user={user} initialTab={clinicInitialTab} initialInvoiceId={clinicInitialInvoiceId} onNavigate={(nextPage, context) => { if (nextPage === 'patient-records') setInboxPatientRequest(context); if (nextPage === 'clinic') { setClinicInitialTab(context?.tab || 'dashboard'); setClinicInitialInvoiceId(context?.invoiceId || null); } setPage(nextPage); }} />}
