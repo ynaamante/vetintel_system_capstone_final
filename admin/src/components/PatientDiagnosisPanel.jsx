@@ -33,7 +33,6 @@ const emptyAssessment = {
   body_condition: '',
   severity: '',
   symptom_onset: '',
-  laboratory_result: 'Not Tested',
   reported_symptoms: '',
   possible_exposure: '',
   diagnosis_remarks: '',
@@ -61,6 +60,7 @@ function DiagnosisDialog({ row, startEditing = false, patientId, patientName, us
   const ref = useRef(null);
   const [editing, setEditing] = useState(!row || startEditing);
   const [labRequestOpen, setLabRequestOpen] = useState(false);
+  const [savedDiagnosisId, setSavedDiagnosisId] = useState(row?.database_id || null);
   const [step, setStep] = useState('assessment');
   const [treatmentOpen, setTreatmentOpen] = useState(false);
   const [plans, setPlans] = useState([]);
@@ -69,7 +69,7 @@ function DiagnosisDialog({ row, startEditing = false, patientId, patientName, us
   const [error, setError] = useState('');
   const assessment = row?.clinical_assessment || {};
   const [form, setForm] = useState({
-    diagnosis: row?.diagnosis || '',
+    diagnosis: row?.record_status === 'draft' && row.diagnosis === 'Assessment pending' ? '' : row?.diagnosis || '',
     case_classification: row?.case_classification || 'suspected',
     clinical_status: row?.clinical_status || 'ongoing',
     veterinarian_id: String(row?.veterinarian_id || user.id || ''),
@@ -121,8 +121,8 @@ function DiagnosisDialog({ row, startEditing = false, patientId, patientName, us
         setBusy(true);
         setError('');
         try {
-          const response = await fetch(`${api}/clinic-records/pets/${encodeURIComponent(patientId)}/diagnoses${row ? `/${row.database_id}` : ''}`, {
-            method: row ? 'PUT' : 'POST',
+          const response = await fetch(`${api}/clinic-records/pets/${encodeURIComponent(patientId)}/diagnoses${savedDiagnosisId ? `/${savedDiagnosisId}` : ''}`, {
+            method: savedDiagnosisId ? 'PUT' : 'POST',
             headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
               ...form,
@@ -145,7 +145,7 @@ function DiagnosisDialog({ row, startEditing = false, patientId, patientName, us
         <div className="diagnosis-dialog-heading">
           <div>
             <h2 id="diagnosis-dialog-title">{editing ? (row ? 'Edit Diagnosis' : 'Add Diagnosis') : 'Diagnosis Details'}</h2>
-            <p>{step === 'diagnosis' ? 'Finalize the diagnosis, classify the case, and set the treatment and follow-up plan for ' : 'Record the clinical assessment, request laboratory tests (optional), and finalize the diagnosis for '}{patientName}.</p>
+            <p>{step === 'diagnosis' ? 'Finalize the diagnosis, set its status, and set the treatment and follow-up plan for ' : 'Record the clinical assessment, request laboratory tests (optional), and finalize the diagnosis for '}{patientName}.</p>
           </div>
           <button type="button" className="diagnosis-dialog-close" aria-label="Close dialog" onClick={onClose} disabled={busy}><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg></button>
         </div>
@@ -196,14 +196,13 @@ function DiagnosisDialog({ row, startEditing = false, patientId, patientName, us
             </section>
 <div className="diagnosis-final-columns">
 <section className="diagnosis-form-section"><h3>Diagnosis Information</h3><div className="diagnosis-final-fields">
-<label>Primary Diagnosis <b>*</b><input required maxLength={300} list="diagnosis-suggestions" placeholder="Select or type a diagnosis" value={form.diagnosis} onChange={event => change('diagnosis', event.target.value)} disabled={busy} /></label>
-<label>Secondary Diagnosis <small>(Optional)</small><input maxLength={300} list="diagnosis-suggestions" placeholder="Select or type a secondary diagnosis" value={form.clinical_assessment.secondary_diagnosis} onChange={event => changeAssessment('secondary_diagnosis', event.target.value)} disabled={busy} /></label>
-<fieldset className="diagnosis-status-options"><legend>Diagnosis Status <b>*</b></legend>{Object.entries(classifications).map(([value, label]) => <label key={value}><input type="radio" name="diagnosis-status" value={value} checked={form.case_classification === value} onChange={() => { change('case_classification', value); changeAssessment('final_diagnosis', finalDiagnosisLabels[value]); }} disabled={busy} />{label}</label>)}</fieldset>
+<label>Primary Diagnosis <b>*</b><input required maxLength={300} list="diagnosis-suggestions" placeholder="Enter the main disease or medical condition" aria-describedby="primary-diagnosis-help" value={form.diagnosis} onChange={event => change('diagnosis', event.target.value)} disabled={busy} /><small id="primary-diagnosis-help">Identifies the patient's main disease or medical condition.</small></label>
+<label>Secondary Diagnosis <small>(Optional)</small><input maxLength={300} list="diagnosis-suggestions" placeholder="Enter any additional medical conditions" aria-describedby="secondary-diagnosis-help" value={form.clinical_assessment.secondary_diagnosis} onChange={event => changeAssessment('secondary_diagnosis', event.target.value)} disabled={busy} /><small id="secondary-diagnosis-help">Records additional medical conditions, if present.</small></label>
+<fieldset aria-describedby="diagnosis-status-help" className="diagnosis-status-options"><legend>Diagnosis Status <b>*</b></legend>{Object.entries(classifications).map(([value, label]) => <label key={value}><input type="radio" name="diagnosis-status" value={value} checked={form.case_classification === value} onChange={() => { change('case_classification', value); changeAssessment('final_diagnosis', finalDiagnosisLabels[value]); }} disabled={busy} />{label}</label>)}</fieldset><small id="diagnosis-status-help">Indicates whether the diagnosis is suspected, probable, confirmed, or ruled out.</small>
 <label>Diagnosis Remarks<textarea rows="2" maxLength={1000} placeholder="Add notes about the diagnosis (optional)" value={form.clinical_assessment.diagnosis_remarks} onChange={event => changeAssessment('diagnosis_remarks', event.target.value)} disabled={busy} /></label>
 </div></section>
-<section className="diagnosis-form-section"><h3>Disease Classification &amp; Monitoring</h3><div className="diagnosis-final-fields">
-<label>Case Classification <b>*</b><SystemFilterSelect label="Case Classification" value={form.case_classification} options={Object.entries(classifications).map(([value, label]) => ({value, label: label + ' Case'}))} onChange={value => { change('case_classification', value); changeAssessment('final_diagnosis', finalDiagnosisLabels[value]); }} /></label>
-<div className="diagnosis-monitoring-row"><label>Symptom Onset Date<LabDateTimePicker label="Symptom Onset Date" mode="date" value={form.clinical_assessment.symptom_onset} onChange={value => changeAssessment('symptom_onset', value)} disabled={busy} /></label><label>Laboratory Result<SystemFilterSelect label="Laboratory Result" value={form.clinical_assessment.laboratory_result} onChange={value => changeAssessment('laboratory_result', value)} options={['Not Tested', 'Pending', 'Positive', 'Negative', 'Inconclusive'].map(value => ({value, label: value}))} /></label></div>
+<section className="diagnosis-form-section"><h3>Disease Monitoring</h3><div className="diagnosis-final-fields">
+<div className="diagnosis-monitoring-row"><label>Symptom Onset Date<LabDateTimePicker label="Symptom Onset Date" mode="date" value={form.clinical_assessment.symptom_onset} onChange={value => changeAssessment('symptom_onset', value)} disabled={busy} /></label></div>
 <label>Reported Symptoms<div className="diagnosis-symptoms">{form.clinical_assessment.reported_symptoms.split(',').map(value => value.trim()).filter(Boolean).map(value => <button key={value} type="button" disabled={busy} onClick={() => changeAssessment('reported_symptoms', form.clinical_assessment.reported_symptoms.split(',').filter(item => item.trim() !== value).join(', '))}>{value} <span aria-label={'Remove ' + value}>&times;</span></button>)}<input aria-label="Add reported symptom" value={symptomInput} placeholder="Type a symptom and press Enter" disabled={busy} onChange={event => setSymptomInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ',') { event.preventDefault(); const value = symptomInput.trim(); if (value) changeAssessment('reported_symptoms', [...new Set([...form.clinical_assessment.reported_symptoms.split(',').map(item => item.trim()).filter(Boolean), value])].join(', ')); setSymptomInput(''); } }} /></div></label>
 <label>Possible Exposure <small>(Optional)</small><textarea rows="2" maxLength={1000} placeholder="e.g., contact with an infected animal, shared area, etc." value={form.clinical_assessment.possible_exposure} onChange={event => changeAssessment('possible_exposure', event.target.value)} disabled={busy} /></label>
 </div></section></div>
@@ -211,7 +210,7 @@ function DiagnosisDialog({ row, startEditing = false, patientId, patientName, us
 </div>}
           </> : <dl className="diagnosis-details">
             <div><dt>Diagnosis</dt><dd>{row.diagnosis}</dd></div>
-            <div><dt>Case Classification</dt><dd><Classification value={row.case_classification} /></dd></div>
+            <div><dt>Diagnosis Status</dt><dd><Classification value={row.case_classification} /></dd></div>
             <div><dt>Clinical Status</dt><dd><ClinicalStatus value={row.clinical_status} /></dd></div>
             <div><dt>Date / Time</dt><dd>{formatDateText(row.recorded_at)} {time(row.recorded_at)}</dd></div>
             <div><dt>Attending Veterinarian</dt><dd>{row.veterinarian || 'Not recorded'}</dd></div>
@@ -226,7 +225,23 @@ function DiagnosisDialog({ row, startEditing = false, patientId, patientName, us
           {editing && <strong className="diagnosis-footer-stage">{step === 'assessment' ? 'Assessment' : 'Diagnosis'}</strong>}
           {editing && step === 'diagnosis' && <button type="button" disabled={busy} onClick={() => setStep('assessment')}>Back to Assessment</button>}
           <button type="button" className="diagnosis-cancel-button" onClick={onClose} disabled={busy}>{editing ? 'Cancel' : 'Close'}</button>
-          {editing && step === 'assessment' && renderLabRequest && <button type="button" disabled={busy} onClick={() => setLabRequestOpen(true)}>Request Lab Test</button>}
+          {editing && step === 'assessment' && renderLabRequest && <button type="button" disabled={busy} onClick={async () => {
+            setBusy(true); setError('');
+            try {
+              const response = await fetch(api + '/clinic-records/pets/' + encodeURIComponent(patientId) + '/diagnoses' + (savedDiagnosisId ? '/' + savedDiagnosisId : ''), {
+                method: savedDiagnosisId ? 'PUT' : 'POST',
+                headers: { Authorization: 'Bearer ' + user.token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...form, diagnosis: form.diagnosis.trim() || 'Assessment pending', record_status: 'draft', veterinarian_id: Number(form.veterinarian_id), recorded_at: new Date(form.recorded_at).toISOString() }),
+              });
+              const data = await response.json();
+              if (!response.ok) throw Error(data.error || 'Unable to save assessment draft.');
+              if (!Number.isInteger(data.id) || String(data.pet_id) !== String(patientId)) throw Error('The assessment draft was not confirmed.');
+              setSavedDiagnosisId(data.id);
+              window.dispatchEvent(new Event('vetintel:appointment-updated'));
+              setLabRequestOpen(true);
+            } catch (saveError) { setError(saveError.message); }
+            finally { setBusy(false); }
+          }}>Request Lab Test</button>}
           {editing
             ? <button type="submit" className="is-primary" disabled={busy}>{busy ? 'Saving...' : step === 'assessment' ? 'Continue to Diagnosis' : 'Save Diagnosis'}</button>
             : canWrite && row.database_id && <button type="button" className="is-primary" onClick={() => setEditing(true)}>Edit Diagnosis</button>}
@@ -238,7 +253,7 @@ function DiagnosisDialog({ row, startEditing = false, patientId, patientName, us
         onClose: () => setTreatmentOpen(false),
         onSaved: plan => { setPlans(current => [...current, plan]); setTreatmentOpen(false); },
       })}
-      {labRequestOpen && renderLabRequest(() => setLabRequestOpen(false))}
+      {labRequestOpen && renderLabRequest(() => setLabRequestOpen(false), savedDiagnosisId)}
     </dialog>,
     document.body,
   );
@@ -352,7 +367,7 @@ export default function PatientDiagnosisPanel({ patientId, patientName, patient,
     {(error || staffError) && <p role="alert" className="diagnosis-error">{error || staffError}</p>}
     <div className="diagnosis-table-wrap">
       <table className="diagnosis-table">
-        <thead><tr><th>Date / Time</th><th>Diagnosis</th><th>Case Classification</th><th>Status</th><th>Attending Veterinarian</th><th aria-label="Diagnosis actions" /></tr></thead>
+        <thead><tr><th>Date / Time</th><th>Diagnosis</th><th>Diagnosis Status</th><th>Status</th><th>Attending Veterinarian</th><th aria-label="Diagnosis actions" /></tr></thead>
         <tbody>
           {!error && visible.map(row => <tr key={row.id} tabIndex={0} onClick={() => setSelected({ row })} onKeyDown={event => {
             if (event.target === event.currentTarget && ['Enter', ' '].includes(event.key)) {
@@ -361,7 +376,7 @@ export default function PatientDiagnosisPanel({ patientId, patientName, patient,
             }
           }}>
             <td><strong>{formatDateText(row.recorded_at)}</strong><span className="diagnosis-time">{time(row.recorded_at)}</span></td>
-            <td className="diagnosis-name">{row.diagnosis}</td>
+            <td className="diagnosis-name">{row.diagnosis}{row.record_status === 'draft' && <span> ? Draft assessment</span>}</td>
             <td><Classification value={row.case_classification} /></td>
             <td><ClinicalStatus value={row.clinical_status} /></td>
             <td>{row.veterinarian || 'Not recorded'}</td>

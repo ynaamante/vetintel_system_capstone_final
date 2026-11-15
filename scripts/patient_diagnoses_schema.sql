@@ -15,3 +15,5 @@ CREATE TABLE IF NOT EXISTS patient_diagnoses (
 CREATE INDEX IF NOT EXISTS patient_diagnoses_patient_date_idx ON patient_diagnoses(clinic_id,pet_id,recorded_at DESC);
 
 ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS clinical_assessment JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS record_status TEXT NOT NULL DEFAULT 'finalized' CHECK (record_status IN ('draft','finalized'));

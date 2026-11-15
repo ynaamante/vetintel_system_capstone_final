@@ -30,7 +30,7 @@ exports.list = async (req, res, next) => {
     ) d LEFT JOIN users u ON u.id=d.veterinarian_id AND u.clinic_id=$1 ORDER BY d.recorded_at DESC NULLS LAST,d.id`, [clinic, pet]);
     const saved = await db.query(`SELECT 'diagnosis-'||d.id AS id,d.id AS database_id,d.diagnosis,
       'Diagnosis'::text AS source,'Recorded'::text AS assessment,d.case_classification,d.clinical_status,
-      d.clinical_status AS status,d.recorded_at,d.veterinarian_id,u.name AS veterinarian,d.notes,d.clinical_assessment,d.updated_at
+      d.clinical_status AS status,d.recorded_at,d.veterinarian_id,u.name AS veterinarian,d.notes,d.clinical_assessment,d.updated_at,d.record_status
       FROM patient_diagnoses d LEFT JOIN users u ON u.id=d.veterinarian_id AND u.clinic_id=d.clinic_id
       WHERE d.clinic_id=$1 AND d.pet_id=$2`, [clinic,pet]);
     return res.json([...saved.rows, ...result.rows].sort((a,b) => new Date(b.recorded_at)-new Date(a.recorded_at) || a.id.localeCompare(b.id)));
@@ -42,9 +42,11 @@ exports.save = async (req,res,next) => {
   if(!['doctor','assistant_doctor','veterinarian'].includes(role))return res.status(403).json({error:'Only veterinarians can record a diagnosis.'});
   const clinic=Number(req.user?.clinic_id),pet=Number(req.params.id),id=req.params.diagnosisId?Number(req.params.diagnosisId):null;
   const {diagnosis,case_classification,clinical_status,veterinarian_id,recorded_at,notes=''}=req.body;
+  const recordStatus = req.body.record_status ?? 'finalized';
+  if (!['draft','finalized'].includes(recordStatus)) return res.status(422).json({error:'Invalid diagnosis record status.'});
   const rawAssessment = req.body.clinical_assessment;
   if (rawAssessment != null && (typeof rawAssessment !== 'object' || Array.isArray(rawAssessment))) return res.status(422).json({error:'Invalid clinical assessment.'});
-  const assessmentKeys = ['temperature','heart_rate','respiratory_rate','weight','body_condition','severity','subjective','objective','assessment','plan','secondary_diagnosis','final_diagnosis','follow_up','follow_up_date','discharge_instructions','consultation_type','symptom_onset','laboratory_result','reported_symptoms','possible_exposure','diagnosis_remarks'];
+  const assessmentKeys = ['temperature','heart_rate','respiratory_rate','weight','body_condition','severity','subjective','objective','assessment','plan','secondary_diagnosis','final_diagnosis','follow_up','follow_up_date','discharge_instructions','consultation_type','symptom_onset','reported_symptoms','possible_exposure','diagnosis_remarks'];
   const clinicalAssessment = Object.fromEntries(assessmentKeys.filter(key => rawAssessment && Object.hasOwn(rawAssessment, key)).map(key => [key, rawAssessment[key]]));
   if (Object.values(clinicalAssessment).some(value => typeof value !== 'string' || value.length > 1000)) return res.status(422).json({error:'Clinical assessment fields must be text of at most 1000 characters.'});
   const assessmentJson = JSON.stringify(clinicalAssessment);
@@ -60,7 +62,7 @@ exports.save = async (req,res,next) => {
     if(id){previous=(await client.query('SELECT * FROM patient_diagnoses WHERE id=$1 AND clinic_id=$2 AND pet_id=$3 FOR UPDATE',[id,clinic,pet])).rows[0];if(!previous){await client.query('ROLLBACK');return res.status(404).json({error:'Diagnosis not found.'});}}
     const fields=[diagnosis.trim(),case_classification,clinical_status,vet,date.toISOString(),notes.trim()];
     const result=id?await client.query(`UPDATE patient_diagnoses SET diagnosis=$1,case_classification=$2,clinical_status=$3,veterinarian_id=$4,recorded_at=$5,notes=$6,clinical_assessment=$10::jsonb,updated_at=now() WHERE id=$7 AND clinic_id=$8 AND pet_id=$9 RETURNING *`,[...fields,id,clinic,pet,assessmentJson]):await client.query(`INSERT INTO patient_diagnoses(diagnosis,case_classification,clinical_status,veterinarian_id,recorded_at,notes,clinic_id,pet_id,recorded_by,clinical_assessment) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb) RETURNING *`,[...fields,clinic,pet,req.user.id,assessmentJson]);
-    const row=result.rows[0];
+    const row=(await client.query('UPDATE patient_diagnoses SET record_status=$1 WHERE id=$2 RETURNING *',[recordStatus,result.rows[0].id])).rows[0];
     await client.query("INSERT INTO audit_trail(user_id,action,table_name,record_id,old_data,new_data) VALUES($1,$2,'patient_diagnoses',$3,$4::jsonb,$5::jsonb)",[req.user.id,id?'update_diagnosis':'create_diagnosis',row.id,previous?JSON.stringify(previous):null,JSON.stringify(row)]);
     await client.query('COMMIT');publish(clinic,'diagnosis');return res.status(id?200:201).json(row);
   }catch(error){if(client)await client.query('ROLLBACK').catch(()=>{});return next(error);}finally{client?.release();}

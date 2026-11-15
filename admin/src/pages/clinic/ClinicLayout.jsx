@@ -1,4 +1,7 @@
 import LabVisitOverview from '../../components/LabVisitOverview';
+import LabResultEditor from '../../components/LabResultEditor';
+import LabTestDrawer from '../../components/LabTestDrawer';
+import { notifyLabResultsChanged } from '../../utils/labResultUpdates';
 import useLabTestTypes from '../../utils/useLabTestTypes';
 import { appointmentTypes } from '../../utils/appointmentTypes';
 import { appointmentDuration } from '../../utils/serviceDuration';
@@ -397,7 +400,7 @@ function ClinicSectionPlaceholder({ label }) {
   );
 }
 
-export function LabResultsTab({ patientName, patientRecord, user, onCountChange, appointments = [], requestOnly = false, onRequestClose } = {}) {
+export function LabResultsTab({ patientName, patientRecord, user, onCountChange, appointments = [], requestOnly = false, onRequestClose, diagnosisId } = {}) {
   const { testTypes: labTestTypes, diseases: labDiseases, error: labTestTypesError } = useLabTestTypes(user);
   const [search, setSearch] = useState('');
   const [localResults, setLocalResults] = useState([]);
@@ -430,8 +433,6 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
   const pageSize = 10;
   const [actionLabTest, setActionLabTest] = useState(null);
   const [labActionReturn, setLabActionReturn] = useState(null);
-  const [finalizingLabResult, setFinalizingLabResult] = useState(false);
-  const [finalizeLabResultError, setFinalizeLabResultError] = useState('');
   const [resultEditor, setResultEditor] = useState(null);
   const [resultEditorError, setResultEditorError] = useState('');
   const [reportReading, setReportReading] = useState(false);
@@ -712,6 +713,20 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
     clinicOwners.find(owner => String(owner.id) === String(selectedPatient.client_id))
     || (selectedPatient.owner && typeof selectedPatient.owner === 'object' ? selectedPatient.owner : null)
   );
+  const [linkedDiagnosisSelection, setLinkedDiagnosisSelection] = useState('');
+  const [linkableDiagnoses, setLinkableDiagnoses] = useState([]);
+  const [diagnosisLinkError, setDiagnosisLinkError] = useState('');
+  useEffect(() => {
+    setLinkedDiagnosisSelection(diagnosisId ? String(diagnosisId) : '');
+    setLinkableDiagnoses([]); setDiagnosisLinkError('');
+    if (!newRequestOpen || !selectedPatient?.id || !user?.token || !['doctor','veterinarian','assistant_doctor','owner','clinic_owner','super_admin'].includes(String(user.role || '').toLowerCase().replace(/[\s-]+/g,'_'))) return;
+    const controller = new AbortController();
+    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+    fetch(apiUrl + '/clinic-records/pets/' + encodeURIComponent(selectedPatient.id) + '/diagnoses?clinic_id=' + encodeURIComponent(user.clinic_id), { headers: { Authorization: 'Bearer ' + user.token }, signal: controller.signal })
+      .then(async response => { const data = await response.json(); if (!response.ok || !Array.isArray(data)) throw Error('Unable to load diagnoses for linking.'); setLinkableDiagnoses(data.filter(row => row.database_id)); })
+      .catch(error => { if (error.name !== 'AbortError') setDiagnosisLinkError(error.message); });
+    return () => controller.abort();
+  }, [selectedPatient?.id, diagnosisId, newRequestOpen, user?.token, user?.clinic_id, user?.role]);
   const [clinicalAlerts, setClinicalAlerts] = useState(null);
   const [clinicalAlertsLoading, setClinicalAlertsLoading] = useState(false);
   const [clinicalAlertsError, setClinicalAlertsError] = useState('');
@@ -797,6 +812,10 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
   };
   const saveNewRequest = async () => {
     if (savedLabTest || isSavingLabTest || requestStep !== 3) return;
+    if (requestOnly && (!Number.isInteger(Number(diagnosisId)) || Number(diagnosisId) < 1)) {
+      setRequestError('The diagnosis link is missing. Close this request and reopen Request Lab Test from the saved assessment.');
+      return;
+    }
     const otherDetailMissing = (requestForm.specimenType === 'Other' && !requestForm.specimenTypeOther.trim())
       || (requestForm.collectionMethod === 'Other' && !requestForm.collectionMethodOther.trim());
     if (!selectedPatient || !testOptions.includes(requestForm.testType) || !requestForm.veterinarian || !requestForm.orderDateTime || otherDetailMissing) {
@@ -813,6 +832,8 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
         body: JSON.stringify({
           pet_id: selectedPatient.id,
           ...requestForm,
+          diagnosis_id: Number(diagnosisId) || Number(linkedDiagnosisSelection) || undefined,
+          requestedFromDiagnosis: requestOnly,
           specimenType: requestForm.specimenType === 'Other' ? requestForm.specimenTypeOther.trim() || 'Other' : requestForm.specimenType,
           collectionMethod: requestForm.collectionMethod === 'Other' ? requestForm.collectionMethodOther.trim() || 'Other' : requestForm.collectionMethod,
           orderDateTime: new Date(requestForm.orderDateTime).toISOString(),
@@ -823,6 +844,8 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error || `Unable to save lab test (HTTP ${response.status}).`);
+      if (requestOnly && Number(payload?.diagnosis_id) !== Number(diagnosisId)) throw new Error('The server did not preserve the diagnosis link. Restart the backend before requesting another test.');
+      notifyLabResultsChanged();
       setLocalResults(previous => [payload, ...previous]);
       setPage(1);
       setSavedLabTest(payload);
@@ -843,6 +866,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
     setResultEditor({
       ...result,
       orderStatus: getStatusKey(result.status),
+      orderDateTime: result.orderDateTime || result.date,
       date: getDateInputValue(result.date),
       time: parsedTime && !Number.isNaN(parsedTime.getTime())
         ? `${String(parsedTime.getHours()).padStart(2, '0')}:${String(parsedTime.getMinutes()).padStart(2, '0')}`
@@ -886,9 +910,11 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
     }
   };
   const saveResultEditor = async event => {
-    event.preventDefault();
+    event.preventDefault?.();
     if (!resultEditor) return;
-    const saveAsDraft = event.nativeEvent.submitter?.value === 'draft';
+    const action = event.action || event.nativeEvent?.submitter?.value;
+    const saveAsDraft = action === 'draft';
+    const finalize = action === 'finalize';
     const original = localResults.find(result => result.id === resultEditor.id);
     const reportFile = resultEditor.attachment instanceof File ? resultEditor.attachment : null;
     if (reportFile && reportFile.size > 4 * 1024 * 1024) {
@@ -908,7 +934,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
       ...resultEditor,
       date: `${displayDate}${enteredTime}`,
       dateCreated: original?.dateCreated || displayDate,
-      status: saveAsDraft ? 'in-progress' : getStatusKey(resultEditor.status),
+      status: saveAsDraft ? 'in-progress' : finalize ? 'finalized' : getStatusKey(resultEditor.status),
       measurements: resultEditor.measurements.filter(measurement => (
         measurement.name || measurement.value || measurement.unit || measurement.referenceRange || measurement.status !== 'Not assessed'
       )),
@@ -919,26 +945,14 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
         original?.downloadable ||
         (!saveAsDraft && ['results-ready', 'finalized'].includes(getStatusKey(resultEditor.status)))
       ),
-      lastUpdatedBy: 'Dr. Smith',
+      lastUpdatedBy: user.name || '',
     };
     try {
       const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
       const resultPayload = { ...updatedResult };
       delete resultPayload.attachment;
       delete resultPayload.reportText;
-      const response = await fetch(`${apiUrl}/clinic-records/lab-tests/${encodeURIComponent(updatedResult.id)}?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
-        method: 'PUT', headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...resultPayload,
-          collectionDate: resultEditor.date,
-          collectionTime: resultEditor.time,
-          resultDate: resultEditor.resultDate,
-          resultTime: resultEditor.resultTime,
-        }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.error || `Unable to update lab test (HTTP ${response.status}).`);
-      let saved = { ...updatedResult, ...payload };
+      let uploadedReport = {};
       if (reportFile) {
         const data = await new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -952,11 +966,28 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
         });
         const attachment = await uploadResponse.json().catch(() => null);
         if (!uploadResponse.ok) throw new Error(attachment?.error || `Unable to upload laboratory report (HTTP ${uploadResponse.status}).`);
-        saved = { ...saved, fileName: attachment.filename, reportAttachmentId: attachment.id, reportContentType: attachment.content_type, downloadable: true };
+        uploadedReport = { fileName: attachment.filename, reportAttachmentId: attachment.id, reportContentType: attachment.content_type, reportUploadedAt: attachment.uploaded_at, reportSizeBytes: attachment.size_bytes, downloadable: true };
       }
+      const response = await fetch(`${apiUrl}/clinic-records/lab-tests/${encodeURIComponent(updatedResult.id)}?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
+        method: 'PUT', headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...resultPayload,
+          verifyResults: finalize,
+          collectionDate: resultEditor.date,
+          collectionTime: resultEditor.time,
+          resultDate: resultEditor.resultDate,
+          resultTime: resultEditor.resultTime,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || `Unable to update lab test (HTTP ${response.status}).`);
+      if (finalize && payload?.verified !== true) throw new Error('The result was saved, but verification was not recorded by the server. Restart the backend, then review and confirm the result again.');
+      let saved = { ...updatedResult, ...payload, ...uploadedReport };
       setLocalResults(previous => previous.map(result => result.id === updatedResult.id ? saved : result));
+      notifyLabResultsChanged();
       setResultEditor(null);
-      if (labActionReturn) {
+      if (finalize) { openLabTestView(saved); setViewResultTab('result'); }
+      else if (labActionReturn) {
         setActionLabTest({ ...labActionReturn, ...saved });
         setLabActionReturn(null);
       }
@@ -1046,7 +1077,6 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
   );
   const openLabTestView = result => {
     const patient = clinicPatients.find(item => String(item.id) === String(result.patientId || result.pet_id));
-    setFinalizeLabResultError('');
     setLabActionReturn(patientRecord ? null : result);
     setViewResultTab('details');
     setViewResult({
@@ -1067,38 +1097,6 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
     setHistoryTab('details');
     setHistoryResult(result);
     setActionLabTest(null);
-  };
-  const hasRecordedResult = Boolean(viewResult && (
-    viewResult.measurements?.length ||
-    viewResult.interpretation ||
-    (viewResult.summary && !/awaiting laboratory result|being processed/i.test(viewResult.summary))
-  ));
-  const resultIsAvailable = Boolean(viewResult &&
-    String(viewResult.status || '').toLowerCase() !== 'cancelled' &&
-    (hasRecordedResult || ['results-ready', 'finalized'].includes(String(viewResult.status || '').toLowerCase()))
-  );
-  const finalizeLabResult = async () => {
-    if (!viewResult || getStatusKey(viewResult.status) !== 'results-ready' || !resultIsAvailable || finalizingLabResult) return;
-    setFinalizingLabResult(true);
-    setFinalizeLabResultError('');
-    try {
-      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
-      const response = await fetch(`${apiUrl}/clinic-records/lab-tests/${encodeURIComponent(viewResult.id)}?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'finalized', lastUpdatedBy: user.name || '' }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.error || `Unable to finalize lab result (HTTP ${response.status}).`);
-      setLocalResults(previous => previous.map(result => result.id === viewResult.id ? { ...result, ...payload } : result));
-      setViewResult(previous => previous?.id === viewResult.id ? { ...previous, ...payload } : previous);
-      setLabActionReturn(previous => previous?.id === viewResult.id ? { ...previous, ...payload } : previous);
-      notifySuccess('Lab result finalized', `${viewResult.id} is now finalized in the clinic record.`);
-    } catch (error) {
-      setFinalizeLabResultError(error.message || 'Unable to finalize lab result.');
-    } finally {
-      setFinalizingLabResult(false);
-    }
   };
   const historyTimeline = historyResult ? [
     ...((historyResult.lastUpdatedAt || historyResult.updatedAt) ? [{
@@ -1458,6 +1456,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
             </section>}
             {requestStep === 2 && <section className="lab-wizard-section lab-test-details-step">
               <div className="lab-test-design-card"><h3>Test Information</h3>
+              <label className="lab-wizard-field"><span>Linked Diagnosis (optional)</span><select aria-label="Linked Diagnosis" value={linkedDiagnosisSelection} disabled={Boolean(diagnosisId)} onChange={event => setLinkedDiagnosisSelection(event.target.value)}><option value="">No linked diagnosis</option>{diagnosisId && !linkableDiagnoses.some(row => String(row.database_id) === String(diagnosisId)) && <option value={diagnosisId}>Current diagnosis</option>}{linkableDiagnoses.map(row => <option key={row.database_id} value={row.database_id}>{row.diagnosis}{row.record_status === 'draft' ? ' (Draft)' : ''}</option>)}</select><small>Results will appear in the selected diagnosis.</small>{diagnosisLinkError && <small role="alert">{diagnosisLinkError}</small>}</label>
               <div className="lab-wizard-test-grid">
                 <div className="lab-wizard-field lab-wizard-test-type">
                   <span>Test Type <b className="system-required-star">*</b></span>
@@ -1736,7 +1735,8 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
           <div style={modalStyles.vaccinationActionsFooter}><span style={modalStyles.vaccinationActionsNote}>These actions only affect the selected lab test ({actionLabTest.id}).</span><button type="button" style={modalStyles.vaccinationActionsCancel} onClick={() => setActionLabTest(null)}>Cancel</button></div>
         </div>
       </div>}
-      {resultEditor && <div className="lab-result-editor-backdrop" style={{ ...modalStyles.backdrop, padding: editorMode === 'results' ? 12 : 20 }} onClick={() => { setResultEditor(null); setLabActionReturn(null); }}>
+      {resultEditor && editorMode === 'results' && <LabResultEditor key={resultEditor.id} record={resultEditor} setRecord={setResultEditor} user={user} testTypes={labTestTypes} onClose={() => { setResultEditor(null); setLabActionReturn(null); }} onSave={saveResultEditor} error={resultEditorError} setError={setResultEditorError} reading={reportReading} setReading={setReportReading} message={reportReadMessage} setMessage={setReportReadMessage} />}
+      {resultEditor && editorMode !== 'results' && <div className="lab-result-editor-backdrop" style={{ ...modalStyles.backdrop, padding: editorMode === 'results' ? 12 : 20 }} onClick={() => { setResultEditor(null); setLabActionReturn(null); }}>
         <form
           className={`lab-result-editor${editorMode === 'results' ? ' lab-result-entry' : ''}`}
           role="dialog"
@@ -1889,89 +1889,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
           </div>
         </form>
       </div>}
-      {viewResult && <div className={`lab-test-view-backdrop${patientRecord ? ' is-patient-drawer' : ''}`} onClick={() => { setViewResult(null); setLabActionReturn(null); }} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setViewResult(null); setLabActionReturn(null); } }}>
-        <div className={`lab-test-view-dialog${viewResultTab === 'result' ? ' has-result-tab' : ''}`} role={patientRecord ? 'complementary' : 'dialog'} aria-modal={patientRecord ? undefined : 'true'} aria-labelledby="lab-test-view-title" tabIndex={-1} ref={element => { if (element && patientRecord && !element.contains(document.activeElement)) element.focus(); }} onClick={event => event.stopPropagation()}>
-          <header className="lab-test-view-header">
-            <div>
-              <div className="lab-test-view-title-row">
-                <span className="lab-test-view-title-icon">{Icons.clipboard}</span>
-                <h2 id="lab-test-view-title">Lab Test</h2>
-                <StatusIndicator status={viewResult.status || 'Pending'} className="lab-test-view-header-status" />
-              </div>
-              <p className="lab-test-view-subtitle">{viewResult.id} · {viewResult.testType || 'Laboratory test'}</p>
-            </div>
-            <button type="button" aria-label="Close lab test details" onClick={() => { setViewResult(null); setLabActionReturn(null); }}>{Icons.close}</button>
-          </header>
-          <div className="lab-test-view-patient">
-            <span className="lab-test-view-pet-avatar">
-              <ClinicAttachmentImage src={viewResult.photo_url} attachmentId={viewResult.photo_attachment_id} user={user} alt="" fallback={<span>{Icons.pet}</span>} />
-            </span>
-            <div className="lab-test-view-pet-info">
-              <strong>{viewResult.pet || 'Patient'}{viewResult.sex && /^male\b/i.test(viewResult.sex) ? <span className="lab-test-view-sex">♂</span> : null}</strong>
-              <span>{[viewResult.breed, viewResult.species, viewResult.age, viewResult.weight].filter(Boolean).join(' · ') || 'Patient details not available'}</span>
-            </div>
-            <div className="lab-test-view-owner-info">
-              <span>Owner</span>
-              <strong>{viewResult.owner || 'Not recorded'}</strong>
-              {viewResult.ownerPhone && <small><span aria-hidden="true">{Icons.phone}</span>{viewResult.ownerPhone}</small>}
-            </div>
-          </div>
-          <div className="lab-test-view-tabs" role="tablist" aria-label="Lab test information">
-            <button type="button" id="lab-test-details-tab" role="tab" aria-selected={viewResultTab === 'details'} aria-controls="lab-test-details-panel" className={viewResultTab === 'details' ? 'active' : ''} onClick={() => setViewResultTab('details')}><span>{Icons.clipboard}</span>Test Details</button>
-            <button type="button" id="lab-test-result-tab" role="tab" aria-selected={viewResultTab === 'result'} aria-controls="lab-test-result-panel" className={viewResultTab === 'result' ? 'active' : ''} onClick={() => setViewResultTab('result')}><span>{Icons.activity}</span>Test Result</button>
-          </div>
-          <div className="lab-test-view-content">
-            {viewResultTab === 'details' ? <section id="lab-test-details-panel" role="tabpanel" aria-labelledby="lab-test-details-tab">
-              <dl className="lab-test-view-details">
-                <div><dt>Test Type</dt><dd>{viewResult.testType || '—'}</dd></div>
-                <div><dt>Date Requested</dt><dd>{formatDateTimeText(viewResult.orderDateTime || viewResult.date, 'en-US', viewResult.orderDateTime || viewResult.date || '—')}</dd></div>
-                <div><dt>Laboratory</dt><dd>{viewResult.laboratory || 'In-house'}</dd></div>
-                <div><dt>Date Completed</dt><dd>{viewResult.resultDate ? formatDateText(viewResult.resultDate, undefined, viewResult.resultDate) : '—'}</dd></div>
-                <div><dt>Requested By</dt><dd>{viewResult.requestedBy || '—'}</dd></div>
-                <div><dt>Status</dt><dd className="lab-test-view-inline-status"><StatusIndicator status={viewResult.status || 'Pending'} /></dd></div>
-              </dl>
-              <section className="lab-test-view-info-card">
-                <span className="lab-test-view-info-icon">{Icons.file}</span>
-                <div><h3>Notes</h3><p>{viewResult.notes || viewResult.indication || 'No clinical notes recorded.'}</p></div>
-              </section>
-              <section className="lab-test-view-info-card">
-                <span className="lab-test-view-info-icon">{Icons.stethoscope}</span>
-                <div><h3>Veterinarian Interpretation</h3><p>{viewResult.interpretation || 'No interpretation recorded.'}</p></div>
-              </section>
-            </section> : <section id="lab-test-result-panel" role="tabpanel" aria-labelledby="lab-test-result-tab">
-              <div className={`lab-test-result-status${resultIsAvailable ? ' available' : ''}`}>
-                <div><span className="lab-test-result-status-dot" /><div><strong>{resultIsAvailable ? 'Result available' : 'Result not entered yet'}</strong><small>{resultIsAvailable ? `Reported ${formatDateText(viewResult.resultDate || viewResult.reportedAt || viewResult.date, undefined, viewResult.resultDate || viewResult.reportedAt || viewResult.date)}` : 'Enter the findings when the laboratory results are ready.'}</small></div></div>
-                <button type="button" onClick={() => { const selectedResult = viewResult; setViewResult(null); openResultEditor(selectedResult, 'results'); }}>{resultIsAvailable ? 'Edit Result' : 'Enter Result'}</button>
-              </div>
-              {resultIsAvailable ? <>
-                <section className="lab-test-view-result-summary">
-                  <div><span>Result summary</span><strong>{viewResult.summary || 'No summary recorded.'}</strong></div>
-                </section>
-                <section className="lab-test-view-result-table-section">
-                  <div className="lab-test-view-section-heading"><div><h3>Test Result</h3><p>Recorded analytes and their reference ranges.</p></div></div>
-                  {viewResult.measurements?.length ? <div className="lab-test-view-table-wrap">
-                    <table className="lab-test-view-table">
-                      <thead><tr><th>Test / analyte</th><th>Result</th><th>Unit</th><th>Reference range</th><th>Assessment</th></tr></thead>
-                      <tbody>{viewResult.measurements.map((measurement, index) => <tr key={`${measurement.name}-${index}`}>
-                        <td>{measurement.name || '—'}</td><td>{measurement.value || '—'}</td><td>{measurement.unit || '—'}</td><td>{measurement.referenceRange || '—'}</td><td>{measurement.status || measurement.interpretation || '—'}</td>
-                      </tr>)}</tbody>
-                    </table>
-                  </div> : <p className="lab-test-view-empty">A result summary is available, but no individual analyte values were recorded.</p>}
-                </section>
-                <section className="lab-test-view-interpretation"><h3>Veterinarian interpretation</h3><p>{viewResult.interpretation || 'No interpretation recorded.'}</p></section>
-                {(viewResult.fileName || viewResult.downloadable) && <div className="lab-result-attachment"><span>{viewResult.fileName || `${String(viewResult.id).toLowerCase()}_report.pdf`}</span>{viewResult.downloadable && <button type="button" onClick={() => downloadResult(viewResult)}>Download report</button>}</div>}
-              </> : <div className="lab-test-view-no-result"><strong>No test result has been recorded.</strong><p>When the laboratory findings are available, enter the summary, values, and veterinarian interpretation here.</p></div>}
-            </section>}
-          </div>
-          <footer className="lab-test-view-footer">
-            {finalizeLabResultError && <p role="alert" className="lab-clinical-history-error">{finalizeLabResultError}</p>}
-            {labActionReturn && <button type="button" className="lab-test-view-back-button" onClick={() => backToLabTestActions(() => setViewResult(null))}>Back to actions</button>}
-            {resultIsAvailable && getStatusKey(viewResult.status) === 'results-ready'
-              ? <button type="button" className="lab-test-view-close-button" disabled={finalizingLabResult} onClick={finalizeLabResult}>{finalizingLabResult ? 'Finalizing...' : 'Finalize Lab Result'}</button>
-              : <button type="button" className="lab-test-view-close-button" onClick={() => { setViewResult(null); setLabActionReturn(null); }}>Close</button>}
-          </footer>
-        </div>
-      </div>}
+      {viewResult && <LabTestDrawer key={viewResult.id} user={user} record={viewResult} initialTab={viewResultTab} onClose={() => { setViewResult(null); setLabActionReturn(null); }} onBack={labActionReturn ? () => backToLabTestActions(() => setViewResult(null)) : undefined} onEdit={() => { const selectedResult = viewResult; setViewResult(null); openResultEditor(selectedResult, 'results'); }} onDownload={() => downloadResult(viewResult)} />}
       {historyResult && <div className="lab-audit-backdrop" onClick={() => { setHistoryResult(null); setLabActionReturn(null); }}>
         <div className="lab-audit-dialog" role="dialog" aria-modal="true" aria-labelledby="lab-audit-title" onClick={event => event.stopPropagation()}>
           <header className="lab-audit-header">
