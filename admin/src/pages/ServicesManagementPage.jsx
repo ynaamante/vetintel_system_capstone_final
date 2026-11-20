@@ -49,7 +49,7 @@ export default function ServicesManagementPage({ user, initialTab = 'services', 
           <div className="services-management-page">
             {activeTab === 'inventory'
               ? canViewInventory
-                ? <>{sectionTabs}<SharedInventoryPanel user={user} /></>
+                ? <SharedInventoryPanel user={user} sectionTabs={sectionTabs} />
                 : <p>You do not have permission to view inventory.</p>
               : canViewServices
                 ? <SharedServicesCatalog user={user} sectionTabs={sectionTabs} />

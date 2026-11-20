@@ -62,7 +62,7 @@ export default function SharedServicesCatalog({user,sectionTabs}){
   </tr>);
   return <div className="shared-catalog-panel">
     <section className="shared-catalog-stats shared-service-stats">
-      {[['Total Services',statusCounts.total,'total'],['Available Services',statusCounts.available,'available'],['Unavailable Services',statusCounts.unavailable,'unavailable']].map(([label,value,tone])=><article className={`is-${tone}`} key={label}><span>{label}</span><strong>{loading?'—':value}</strong></article>)}
+      {[['Total Services',statusCounts.total,'total','In the clinic catalog'],['Available Services',statusCounts.available,'available','Ready for clinic use'],['Unavailable Services',statusCounts.unavailable,'unavailable','Inactive or awaiting price']].map(([label,value,tone,note])=><article className={`is-${tone}`} key={label}><span>{label}</span><strong>{loading?'\u2014':value}</strong><small>{note}</small></article>)}
     </section>
     <div className="shared-service-toolbar">
       {sectionTabs}

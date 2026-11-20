@@ -23,11 +23,16 @@ import ClinicOverviewPage from './pages/ClinicOverviewPage';
 import UserRoleManagementPage from './pages/UserRoleManagementPage';
 import RolesPermissionsPage from './pages/RolesPermissionsPage';
 import FinancialMonitoringPage from './pages/FinancialMonitoringPage';
+import PaymentQrSettings from './pages/PaymentQrSettings';
+import GlobalSelectMenus from './components/GlobalSelectMenus';
 import AuditTrailPage from './pages/AuditTrailPage';
 import ServicesManagementPage from './pages/ServicesManagementPage';
 import SharedInboxPage from './pages/SharedInboxPage';
 import { Icons } from './icons';
 import { canViewFeature } from './utils/permissionUtils';
+import './styles/ownerTables.css';
+
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
 import { subscribeToNotifications } from './utils/notifications';
 
 const DEDICATED = [
@@ -116,8 +121,7 @@ const canAccessPage = (pageKey, permissions, role) => {
 
 const loadRolePermissions = async (roleName,token) => {
   if(!roleName||!token)return null;
-  const api=import.meta.env.VITE_API_URL||'';
-  const response=await fetch(`${api}/me`,{headers:{Authorization:`Bearer ${token}`},cache:'no-store'});
+  const response=await fetch(`${API_URL}/me`,{headers:{Authorization:`Bearer ${token}`},cache:'no-store'});
   if(!response.ok)return null;
   return (await response.json()).permissions||{};
 };
@@ -141,7 +145,7 @@ export default function App() {
     const refresh=async()=>{
       if(document.hidden)return;
       try{
-        const response=await fetch(`${import.meta.env.VITE_API_URL||''}/me`,{headers:{Authorization:`Bearer ${permissionToken}`},signal:controller.signal,cache:'no-store'});
+        const response=await fetch(`${API_URL}/me`,{headers:{Authorization:`Bearer ${permissionToken}`},signal:controller.signal,cache:'no-store'});
         if(!response.ok){if(response.status===401){setUser(null);localStorage.removeItem('vetintel_token');}return;}
         const me=await response.json();
         if(controller.signal.aborted)return;
@@ -201,9 +205,7 @@ export default function App() {
       }
     }
 
-    const apiUrl = import.meta.env.VITE_API_URL || '';
-
-    fetch(`${apiUrl}/me`, {
+    fetch(`${API_URL}/me`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -334,6 +336,7 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <GlobalSelectMenus />
       <Sidebar
         active={page}
         setPage={setPage}
@@ -345,7 +348,7 @@ export default function App() {
         }}
       />
 
-      <main className={`admin-content ${page === 'inbox' ? 'inbox-content' : ''} ${page === 'clinics' ? 'owner-overview-content' : ''}`}>
+      <main className={`admin-content ${['owner', 'clinic_owner'].includes(normalizeRoleName(user.role)) ? 'owner-content' : ''} ${page === 'inbox' ? 'inbox-content' : ''} ${page === 'clinics' ? 'owner-overview-content' : ''}`}>
         {page === 'dashboard' && <DashboardPage user={user} onNavigate={setPage} />}
         {page === 'disease' && <DiseaseMonitoringPage user={user} />}
         {page === 'clinic' && <ClinicLayout user={user} initialTab={clinicInitialTab} initialInvoiceId={clinicInitialInvoiceId} onNavigate={(nextPage, context) => { if (nextPage === 'patient-records') setInboxPatientRequest(context); if (nextPage === 'clinic') { setClinicInitialTab(context?.tab || 'dashboard'); setClinicInitialInvoiceId(context?.invoiceId || null); } setPage(nextPage); }} />}
@@ -378,7 +381,8 @@ export default function App() {
         {page === 'clinics' && <ClinicOverviewPage user={user} onNavigate={setPage} />}
         {page === 'users' && <UserRoleManagementPage user={user} />}
         {page === 'roles' && <RolesPermissionsPage user={user} />}
-        {page === 'financial' && <FinancialMonitoringPage user={user} />}
+        {page === 'financial' && <FinancialMonitoringPage user={user} onNavigate={setPage} />}
+        {page === 'payment-qr-settings' && <PaymentQrSettings user={user} standalone onNavigate={setPage} />}
         {['services', 'inventory'].includes(page) && (
           <ServicesManagementPage
             user={user}

@@ -121,7 +121,7 @@ export default function ClientManagementPage({ user }) {
           ) : error ? (
             <div style={{ padding: 40, color: '#dc2626' }}>{error}</div>
           ) : (
-            <table style={s.table}>
+            <div className="owner-client-table-wrap"><table style={s.table}>
               <thead>
                 <tr>{['Client ID', 'Name', 'Email', 'Phone', 'Pets', 'Joined', 'Actions'].map((h) => <th key={h} style={s.th}>{h}</th>)}</tr>
               </thead>
@@ -157,7 +157,7 @@ export default function ClientManagementPage({ user }) {
                   ))
                 )}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       </div>
