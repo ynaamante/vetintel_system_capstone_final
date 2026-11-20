@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Activity, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
 import { isSystemAdmin } from '../../../utils/permissionUtils';
 
 export function Login() {
@@ -40,63 +40,73 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#172b5c] via-[#1d3f93] to-[#2459d4] flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        {/* Logo and Header */}
-        <div className="bg-white rounded-xl shadow-2xl px-8 py-7">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <div className="flex items-center justify-center w-9 h-9 bg-[#086b50] rounded-lg">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
-            <div className="text-left">
-              <div className="text-base font-semibold text-[#172b24]">VetIntel</div>
-              <div className="text-[11px] text-[#7995c9]">Super Admin Portal</div>
-            </div>
+    <div className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#f3fff8] via-[#e7f8ef] to-[#d8f1e4] p-4">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -right-20 -top-32 h-[min(70vw,720px)] w-[min(70vw,720px)] rounded-full bg-white/45 blur-3xl" />
+        <svg className="absolute inset-x-0 bottom-0 h-[48%] w-full" viewBox="0 0 1440 420" preserveAspectRatio="none">
+          <path d="M0 130C180 260 290 215 475 420H0V130Z" fill="#9bdcbb" />
+          <path d="M0 245C170 270 270 325 360 420H0V245Z" fill="#087a59" />
+          <path d="M1440 110C1280 205 1190 270 1080 420H1440V110Z" fill="#b9e9cf" />
+          <path d="M0 350C155 300 285 355 445 420H0V350Z" fill="#04583f" />
+        </svg>
+      </div>
+
+      <div className="relative z-10 w-full max-w-md">
+        <div className="overflow-hidden rounded-2xl border border-[#d4e3d7] border-t-4 border-t-[#087a59] bg-white/95 px-7 py-8 shadow-[0_24px_70px_-24px_rgba(1,56,38,.3)] sm:px-9">
+          <div className="mb-7 text-center">
+            <div className="text-xl font-bold tracking-tight text-[#087a59]">VetIntel</div>
+            <div className="text-xs font-medium text-[#526b62]">Super Admin Portal</div>
           </div>
-          <h2 className="text-lg font-semibold text-[#101b33] text-center mb-1">Sign In</h2>
-          <p className="text-xs text-[#a3b9e1] text-center mb-7">Access the platform administration center</p>
+
+          <h2 className="mb-1 text-center text-2xl font-bold text-[#172b24]">Sign In</h2>
+          <p className="mb-7 text-center text-sm text-[#526b62]">Access the platform administration center</p>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3">
               <p className="text-xs text-red-600">{error}</p>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-xs font-medium text-[#46649a] mb-1.5">
+              <label className="mb-1.5 block text-sm font-medium text-[#244b3e]">
                 Email Address
               </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2.5 border border-[#d4e3d7] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="admin@vetintel.com"
-              />
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#526b62]" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-xl border border-[#d4e3d7] bg-white py-3 pl-10 pr-3 text-sm text-[#172b24] outline-none transition placeholder:text-[#8a9b92] focus:border-[#087a59] focus:ring-0 focus:shadow-[0_0_0_3px_rgba(8,107,80,0.18)]"
+                  placeholder="admin@vetintel.com"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-[#46649a] mb-1.5">
+              <label className="mb-1.5 block text-sm font-medium text-[#244b3e]">
                 Password
               </label>
               <div className="relative">
+                <LockKeyhole className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#526b62]" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-[#d4e3d7] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                  className="w-full rounded-xl border border-[#d4e3d7] bg-white py-3 pl-10 pr-12 text-sm text-[#172b24] outline-none transition placeholder:text-[#8a9b92] focus:border-[#087a59] focus:ring-0 focus:shadow-[0_0_0_3px_rgba(8,107,80,0.18)]"
                   placeholder="Enter your password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#789087] transition hover:text-[#087a59]"
                 >
                   {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
+                    <EyeOff className="h-5 w-5" />
                   ) : (
-                    <Eye className="w-5 h-5" />
+                    <Eye className="h-5 w-5" />
                   )}
                 </button>
               </div>
@@ -106,25 +116,25 @@ export function Login() {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-[#b8c9bf] text-[#087a59] accent-[#087a59] focus:ring-[#087a59]"
                 />
-                <span className="ml-2 text-xs text-[#526B62]">Remember me</span>
+                <span className="ml-2 text-xs text-[#526b62]">Remember me</span>
               </label>
-              <a href="#" className="text-xs text-[#086b50] hover:text-blue-700">
+              <a href="#" className="text-xs font-medium text-[#087a59] transition hover:text-[#013826]">
                 Forgot password?
               </a>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-[#086b50] text-white py-2.5 rounded-lg hover:bg-blue-700 text-xs font-semibold transition-colors shadow-[0_8px_18px_-10px_rgba(33,97,232,.9)]"
+              className="w-full rounded-xl bg-gradient-to-r from-[#087a59] to-[#04583f] py-3 text-sm font-semibold text-white shadow-[0_10px_22px_-12px_rgba(8,107,80,.75)] transition hover:from-[#066b4e] hover:to-[#034b36] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087a59]"
             >
               Sign In
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-[10px] text-[#b3c5e7]">
+            <p className="text-[10px] text-[#789087]">
               VetIntel Platform v2.4.1 · Restricted Access
             </p>
           </div>

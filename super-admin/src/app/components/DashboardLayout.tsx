@@ -11,7 +11,6 @@ import {
   ClipboardList,
   CreditCard,
   Video,
-  BarChart3,
   Inbox,
   Bell,
   Menu,
@@ -53,7 +52,6 @@ const navigation = [
   { name: 'Role Requests', path: '/role-requests', icon: ClipboardList },
   { name: 'Subscription Plans', path: '/subscription-plans', icon: CreditCard },
   { name: 'Demo Requests', path: '/demo-requests', icon: Video },
-  { name: 'Platform Reports', path: '/reports', icon: BarChart3 },
   { name: 'Audit Trail', path: '/audit', icon: FileText },
   { name: 'Inbox', path: '/inbox', icon: Inbox },
 ];
@@ -61,6 +59,7 @@ const navigation = [
 export function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const isSettingsActive = location.pathname.startsWith('/settings');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
@@ -239,9 +238,10 @@ export function DashboardLayout() {
           <Link
             to="/settings"
             onClick={() => setSidebarOpen(false)}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-[#D2E5DC] hover:bg-[#086b50] hover:text-white"
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${isSettingsActive ? 'bg-[#0a966b] text-white' : 'text-[#D2E5DC] hover:bg-[#086b50] hover:text-white'}`}
+            aria-current={isSettingsActive ? 'page' : undefined}
           >
-            <Settings className="w-4 h-4 text-[#D2E5DC]" />
+            <Settings className="w-4 h-4" />
             Settings
           </Link>
           <button

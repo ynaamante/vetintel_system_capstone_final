@@ -23,6 +23,13 @@ function normalizeRequestedRole(value) {
   return String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
 }
 
+function staffLimitOf(value) {
+  if (value == null || String(value).trim() === '') return null;
+  if (String(value).trim().toLowerCase() === 'unlimited') return 0;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
 async function provisionClinicApplicationRoles(clinicId) {
   const clinicResult = await db.query(
     `SELECT name, metadata
@@ -134,8 +141,79 @@ async function updateStatus(req, res, next, table, statusColumn = 'status') {
 }
 
 exports.roleRequests = {
-  list: list('role_requests'),
-  detail: detail('role_requests'),
+  list: async (req, res, next) => {
+    try {
+      const result = await db.query(`
+        SELECT rr.*,
+               COALESCE(
+                 NULLIF(BTRIM(c.owner), ''),
+                 NULLIF(BTRIM(c.metadata->'application'->>'ownerName'), ''),
+                 NULLIF(BTRIM(clinic_owner.name), ''),
+                 '—'
+               ) AS owner
+        FROM role_requests rr
+        LEFT JOIN clinics c ON c.id = rr.clinic_id
+        LEFT JOIN LATERAL (
+          SELECT u.name
+          FROM users u
+          LEFT JOIN roles r ON r.id = u.role_id
+          WHERE u.clinic_id = c.id
+            AND LOWER(COALESCE(r.name, '')) IN ('clinic_owner', 'owner')
+          ORDER BY u.is_active DESC, u.id
+          LIMIT 1
+        ) clinic_owner ON TRUE
+        ORDER BY rr.created_at DESC
+      `);
+      res.json(result.rows);
+    } catch (error) { next(error); }
+  },
+  detail: async (req, res, next) => {
+    const id = idOf(req.params.id);
+    if (!id) return res.status(400).json({ error: 'invalid id' });
+    try {
+      const result = await db.query(`
+        SELECT rr.*,
+               COALESCE(
+                 NULLIF(BTRIM(c.owner), ''),
+                 NULLIF(BTRIM(c.metadata->'application'->>'ownerName'), ''),
+                 NULLIF(BTRIM(clinic_owner.name), ''),
+                 '—'
+               ) AS owner,
+               COALESCE(
+                 NULLIF(BTRIM(c.metadata->'application'->>'ownerEmail'), ''),
+                 NULLIF(BTRIM(c.email), ''),
+                 NULLIF(BTRIM(clinic_owner.email), ''),
+                 '—'
+               ) AS owner_email,
+               COALESCE(
+                 NULLIF(BTRIM(c.metadata->'application'->>'ownerPhone'), ''),
+                 NULLIF(BTRIM(c.phone), ''),
+                 NULLIF(BTRIM(clinic_owner.phone), ''),
+                 '—'
+               ) AS owner_phone,
+               COALESCE(NULLIF(BTRIM(c.address), ''), '—') AS clinic_address,
+               c.name AS resolved_clinic_name,
+               reviewer.name AS reviewer_name,
+               reviewer.email AS reviewer_email
+        FROM role_requests rr
+        LEFT JOIN clinics c ON c.id = rr.clinic_id
+        LEFT JOIN LATERAL (
+          SELECT u.name, u.email, u.phone
+          FROM users u
+          LEFT JOIN roles r ON r.id = u.role_id
+          WHERE u.clinic_id = c.id
+            AND LOWER(COALESCE(r.name, '')) IN ('clinic_owner', 'owner')
+          ORDER BY u.is_active DESC, u.id
+          LIMIT 1
+        ) clinic_owner ON TRUE
+        LEFT JOIN users reviewer ON reviewer.id = rr.reviewed_by
+        WHERE rr.id = $1
+        LIMIT 1
+      `, [id]);
+      if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
+      res.json(result.rows[0]);
+    } catch (error) { next(error); }
+  },
   status: (req, res, next) => updateStatus(req, res, next, 'role_requests'),
   listMine: async (req, res, next) => {
     try {
@@ -168,16 +246,37 @@ exports.roleRequests = {
 };
 
 exports.plans = {
-  list: list('subscription_plans'),
+  list: async (req, res, next) => {
+    try {
+      const result = await db.query(`
+        SELECT sp.*,
+               (
+                 SELECT COUNT(*)::int
+                 FROM clinics c
+                 WHERE COALESCE(c.archived, false) = false
+                   AND LOWER(BTRIM(COALESCE(
+                     NULLIF(c.metadata->'application'->>'plan', ''),
+                     NULLIF(c.metadata->>'plan', '')
+                   ))) = LOWER(BTRIM(sp.name))
+               ) AS subscribed_clinics
+        FROM subscription_plans sp
+        ORDER BY sp.created_at DESC
+      `);
+      res.json(result.rows);
+    } catch (error) { next(error); }
+  },
   create: async (req, res, next) => {
     try {
-      const { name, description = '', price = null, staff_limit = null, staffLimit, features = [], billing_cycle = 'monthly', active = true, status } = req.body;
+      const { name, description = '', price = null, annual_price = null, annualPrice, staff_limit = null, staffLimit, features = [], billing_cycle = 'monthly', active = true, status } = req.body;
       if (!name || !String(name).trim()) return res.status(400).json({ error: 'name required' });
+      const normalizedStaffLimit = staffLimitOf(staff_limit == null ? staffLimit : staff_limit);
+      if (normalizedStaffLimit === undefined) return res.status(400).json({ error: 'staff_limit must be a non-negative number or Unlimited' });
       const result = await db.query(
         `INSERT INTO subscription_plans
-          (name, description, price, staff_limit, features, billing_cycle, active, status)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-        [String(name).trim(), description, price, staff_limit == null ? staffLimit : staff_limit,
+          (name, description, price, annual_price, staff_limit, features, billing_cycle, active, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        [String(name).trim(), description, price, annual_price == null ? annualPrice || null : annual_price,
+          normalizedStaffLimit,
           JSON.stringify(Array.isArray(features) ? features : []), billing_cycle, Boolean(active), status || (active ? 'active' : 'inactive')],
       );
       writeAudit(req, 'Created subscription plan', 'subscription_plans', result.rows[0].id, null, result.rows[0]);
@@ -191,14 +290,18 @@ exports.plans = {
       const before = await db.query('SELECT * FROM subscription_plans WHERE id = $1', [id]);
       if (!before.rows.length) return res.status(404).json({ error: 'Plan not found' });
       const body = req.body;
+      const suppliedStaffLimit = body.staff_limit == null ? body.staffLimit : body.staff_limit;
+      const normalizedStaffLimit = staffLimitOf(suppliedStaffLimit);
+      if (normalizedStaffLimit === undefined) return res.status(400).json({ error: 'staff_limit must be a non-negative number or Unlimited' });
       const result = await db.query(
         `UPDATE subscription_plans SET
           name = COALESCE($1,name), description = COALESCE($2,description), price = COALESCE($3,price),
-          staff_limit = COALESCE($4,staff_limit), features = COALESCE($5,features),
-          billing_cycle = COALESCE($6,billing_cycle), active = COALESCE($7,active),
-          status = COALESCE($8,status), updated_at = now()
-         WHERE id = $9 RETURNING *`,
-        [body.name, body.description, body.price, body.staff_limit == null ? body.staffLimit : body.staff_limit,
+          annual_price = COALESCE($4,annual_price), staff_limit = COALESCE($5,staff_limit), features = COALESCE($6,features),
+          billing_cycle = COALESCE($7,billing_cycle), active = COALESCE($8,active),
+          status = COALESCE($9,status), updated_at = now()
+         WHERE id = $10 RETURNING *`,
+        [body.name, body.description, body.price, body.annual_price == null ? body.annualPrice : body.annual_price,
+          normalizedStaffLimit,
           body.features == null ? null : JSON.stringify(body.features), body.billing_cycle,
           body.active, body.status, id],
       );

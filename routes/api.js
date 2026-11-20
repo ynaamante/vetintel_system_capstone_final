@@ -12,6 +12,8 @@ const dashboard = require('../controllers/dashboardController');
 const roles = require('../controllers/roleController');
 const permissions = require('../controllers/permissionController');
 const settings = require('../controllers/settingsController');
+const twoFactor = require('../controllers/twoFactorController');
+const profile = require('../controllers/profileController');
 const adminSurfaces = require('../controllers/adminSurfaceController');
 const auth = require('../middleware/auth');
 
@@ -20,6 +22,14 @@ router.post('/login', users.login);
 router.post('/register', users.register);
 router.get('/me', auth.required, users.me);
 router.post('/password/change', auth.required, users.changePassword);
+router.get('/settings/two-factor', auth.required, twoFactor.status);
+router.post('/settings/two-factor/send-code', auth.required, twoFactor.sendCode);
+router.post('/settings/two-factor/verify-code', auth.required, twoFactor.verifyCode);
+router.post('/settings/two-factor/disable', auth.required, twoFactor.disable);
+router.get('/profile', auth.required, profile.get);
+router.put('/profile', auth.required, profile.update);
+router.post('/profile/email/send-code', auth.required, profile.sendEmailCode);
+router.post('/profile/email/verify-code', auth.required, profile.verifyEmailCode);
 
 // User endpoints
 router.get('/users', auth.required, users.list);

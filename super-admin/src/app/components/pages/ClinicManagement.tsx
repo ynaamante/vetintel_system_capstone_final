@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import {
   Search,
+  ChevronRight,
   Building2,
   CheckCircle,
   Clock,
@@ -24,6 +26,7 @@ import {
   Send,
 } from 'lucide-react';
 import { Toast } from '../ui/Toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const statusColors = {
   active: 'bg-green-100 text-green-700',
@@ -433,7 +436,6 @@ export function ClinicManagement() {
     return matchesStatus && matchesSearch;
   });
   const approvalClinic = clinics.find(clinic => clinic.id === selectedClinic);
-
   const handleApprove = async () => {
     if (!selectedClinic) return;
 
@@ -684,8 +686,9 @@ export function ClinicManagement() {
 
   return (
     <div className="p-5 space-y-5 bg-[#fafbf8] min-h-full">
-      <div className="bg-white rounded-lg border border-[#d4e3d7] overflow-hidden">
-        <div className="flex items-center gap-7 px-4 border-b border-[#d4e3d7] overflow-x-auto">
+      <div className="relative isolate overflow-hidden rounded-xl border border-[#d4e3d7] bg-gradient-to-br from-white via-[#f7fbf8] to-[#e9f6ed]">
+        <div aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 z-0 h-[78%] w-[22%] rounded-tl-[100%] bg-[#d4efdc]" />
+        <div className="relative z-10 flex items-center gap-2 overflow-x-auto px-2.5 py-2">
           {[
             ['all', 'All', clinics.length],
             ['pending', 'Pending', clinics.filter((clinic) => clinic.status === 'pending').length],
@@ -697,18 +700,18 @@ export function ClinicManagement() {
             <button
               key={value}
               onClick={() => setSelectedStatus(value as string)}
-              className={`flex items-center gap-1.5 py-3 text-xs whitespace-nowrap border-b-2 ${selectedStatus === value ? 'border-[#086b50] text-[#086b50]' : 'border-transparent text-[#526B62]'}`}
+              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${selectedStatus === value ? 'border-[#086b50] bg-[#086b50] text-white shadow-sm' : 'border-[#dce9e1] bg-white/80 text-[#344c43] hover:border-[#b8d7c5] hover:bg-[#eff8f2]'}`}
             >
-              {label}<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${selectedStatus === value ? 'bg-[#086b50] text-white' : 'bg-[#e7f4ec] text-[#526B62]'}`}>{count}</span>
+              {label}<span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${selectedStatus === value ? 'bg-white/20 text-white' : 'bg-[#e7f4ec] text-[#526B62]'}`}>{count}</span>
             </button>
           ))}
         </div>
-        <div className="flex items-center justify-between gap-3 p-3 border-b border-[#d4e3d7]">
-          <div className="relative w-72">
-            <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-[#a9d6b7]" />
-            <input type="text" placeholder="Search clinics..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full rounded-lg border border-[#d4e3d7] bg-[#fafbf8] pl-8 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#086b50]" />
+        <div className="relative z-10 flex items-center justify-between gap-3 px-2.5 pb-2">
+          <div className="relative min-w-[220px] max-w-[600px] flex-1">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#6faf91]" />
+            <input type="text" placeholder="Search clinics..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full rounded-full border border-[#d4e3d7] bg-white/80 py-2 pl-8 pr-3 text-xs text-[#172b24] placeholder:text-[#789087] outline-none transition focus:border-[#086b50] focus:ring-2 focus:ring-[#086b50]/20" />
           </div>
-          <button onClick={() => setShowCreateModal(true)} className="rounded-lg bg-[#086b50] px-4 py-2 text-xs font-semibold text-white"><Plus className="inline w-3.5 h-3.5 mr-1" />New Application</button>
+          <button onClick={() => setShowCreateModal(true)} className="inline-flex shrink-0 items-center rounded-full bg-[#086b50] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#013826]"><Plus className="mr-1 h-3.5 w-3.5" />New Application</button>
         </div>
       </div>
 
@@ -716,36 +719,49 @@ export function ClinicManagement() {
       {activeTab === 'overview' && (
         <>
           {/* Clinics Overview Table */}
-          <div className="bg-white rounded-lg border border-[#d4e3d7] overflow-visible">
+          <div className="bg-white rounded-lg border border-[#d4e3d7] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[#e7f4ec] border-b border-[#d4e3d7]">
+                <thead className="bg-gradient-to-r from-[#013826] to-[#086b50] border-b border-[#d4e3d7]">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-white">
                       Clinic Name
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-white">
                       Owner Name
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-white">
                       Contact Email
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-white">
                       Staff Req.
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">Plan</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">Type</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">Submitted</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]">Status</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-[#526B62]"> </th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-white">Plan</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-white">Type</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-white">Submitted</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-white">Status</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-white" aria-label="Clinic details" />
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-[#e3ecfb]">
+                <tbody className="bg-white divide-y divide-[#e6eee9]">
                   {filteredClinics.map((clinic) => (
-                    <tr key={clinic.id} className="hover:bg-[#f8faff]">
+                    <tr
+                      key={clinic.id}
+                      tabIndex={0}
+                      aria-label={`Open application details for ${clinic.name}`}
+                      onClick={() => setViewingClinic(clinic)}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setViewingClinic(clinic);
+                        }
+                      }}
+                      className="cursor-pointer transition-colors hover:bg-[#f0f8f3] focus-visible:bg-[#f0f8f3] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#078c63]"
+                    >
                       <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-[#172b24]">
                         <Link
                           to={`/clinics/${clinic.id}`}
+                          onClick={event => event.stopPropagation()}
                           className="hover:text-[#086b50]"
                         >
                           {clinic.name}
@@ -776,12 +792,14 @@ export function ClinicManagement() {
                           {clinic.status === 'active' ? 'Approved' : clinic.status === 'pending' ? 'Pending' : 'Rejected'}
                         </span>
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap text-right">
+                      <td className="px-3 py-3 whitespace-nowrap text-center">
                         <button
-                          onClick={() => setViewingClinic(clinic)}
-                          className="rounded-lg bg-[#e7f4ec] px-3 py-1 text-sm text-[#086b50] transition hover:bg-[#d4e3d7]"
+                          type="button"
+                          onClick={event => { event.stopPropagation(); setViewingClinic(clinic); }}
+                          aria-label={`View ${clinic.name}`}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#086b50] transition hover:bg-[#e7f4ec]"
                         >
-                          View
+                          <ChevronRight className="h-4 w-4" />
                         </button>
                       </td>
                     </tr>
@@ -1046,36 +1064,37 @@ export function ClinicManagement() {
 
       {/* Create Clinic Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#152744]/60 p-4">
-          <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#d8e3f8] px-6 py-5">
-              <h2 className="text-lg font-bold text-[#172b24]">New Clinic Application</h2>
+        <div className="clinic-application-modal fixed inset-0 z-50 flex items-center justify-center bg-[#172b24]/60 p-4">
+          <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-[#d4e3d7] bg-white shadow-2xl">
+            <div className="relative flex flex-none items-center justify-between overflow-hidden border-b border-[#d4e3d7] px-6 py-5">
+              <div className="pointer-events-none absolute right-0 top-0 h-14 w-1/2 bg-gradient-to-l from-[#a9d6b7] to-[#e7f4ec] [clip-path:ellipse(75%_100%_at_75%_0%)]" />
+              <h2 className="relative text-xl font-bold text-[#013826]">New Clinic Application</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-[#4870ba] transition hover:text-[#086b50]"
+                className="relative text-[#013826] transition hover:text-[#086b50]"
                 aria-label="Close new clinic application"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="space-y-5 px-6 py-5">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-[#fbfdfb] px-6 py-5">
               <section>
                 <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Clinic Information</h3>
-                <label className="mb-1.5 block text-sm font-medium text-[#46649a]">Clinic Name <span className="text-red-500">*</span></label>
+                <label className="mb-1.5 block text-sm font-medium text-[#526b62]">Clinic Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={createClinicForm.name}
                   onChange={e => setCreateClinicForm(p => ({ ...p, name: e.target.value }))}
-                  className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
+                  className="w-full rounded-xl border border-[#b7dcca] bg-white px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9b93] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                   placeholder="e.g. Sunrise Veterinary Clinic"
                 />
-                <label className="mb-1.5 mt-4 block text-sm font-medium text-[#46649a]">Clinic Address <span className="text-red-500">*</span></label>
+                <label className="mb-1.5 mt-4 block text-sm font-medium text-[#526b62]">Clinic Address <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={createClinicForm.address}
                   onChange={e => setCreateClinicForm(p => ({ ...p, address: e.target.value }))}
-                  className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
+                  className="w-full rounded-xl border border-[#b7dcca] bg-white px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9b93] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                   placeholder="Street, City, Province"
                 />
               </section>
@@ -1084,43 +1103,43 @@ export function ClinicManagement() {
                 <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Owner / Contact Information</h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-[#46649a]">Owner Name <span className="text-red-500">*</span></label>
+                    <label className="mb-1.5 block text-sm font-medium text-[#526b62]">Owner Name <span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       value={createClinicForm.owner}
                       onChange={e => setCreateClinicForm(p => ({ ...p, owner: e.target.value }))}
-                      className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
+                      className="w-full rounded-xl border border-[#b7dcca] bg-white px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9b93] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                       placeholder="Dr. Full Name"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-[#46649a]">Email Address <span className="text-red-500">*</span></label>
+                    <label className="mb-1.5 block text-sm font-medium text-[#526b62]">Email Address <span className="text-red-500">*</span></label>
                     <input
                       type="email"
                       value={createClinicForm.email}
                       onChange={e => setCreateClinicForm(p => ({ ...p, email: e.target.value }))}
-                      className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
+                      className="w-full rounded-xl border border-[#b7dcca] bg-white px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9b93] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                       placeholder="owner@clinic.com"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-[#46649a]">Phone Number</label>
+                    <label className="mb-1.5 block text-sm font-medium text-[#526b62]">Phone Number</label>
                     <input
                       type="text"
                       value={createClinicForm.phone}
                       onChange={e => setCreateClinicForm(p => ({ ...p, phone: e.target.value }))}
-                      className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
+                      className="w-full rounded-xl border border-[#b7dcca] bg-white px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9b93] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                       placeholder="+63 9XX XXX XXXX"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-[#46649a]">Number of Staff</label>
+                    <label className="mb-1.5 block text-sm font-medium text-[#526b62]">Number of Staff</label>
                     <input
                       type="number"
                       min="0"
                       value={createClinicForm.staff}
                       onChange={e => setCreateClinicForm(p => ({ ...p, staff: e.target.value }))}
-                      className="w-full rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
+                      className="w-full rounded-xl border border-[#b7dcca] bg-white px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9b93] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                       placeholder="e.g. 5"
                     />
                   </div>
@@ -1129,32 +1148,36 @@ export function ClinicManagement() {
 
               <section>
                 <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Subscription Plan</h3>
-                <label className="mb-1.5 block text-sm font-medium text-[#46649a]">Select Plan</label>
-                <select
+                <label className="mb-1.5 block text-sm font-medium text-[#526b62]">Select Plan</label>
+                <Select
                   value={createClinicForm.plan}
-                  onChange={e => setCreateClinicForm(p => ({ ...p, plan: e.target.value }))}
-                  className="w-full rounded-xl border border-[#bcd2fb] bg-white px-4 py-2.5 text-base text-[#172b24] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
+                  onValueChange={plan => setCreateClinicForm(p => ({ ...p, plan }))}
                 >
-                  <option>Starter</option>
-                  <option>Professional</option>
-                  <option>Enterprise</option>
-                </select>
-                <label className="mb-1.5 mt-4 block text-sm font-medium text-[#46649a]">Additional Notes</label>
+                  <SelectTrigger className="h-auto w-full rounded-xl border-[#b7dcca] bg-white px-4 py-2.5 text-base text-[#172b24] focus-visible:border-[#086b50] focus-visible:ring-2 focus-visible:ring-[#086b50]/20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-[#d4e3d7] bg-white text-[#172b24]">
+                    <SelectItem value="Starter" className="focus:bg-[#e7f4ec] focus:text-[#013826] data-[state=checked]:bg-[#086b50] data-[state=checked]:text-white">Starter</SelectItem>
+                    <SelectItem value="Professional" className="focus:bg-[#e7f4ec] focus:text-[#013826] data-[state=checked]:bg-[#086b50] data-[state=checked]:text-white">Professional</SelectItem>
+                    <SelectItem value="Enterprise" className="focus:bg-[#e7f4ec] focus:text-[#013826] data-[state=checked]:bg-[#086b50] data-[state=checked]:text-white">Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+                <label className="mb-1.5 mt-4 block text-sm font-medium text-[#526b62]">Additional Notes</label>
                 <textarea
                   rows={3}
                   value={createClinicForm.notes}
                   onChange={e => setCreateClinicForm(p => ({ ...p, notes: e.target.value }))}
-                  className="w-full resize-none rounded-xl border border-[#bcd2fb] px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9bb8] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
+                  className="w-full resize-none rounded-xl border border-[#b7dcca] bg-white px-4 py-2.5 text-base text-[#172b24] placeholder:text-[#8b9b93] focus:border-[#086b50] focus:outline-none focus:ring-2 focus:ring-[#086b50]/15"
                   placeholder="Any additional information about this clinic..."
                 />
               </section>
             </div>
 
-            <div className="flex items-center gap-7 px-6 pb-6">
-              <button onClick={handleCreateClinic} className="rounded-xl bg-[#086b50] px-5 py-3 text-base font-bold text-white shadow-sm transition hover:bg-[#174fc5]">
+            <div className="flex flex-none items-center gap-4 border-t border-[#d4e3d7] bg-[#edf6f0] px-6 py-3">
+              <button onClick={handleCreateClinic} className="rounded-xl bg-[#086b50] px-5 py-3 text-base font-bold text-white shadow-sm transition hover:bg-[#013826]">
                 Submit Application
               </button>
-              <button onClick={() => setShowCreateModal(false)} className="text-base font-medium text-[#315eb4] hover:text-[#086b50]">
+              <button onClick={() => setShowCreateModal(false)} className="rounded-xl px-5 py-3 text-base font-semibold text-[#086b50] transition hover:bg-white">
                 Cancel
               </button>
             </div>
@@ -1163,45 +1186,35 @@ export function ClinicManagement() {
       )}
 
       {/* Application details modal */}
-      {viewingClinic && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#152744]/60 p-4">
-          <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-start justify-between border-b border-[#d8e3f8] px-6 py-5">
-              <div>
-                <h2 className="text-lg font-bold text-[#172b24]">{viewingClinic.name}</h2>
-                <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                  viewingClinic.status === 'active'
-                    ? 'bg-[#d8f7e9] text-[#078c63]'
-                    : viewingClinic.status === 'pending'
-                      ? 'bg-[#fff1c9] text-[#c98200]'
-                      : 'bg-[#ffe0e0] text-[#c43636]'
-                }`}>
-                  {viewingClinic.status === 'active' ? 'Approved' : viewingClinic.status === 'pending' ? 'Pending' : 'Rejected'}
-                </span>
-              </div>
+      {viewingClinic && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+          <div className="flex h-[min(560px,calc(100vh-2rem))] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#013826] to-[#087a59] px-5 py-3 text-white">
+              <h2 className="text-sm font-semibold">{viewingClinic.name} Details</h2>
               <button
                 onClick={() => setViewingClinic(null)}
-                className="text-[#4870ba] transition hover:text-[#086b50]"
+                className="text-xl leading-none text-white transition hover:text-[#d4e9df]"
                 aria-label="Close application details"
               >
-                <X className="h-5 w-5" />
+                ×
               </button>
             </div>
 
-            <div className="space-y-4 px-6 py-5">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-[#fbfdfb] p-4 sm:p-5">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <section className="rounded-xl bg-[#eef4ff] p-4">
-                  <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Clinic Information</h3>
-                  <div className="space-y-2 text-sm text-[#172b24]">
+                <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
+                  <h3 className="border-b border-[#d4e3d7] bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2.5 text-sm font-bold text-[#07543d]">Clinic Information</h3>
+                  <div className="space-y-2 p-4 text-sm text-[#172b24]">
                     <p><strong>Clinic Name:</strong> <span className="text-[#526B62]">{viewingClinic.name}</span></p>
                     <p><strong>Address:</strong> <span className="text-[#526B62]">{viewingClinic.address || '123 Katipunan Ave, Quezon City'}</span></p>
                     <p><strong>Contact Email:</strong> <span className="text-[#526B62]">{viewingClinic.email || '—'}</span></p>
                     <p><strong>Phone:</strong> <span className="text-[#526B62]">{viewingClinic.phone || '—'}</span></p>
+                    <p><strong>Status:</strong> <span className="text-[#526B62]">{viewingClinic.status === 'active' ? 'Approved' : viewingClinic.status === 'pending' ? 'Pending' : 'Rejected'}</span></p>
                   </div>
                 </section>
-                <section className="rounded-xl bg-[#eef4ff] p-4">
-                  <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Owner Information</h3>
-                  <div className="space-y-2 text-sm text-[#172b24]">
+                <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
+                  <h3 className="border-b border-[#d4e3d7] bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2.5 text-sm font-bold text-[#07543d]">Owner Information</h3>
+                  <div className="space-y-2 p-4 text-sm text-[#172b24]">
                     <p><strong>Owner Name:</strong> <span className="text-[#526B62]">{viewingClinic.owner}</span></p>
                     <p><strong>Email:</strong> <span className="text-[#526B62]">{viewingClinic.ownerEmail || viewingClinic.application?.ownerEmail || '—'}</span></p>
                     <p><strong>Phone:</strong> <span className="text-[#526B62]">{viewingClinic.application?.ownerPhone || '—'}</span></p>
@@ -1210,9 +1223,9 @@ export function ClinicManagement() {
                 </section>
               </div>
 
-              <section className="rounded-xl bg-[#eef4ff] p-4">
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Requested Staff Structure</h3>
-                <div className="space-y-2">
+              <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
+                <h3 className="border-b border-[#d4e3d7] bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2.5 text-sm font-bold text-[#07543d]">Requested Staff Structure</h3>
+                <div className="space-y-2 p-4">
                  {(viewingClinic.application?.requestedRoles || []).map(({ role, count }) => (
                     <div key={role} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm text-[#172b24]">
                       <span>{role || 'Unspecified role'}</span>
@@ -1223,9 +1236,9 @@ export function ClinicManagement() {
                 </div>
               </section>
 
-              <section className="rounded-xl bg-[#eef4ff] p-4">
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#086b50]">Subscription</h3>
-                <div className="grid grid-cols-1 gap-2 text-sm text-[#172b24] md:grid-cols-2">
+              <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
+                <h3 className="border-b border-[#d4e3d7] bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2.5 text-sm font-bold text-[#07543d]">Subscription</h3>
+                <div className="grid grid-cols-1 gap-2 p-4 text-sm text-[#172b24] md:grid-cols-2">
                   <p><strong>Plan:</strong> <span className="text-[#526B62]">{viewingClinic.application?.plan || 'Starter'}</span></p>
                   <p><strong>Billing:</strong> <span className="text-[#526B62]">Monthly</span></p>
                   <p><strong>Staff Slots:</strong> <span className="text-[#526B62]">{viewingClinic.application?.staffCount ?? viewingClinic.totalStaff}</span></p>
@@ -1234,13 +1247,14 @@ export function ClinicManagement() {
               </section>
             </div>
 
-            <div className="flex flex-wrap gap-2 px-6 pb-6">
+            <div className="flex flex-none flex-wrap items-center justify-between gap-3 border-t border-[#d4e3d7] bg-white px-5 py-3">
+              <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => {
                   openApprovalWizard(viewingClinic.id);
                   setViewingClinic(null);
                 }}
-                className="rounded-xl bg-[#08a36f] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#078c63]"
+                className="rounded-full bg-[#087a59] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#065c44]"
               >
                 Approve Application
               </button>
@@ -1248,7 +1262,7 @@ export function ClinicManagement() {
                 onClick={() => {
                   void rejectApplication(viewingClinic);
                 }}
-                className="rounded-xl bg-[#ef252b] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#d91e23]"
+                className="rounded-full border border-[#c43636] bg-white px-4 py-2 text-xs font-semibold text-[#c43636] transition hover:bg-[#fff1f1]"
               >
                 Reject Application
               </button>
@@ -1258,13 +1272,18 @@ export function ClinicManagement() {
                   setToast('Information request action is ready for backend integration');
                   setTimeout(() => setToast(null), 3000);
                 }}
-                className="rounded-xl bg-[#e7f4ec] px-4 py-2.5 text-sm font-bold text-[#086b50] hover:bg-[#d4e3d7]"
+                className="rounded-full border border-[#087a59] bg-white px-4 py-2 text-xs font-semibold text-[#087a59] transition hover:bg-[#eff9f3]"
               >
                 Request Information
               </button>
+              </div>
+              <button onClick={() => setViewingClinic(null)} className="rounded-full border border-[#087a59] px-4 py-2 text-xs font-semibold text-[#087a59] transition hover:bg-[#eff9f3]">
+                Close
+              </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Edit Information Modal */}
