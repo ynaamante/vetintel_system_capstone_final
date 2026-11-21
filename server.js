@@ -639,6 +639,7 @@ async function ensureAdminSurfaceSchema() {
         name TEXT NOT NULL,
         description TEXT NOT NULL DEFAULT '',
         price TEXT,
+        annual_price TEXT,
         staff_limit INTEGER,
         features JSONB NOT NULL DEFAULT '[]'::jsonb,
         billing_cycle TEXT NOT NULL DEFAULT 'monthly',
@@ -646,6 +647,21 @@ async function ensureAdminSurfaceSchema() {
         status TEXT NOT NULL DEFAULT 'active',
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS annual_price TEXT;
+      INSERT INTO subscription_plans (name, description, price, annual_price, staff_limit, features, billing_cycle)
+      SELECT seed.name, seed.description, seed.price, seed.annual_price, seed.staff_limit, seed.features::jsonb, 'monthly'
+      FROM (VALUES
+        ('Starter', 'Perfect for small clinics', '₱499.00', '₱4,999.00', 3,
+          '["Core Records & Scheduling","Basic Reporting","Email Support"]'),
+        ('Professional', 'For growing clinics', '₱999.00', '₱9,999.00', 15,
+          '["Core Records & Scheduling","Basic Reporting","Email Support","Inventory & Billing","Disease Intelligence","Priority Support"]'),
+        ('Enterprise', 'For large institutions', '₱2,499.00', '₱24,999.00', 0,
+          '["Core Records & Scheduling","Basic Reporting","Email Support","Inventory & Billing","Disease Intelligence","Priority Support","Custom Integrations","Dedicated Account Manager","24/7 Support"]')
+      ) AS seed(name, description, price, annual_price, staff_limit, features)
+      WHERE NOT EXISTS (
+        SELECT 1 FROM subscription_plans existing
+        WHERE LOWER(BTRIM(existing.name)) = LOWER(BTRIM(seed.name))
       );
       CREATE TABLE IF NOT EXISTS demo_requests (
         id SERIAL PRIMARY KEY,

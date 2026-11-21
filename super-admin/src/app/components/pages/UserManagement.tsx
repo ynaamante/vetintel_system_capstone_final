@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, Check, Eye, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { AlertCircle, Check, ChevronRight } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 type RequestStatus = 'Assigned' | 'Pending' | 'Rejected';
 
@@ -132,20 +134,27 @@ export function UserManagement() {
         </div>
       )}
 
-      <section className="mb-3 flex min-h-[78px] items-center justify-between rounded-xl border border-[#d4e3d7] bg-white px-4 py-3">
-        <div>
-          <label htmlFor="clinic-filter" className="mb-1 block text-[11px] text-[#526B62]">Filter by Clinic</label>
-          <select
-            id="clinic-filter"
-            value={selectedClinic}
-            onChange={event => setSelectedClinic(event.target.value)}
-            className="h-8 w-48 rounded-lg border border-[#bfd4fa] bg-white px-3 text-xs text-[#172b24] outline-none focus:ring-2 focus:ring-[#8eb5ff]"
-          >
-            <option value="All">All</option>
-            {clinics.map(clinic => <option key={clinic} value={clinic}>{clinic}</option>)}
-          </select>
+      <section className="relative isolate mb-3 flex min-h-[78px] items-center justify-between overflow-hidden rounded-xl border border-[#d4e3d7] bg-gradient-to-br from-white via-[#f7fbf8] to-[#e9f6ed] px-4 py-3">
+        <div aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 z-0 h-[90%] w-[28%] rounded-tl-[100%] bg-[#d4efdc]" />
+        <div className="relative z-10">
+          <label className="mb-1 block text-[11px] text-[#526B62]">Filter by Clinic</label>
+          <Select value={selectedClinic} onValueChange={setSelectedClinic}>
+            <SelectTrigger
+              className="h-9 w-fit min-w-[140px] max-w-[280px] shrink-0 rounded-full border-[#d4e3d7] bg-white px-3 text-xs text-[#172b24] focus-visible:border-[#086b50] focus-visible:ring-2 focus-visible:ring-[#086b50]/20"
+            >
+              <SelectValue className="whitespace-nowrap" />
+            </SelectTrigger>
+            <SelectContent className="border-[#d4e3d7] bg-white text-[#172b24]">
+              <SelectItem value="All" className="focus:bg-[#e7f4ec] focus:text-[#013826] data-[state=checked]:bg-[#086b50] data-[state=checked]:text-white">All</SelectItem>
+              {clinics.map(clinic => (
+                <SelectItem key={clinic} value={clinic} className="focus:bg-[#e7f4ec] focus:text-[#013826] data-[state=checked]:bg-[#086b50] data-[state=checked]:text-white">
+                  {clinic}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <p className="text-xs text-[#c56a22]">
+        <p className="relative z-10 inline-flex items-center rounded-full bg-[#fff4d6] px-3 py-2 text-xs font-medium text-[#a45b00]">
           <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#df7a00]" />
           {pendingCount} pending role{pendingCount === 1 ? '' : 's'} awaiting assignment
         </p>
@@ -154,28 +163,45 @@ export function UserManagement() {
       <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[850px] text-left">
-            <thead className="bg-[#eef4ff]">
+            <thead className="bg-gradient-to-r from-[#013826] to-[#086b50]">
               <tr>
-                {['Clinic', 'Owner', 'Requested Role', 'Users', 'Request Date', 'Status', 'Action'].map(heading => (
-                  <th key={heading} className="px-4 py-3 text-[11px] font-semibold text-[#526B62]">{heading}</th>
+                {['Clinic', 'Owner', 'Requested Role', 'Users', 'Request Date', 'Status', ''].map((heading, index) => (
+                  <th key={heading || `action-${index}`} className="px-4 py-3 text-[11px] font-semibold text-white">{heading}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filteredRequests.map(request => (
-                <tr key={request.id} className="border-t border-[#e3ecfb]">
-                  <td className="px-4 py-3 text-sm font-medium">{request.clinic}</td>
-                  <td className="px-4 py-3 text-sm text-[#526B62]">{request.owner}</td>
-                  <td className="px-4 py-3 text-sm">{request.role}</td>
-                  <td className="px-4 py-3 text-sm text-[#526B62]">{request.users}</td>
-                  <td className="px-4 py-3 text-sm text-[#526B62]">{request.requestDate}</td>
-                  <td className={`px-4 py-3 text-xs font-medium ${statusClass(request.status)}`}>{request.status}</td>
-                  <td className="px-4 py-3">
+                <tr
+                  key={request.id}
+                  tabIndex={0}
+                  aria-label={`Open role request for ${request.clinic}, ${request.role}`}
+                  onClick={() => setViewingRequest(request)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setViewingRequest(request);
+                    }
+                  }}
+                  className="cursor-pointer border-t border-[#e6eee9] transition-colors hover:bg-[#f0f8f3] focus-visible:bg-[#f0f8f3] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#078c63]"
+                >
+                  <td className="px-4 py-3 text-sm font-medium"><button type="button" onClick={() => setViewingRequest(request)} className="block w-full text-left">{request.clinic}</button></td>
+                  <td className="px-4 py-3 text-sm text-[#526B62]"><button type="button" onClick={() => setViewingRequest(request)} className="block w-full text-left">{request.owner}</button></td>
+                  <td className="px-4 py-3 text-sm"><button type="button" onClick={() => setViewingRequest(request)} className="block w-full text-left">{request.role}</button></td>
+                  <td className="px-4 py-3 text-sm text-[#526B62]"><button type="button" onClick={() => setViewingRequest(request)} className="block w-full text-left">{request.users}</button></td>
+                  <td className="px-4 py-3 text-sm text-[#526B62]"><button type="button" onClick={() => setViewingRequest(request)} className="block w-full text-left">{request.requestDate}</button></td>
+                  <td className="px-4 py-3 text-xs font-medium"><button type="button" onClick={() => setViewingRequest(request)} className="block w-full text-left">
+                    <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 ${request.status === 'Assigned' ? 'bg-[#d8f7e9] text-[#078c63]' : request.status === 'Rejected' ? 'bg-[#ffe0e0] text-[#c43636]' : 'bg-[#fff1c9] text-[#c98200]'}`}>{request.status}</span>
+                  </button>
+                  </td>
+                  <td className="px-4 py-3 text-center">
                     <button
-                      onClick={() => setViewingRequest(request)}
-                      className="flex items-center gap-1 rounded-lg bg-[#e7f4ec] px-3 py-1.5 text-xs font-medium text-[#086b50] hover:bg-[#dbe8ff]"
+                      type="button"
+                      onClick={event => { event.stopPropagation(); setViewingRequest(request); }}
+                      aria-label={`View ${request.clinic} ${request.role} request`}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#086b50] transition hover:bg-[#e7f4ec]"
                     >
-                      <Eye className="h-3.5 w-3.5" /> View
+                      <ChevronRight className="h-4 w-4" />
                     </button>
                   </td>
                 </tr>
@@ -185,42 +211,50 @@ export function UserManagement() {
         </div>
       </section>
 
-      {viewingRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#152744]/60 p-4">
-          <div className="w-full max-w-[512px] rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-start justify-between border-b border-[#d4e3d7] px-6 py-5">
-              <div>
-                <h2 className="text-lg font-bold">Role Request Details</h2>
-                <p className="mt-1 text-xs text-[#526B62]">{viewingRequest.clinic}</p>
-              </div>
-              <button onClick={() => setViewingRequest(null)} aria-label="Close details" className="text-[#086b50]">
-                <X className="h-5 w-5" />
-              </button>
+      {viewingRequest && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="user-role-request-details-title" className="flex h-[min(560px,calc(100vh-2rem))] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#013826] to-[#087a59] px-5 py-3 text-white">
+              <h2 id="user-role-request-details-title" className="text-sm font-semibold">Role Request Details</h2>
+              <button onClick={() => setViewingRequest(null)} aria-label="Close details" className="text-xl leading-none transition hover:text-[#d4e9df]">×</button>
             </div>
-            <div className="space-y-4 px-6 py-5">
-              <div className="grid grid-cols-2 gap-x-5 gap-y-3 rounded-xl bg-[#eef4ff] p-4 text-sm">
-                <p>Requested Role: <span className="text-[#526B62]">{viewingRequest.role}</span></p>
-                <p>Number of Users: <span className="text-[#526B62]">{viewingRequest.users} {viewingRequest.users === 1 ? 'user' : 'users'}</span></p>
-                <p>Clinic: <span className="text-[#526B62]">{viewingRequest.clinic}</span></p>
-                <p>Owner: <span className="text-[#526B62]">{viewingRequest.owner}</span></p>
-                <p>Request Date: <span className="text-[#526B62]">{viewingRequest.requestDate}</span></p>
-                <p>Status: <span className={statusClass(viewingRequest.status)}>{viewingRequest.status}</span></p>
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[#fbfdfb] p-4 sm:p-5">
+              <div className="space-y-4">
+                <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
+                  <h3 className="border-b border-[#d4e3d7] bg-[#e7f4ec] px-4 py-2.5 text-sm font-semibold text-[#07543d]">Request Information</h3>
+                  <dl className="grid grid-cols-1 gap-x-5 gap-y-3 p-4 text-sm sm:grid-cols-2">
+                    <div><dt className="font-medium text-[#526B62]">Requested Role</dt><dd className="mt-0.5 text-[#172b24]">{viewingRequest.role}</dd></div>
+                    <div><dt className="font-medium text-[#526B62]">Number of Users</dt><dd className="mt-0.5 text-[#172b24]">{viewingRequest.users} {viewingRequest.users === 1 ? 'user' : 'users'}</dd></div>
+                    <div><dt className="font-medium text-[#526B62]">Clinic</dt><dd className="mt-0.5 text-[#172b24]">{viewingRequest.clinic}</dd></div>
+                    <div><dt className="font-medium text-[#526B62]">Owner</dt><dd className="mt-0.5 text-[#172b24]">{viewingRequest.owner}</dd></div>
+                    <div><dt className="font-medium text-[#526B62]">Request Date</dt><dd className="mt-0.5 text-[#172b24]">{viewingRequest.requestDate}</dd></div>
+                    <div><dt className="font-medium text-[#526B62]">Status</dt><dd className={`mt-0.5 font-medium ${statusClass(viewingRequest.status)}`}>{viewingRequest.status}</dd></div>
+                  </dl>
+                </section>
+                <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
+                  <h3 className="border-b border-[#d4e3d7] bg-[#e7f4ec] px-4 py-2.5 text-sm font-semibold text-[#07543d]">Notes</h3>
+                  <p className="p-4 text-sm text-[#526B62]">{viewingRequest.notes}</p>
+                </section>
+                <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
+                  <h3 className="border-b border-[#d4e3d7] bg-[#e7f4ec] px-4 py-2.5 text-sm font-semibold text-[#07543d]">Review Guidance</h3>
+                  <p className="p-4 text-xs leading-5 text-[#526B62]">
+                    As Super Admin, you are responsible for reviewing and assigning the requested role to the clinic owner. The clinic owner will manage role permissions on their end.
+                  </p>
+                </section>
+                {viewingRequest.status === 'Pending' && (
+                  <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
+                    <h3 className="border-b border-[#d4e3d7] bg-[#e7f4ec] px-4 py-2.5 text-sm font-semibold text-[#07543d]">Review Actions</h3>
+                    <div className="flex flex-wrap gap-2 p-4">
+                      <button onClick={() => setAssignmentRequest(viewingRequest)} className="rounded-full bg-[#087a59] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#065c44]">Assign Role</button>
+                      <button onClick={() => rejectRequest(viewingRequest)} className="rounded-full border border-[#c43636] bg-white px-4 py-2 text-xs font-semibold text-[#c43636] transition hover:bg-[#fff1f1]">Reject</button>
+                    </div>
+                  </section>
+                )}
               </div>
-              <p className="rounded-xl bg-[#eef4ff] p-4 text-sm">Notes: <span className="text-[#526B62]">{viewingRequest.notes}</span></p>
-              <p className="rounded-xl border border-[#82b5ff] bg-[#f0f7ff] p-4 text-xs text-[#086b50]">
-                <strong>Note:</strong> As Super Admin, you are only responsible for reviewing and assigning the requested role to the clinic owner. The clinic owner will manage role permissions on their end.
-              </p>
             </div>
-            {viewingRequest.status === 'Pending' ? (
-              <div className="flex gap-2 px-6 pb-5">
-                <button onClick={() => setAssignmentRequest(viewingRequest)} className="flex-1 rounded-lg bg-[#079669] py-2.5 text-sm font-semibold text-white hover:bg-[#05845b]">Assign Role</button>
-                <button onClick={() => rejectRequest(viewingRequest)} className="rounded-lg bg-[#e52d2d] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#c92222]">Reject</button>
-              </div>
-            ) : (
-              <button onClick={() => setViewingRequest(null)} className="w-full px-6 pb-5 text-sm text-[#086b50]">Close</button>
-            )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {assignmentRequest && (
@@ -231,8 +265,8 @@ export function UserManagement() {
               Assign the <strong className="text-[#086b50]">{assignmentRequest.role}</strong> role to <strong className="text-[#086b50]">{assignmentRequest.clinic}</strong>? The clinic owner will be able to create staff accounts using this role.
             </p>
             <div className="mt-6 flex gap-3">
-              <button onClick={confirmAssignment} className="flex-1 rounded-lg bg-[#079669] px-4 py-3 text-sm font-semibold text-white hover:bg-[#05845b]">Confirm Assignment</button>
-              <button onClick={() => setAssignmentRequest(null)} className="flex-1 rounded-lg bg-[#e7f4ec] px-4 py-3 text-sm text-[#086b50] hover:bg-[#dbe8ff]">Back</button>
+              <button onClick={confirmAssignment} className="flex-1 rounded-lg bg-[#086b50] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#013826]">Confirm Assignment</button>
+              <button onClick={() => setAssignmentRequest(null)} className="flex-1 rounded-lg bg-[#e7f4ec] px-4 py-3 text-sm text-[#086b50] transition hover:bg-[#d4e3d7]">Back</button>
             </div>
           </div>
         </div>

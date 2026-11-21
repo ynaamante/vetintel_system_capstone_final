@@ -51,6 +51,44 @@ async function sendMessageNotification({ email, senderName, subject }) {
   return { sent: true };
 }
 
+async function sendTwoFactorCode({ email, code }) {
+  const subject = 'Your VetIntel verification code';
+  const text = `Your VetIntel verification code is ${code}. It expires in 10 minutes. If you did not request this code, you can ignore this email.`;
+
+  if (process.env.BREVO_API_KEY) {
+    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SENDER_EMAIL;
+    if (!senderEmail) throw new Error('Email verification is unavailable because the sender email is not configured.');
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': process.env.BREVO_API_KEY, accept: 'application/json', 'content-type': 'application/json' },
+      body: JSON.stringify({ sender: { email: senderEmail, name: process.env.BREVO_SENDER_NAME || 'VetIntel' }, to: [{ email }], subject, textContent: text }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) throw new Error('VetIntel could not send the verification email. Check the email service configuration.');
+    return;
+  }
+
+  const transport = getTransport();
+  if (!transport) throw new Error('Email verification is unavailable because SMTP is not configured.');
+  await transport.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: email, subject, text });
+}
+
+async function sendTwoFactorSms({ phone, code }) {
+  const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER } = process.env;
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_FROM_NUMBER) {
+    throw new Error('Phone verification is unavailable because SMS is not configured.');
+  }
+  const body = new URLSearchParams({ To: phone, From: TWILIO_FROM_NUMBER, Body: `Your VetIntel verification code is ${code}. It expires in 10 minutes.` });
+  const credentials = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
+  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, {
+    method: 'POST',
+    headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) throw new Error('VetIntel could not send the verification text. Check the SMS service configuration.');
+}
+
 async function sendPurchaseOrder({ email, supplier, purchaseOrderId, requestedBy, expectedDeliveryDate, notes }) {
   const transport = getTransport();
   if (!transport) return { sent: false, reason: 'SMTP is not configured' };
@@ -143,4 +181,4 @@ async function sendVerificationCode({ email, code, purpose = 'verification' }) {
   } catch { return { sent: false, reason: 'Could not reach the verification email server.', errorCode: 'email_provider_unreachable' }; }
 }
 const sendPasswordResetCode = data => sendVerificationCode({ ...data, purpose: 'password_reset' });
-module.exports = { sendOwnerCredentials, sendMessageNotification, sendPurchaseOrder, reminderEmailConfigured, sendClinicReminder, sendVerificationCode, sendPasswordResetCode };
+module.exports = { sendOwnerCredentials, sendMessageNotification, sendPurchaseOrder, reminderEmailConfigured, sendClinicReminder, sendVerificationCode, sendPasswordResetCode, sendTwoFactorCode, sendTwoFactorSms };

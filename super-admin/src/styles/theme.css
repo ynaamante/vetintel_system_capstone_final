@@ -209,3 +209,17 @@ select,
 textarea {
   border-color: #d4e3d7;
 }
+
+.clinic-application-modal input:hover,
+.clinic-application-modal textarea:hover,
+.clinic-application-modal [data-slot="select-trigger"]:hover {
+  border-color: #a9d6b7;
+}
+
+.clinic-application-modal input:focus,
+.clinic-application-modal textarea:focus,
+.clinic-application-modal [data-slot="select-trigger"]:focus {
+  border-color: #086b50;
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(8 107 80 / 18%);
+}

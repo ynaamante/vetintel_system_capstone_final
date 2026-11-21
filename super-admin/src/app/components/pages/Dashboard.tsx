@@ -10,6 +10,16 @@ import { Toast } from '../ui/Toast';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+type RecentApplication = {
+  id: string;
+  name: string;
+  owner: string;
+  staffCount: string;
+  plan: string;
+  date: string;
+  status: string;
+};
+
 export function Dashboard() {
   const navigate = useNavigate();
   const [clinicSummary, setClinicSummary] = useState({
@@ -28,7 +38,7 @@ export function Dashboard() {
     newUsersLast30Days: 0,
   });
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
-  const [recentApplications, setRecentApplications] = useState<string[][]>([]);
+  const [recentApplications, setRecentApplications] = useState<RecentApplication[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const currentUser = (() => {
@@ -273,22 +283,23 @@ export function Dashboard() {
       const data = await response.json();
 
       setRecentApplications(
-        (data.applications || []).map((application: any) => [
-          application.name || '—',
-          application.owner || '—',
-          String(application.staff_count || 0),
-          application.plan || 'Starter',
-          application.created_at
+        (data.applications || []).map((application: any) => ({
+          id: String(application.id),
+          name: application.name || '—',
+          owner: application.owner || '—',
+          staffCount: String(application.staff_count || 0),
+          plan: application.plan || 'Starter',
+          date: application.created_at
             ? new Date(application.created_at).toLocaleDateString()
             : '—',
-          application.status === 'active'
+          status: application.status === 'active'
             ? 'Approved'
             : application.status === 'rejected'
               ? 'Needs Information'
               : application.status === 'suspended'
                 ? 'Suspended'
                 : 'Pending',
-        ])
+        }))
       );
     } catch (error) {
       console.error('Failed to fetch recent clinic applications', error);
@@ -384,38 +395,98 @@ export function Dashboard() {
 
   return (
     <div className="p-5 space-y-5 bg-[#fafbf8] min-h-full">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+      <div className="relative isolate grid grid-cols-1 overflow-hidden rounded-xl border border-[#d4e3d7] bg-gradient-to-br from-white via-[#f7fbf8] to-[#e9f6ed] sm:grid-cols-2 xl:grid-cols-6">
+        <div aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 z-0 h-[70%] w-[22%] rounded-tl-[100%] bg-[#d4efdc]" />
         {[
-          { label: 'Total Registered Clinics', value: clinicSummary.totalRegisteredClinics, delta: `+${clinicSummary.newClinicsLast30Days} this month`, color: 'bg-[#e7f4ec] text-[#086b50]' },
-          { label: 'Active Clinics', value: clinicSummary.activeClinics, delta: '+5 this week', color: 'bg-[#d8f7e9] text-[#079669]' },
-          { label: 'Pending Applications', value: clinicSummary.pendingApprovals, delta: '3 urgent', color: 'bg-[#fff1c9] text-[#d98200]' },
-          { label: 'Pending Role Requests', value: 5, delta: '2 new today', color: 'bg-[#eee8ff] text-[#7b3fe4]' },
-          { label: 'Active Subscriptions', value: 138, delta: '97% retention', color: 'bg-[#e1f3ff] text-[#168fc5]' },
-          { label: 'Demo Requests', value: 14, delta: '6 uncontacted', color: 'bg-[#ffe8f2] text-[#d52e7b]' },
-        ].map((metric) => (
-          <div key={metric.label} className="bg-white rounded-lg border border-[#d4e3d7] p-4 shadow-none">
-            <div className="flex items-start justify-between gap-3">
-              <div><p className="text-sm text-[#526B62]">{metric.label}</p><p className="text-3xl font-semibold text-[#172b24] mt-2">{metric.value}</p><p className="text-xs text-[#086b50] mt-1">{metric.delta}</p></div>
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${metric.color}`}><span className="w-2 h-2 rounded-full bg-current" /></div>
-            </div>
+          { label: 'Total Registered Clinics', value: clinicSummary.totalRegisteredClinics, delta: `+${clinicSummary.newClinicsLast30Days} this month` },
+          { label: 'Active Clinics', value: clinicSummary.activeClinics, delta: '+5 this week' },
+          { label: 'Pending Applications', value: clinicSummary.pendingApprovals, delta: '3 urgent' },
+          { label: 'Pending Role Requests', value: 5, delta: '2 new today' },
+          { label: 'Active Subscriptions', value: 138, delta: '97% retention' },
+          { label: 'Demo Requests', value: 14, delta: '6 uncontacted' },
+        ].map((metric, index) => (
+          <div key={metric.label} className="relative z-10 min-w-0 border-b border-[#cfe2d7] px-4 py-4 last:border-b-0 sm:px-5 xl:border-b-0">
+            <p className="truncate text-sm text-[#526B62]">{metric.label}</p>
+            <p className="mt-1 text-3xl font-semibold leading-tight text-[#172b24]">{metric.value}</p>
+            <p className="mt-1 text-xs text-[#086b50]">{metric.delta}</p>
+            {index < 5 && <span aria-hidden="true" className="absolute right-0 top-6 bottom-6 hidden w-px bg-[#cfe2d7] xl:block" />}
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.8fr_1fr] gap-3">
-        <div className="bg-white rounded-lg border border-[#d4e3d7] overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#d4e3d7]"><h2 className="text-base font-semibold text-[#172b24]">Recent Clinic Applications</h2><button onClick={() => navigate('/clinics')} className="text-sm text-[#086b50]">View all</button></div>
-        <div className="overflow-x-auto"><table className="w-full text-left"><thead className="bg-[#e7f4ec]"><tr>{['Clinic Name', 'Owner', 'Staff', 'Plan', 'Date', 'Status'].map((heading) => <th className="px-3 py-2 text-xs font-semibold text-[#526B62]" key={heading}>{heading}</th>)}</tr></thead><tbody>{recentApplications.map((row) => <tr className="border-t border-[#e3ecfb]" key={row[0]}>{row.map((value, index) => <td className="px-3 py-3 text-sm text-[#526B62]" key={index}>{index === row.length - 1 ? <span className={`rounded-full px-2 py-1 ${statusClass(value)}`}>{value}</span> : value}</td>)}</tr>)}</tbody></table></div>
+        <div className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white shadow-none">
+          <div className="flex items-center justify-between bg-gradient-to-r from-[#013826] to-[#086b50] px-4 py-3">
+            <h2 className="text-base font-semibold text-white">Recent Clinic Applications</h2>
+            <button onClick={() => navigate('/clinics')} className="text-sm font-semibold text-white transition hover:text-[#c7f0dc]">View all</button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-[#e7f4ec]">
+                <tr>{['Clinic Name', 'Owner', 'Staff Req.', 'Plan', 'Submitted', 'Status'].map((heading) => <th className="px-3 py-2.5 text-xs font-semibold text-[#244b3e]" key={heading}>{heading}</th>)}</tr>
+              </thead>
+              <tbody>
+                {recentApplications.map((row) => (
+                  <tr className="border-t border-[#e6eee9] transition-colors hover:bg-[#f7fbf8]" key={row.id}>
+                    <td className="px-3 py-2.5 text-sm font-medium text-[#172b24]">{row.name}</td>
+                    <td className="px-3 py-2.5 text-sm text-[#40594f]">{row.owner}</td>
+                    <td className="px-3 py-2.5 text-sm text-[#40594f]">{row.staffCount}</td>
+                    <td className="px-3 py-2.5 text-sm text-[#40594f]">{row.plan}</td>
+                    <td className="px-3 py-2.5 text-sm text-[#40594f]">{row.date}</td>
+                    <td className="px-3 py-2.5 text-sm">
+                      <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(row.status)}`}>{row.status}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div className="bg-white rounded-lg border border-[#d4e3d7] overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#d4e3d7]"><h2 className="text-base font-semibold text-[#172b24]">Platform Activity</h2></div>
-        <div>{activityRows.map((activity) => <div className="flex gap-3 px-4 py-3 border-b border-[#d4d4d4]" key={activity.id}><span className="mt-1.5 w-2 h-2 rounded-full bg-[#086b50] shrink-0" /><div className="flex-1"><p className="text-sm font-semibold text-[#172b24]">{recentActivities.length > 0 ? getActivityTitle(activity.action, activity.entity_type) : activity.action}</p><p className="text-xs text-[#526B62]">{recentActivities.length > 0 ? getActivityDescription(activity) : activity.changes.name}</p></div><span className="text-xs text-[#a9d6b7]">{activity.time || formatTimeAgo(activity.created_at)}</span></div>)}</div>
+        <div className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white shadow-none">
+          <div className="bg-gradient-to-r from-[#013826] to-[#086b50] px-4 py-3">
+            <h2 className="text-base font-semibold text-white">Platform Activity</h2>
+          </div>
+          <div>
+            {activityRows.map((activity, index) => (
+              <div
+                className={`flex gap-3 px-4 py-3 transition-colors hover:bg-[#f7fbf8] ${index < activityRows.length - 1 ? 'border-b border-[#e6eee9]' : ''}`}
+                key={activity.id}
+              >
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#086b50]" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[#172b24]">{recentActivities.length > 0 ? getActivityTitle(activity.action, activity.entity_type) : activity.action}</p>
+                  <p className="text-xs text-[#526B62]">{recentActivities.length > 0 ? getActivityDescription(activity) : activity.changes.name}</p>
+                </div>
+                <span className="shrink-0 text-xs text-[#6faf91]">{activity.time || formatTimeAgo(activity.created_at)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-[#d4e3d7] overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#d4e3d7]"><h2 className="text-base font-semibold text-[#172b24]">Recent Role Requests</h2><button onClick={() => navigate('/role-requests')} className="text-sm text-[#086b50]">View all</button></div>
-      <table className="w-full text-left"><thead className="bg-[#e7f4ec]"><tr>{['Clinic', 'Requested Role', 'Users', 'Date', 'Status'].map((heading) => <th className="px-3 py-2 text-xs font-semibold text-[#526B62]" key={heading}>{heading}</th>)}</tr></thead><tbody>{recentRoleRequests.map((row) => <tr className="border-t border-[#e3ecfb]" key={row[0] + row[1]}>{row.map((value, index) => <td className="px-3 py-3 text-sm text-[#526B62]" key={index}>{index === row.length - 1 ? <span className={`rounded-full px-2 py-1 ${statusClass(value)}`}>{value}</span> : value}</td>)}</tr>)}</tbody></table>
+      <div className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white shadow-none">
+        <div className="flex items-center justify-between bg-gradient-to-r from-[#013826] to-[#086b50] px-4 py-3">
+          <h2 className="text-base font-semibold text-white">Recent Role Requests</h2>
+          <button onClick={() => navigate('/role-requests')} className="text-sm font-semibold text-white transition hover:text-[#c7f0dc]">View all</button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-gradient-to-r from-[#d8f1e5] to-[#e7f4ec]">
+              <tr>{['Clinic', 'Requested Role', 'Users', 'Date', 'Status'].map((heading) => <th className="px-3 py-2.5 text-xs font-semibold text-[#244b3e]" key={heading}>{heading}</th>)}</tr>
+            </thead>
+            <tbody>
+              {recentRoleRequests.map((row) => (
+                <tr className="border-t border-[#e6eee9] transition-colors hover:bg-[#f7fbf8]" key={row[0] + row[1]}>
+                  {row.map((value, index) => (
+                    <td className="px-3 py-2.5 text-sm text-[#40594f]" key={index}>
+                      {index === row.length - 1 ? <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(value)}`}>{value}</span> : value}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="hidden">

@@ -9,7 +9,7 @@ import { Settings } from "./components/pages/Settings";
 import { ClinicDetails } from "./components/pages/ClinicDetails";
 import { Login } from "./components/pages/Login";
 import { SystemAnnouncements } from "./components/pages/SystemAnnouncements";
-import { ActiveClinics, DemoRequests, Inbox, PlatformReports, RoleRequests, SubscriptionPlans } from "./components/pages/ReferenceScreens";
+import { ActiveClinics, DemoRequests, Inbox, PlanSubscribers, RoleRequests, SubscriptionPlans } from "./components/pages/ReferenceScreens";
 import { isSystemAdmin } from "../utils/permissionUtils";
 
 // Protected Route Component
@@ -62,8 +62,9 @@ export const router = createBrowserRouter([
         { path: "announcements", Component: SystemAnnouncements },
       { path: "role-requests", Component: RoleRequests },
       { path: "subscription-plans", Component: SubscriptionPlans },
+      { path: "subscription-plans/:planId/subscribers", Component: PlanSubscribers },
       { path: "demo-requests", Component: DemoRequests },
-      { path: "reports", Component: PlatformReports },
+      { path: "reports", element: <Navigate to="/" replace /> },
       { path: "inbox", Component: Inbox },
       { path: "roles", Component: RolesPermissions },
       { path: "audit", Component: AuditTrail },
