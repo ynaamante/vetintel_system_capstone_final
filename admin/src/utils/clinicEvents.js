@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch.js';
 export function watchClinicEvents(user) {
   const controller=new AbortController();
   let retry;

@@ -1,3 +1,5 @@
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { AlertDetails } from '../components/DiseaseMonitoringWorkspace';
@@ -19,22 +21,22 @@ function Stat({ title, value, children, alert }) {
 }
 export default function DashboardPage({ user, onNavigate, initialFilters = {}, onFiltersChange }) {
   const revision = useSurveillanceRefresh();
-  const [summary, setSummary] = useState(null);
+  const [summary, setSummary] = usePageState(user, "pages/DashboardPage.jsx:summary", null);
   const [days, setDays] = useState(initialFilters.days || '30');
   const [clinic, setClinic] = useState(initialFilters.clinic_id || '');
   const [disease, setDisease] = useState(initialFilters.disease || '');
   const [area, setArea] = useState(initialFilters.area || '');
   const [monitoringSearch, setMonitoringSearch] = useState(initialFilters.search || '');
-  const [options, setOptions] = useState({ clinics: [], diseases: [] });
+  const [options, setOptions] = usePageState(user, "pages/DashboardPage.jsx:options", { clinics: [], diseases: [] });
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [error, setError] = usePageState(user, "pages/DashboardPage.jsx:error", '');
+  const [loading, setLoading] = usePageState(user, "pages/DashboardPage.jsx:loading", true, "loading");
   const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     if (!user?.token) { setError('Sign in to load disease surveillance.'); setLoading(false); return; }
     const controller = new AbortController();
-    setLoading(true); setError(''); setSummary(null);
+    setLoading(true); setError('');
     const query = new URLSearchParams({ days, ...(clinic ? { clinic_id: clinic } : {}), ...(disease ? { disease } : {}), ...(area ? {area} : {}), ...(monitoringSearch ? {search:monitoringSearch} : {}) });
     fetch(`${api}/disease-intelligence/summary?${query}`, { headers: { Authorization: `Bearer ${user.token}` }, signal: controller.signal, cache: 'no-store' })
       .then(async response => { const data = await response.json(); if (!response.ok) throw Error(data.error || 'Unable to load dashboard data.'); setSummary(data); setOptions({ clinics: data.clinic_options || [], diseases: data.disease_options || [] }); })

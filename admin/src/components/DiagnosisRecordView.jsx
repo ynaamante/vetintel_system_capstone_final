@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatDateText } from '../utils/dateFormatting';

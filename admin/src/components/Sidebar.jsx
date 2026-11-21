@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { Icons } from '../icons';
 import {useEffect,useState} from 'react';
 import {useSurveillanceRefresh} from '../utils/useSurveillanceRefresh';
@@ -21,7 +22,7 @@ const ALL_NAV_ITEMS = [
   // Clinic Records
   { id: 'schedule',  label: 'My Schedule',             icon: 'calendar', section: 'Clinical Records', doctorOnly: true },
   { id: 'patient-intakes', label: 'Patient Intakes',   icon: 'clipboard', section: 'Clinical Records', doctorOnly: true },
-  { id: 'clinic',    label: 'Local Clinic Records',   icon: 'building', section: 'Clinical Records', checkPermission: 'Pet Profiles' },
+  { id: 'clinic',    label: 'Local Clinic Records',   icon: 'building', section: 'Clinical Records', checkPermission: 'Local Clinic Records' },
   { id: 'patient-records', label: 'Patient Records',   icon: 'file', section: 'Clinical Records', doctorOnly: true },
   { id: 'reminders', label: 'Due Dates & Reminders', icon: 'bell', section: 'Clinical Records', doctorOnly: true },
   // Operations

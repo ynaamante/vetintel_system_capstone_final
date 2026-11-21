@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { formatDateTimeText } from '../utils/dateFormatting';

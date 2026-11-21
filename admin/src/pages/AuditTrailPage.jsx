@@ -1,3 +1,5 @@
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import Topbar from '../components/Topbar';
@@ -223,8 +225,8 @@ function DetailModal({ log, onClose }) {
 }
 
 export default function AuditTrailPage({ user }) {
-  const [logs, setLogs] = useState([]);
-  const [loadError, setLoadError] = useState('');
+  const [logs, setLogs] = usePageState(user, "pages/AuditTrailPage.jsx:logs", []);
+  const [loadError, setLoadError] = usePageState(user, "pages/AuditTrailPage.jsx:loadError", '');
   const [search, setSearch] = useState('');
   const [actionFilter, setAction] = useState('All Actions');
   const [userFilter, setUser] = useState('All Users');

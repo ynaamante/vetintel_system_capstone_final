@@ -1,3 +1,5 @@
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useMemo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import Topbar from '../components/Topbar';
@@ -22,18 +24,18 @@ function ReportTable({section,limit}) {
 }
 export function ReportsPage({user,initialFilters={},generatedReports=[],onReportsChange}) {
   const revision=useSurveillanceRefresh();
-  const [type,setType]=useState(REPORT_TYPES.some(item=>item.id===initialFilters.report_type)?initialFilters.report_type:'disease');
-  const [filters,setFilters]=useState({days:initialFilters.days||'30',disease:initialFilters.disease||'',clinic_id:initialFilters.clinic_id||'',area:initialFilters.area||'',search:initialFilters.search||''});
-  const [search,setSearch]=useState(initialFilters.search||'');
-  const [status,setStatus]=useState(initialFilters.report_status||'');
+  const [type,setType]=usePageState(user, "pages/ReportsPage.jsx:type", REPORT_TYPES.some(item=>item.id===initialFilters.report_type)?initialFilters.report_type:'disease');
+  const [filters,setFilters]=usePageState(user, "pages/ReportsPage.jsx:filters", {days:initialFilters.days||'30',disease:initialFilters.disease||'',clinic_id:initialFilters.clinic_id||'',area:initialFilters.area||'',search:initialFilters.search||''});
+  const [search,setSearch]=usePageState(user, "pages/ReportsPage.jsx:search", initialFilters.search||'');
+  const [status,setStatus]=usePageState(user, "pages/ReportsPage.jsx:status", initialFilters.report_status||'');
   const [activeFormat,setActiveFormat]=useState('');
   const [format,setFormat]=useState('PDF');
-  const [options,setOptions]=useState({diseases:[],clinics:[],areas:[]});
-  const [snapshot,setSnapshot]=useState(null);
-  const [loading,setLoading]=useState(true);
+  const [options,setOptions]=usePageState(user, "pages/ReportsPage.jsx:options", {diseases:[],clinics:[],areas:[]});
+  const [snapshot,setSnapshot]=usePageState(user, "pages/ReportsPage.jsx:snapshot", null);
+  const [loading,setLoading]=usePageState(user, "pages/ReportsPage.jsx:loading", true, "loading");
   const [generating,setGenerating]=useState(false);
   const [downloading,setDownloading]=useState(null);
-  const [error,setError]=useState('');
+  const [error,setError]=usePageState(user, "pages/ReportsPage.jsx:error", '');
   const [refresh,setRefresh]=useState(0);
   const canView=canViewFeature(user.permissions,user.role,'Reports');
   const canGenerate=hasAction(user.permissions,user.role,'Generate Reports');
@@ -43,7 +45,7 @@ export function ReportsPage({user,initialFilters={},generatedReports=[],onReport
   useEffect(()=>{const timer=setTimeout(()=>setFilters(current=>({...current,search:search.trim()})),300);return()=>clearTimeout(timer);},[search]);
   useEffect(()=>{
     if(!canView||generating)return;
-    const controller=new AbortController();setLoading(true);setError('');setSnapshot(null);
+    const controller=new AbortController();setLoading(true);setError('');
     get(user,`disease-intelligence/summary?${query}`,controller.signal).then(data=>{
       buildSurveillanceReport(data,filters,'disease');
       setOptions({diseases:data.disease_options||[],clinics:data.clinic_options||[],areas:data.area_options||[]});

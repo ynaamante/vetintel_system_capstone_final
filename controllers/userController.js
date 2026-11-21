@@ -104,6 +104,7 @@ exports.create = async (req, res, next) => {
 };
 
 exports.register = async (req, res, next) => {
+  if (req.body.role_name !== 'clinic_owner') return require('./petOwnerAccountController').register(req, res, next);
   try {
     const { name, email, password, role_name } = req.body;
 
@@ -391,6 +392,10 @@ exports.login = async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    if (user.email_verification_required && !user.email_verified_at) {
+      return res.status(403).json({ error: 'Verify your email before signing in.', code: 'EMAIL_VERIFICATION_REQUIRED', email: user.email });
+    }
+
     const resolvedRole =
       (user.role_name || user.role) ||
       (process.env.SUPERADMIN_EMAIL && user.email === process.env.SUPERADMIN_EMAIL
@@ -405,6 +410,7 @@ exports.login = async (req, res, next) => {
       clinic_id: user.clinic_id,
       clinic_name: user.clinic_name,
       must_change_password: user.must_change_password === true,
+      password_reset_at: user.password_reset_at || null,
       exp: Date.now() + 1000 * 60 * 60 * 24,
       iat: Date.now(),
     });

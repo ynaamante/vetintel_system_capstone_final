@@ -88,10 +88,11 @@ module.exports = {
       return next();
     }
     const payload=verifyToken(token);
-    if(!payload)return res.status(403).json({error:'Forbidden'});
+    if(!payload)return res.status(401).json({error:'Your session has expired or is no longer valid. Please sign in again.',code:'SESSION_INVALID'});
     try {
       const current=await require('../services/clinicPermissions').loadPrincipal(payload.id);
       if(!current) return res.status(401).json({error:'Your account is inactive or no longer exists.'});
+      if(current.password_reset_at && new Date(payload.password_reset_at || 0).getTime()!==new Date(current.password_reset_at).getTime()) return res.status(401).json({error:'Your password was reset. Please sign in again.',code:'SESSION_INVALID'});
       req.user=current; req.currentPrincipalLoaded=true;
       return next();
     } catch(error) { return next(error); }

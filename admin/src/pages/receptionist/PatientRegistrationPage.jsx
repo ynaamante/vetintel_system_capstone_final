@@ -1,3 +1,5 @@
+import { usePageState } from '../../utils/usePageState.js';
+import { apiFetch as fetch } from '../../utils/apiFetch.js';
 import VisitScreeningFields from '../../components/VisitScreeningFields';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -103,11 +105,11 @@ export default function PatientRegistrationPage({ user }) {
   const [form, setForm] = useState(() => ({ ...emptyForm, ...(initialDraft.form || {}) }));
   const [files, setFiles] = useState([]);
   const [savedAttachments, setSavedAttachments] = useState([]);
-  const [doctors, setDoctors] = useState([]);
-  const [doctorLoadError, setDoctorLoadError] = useState('');
+  const [doctors, setDoctors] = usePageState(user, "pages/receptionist/PatientRegistrationPage.jsx:doctors", []);
+  const [doctorLoadError, setDoctorLoadError] = usePageState(user, "pages/receptionist/PatientRegistrationPage.jsx:doctorLoadError", '');
   const [doctor, setDoctor] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [submissions, setSubmissions] = useState([]);
+  const [submissions, setSubmissions] = usePageState(user, "pages/receptionist/PatientRegistrationPage.jsx:submissions", []);
   const [submissionTab, setSubmissionTab] = useState('all');
   const [submissionSearch, setSubmissionSearch] = useState('');
   const [submissionStatus, setSubmissionStatus] = useState('all');
@@ -116,8 +118,8 @@ export default function PatientRegistrationPage({ user }) {
   const [editingIntakeId, setEditingIntakeId] = useState(initialDraft.editingIntakeId || null);
   const [correctionNote, setCorrectionNote] = useState('');
   const [error, setError] = useState('');
-  const [loadError, setLoadError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = usePageState(user, "pages/receptionist/PatientRegistrationPage.jsx:loadError", '');
+  const [loading, setLoading] = usePageState(user, "pages/receptionist/PatientRegistrationPage.jsx:loading", true, "loading");
   const [saving, setSaving] = useState(false);
   const canView = canViewFeature(user.permissions, user.role, 'New Patient Registration');
   const update = (key, value) => setForm(current => ({ ...current, [key]: value }));
@@ -170,7 +172,6 @@ export default function PatientRegistrationPage({ user }) {
     setLoading(true);
     setDoctorLoadError('');
     setLoadError('');
-    setDoctors([]);
     Promise.allSettled([
       requestJson(`${apiBase}/clinic-records/registration-doctors`, { headers: authHeaders(user) }),
       requestJson(`${apiBase}/clinic-records/registration-intakes`, { headers: authHeaders(user) }),
@@ -451,6 +452,7 @@ function OwnerStep({ form, update }) {
       <div style={s.grid}>
         <Field label="Phone Number" required value={form.phone} onChange={v => update('phone', v)} placeholder="e.g. +63 917 000 0000" />
         <Field label="Email" required value={form.email} onChange={v => update('email', v)} placeholder="e.g. owner@email.com" />
+        <p style={{ color: '#172b24', fontSize: 12, lineHeight: 1.5, gridColumn: '1 / -1' }}>Enter the owner's email for their PetWatch account. They must sign up with this same email and verify it to access their pet's clinic records.</p>
       </div>
       <Field label="Address" value={form.address} onChange={v => update('address', v)} placeholder="e.g. 123 Main St., Sta. Maria, Bulacan" />
     </div>

@@ -1,29 +1,46 @@
+import AppHeader from '../components/AppHeader';
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '../context/ThemeContext';
 import { colors, spacing, radius } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
+import { petsApi } from '../services/api';
 
 const SPECIES = ['dog', 'cat', 'bird', 'rabbit', 'hamster', 'other'];
 const EMOJI: Record<string, string> = { dog: '🐶', cat: '🐱', bird: '🦜', rabbit: '🐰', hamster: '🐹', other: '🐾' };
 
 export default function AddPetScreen({ navigation }: any) {
   const { colors: tc, isDark } = useTheme();
+  const { token, needsFirstPet, completeFirstPet } = useAuth();
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: '', species: 'dog', breed: '', age: '', weight: '', color: '' });
   const s = styles(tc, isDark);
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+  const leave = () => {
+    if (needsFirstPet) { completeFirstPet(); navigation.navigate('Main'); }
+    else navigation.goBack();
+  };
 
-  const save = () => {
+  const save = async () => {
+    if (saving) return;
     if (!form.name || !form.breed) { Toast.show({ type: 'error', text1: 'Please fill in name and breed' }); return; }
-    Toast.show({ type: 'success', text1: `${form.name} has been added!` });
-    navigation.goBack();
+    if (!token) return;
+    setSaving(true);
+    try {
+      await petsApi.create(form, token);
+      Toast.show({ type: 'success', text1: `${form.name} has been added!` });
+      if (needsFirstPet) completeFirstPet();
+      navigation.navigate('Main', { screen: 'Home', params: { refresh: Date.now() } });
+    } catch (error: any) { Toast.show({ type: 'error', text1: 'Could not add pet', text2: error.message }); }
+    finally { setSaving(false); }
   };
 
   return (
     <SafeAreaView style={s.safe}>
-      <View style={s.nav}><TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><Ionicons name="arrow-back" size={22} color={tc.text} /></TouchableOpacity><Text style={s.navTitle}>Add New Pet</Text><View style={{ width: 40 }} /></View>
+      <AppHeader title={needsFirstPet ? "Add Your First Pet" : "Add New Pet"} onBack={leave} backDisabled={saving} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
           <View style={s.iconSection}><View style={s.petIcon}><Ionicons name="paw" size={40} color={colors.primary} /></View><Text style={s.iconHint}>Tap to add a photo</Text></View>
@@ -48,8 +65,8 @@ export default function AddPetScreen({ navigation }: any) {
             <Text style={s.label}>Color</Text>
             <TextInput style={s.input} value={form.color} onChangeText={v => set('color', v)} placeholder="e.g. Golden" placeholderTextColor={tc.textMuted} />
           </View>
-          <TouchableOpacity style={s.btn} onPress={save}><Ionicons name="paw" size={18} color="#fff" /><Text style={s.btnText}>Add Pet</Text></TouchableOpacity>
-          <TouchableOpacity style={{ alignItems: 'center', paddingVertical: 12 }} onPress={() => navigation.goBack()}><Text style={{ fontSize: 15, color: tc.textSecondary }}>Cancel</Text></TouchableOpacity>
+          <TouchableOpacity style={s.btn} disabled={saving} onPress={save}>{saving ? <ActivityIndicator color="#fff" /> : <><Ionicons name="paw" size={18} color="#fff" /><Text style={s.btnText}>Add Pet</Text></>}</TouchableOpacity>
+          <TouchableOpacity disabled={saving} style={{ alignItems: 'center', paddingVertical: 12 }} onPress={leave}><Text style={{ fontSize: 15, color: tc.textSecondary }}>{needsFirstPet ? 'Skip for now' : 'Cancel'}</Text></TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

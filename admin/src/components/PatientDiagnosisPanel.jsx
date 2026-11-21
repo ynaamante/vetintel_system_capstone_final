@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { hasAction } from '../utils/permissionUtils';
 import SystemFilterSelect from './FilterSelect';
 import DiagnosisRecordView from './DiagnosisRecordView';

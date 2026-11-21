@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Image, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { colors, spacing, radius } from '../theme/colors';
 
-export default function LoginScreen({ navigation }: any) {
-  const { login } = useAuth();
+export default function LoginScreen({ navigation, route }: any) {
+  const { login, error: sessionError } = useAuth();
   const { colors: tc, isDark } = useTheme();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(route?.params?.email || '');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
-  const s = styles(tc, isDark);
+  const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
+  const { height } = useWindowDimensions();
+  const s = styles(tc, isDark, height < 700 || focusedField !== null);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -29,6 +32,10 @@ export default function LoginScreen({ navigation }: any) {
       await login(email, password);
       Toast.show({ type: 'success', text1: 'Welcome back!' });
     } catch (err: any) {
+      if (err.code === 'EMAIL_VERIFICATION_REQUIRED') {
+        navigation.navigate('VerifyEmail', { email: err.email || email.trim(), emailSent: false, retryAfter: 0 });
+        return;
+      }
       Toast.show({
         type: 'error',
         text1: 'Login failed',
@@ -42,22 +49,20 @@ export default function LoginScreen({ navigation }: any) {
   return (
     <SafeAreaView style={s.safe}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView 
-          contentContainerStyle={s.container} 
-          keyboardShouldPersistTaps="always"
-          scrollEnabled={false}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={s.brand}>
-            <View style={s.logo}><Ionicons name="heart" size={36} color="#fff" /></View>
-            <Text style={s.appName}>PetWatch</Text>
-            <Text style={s.tagline}>Monitor your pet's health with care</Text>
-          </View>
+        <View style={s.container}>
+          {!focusedField && <View style={s.brand} accessible accessibilityLabel="Vetintel logo">
+            <Image source={require('../images/LogoMark.png')} style={s.logoMark} resizeMode="contain" />
+            <View style={s.wordmarkCrop}>
+              <Image source={require('../images/LogoWordmarkTagline.png')} style={s.wordmark} resizeMode="contain" />
+            </View>
+            <Text style={s.tagline}>Better Care. Healthier Pets.</Text>
+          </View>}
           <View style={s.card}>
             <Text style={s.title}>Welcome Back</Text>
-            <Text style={s.sub}>Sign in to access your pet's health records</Text>
+            <Text style={s.sub}>Sign in to access your pet health records.</Text>
+            {!!sessionError && <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 14, lineHeight: 20, marginBottom: 14 }}>{sessionError}</Text>}
             <Text style={s.label}>Email</Text>
-            <View style={s.inputRow}>
+            <View style={[s.inputRow, focusedField === 'email' && s.inputRowFocused]}>
               <Ionicons name="mail-outline" size={18} color={tc.textMuted} style={s.icon} />
               <TextInput 
                 style={s.input} 
@@ -67,11 +72,13 @@ export default function LoginScreen({ navigation }: any) {
                 onChangeText={setEmail} 
                 keyboardType="email-address" 
                 autoCapitalize="none"
+                onFocus={() => setFocusedField('email')}
+                onBlur={() => setFocusedField(current => current === 'email' ? null : current)}
                 editable={!loading}
               />
             </View>
             <Text style={s.label}>Password</Text>
-            <View style={s.inputRow}>
+            <View style={[s.inputRow, focusedField === 'password' && s.inputRowFocused]}>
               <Ionicons name="lock-closed-outline" size={18} color={tc.textMuted} style={s.icon} />
               <TextInput 
                 style={[s.input, { flex: 1 }]} 
@@ -80,50 +87,51 @@ export default function LoginScreen({ navigation }: any) {
                 value={password} 
                 onChangeText={setPassword} 
                 secureTextEntry={!showPwd}
+                onFocus={() => setFocusedField('password')}
+                onBlur={() => setFocusedField(current => current === 'password' ? null : current)}
                 editable={!loading}
               />
               <TouchableOpacity onPress={() => setShowPwd(!showPwd)} style={{ paddingHorizontal: 8 }}>
                 <Ionicons name={showPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={tc.textMuted} />
               </TouchableOpacity>
             </View>
+            <TouchableOpacity disabled={loading} onPress={() => navigation.navigate('ForgotPassword', { email: email.trim() })} style={{ alignSelf: 'flex-end', paddingVertical: 10, marginTop: -4, marginBottom: 8 }}><Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>Forgot password?</Text></TouchableOpacity>
             <TouchableOpacity style={s.btn} onPress={handleLogin} disabled={loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <><Text style={s.btnText}>Sign In</Text><Ionicons name="arrow-forward" size={18} color="#fff" /></>}
+              <LinearGradient colors={['#007C63', '#35A978']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.btnGradient}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Sign In</Text>}
+              </LinearGradient>
             </TouchableOpacity>
             <View style={s.row}>
               <Text style={s.muted}>Don't have an account? </Text>
               <TouchableOpacity onPress={() => navigation.navigate('Register')}><Text style={s.link}>Sign up</Text></TouchableOpacity>
             </View>
           </View>
-          <View style={s.demo}>
-            <Text style={s.demoTitle}>Demo Account</Text>
-            <Text style={s.demoText}>Enter any email and password to try the app</Text>
-          </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const styles = (tc: any, isDark: boolean) => StyleSheet.create({
-  safe: { flex: 1, backgroundColor: isDark ? colors.deepSpace : '#EFF6FF' },
-  container: { flexGrow: 1, padding: spacing.md, justifyContent: 'center', paddingVertical: 40 },
-  brand: { alignItems: 'center', marginBottom: 32 },
-  logo: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  appName: { fontSize: 28, fontWeight: '700', color: tc.text, marginBottom: 4 },
-  tagline: { fontSize: 14, color: tc.textSecondary },
-  card: { backgroundColor: tc.surface, borderRadius: radius.lg, padding: 24, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
-  title: { fontSize: 20, fontWeight: '700', color: tc.text, marginBottom: 4 },
-  sub: { fontSize: 13, color: tc.textSecondary, marginBottom: 20 },
+const styles = (tc: any, isDark: boolean, compact: boolean) => StyleSheet.create({
+  safe: { flex: 1, overflow: 'hidden', backgroundColor: isDark ? colors.dark.background : colors.paleSage },
+  container: { flex: 1, paddingHorizontal: spacing.md, justifyContent: 'center', paddingVertical: compact ? 12 : 28 },
+  brand: { alignItems: 'center', marginBottom: compact ? 12 : 24 },
+  logoMark: { width: compact ? 82 : 108, height: compact ? 62 : 86 },
+  wordmarkCrop: { width: 170, height: 40, overflow: 'hidden', marginTop: 1 },
+  wordmark: { width: 170, height: 52 },
+  tagline: { fontSize: 14, color: tc.textSecondary, marginTop: 1 },
+  card: { backgroundColor: tc.surface, borderRadius: radius.xl, padding: compact ? 18 : 24, marginBottom: compact ? 0 : 16, shadowColor: '#163B2D', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 },
+  title: { fontSize: 24, fontWeight: '700', color: tc.text, marginBottom: 4 },
+  sub: { fontSize: 14, color: tc.textSecondary, marginBottom: 20 },
   label: { fontSize: 14, fontWeight: '500', color: tc.text, marginBottom: 6, marginTop: 4 },
   inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: tc.border, borderRadius: radius.md, backgroundColor: tc.inputBg, paddingHorizontal: 12, marginBottom: 14 },
   icon: { marginRight: 8 },
-  input: { flex: 1, height: 44, fontSize: 15, color: tc.text },
-  btn: { backgroundColor: colors.primary, borderRadius: radius.md, height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4, marginBottom: 16 },
+  inputRowFocused: { borderColor: colors.botanicalTeal },
+  input: { flex: 1, height: 44, fontSize: 15, color: tc.text, outlineWidth: 0 },
+  btn: { borderRadius: radius.md, overflow: 'hidden', height: 48, marginTop: 4, marginBottom: 16 },
+  btnGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  row: { flexDirection: 'row', justifyContent: 'center' },
+  row: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
   muted: { fontSize: 14, color: tc.textSecondary },
-  link: { fontSize: 14, color: colors.primary, fontWeight: '600' },
-  demo: { backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', borderRadius: radius.md, padding: 16 },
-  demoTitle: { fontSize: 14, fontWeight: '600', color: '#1E40AF', marginBottom: 4 },
-  demoText: { fontSize: 13, color: '#087A70' },
+  link: { fontSize: 14, color: colors.deepForest, fontWeight: '600' },
 });

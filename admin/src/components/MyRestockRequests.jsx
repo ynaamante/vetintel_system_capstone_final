@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import {useEffect,useState} from 'react';
 import {restockStatus} from './RestockRequestDialog';
 export default function MyRestockRequests({user}){

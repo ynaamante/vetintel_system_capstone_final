@@ -1,3 +1,5 @@
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useState } from 'react';
 import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
@@ -118,9 +120,9 @@ function AddUserModal({ onClose, onAdd, approvedRoles }) {
 }
 
 export default function UserRoleManagementPage({ user }) {
-  const [users, setUsers] = useState([]);
-  const [approvedRoles, setApprovedRoles] = useState([]);
-  const [rolePermissions, setRolePermissions] = useState({});
+  const [users, setUsers] = usePageState(user, "pages/UserRoleManagementPage.jsx:users", []);
+  const [approvedRoles, setApprovedRoles] = usePageState(user, "pages/UserRoleManagementPage.jsx:approvedRoles", []);
+  const [rolePermissions, setRolePermissions] = usePageState(user, "pages/UserRoleManagementPage.jsx:rolePermissions", {});
   const [search, setSearch] = useState('');
   const [roleFilter, setRole] = useState('All Roles');
   const [statusFilter, setStatus] = useState('All Status');

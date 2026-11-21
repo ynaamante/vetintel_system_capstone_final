@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useRef, useState } from 'react';
 import { canViewFeature, hasAction } from '../utils/permissionUtils';
 import { signalStatus, signalTrigger, signalDate } from '../utils/diseaseSignals';

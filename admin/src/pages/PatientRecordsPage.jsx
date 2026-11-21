@@ -1,3 +1,5 @@
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import '../components/patientOverview.css';
 import PatientIntakeSummary from '../components/PatientIntakeSummary';
 import PatientDiagnosisPanel from '../components/PatientDiagnosisPanel';
@@ -6,6 +8,7 @@ import { hasAction } from '../utils/permissionUtils';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import Topbar from '../components/Topbar';
+import PetHistoryQr from '../components/PetHistoryQr';
 import StatusIndicator from '../components/StatusIndicator';
 import ClinicAttachmentImage from '../components/ClinicAttachmentImage';
 import VaccinationRecordDrawer, { VaccinationVerificationDialog } from '../components/VaccinationRecordDrawer';
@@ -1081,11 +1084,11 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
   const [viewMode, setViewMode] = useState('list');
   const [selectedRecordId, setSelectedRecordId] = useState(initialPatient?.pet_id != null ? String(initialPatient.pet_id) : initialRecord?.id != null ? String(initialRecord.id) : null);
   const [activeDetailTab, setActiveDetailTab] = useState('Overview');
-  const [recordOverrides, setRecordOverrides] = useState({});
-  const [patientRecords, setPatientRecords] = useState([]);
-  const [patientRecordsLoading, setPatientRecordsLoading] = useState(true);
-  const [patientRecordsError, setPatientRecordsError] = useState('');
-  const [appointmentRecordsError, setAppointmentRecordsError] = useState('');
+  const [recordOverrides, setRecordOverrides] = usePageState(user, "pages/PatientRecordsPage.jsx:recordOverrides", {});
+  const [patientRecords, setPatientRecords] = usePageState(user, "pages/PatientRecordsPage.jsx:patientRecords", []);
+  const [patientRecordsLoading, setPatientRecordsLoading] = usePageState(user, "pages/PatientRecordsPage.jsx:patientRecordsLoading", true, "loading");
+  const [patientRecordsError, setPatientRecordsError] = usePageState(user, "pages/PatientRecordsPage.jsx:patientRecordsError", '');
+  const [appointmentRecordsError, setAppointmentRecordsError] = usePageState(user, "pages/PatientRecordsPage.jsx:appointmentRecordsError", '');
 
   useEffect(() => {
     if (!user?.clinic_id || !user?.token) {
@@ -1100,8 +1103,8 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
     const headers = { Authorization: `Bearer ${user.token}` };
     const petsRequest = fetch(`${apiUrl}/clinic-records/pets${query}`, { headers, signal: controller.signal });
     // Patient access does not imply access to the separate client directory.
-    const clientsRequest = hasAction(user.permissions, user.role, 'View Clients')
-      ? fetch(`${apiUrl}/clinic-records/clients${query}`, { headers, signal: controller.signal })
+    const clientsRequest = hasAction(user.permissions, user.role, 'View Owners')
+      ? fetch(`${apiUrl}/clinic-records/owners${query}`, { headers, signal: controller.signal })
       : Promise.resolve({ ok: true, json: async () => [] });
     const appointmentsRequest = fetch(`${apiUrl}/clinic-records/appointments${query}`, { headers, signal: controller.signal })
       .then(response => ({ response }), error => ({ error }));
@@ -1342,9 +1345,9 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
         subtitle="Manage patient records and owner information"
         className="records-topbar"
         actions={(
-          <button type="button" className="records-add" onClick={() => onNavigate ? onNavigate('patient-registration') : notifySuccess('Add patient', 'Open patient registration to add a new patient.')}>
+          <><PetHistoryQr user={user} /><button type="button" className="records-add" onClick={() => onNavigate ? onNavigate('patient-registration') : notifySuccess('Add patient', 'Open patient registration to add a new patient.')}>
             {Icons.plus} Add Patient
-          </button>
+          </button></>
         )}
       />
       <main className="records-content">

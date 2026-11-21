@@ -106,4 +106,41 @@ async function sendClinicReminder({ email, clinicName, message }) {
   const accepted = (result.accepted || []).some(value => String(value).toLowerCase() === email.toLowerCase());
   return { sent: accepted, messageId: result.messageId || null };
 }
-module.exports = { sendOwnerCredentials, sendMessageNotification, sendPurchaseOrder, reminderEmailConfigured, sendClinicReminder };
+async function sendVerificationCode({ email, code, purpose = 'verification' }) {
+  const subject = purpose === 'password_reset' ? 'Reset your VetIntel password' : 'Verify your VetIntel email';
+  const text = purpose === 'password_reset'
+    ? `Your VetIntel password reset code is ${code}.\n\nIt expires in 10 minutes. Enter it in the app to choose a new password.\nDo not share this code. If you did not request a password reset, ignore this email.`
+    : `Your VetIntel verification code is ${code}.\n\nIt expires in 10 minutes. Enter it in the app to verify your email.\nDo not share this code. If you did not request an account, ignore this email.`;
+  if (process.env.BREVO_API_KEY) {
+    const sender = process.env.BREVO_SENDER_EMAIL || process.env.SENDER_EMAIL;
+    if (!sender) return { sent: false, reason: 'Brevo verification sender is not configured.', errorCode: 'email_sender_missing' };
+    try {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST', signal: AbortSignal.timeout(15000),
+        headers: { 'api-key': process.env.BREVO_API_KEY, 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ sender: { email: sender, name: process.env.BREVO_SENDER_NAME || 'VetIntel' },
+          to: [{ email }], subject, textContent: text }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (response.ok && result.messageId) return { sent: true, messageId: result.messageId };
+      const blockedIp = /unrecogni[sz]ed IP|unauthori[sz]ed IP/i.test(result.message || '');
+      return { sent: false, status: response.status,
+        errorCode: blockedIp ? 'email_ip_not_authorized' : response.status === 401 ? 'email_api_key_invalid'
+          : response.status === 403 ? 'email_permission_denied' : response.status === 429 ? 'email_rate_limited' : 'email_provider_rejected',
+        reason: blockedIp ? 'Brevo blocked this server IP. Authorize it in Brevo Security > Authorized IPs.'
+          : response.status === 401 ? 'Brevo rejected the API key.'
+          : response.status === 403 ? 'Brevo denied transactional-email access. Check API key permissions and sending activation.'
+          : response.status === 429 ? 'Brevo rate limited the request.'
+          : 'Brevo did not accept the email. Check sender verification and account sending limits.' };
+    } catch { return { sent: false, reason: 'Could not reach Brevo.', errorCode: 'email_provider_unreachable' }; }
+  }
+  const transport = getTransport();
+  if (!transport) return { sent: false, reason: 'Verification email is not configured.', errorCode: 'email_not_configured' };
+  try {
+    const result = await transport.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: email, subject, text });
+    const sent = (result.accepted || []).some(value => String(value).toLowerCase() === email.toLowerCase());
+    return { sent, messageId: result.messageId, ...(!sent && { reason: 'SMTP did not accept the verification email.', errorCode: 'email_provider_rejected' }) };
+  } catch { return { sent: false, reason: 'Could not reach the verification email server.', errorCode: 'email_provider_unreachable' }; }
+}
+const sendPasswordResetCode = data => sendVerificationCode({ ...data, purpose: 'password_reset' });
+module.exports = { sendOwnerCredentials, sendMessageNotification, sendPurchaseOrder, reminderEmailConfigured, sendClinicReminder, sendVerificationCode, sendPasswordResetCode };

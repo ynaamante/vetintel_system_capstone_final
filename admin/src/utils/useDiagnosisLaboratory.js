@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch.js';
 import { useEffect, useState } from 'react';
 import { linkedDiagnosisLabs, laboratoryResultText } from './diagnosisLaboratory';
 const api = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');

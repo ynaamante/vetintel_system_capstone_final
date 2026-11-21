@@ -37,8 +37,9 @@ function requirements(req) {
    const needed=one('Record Laboratory Results');if(b.verifyResults===true)needed.push(['Verify Laboratory Results']);return needed;
  }
  if(p.includes('/attachments/')) return [['View Laboratory Results','View Inpatient Care','View Medical History']];
- if(p.includes('/registration-doctors'))return [['Create Pet Records','View Patient Intakes','View Own Schedule','Manage Follow-ups']];
+ if(p.includes('/registration-doctors'))return [['View Registrations','Create Pet Records','View Patient Intakes','View Own Schedule','Manage Follow-ups']];
  if(p.includes('/registration-screening/'))return [['Create Pet Records','View Patient Intakes']];
+ if(p.includes('/registration-intakes') && get && !p.endsWith('/patient-record')) return [['View Patient Intakes','View Registrations']];
  if(p.includes('/registration-intakes')) return one(get?p.endsWith('/patient-record')?'View Medical History':'View Patient Intakes':/\/review$|\/return$|\/screening$/.test(p)?'Manage Patient Intakes':'Create Pet Records');
  if(p.includes('/intake-summary'))return one('View Medical History');
  if(p.includes('/patient-queue'))return one(get?'View Patient Queue':p.endsWith('/walk-in')?'Manage Walk-ins':'Manage Patient Queue');
@@ -54,21 +55,31 @@ function requirements(req) {
    if(p.endsWith('/archive'))return one('Cancel Appointment');
    return one(req.method==='POST'?'Create Appointment':'Reschedule Appointment');
  }
- if(p.includes('/reminders'))return one('Manage Follow-ups');
+ if(p.includes('/reminders'))return one(get?'View Reminders':'Manage Follow-ups');
  if(p.includes('/billing-catalog'))return one(get?'View Services':req.method==='POST'?'Create Services':'Edit Services');
  if(p.includes('/invoices')||p.includes('/payments')||p.includes('/billing-review')||p.includes('/payment-qr')) {
    if(get)return [['View Billing','View Financial Reports','Create Prescription','Manage Treatment Plans']];
    return one(p.includes('/payments')?'Process Payment':'Create Invoice');
  }
  if(p.includes('/vaccine-inventory')||p.includes('/inventory'))return one(get?'View Inventory':req.method==='POST'?'Add Inventory':'Edit Inventory');
- if(p.includes('/vaccinations'))return one(get?'View Medical History':'Manage Vaccination Records');
+ if(p.includes('/vaccinations'))return one(get?'View Vaccinations':'Manage Vaccination Records');
  if(p.includes('/treatments'))return one(get?'View Treatment Plans':'Create Prescription');
  if(p.includes('/treatment'))return one(get?'View Treatment Plans':'Manage Treatment Plans');
  if(p.includes('/inpatient'))return one(get?'View Inpatient Care':'Manage Inpatient Care');
- if(p.includes('/inbox'))return one(get?'View Pet Owner Messages':req.method==='POST'?'Send Pet Owner Messages':'Manage Conversations');
+ if(p.includes('/inbox')) {
+   if(get)return one('View Pet Owner Messages');
+   if(req.method==='POST')return one('Send Pet Owner Messages');
+   const needed=[];
+   if(b.text!==undefined && (!b.kind || b.kind==='reply'))needed.push(['Send Pet Owner Messages']);
+   if(b.text===undefined || (b.kind && b.kind!=='reply') || ['status','assignedTo','unread'].some(key=>b[key]!==undefined))needed.push(['Manage Conversations']);
+   return needed;
+ }
+ if(/^\/clinic-records\/owners(?:\/|$)/.test(p))return one(get?'View Owners':p.endsWith('/archive')?'Archive Owner':req.method==='POST'?'Create Owner':'Edit Owner');
  if(p.includes('/clients'))return one(get?'View Clients':req.method==='POST'?'Create Client':'Edit Client');
  if(p.includes('/pets'))return one(get?p.endsWith('/documents')||p.endsWith('/clinical-alerts')?'View Medical History':'View Pet Records':p.endsWith('/archive')?'Archive Pet Records':req.method==='POST'&&!p.endsWith('/photo')?'Create Pet Records':'Edit Pet Records');
- if(p.includes('/dashboard')||p.includes('/visits')||p.includes('/shareable-records'))return one('View Medical History');
+ if(p.includes('/dashboard'))return one('View Clinic Dashboard');
+ if(p.includes('/visits'))return one('View Visits');
+ if(p.includes('/shareable-records'))return one('View Medical History');
  return [['__unmapped_clinic_operation__']];
 }
 exports.protectedPath=p=>/^\/(clinic-records|roles|users|permissions|role-permissions|audit-trail|disease-intelligence|owner-monitoring|my-role-requests)(\/|$)/.test(p);

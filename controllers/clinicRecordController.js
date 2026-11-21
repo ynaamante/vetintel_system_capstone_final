@@ -1111,6 +1111,7 @@ exports.listAppointments = async (req, res, next) => {
               CASE
                 WHEN LOWER(COALESCE(q.status, '')) = 'waiting' THEN 'checked_in'
                 WHEN LOWER(COALESCE(q.status, '')) IN ('in-consultation', 'in_consultation') THEN 'in_consultation'
+                WHEN a.workflow_type = 'pending_confirmation' AND a.status::text = 'scheduled' THEN 'pending'
                 WHEN LOWER(COALESCE(a.status::text, '')) = 'scheduled' AND a.start_time < now() THEN 'due'
                 ELSE a.status::text
               END AS status,
@@ -4138,7 +4139,7 @@ exports.listOwnerSharedRecords = async (req, res, next) => {
 
     const result = await db.query(
       `SELECT p.id AS pet_id, p.name AS pet_name, p.species, p.breed,
-              c.name AS clinic_name,
+              cl.name AS clinic_name,
               p.metadata->'owner_shared_records' AS shares
        FROM clients c
        JOIN pets p ON p.client_id = c.id AND p.clinic_id = c.clinic_id

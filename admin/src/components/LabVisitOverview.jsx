@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useState } from 'react';
 import { formatDateText } from '../utils/dateFormatting';
 import { watchRegistrationUpdates } from '../utils/registrationSync';

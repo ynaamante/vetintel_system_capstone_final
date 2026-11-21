@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../../utils/apiFetch.js';
 import screening from '../../../../data/intakeScreening.json';
 import { useEffect, useRef, useState } from 'react';
 import { registrationActions, registrationActionLabels, registrationStatusLabel } from '../../utils/registrationActions';

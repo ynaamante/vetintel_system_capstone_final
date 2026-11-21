@@ -1,3 +1,5 @@
+import { usePageState } from '../../utils/usePageState.js';
+import { apiFetch as fetch } from '../../utils/apiFetch.js';
 import { dateFilterValue } from '../../utils/dateFilters';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import RecordActionsModal from '../../components/RecordActionsModal';
@@ -175,19 +177,19 @@ export default function AppointmentManagementPage({ user }) {
   const [openActionsId, setOpenActionsId] = useState(null);
   const [workflow, setWorkflow] = useState(null);
   const [showNewAppointment, setShowNewAppointment] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:search", '');
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
-  const [dateFrom, setDateFrom] = useState('');
-  const [doctorOptions, setDoctorOptions] = useState([]);
-  const [filterOptionsError, setFilterOptionsError] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:dateFrom", '');
+  const [doctorOptions, setDoctorOptions] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:doctorOptions", []);
+  const [filterOptionsError, setFilterOptionsError] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:filterOptionsError", '');
+  const [dateTo, setDateTo] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:dateTo", '');
   const [dateRangeSort, setDateRangeSort] = useState('newest');
-  const [practitionerFilter, setPractitionerFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [practitionerFilter, setPractitionerFilter] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:practitionerFilter", '');
+  const [statusFilter, setStatusFilter] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:statusFilter", 'all');
   const [page, setPage] = useState(1);
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [appointments, setAppointments] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:appointments", []);
+  const [loading, setLoading] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:loading", true, "loading");
+  const [error, setError] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:error", null);
   const dateRangeRef = useRef(null);
   const pageSize = 7;
 

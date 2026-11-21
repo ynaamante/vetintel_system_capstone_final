@@ -1,3 +1,5 @@
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import RestockRequestDialog from './RestockRequestDialog';
 import MyRestockRequests from './MyRestockRequests';
 import {hasAction,roleProfile} from '../utils/permissionUtils';
@@ -24,7 +26,7 @@ function InventoryItemDialog({row,edit,user,onClose,onSaved}){
 }
 export default function SharedInventoryPanel({user,readOnly=false}){
   const [restockItem,setRestockItem]=useState(null),[message,setMessage]=useState('');
-  const [rows,setRows]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[search,setSearch]=useState(''),[category,setCategory]=useState('all'),[archived,setArchived]=useState(false),[selected,setSelected]=useState(null),[detail,setDetail]=useState(null);
+  const [rows,setRows]=usePageState(user, "components/SharedInventoryPanel.jsx:rows", []),[loading,setLoading]=usePageState(user, "components/SharedInventoryPanel.jsx:loading", true, "loading"),[error,setError]=usePageState(user, "components/SharedInventoryPanel.jsx:error", ''),[search,setSearch]=usePageState(user, "components/SharedInventoryPanel.jsx:search", ''),[category,setCategory]=usePageState(user, "components/SharedInventoryPanel.jsx:category", 'all'),[archived,setArchived]=usePageState(user, "components/SharedInventoryPanel.jsx:archived", false),[selected,setSelected]=useState(null),[detail,setDetail]=useState(null);
   useEffect(()=>{let active=true,refreshing=false;const load=async()=>{if(refreshing)return;refreshing=true;try{const items=await request(user,'/inventory?include_inactive=true');if(active){setRows(items);setError('');}}catch(e){if(active)setError(e.message);}finally{refreshing=false;if(active)setLoading(false);}};load();const refresh=()=>{if(!document.hidden)load();};const timer=window.setInterval(refresh,15000);window.addEventListener('vetintel:appointment-updated',refresh);window.addEventListener('focus',refresh);return()=>{active=false;window.clearInterval(timer);window.removeEventListener('vetintel:appointment-updated',refresh);window.removeEventListener('focus',refresh);};},[user.token]);
   const load=async()=>{try{setRows(await request(user,'/inventory?include_inactive=true'));setError('');}catch(e){setError(e.message);}};
   const active=rows.filter(row=>row.active),categories=[...new Set(rows.map(row=>row.category))];

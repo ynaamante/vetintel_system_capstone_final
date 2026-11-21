@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
+import { useEffect, useMemo } from 'react';
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
@@ -19,9 +21,9 @@ const ChartTooltip = ({ active, payload, label, suffix = '' }) => {
 
 /* â”€â”€ MAIN PAGE â”€â”€ */
 export function CommunityAnalyticsPage({ user }) {
-  const [summary, setSummary] = useState(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = usePageState(user, "pages/CommunityAnalyticsPage.jsx:summary", null);
+  const [error, setError] = usePageState(user, "pages/CommunityAnalyticsPage.jsx:error", '');
+  const [loading, setLoading] = usePageState(user, "pages/CommunityAnalyticsPage.jsx:loading", true, "loading");
   const canView = canViewFeature(user.permissions, user.role, 'Community Analytics');
 
   useEffect(() => {

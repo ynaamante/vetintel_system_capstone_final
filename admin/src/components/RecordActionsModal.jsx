@@ -1,6 +1,12 @@
+import { hasAction } from '../utils/permissionUtils';
 import ClinicAttachmentImage from './ClinicAttachmentImage';
 import StatusIndicator from './StatusIndicator';
 
+const actionPermissions = {
+  'Edit Owner': 'Edit Owner', 'Archive Owner': 'Archive Owner', 'Restore Owner': 'Archive Owner',
+  'Transfer Pet': 'Edit Pet Records', 'Edit Pet': 'Edit Pet Records', 'Archive Pet': 'Archive Pet Records', 'Restore Pet': 'Archive Pet Records',
+  'Start Consultation': 'Create Consultation', 'Archive Appointment': 'Cancel Appointment', 'Restore Appointment': 'Cancel Appointment',
+};
 const modalStyles = {
   backdrop: { position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 },
   vaccinationActionsDialog: { position: 'relative', width: 'min(540px, 100%)', maxWidth: '100%', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', boxSizing: 'border-box', background: '#fff', borderRadius: 14, padding: '18px 20px 15px', boxShadow: '0 20px 55px rgba(15,23,42,.25)', color: '#111827' },
@@ -52,7 +58,7 @@ export default function RecordActionsModal({ title, recordLabel, recordName, rec
         {status && <StatusIndicator status={status} />}
       </div>
       <div style={modalStyles.vaccinationActionsList}>
-        {actions.map(action => <button
+        {actions.filter(action => !action.disabled && (!user || !(action.permission || actionPermissions[action.label]) || hasAction(user.permissions, user.role, action.permission || actionPermissions[action.label]))).map(action => <button
           type="button"
           key={action.label}
           className={`record-action-card vaccination-action-button${action.destructive ? ' record-action-card-destructive' : ''}`}
