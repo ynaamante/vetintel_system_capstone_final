@@ -1,0 +1,253 @@
+/* Keep owner-facing data tables consistent with the clinic's doctor tables. */
+.owner-content table {
+  border-collapse: separate !important;
+  border-spacing: 0;
+  text-align: left;
+}
+
+.owner-content table th {
+  height: 40px;
+  padding: 8px 12px !important;
+  border: 0 !important;
+  background: #eaf3ec !important;
+  color: #143c2d !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+}
+
+.owner-content table th:first-child {
+  padding-left: 20px !important;
+  border-radius: 10px 0 0 10px;
+}
+
+.owner-content table th:last-child { border-radius: 0 10px 10px 0; }
+
+.owner-content table td {
+  height: 46px;
+  padding: 8px 12px !important;
+  border-bottom: 1px solid #e3ece6 !important;
+  color: #172b25;
+  font-size: 12px !important;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
+.owner-content table td:first-child { padding-left: 20px !important; }
+.owner-content table tbody tr:last-child td { border-bottom: 0 !important; }
+.owner-content table tbody tr:has(> td[colspan]) td { height: 82px; color: #64756d; text-align: center; }
+
+.owner-content .owner-client-table-wrap {
+  overflow-x: auto;
+  padding: 10px;
+  border: 1px solid #e0e9e3;
+  border-radius: 11px;
+}
+
+.owner-content .owner-client-table-wrap table { min-width: 800px; width: 100%; }
+
+.owner-content :is(
+  .co-table-scroll,
+  .dm-scroll,
+  .surveillance-table-wrap,
+  .financial-dashboard-table-wrap,
+  .audit-log-table-wrap,
+  .urm-staff-table-wrap,
+  .roles-table-wrap,
+  .lab-results-table-wrap,
+  .diagnosis-record-table,
+  .records-table-wrap
+) {
+  min-width: 0;
+  overflow-x: auto;
+  padding: 10px;
+  border: 1px solid #e0e9e3;
+  border-radius: 11px;
+}
+
+.owner-content :is(
+  .co-table-scroll,
+  .dm-scroll,
+  .surveillance-table-wrap,
+  .financial-dashboard-table-wrap,
+  .audit-log-table-wrap,
+  .urm-staff-table-wrap,
+  .roles-table-wrap,
+  .lab-results-table-wrap,
+  .diagnosis-record-table,
+  .records-table-wrap
+) > table {
+  min-width: 720px;
+  width: 100%;
+  border-collapse: separate !important;
+  border-spacing: 0;
+  table-layout: auto;
+  text-align: left;
+}
+
+.owner-content :is(
+  .co-table-scroll,
+  .dm-scroll,
+  .surveillance-table-wrap,
+  .financial-dashboard-table-wrap,
+  .audit-log-table-wrap,
+  .urm-staff-table-wrap,
+  .roles-table-wrap,
+  .lab-results-table-wrap,
+  .diagnosis-record-table,
+  .records-table-wrap
+) > table > thead > tr > th {
+  height: 40px;
+  padding: 8px 12px !important;
+  border: 0 !important;
+  background: #eaf3ec !important;
+  color: #143c2d !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+}
+
+.owner-content :is(
+  .co-table-scroll,
+  .dm-scroll,
+  .surveillance-table-wrap,
+  .financial-dashboard-table-wrap,
+  .audit-log-table-wrap,
+  .urm-staff-table-wrap,
+  .roles-table-wrap,
+  .lab-results-table-wrap,
+  .diagnosis-record-table,
+  .records-table-wrap
+) > table > thead > tr > th:first-child {
+  padding-left: 20px !important;
+  border-radius: 10px 0 0 10px;
+}
+
+.owner-content :is(
+  .co-table-scroll,
+  .dm-scroll,
+  .surveillance-table-wrap,
+  .financial-dashboard-table-wrap,
+  .audit-log-table-wrap,
+  .urm-staff-table-wrap,
+  .roles-table-wrap,
+  .lab-results-table-wrap,
+  .diagnosis-record-table,
+  .records-table-wrap
+) > table > thead > tr > th:last-child {
+  border-radius: 0 10px 10px 0;
+}
+
+.owner-content :is(
+  .co-table-scroll,
+  .dm-scroll,
+  .surveillance-table-wrap,
+  .financial-dashboard-table-wrap,
+  .audit-log-table-wrap,
+  .urm-staff-table-wrap,
+  .roles-table-wrap,
+  .lab-results-table-wrap,
+  .diagnosis-record-table,
+  .records-table-wrap
+) > table > tbody > tr > td {
+  height: 46px;
+  padding: 8px 12px !important;
+  border-bottom: 1px solid #e3ece6 !important;
+  color: #172b25;
+  font-size: 12px !important;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
+.owner-content :is(
+  .co-table-scroll,
+  .dm-scroll,
+  .surveillance-table-wrap,
+  .financial-dashboard-table-wrap,
+  .audit-log-table-wrap,
+  .urm-staff-table-wrap,
+  .roles-table-wrap,
+  .lab-results-table-wrap,
+  .diagnosis-record-table,
+  .records-table-wrap
+) > table > tbody > tr > td:first-child {
+  padding-left: 20px !important;
+}
+
+.owner-content :is(
+  .co-table-scroll,
+  .dm-scroll,
+  .surveillance-table-wrap,
+  .financial-dashboard-table-wrap,
+  .audit-log-table-wrap,
+  .urm-staff-table-wrap,
+  .roles-table-wrap,
+  .lab-results-table-wrap,
+  .diagnosis-record-table,
+  .records-table-wrap
+) > table > tbody > tr:last-child > td {
+  border-bottom: 0 !important;
+}
+
+.owner-content :is(
+  .co-table-scroll,
+  .dm-scroll,
+  .surveillance-table-wrap,
+  .financial-dashboard-table-wrap,
+  .audit-log-table-wrap,
+  .urm-staff-table-wrap,
+  .roles-table-wrap,
+  .lab-results-table-wrap,
+  .diagnosis-record-table,
+  .records-table-wrap
+) > table > tbody > tr:not(:has([colspan])):hover {
+  background: #f5faf6 !important;
+}
+
+.owner-content :is(
+  .co-table-scroll,
+  .dm-scroll,
+  .surveillance-table-wrap,
+  .financial-dashboard-table-wrap,
+  .audit-log-table-wrap,
+  .urm-staff-table-wrap,
+  .roles-table-wrap,
+  .lab-results-table-wrap,
+  .diagnosis-record-table,
+  .records-table-wrap
+) > table > tbody > tr:has(> td[colspan]) > td {
+  height: 82px;
+  color: #64756d;
+  text-align: center;
+}
+
+@media (max-width: 680px) {
+  .owner-content :is(
+    .co-table-scroll,
+    .dm-scroll,
+    .surveillance-table-wrap,
+    .financial-dashboard-table-wrap,
+    .audit-log-table-wrap,
+    .urm-staff-table-wrap,
+    .roles-table-wrap,
+    .lab-results-table-wrap,
+    .diagnosis-record-table,
+    .records-table-wrap
+  ) > table > thead > tr > th:first-child,
+  .owner-content :is(
+    .co-table-scroll,
+    .dm-scroll,
+    .surveillance-table-wrap,
+    .financial-dashboard-table-wrap,
+    .audit-log-table-wrap,
+    .urm-staff-table-wrap,
+    .roles-table-wrap,
+    .lab-results-table-wrap,
+    .diagnosis-record-table,
+    .records-table-wrap
+  ) > table > tbody > tr > td:first-child {
+    padding-left: 12px !important;
+  }
+  .owner-content table th:first-child,
+  .owner-content table td:first-child { padding-left: 12px !important; }
+}

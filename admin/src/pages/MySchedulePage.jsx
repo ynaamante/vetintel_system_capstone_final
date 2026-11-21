@@ -249,7 +249,7 @@ export default function MySchedulePage({ user }) {
     const loadCatalog = async () => {
       setBillingCatalogLoading(true);
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
         const response = await fetch(`${apiUrl}/clinic-records/billing-catalog`, {
           headers: { Authorization: 'Bearer ' + user.token },
           signal: controller.signal,
@@ -274,7 +274,7 @@ export default function MySchedulePage({ user }) {
   useEffect(() => {
     if (!user?.token) return undefined;
     const controller = new AbortController();
-    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
     let refreshing = false;
     const loadRegistrations = async () => {
       if (refreshing) return;
@@ -304,7 +304,7 @@ export default function MySchedulePage({ user }) {
   useEffect(() => {
     if (!user?.token) return undefined;
     const controller = new AbortController();
-    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
     const headers = { Authorization: `Bearer ${user.token}` };
     const clinicQuery = user.clinic_id ? `?clinic_id=${encodeURIComponent(user.clinic_id)}` : '';
     const { from, to } = getScheduleRange();

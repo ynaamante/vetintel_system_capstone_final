@@ -5,6 +5,7 @@ import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
 import { Icons } from '../icons';
 import { canViewFeature } from '../utils/permissionUtils';
+import './userRoleManagement.css';
 
 const ROLE_META = {
   owner: { color: '#d97706', bg: '#fffbeb', border: '#fde68a', icon: Icons.shield },
@@ -182,15 +183,15 @@ export default function UserRoleManagementPage({ user }) {
 
   const counts = {
     active: users.filter(u => u.status === 'Active').length,
-    owners: users.filter(u => u.role === 'owner').length,
-    doctors: users.filter(u => u.role === 'doctor').length,
-    receptionists: users.filter(u => u.role === 'receptionist').length,
+    owners: users.filter(u => normalizeRole(u.role) === 'owner').length,
+    doctors: users.filter(u => normalizeRole(u.role) === 'doctor').length,
+    assistantDoctors: users.filter(u => normalizeRole(u.role) === 'assistant_doctor').length,
+    receptionists: users.filter(u => normalizeRole(u.role) === 'receptionist').length,
   };
   const pendingActivation = users.filter(u => u.status === 'Pending').length;
-
   const filtered = users.filter(u => {
     const matchSearch = !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase());
-    const matchRole = roleFilter === 'All Roles' || u.role === roleFilter.toLowerCase();
+    const matchRole = roleFilter === 'All Roles' || String(u.role).toLowerCase().replace(/[\s-]+/g, '_') === roleFilter.toLowerCase().replace(/[\s-]+/g, '_');
     const matchStatus = statusFilter === 'All Status' || u.status === statusFilter;
     return matchSearch && matchRole && matchStatus;
   });
@@ -283,30 +284,40 @@ export default function UserRoleManagementPage({ user }) {
       )}
       <div style={s.page}>
 
-        {/* STAT CARDS */}
-        <div style={s.statsGrid}>
+        <div className="urm-stats-grid" style={s.statsGrid}>
           {[
-          { iconBg: '#e7f4ec', label: 'Total Staff', value: users.length, sub: 'Total Staff' },
-          { iconBg: '#f0fdf4', label: 'Active Staff', value: counts.active, sub: 'Active Staff' },
-          { iconBg: '#fffbeb', label: 'Pending Activation', value: pendingActivation, sub: 'Pending Activation' },
-          { iconBg: '#faf5ff', label: 'Approved Roles', value: 3, sub: 'Approved Roles' },
+            { label: 'Total Staff', value: users.length, sub: 'Across this clinic' },
+            { label: 'Active Staff', value: counts.active, sub: 'Currently active' },
+            { label: 'Pending Activation', value: pendingActivation, sub: 'Awaiting activation' },
+            { label: 'Approved Roles', value: 3, sub: 'Available for assignment' },
           ].map((c, i) => (
-            <div key={i} style={s.statCard}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ ...s.statIcon, background: c.iconBg }}>
-                  <span style={{ width: 18, height: 18, display: 'flex' }}>{Icons.users}</span>
-                </div>
-                <div>
-                  <div style={s.statValue}>{c.value}</div>
-                  <div style={s.statLabel}>{c.sub}</div>
-                </div>
-              </div>
+            <div key={i} className="urm-stat-card" style={{ ...s.statCard, ...(i > 0 ? { borderLeft: '1px solid #c5d8cb' } : {}) }}>
+              <div style={s.statLabel}>{c.label}</div>
+              <div style={s.statValue}>{c.value}</div>
+              <div style={s.statNote}>{c.sub}</div>
             </div>
           ))}
         </div>
 
-        {/* FILTER BAR */}
-        <div style={s.filterBar}>
+        <section className="urm-staff-panel">
+          <header className="urm-staff-heading">
+            <div><h2>Staff Accounts</h2><p>Manage clinic staff and role assignments.</p></div>
+            <span className="urm-result-count">{filtered.length} staff</span>
+          </header>
+          <div className="urm-staff-tabs" aria-label="Filter staff by role">
+            {[
+              { value: 'All Roles', label: 'All Staff', count: users.length },
+              { value: 'Doctor', label: 'Doctors', count: counts.doctors },
+              { value: 'Assistant Doctor', label: 'Assistant Doctors', count: counts.assistantDoctors },
+              { value: 'Receptionist', label: 'Receptionists', count: counts.receptionists },
+            ].map(item => (
+              <button key={item.value} type="button" className={`urm-staff-tab${roleFilter === item.value ? ' active' : ''}`} aria-pressed={roleFilter === item.value} onClick={() => setRole(item.value)}>
+                {item.label} <span>{item.count}</span>
+              </button>
+            ))}
+            <button className="urm-staff-add" onClick={() => setShowAdd(true)}>＋ &nbsp; Add Staff</button>
+          </div>
+          <div className="urm-staff-filters">
           <div style={s.searchWrap}>
             <span style={s.searchIcon}>{Icons.search || '🔍'}</span>
             <input
@@ -316,25 +327,16 @@ export default function UserRoleManagementPage({ user }) {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <select style={s.select} value={roleFilter} onChange={e => setRole(e.target.value)}>
-            {['All Roles', 'Owner', 'Doctor', 'Assistant Doctor', 'Receptionist'].map(r => <option key={r}>{r}</option>)}
-          </select>
-          <select style={s.select} value={statusFilter} onChange={e => setStatus(e.target.value)}>
+          <select style={s.select} value={statusFilter} onChange={e => setStatus(e.target.value)} aria-label="Filter by status">
             {['All Status', 'Active', 'Inactive'].map(r => <option key={r}>{r}</option>)}
           </select>
-          <button style={s.addBtn} onClick={() => setShowAdd(true)}>
-            + &nbsp; Add Staff
-          </button>
-        </div>
-
-        {/* TABLE */}
-        <div style={s.card}>
-          <div style={{ ...s.cardTitle, marginBottom: 16 }}>Staff Accounts ({filtered.length})</div>
+          </div>
+          <div className="urm-staff-table-wrap">
           <table style={s.table}>
             <thead>
               <tr>
-                {['Staff Name', 'Email', 'Role', 'Status', 'Last Login', 'Actions'].map(h => (
-                  <th key={h} style={s.th}>{h}</th>
+                {['Staff Name', 'Email', 'Role', 'Status', 'Last Login', 'Actions'].map((h, index) => (
+                  <th key={h} style={{ ...s.th, width: ['20%', '22%', '14%', '14%', '18%', '12%'][index] }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -361,14 +363,13 @@ export default function UserRoleManagementPage({ user }) {
                   </td>
                 </tr>
               ))}
+              {filtered.length === 0 && (
+                <tr><td colSpan={6} style={s.emptyCell}>No users match your filters.</td></tr>
+              )}
             </tbody>
           </table>
-          {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b', fontSize: '.84rem' }}>
-              No users match your filters.
-            </div>
-          )}
-        </div>
+          </div>
+        </section>
 
       </div>
 
@@ -487,22 +488,23 @@ function StaffProfileModal({ user, rolePermissions, onClose }) {
 const s = {
   main: { flex: 1, overflowY: 'auto', background: '#f8fafc' },
   page: { padding: '30px 24px', width: '100%', maxWidth: 'none' },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 },
-  statCard: { background: '#fff', border: '1px solid #dfe4ea', borderRadius: 12, padding: '18px 20px' },
-  statIcon: { width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  statLabel: { fontSize: '.72rem', color: '#64748b', marginTop: 2 },
-  statValue: { fontFamily: "'DM Sans', sans-serif", fontSize: '1.55rem', fontWeight: 700, color: '#0f1117', letterSpacing: '-.03em', lineHeight: 1 },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 0, marginBottom: 20 },
+  statCard: { minWidth: 0, padding: '0 24px' },
+  statLabel: { fontSize: '.82rem', color: '#101914', fontWeight: 700, marginBottom: 5 },
+  statValue: { fontFamily: "'DM Sans', sans-serif", fontSize: '2rem', fontWeight: 800, color: '#071c10', letterSpacing: '-.04em', lineHeight: 1.15 },
+  statNote: { fontSize: '.82rem', color: '#32483d', marginTop: 7 },
   filterBar: { display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid #dfe4ea', borderRadius: 12, padding: '16px 20px', marginBottom: 20 },
   searchWrap: { flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: '#f1f6ef', border: '1px solid #e8ecf0', borderRadius: 8, padding: '8px 12px' },
   searchIcon: { width: 15, height: 15, display: 'flex', color: '#64748b', flexShrink: 0, fontSize: 14 },
   searchInput: { border: 'none', background: 'transparent', outline: 'none', fontSize: '.82rem', color: '#0f1117', width: '100%' },
   select: { padding: '8px 12px', border: '1px solid #e8ecf0', borderRadius: 8, fontSize: '.82rem', color: '#0f1117', background: '#f1f6ef', outline: 'none', cursor: 'pointer' },
   addBtn: { padding: '9px 18px', background: '#0f1117', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.82rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' },
-  card: { background: '#fff', border: '1px solid #dfe4ea', borderRadius: 12, padding: '20px 0' },
+  card: { background: '#fff', border: '1px solid #dfe4ea', borderRadius: 12, padding: '0 0 8px', overflow: 'hidden' },
   cardTitle: { fontSize: '.88rem', fontWeight: 600, color: '#0f1117' },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  th: { textAlign: 'left', padding: '10px 8px', fontSize: '.72rem', fontWeight: 600, color: '#334155', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' },
-  td: { padding: '13px 8px', fontSize: '.8rem', color: '#374151', borderBottom: '1px solid #e2e8f0', verticalAlign: 'middle' },
+  table: { width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' },
+  th: { textAlign: 'left', height: 40, padding: '0 11px', fontSize: '.75rem', fontWeight: 650, color: '#171d21', background: '#f6fafb', borderBottom: '1px solid #e6eff2', whiteSpace: 'nowrap' },
+  td: { padding: '13px 11px', fontSize: '.8rem', color: '#374151', borderBottom: '1px solid #e9f0f2', verticalAlign: 'middle', overflowWrap: 'anywhere' },
+  emptyCell: { height: 68, padding: '12px', textAlign: 'center', color: '#64748b', fontSize: '.84rem', borderBottom: '0' },
   idText: { fontFamily: 'monospace', fontSize: '.78rem', color: '#64748b' },
   iconBtn: { background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24 },
   notification: { position: 'fixed', top: 18, right: 24, zIndex: 120, display: 'flex', alignItems: 'center', gap: 9, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 16px', boxShadow: '0 8px 24px rgba(15,23,42,.12)', color: '#111827', fontSize: '.78rem' },
