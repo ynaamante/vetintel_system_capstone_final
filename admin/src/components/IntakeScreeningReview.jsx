@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useState } from 'react';
 import options from '../../../data/intakeScreening.json';
 import rules from '../../../data/intakeScreeningRules.json';

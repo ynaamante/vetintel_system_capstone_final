@@ -1,0 +1,55 @@
+﻿.dce-page { flex: 1; min-width: 0; overflow-y: auto; }
+.dce-page .dm-topbar { padding: 26px 26px 18px !important; }
+.dce-page .dm-topbar h2 { font-size: 36px !important; line-height: 1.15; }
+.dce-page .dm-topbar p { font-size: 13px !important; }
+.dce-page .dm-body { padding: 0 26px 24px; }
+.dce-filters { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)) auto; align-items: end; gap: 20px; padding: 16px 18px; margin-bottom: 20px; border: 1px solid #dbe4df; border-radius: 14px; background: linear-gradient(110deg,#fcfefd,#f5faf7); }
+.dce-field { min-width: 0; display: grid; gap: 5px; }
+.dce-field > span { font-size: 13px; font-weight: 700; }
+.dce-field .filter-select { min-width: 0; }
+.dce-field .filter-select-trigger { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 38px; width: 100%; padding: 9px 12px; border: 1px solid #dce3e8; border-radius: 9px; background: #fff; color: #19342b; font: inherit; font-size: 13px; font-weight: 600; text-align: left; }
+.dce-field .filter-select-trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dce-field .filter-select-chevron { width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); margin: -4px 3px 0 6px; flex-shrink: 0; }
+.dce-field .filter-select-trigger:hover { border-color: #819e90; }
+.dce-page button:focus-visible { outline: 2px solid #819e90; outline-offset: 2px; }
+.dce-page .dce-filters .dm-primary { min-height: 38px; padding: 9px 16px; font-size: 13px; }
+.dce-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; margin-bottom: 20px; }
+.dce-metrics article { min-width: 0; padding: 20px; min-height: 134px; border: 1px solid #d5e8dc; border-left: 5px solid #6dcb67; border-radius: 13px; background: linear-gradient(115deg,#fbfefb,#edf9f1); }
+.dce-metrics article:nth-child(2) { border-left-color: #a5e6b0; }
+.dce-metrics article:nth-child(3) { border-left-color: #b7e9d7; }
+.dce-metrics article:nth-child(4) { border-left-color: #ffe2a5; }
+.dce-metrics strong { display: block; color: #104b20; font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
+.dce-metrics article:nth-child(4) strong { color: #dc8400; }
+ .dce-metrics h2 { font-size: 15px; font-weight: 750; line-height: 1.2; margin: 7px 0 5px; letter-spacing: -.2px; }
+.dce-metrics p { font-size: 13px; color: #42584a; line-height: 1.4; margin: 0; }
+.dce-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; align-items: stretch; }
+.dce-page .dm-panel { padding: 18px 16px; border-radius: 14px; background: linear-gradient(115deg,#fff,#fbfdfb); }
+.dce-page .dm-panel h2 { font-size: 20px; font-weight: 800; line-height: 1.2; }
+.dce-page .dm-panel p { font-size: 12px; margin: 3px 0 8px; line-height: 1.4; color: #43594c; }
+.dce-page .dm-chart { height: 250px; margin-top: 14px; }
+.dce-disease-bars { display: grid; gap: 17px; list-style: none; margin: 24px 0 16px; padding: 0; }
+.dce-disease-bars li { display: grid; grid-template-columns: minmax(100px,145px) minmax(0,1fr) 28px; align-items: center; gap: 10px; font-size: 13px; }
+.dce-disease-bars li > span { text-align: right; overflow-wrap: anywhere; line-height: 1.2; }
+.dce-disease-bars li > strong { color: #182c20; font-size: 12px; }
+.dce-bar-track { height: 12px; background: #edf0ee; border-radius: 9px; overflow: hidden; }
+.dce-bar-track > div { height: 100%; min-width: 3px; border-radius: inherit; background: linear-gradient(90deg,#006827,#0c7c2d); }
+.dce-view-controls { display: flex; flex-wrap: wrap; gap: 6px; }
+.dce-page .dce-view-controls button, .dce-page .dce-actions button, .dce-page .dce-table-footer button { padding: 8px 14px; background: #fff; border: 1px solid #cadbd0; border-radius: 8px; color: #096432; font-size: 12px; font-weight: 700; line-height: 1.25; }
+.dce-page .dce-view-controls [aria-pressed="true"] { color: #fff; background: linear-gradient(110deg,#087c3d,#005929); border-color: #087539; }
+.dce-page .dce-summaries header { align-items: center; margin-bottom: 2px; }
+.dce-page .dm-panel table { font-size: 13px; }
+.dce-page .dm-panel th { padding: 11px 10px; font-size: 12px; }
+.dce-page .dm-panel td { padding: 12px 10px; }
+.dce-page .dm-panel .dm-empty { padding: 22px 10px; }
+.dce-partial { display: block; color: #637669; font-size: 11px; margin-top: 2px; }
+.dce-table-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px; color: #566f5e; font-size: 11px; }
+.dce-page .dm-panel .dce-brief-note { display: flex; align-items: center; gap: 7px; margin: 8px 0 0; font-size: 11px; color: #234b32; }
+.dce-brief-note svg { width: 15px; height: 15px; flex-shrink: 0; color: #12672b; }
+.dce-bottom-tools { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 9px; color: #52685b; font-size: 11px; }
+.dce-page .dce-bottom-tools button { color: #326345; font-size: 12px; background: transparent; padding: 3px 0; border: 0; }
+.dce-details { border: 1px solid #dbe5de; border-radius: 9px; margin-top: 8px; padding: 10px 12px; }
+.dce-details p { font-size: 11px; line-height: 1.6; color: #52685b; margin: 6px 0; }
+.dce-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media(max-width:1000px) { .dce-filters { gap: 10px; } .dce-metrics { gap: 8px; } .dce-metrics article { padding: 16px 12px; } .dce-metrics h2 { font-size: 14px; } .dce-charts { gap: 10px; } .dce-disease-bars li { grid-template-columns: minmax(85px,115px) minmax(0,1fr) 24px; gap: 7px; font-size: 12px; } }
+@media(max-width:760px) { .dce-filters { grid-template-columns: repeat(2,minmax(0,1fr)); } .dce-filters > button { justify-self: start; } .dce-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .dce-charts { grid-template-columns: 1fr; } .dce-page .dm-body { padding: 10px 12px 16px; } .dce-page .dm-topbar { padding: 15px 12px 8px !important; } .dce-summaries header { flex-direction: column; align-items: flex-start !important; } .dce-bottom-tools { flex-wrap: wrap; } }
+.dce-page .monitoring-report-shortcut { border-color: #087b36; color: #096432; font-weight: 750; }

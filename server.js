@@ -775,6 +775,10 @@ const port = process.env.PORT || 3000;
 (async () => {
   try {
     await runMigrations();
+    await require('./services/emailVerification').ensureSchema();
+    await require('./controllers/ownerPasswordResetController').ensureSchema();
+    await require('./controllers/petSharingController').ensureSchema();
+    await require('./controllers/ownerPetArchiveController').ensureSchema();
     await require('./services/clinicPermissions').ensureSchema();
     await ensureClinicOwnerColumn();
     await ensureRolesSchema();

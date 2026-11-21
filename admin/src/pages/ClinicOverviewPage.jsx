@@ -1,3 +1,5 @@
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import RequestDetails from '../components/RestockRequestDetails';
 import { useEffect, useRef, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -23,13 +25,12 @@ function StockStatus({value}){return <span className={`co-status ${value==='Out 
 
 export default function ClinicOverviewPage({user}){
   const allowed=roleProfile(user?.role)==='owner'&&canViewFeature(user?.permissions,user?.role,'Clinic Overview');
-  const [data,setData]=useState(null),[requests,setRequests]=useState([]),[error,setError]=useState(''),[loading,setLoading]=useState(true);
+  const [data,setData]=usePageState(user, "pages/ClinicOverviewPage.jsx:data", null),[requests,setRequests]=usePageState(user, "pages/ClinicOverviewPage.jsx:requests", []),[error,setError]=usePageState(user, "pages/ClinicOverviewPage.jsx:error", ''),[loading,setLoading]=usePageState(user, "pages/ClinicOverviewPage.jsx:loading", true, "loading");
   const [search,setSearch]=useState(''),[query,setQuery]=useState(''),[revision,setRevision]=useState(0),[selected,setSelected]=useState(null),[modal,setModal]=useState(null);
   const canInventory=hasAction(user?.permissions,user?.role,'View Clinic Overview')||hasAction(user?.permissions,user?.role,'View Inventory');
   const canRevenue=hasAction(user?.permissions,user?.role,'View Clinic Overview')||hasAction(user?.permissions,user?.role,'View Revenue')||hasAction(user?.permissions,user?.role,'View Financial Reports');
   const refresh=()=>setRevision(value=>value+1);
   useEffect(()=>{const timer=window.setTimeout(()=>setQuery(search.trim()),300);return()=>window.clearTimeout(timer);},[search]);
-  useEffect(()=>{setData(null);setRequests([]);},[user?.clinic_id,user?.token]);
   useEffect(()=>{
     if(!allowed||!user?.token){setLoading(false);return undefined;}
     const controller=new AbortController();setLoading(true);

@@ -55,14 +55,35 @@ exports.saveRule=async(req,res,next)=>{
 };
 exports.reviewAlert=async(req,res,next)=>{
  const {has}=require('../utils/rolePermissions');if(!has(req.user,'Review Disease Alerts'))return res.status(403).json({error:'Alert review permission required.'});
- const {status,review_notes=''}=req.body;if(!['new','under_review','resolved'].includes(status)||typeof review_notes!=='string'||review_notes.length>1000)return res.status(422).json({error:'Choose New, Under Review or Resolved and notes up to 1000 characters.'});
+ const {status,review_notes,expected_status}=req.body;if(!['under_review','resolved'].includes(status)||(review_notes!==undefined&&(typeof review_notes!=='string'||review_notes.length>1000))||(expected_status!==undefined&&!['new','under_review','resolved'].includes(expected_status)))return res.status(422).json({error:'Choose Under Review or Resolved and notes up to 1000 characters.'});
  try{
   // Visibility is re-evaluated before review: removed/private source cases cannot
   // be recovered by guessing an old alert id.
   const visible=await require('../services/diseaseMonitoring').read(req.user,{days:90});
   if(!visible.alerts.some(a=>a.id===Number(req.params.id)))return res.status(404).json({error:'Alert is no longer visible in your clinic.'});
   const client=await db.pool.connect();try{await client.query('BEGIN');const before=(await client.query('SELECT * FROM disease_monitoring_alerts WHERE id=$1 AND clinic_id=$2 FOR UPDATE',[req.params.id,req.user.clinic_id])).rows[0];if(!before){await client.query('ROLLBACK');return res.status(404).json({error:'Alert not found.'});}
-  const row=(await client.query('UPDATE disease_monitoring_alerts SET status=$1,review_notes=$2,reviewed_by=$3,updated_at=now() WHERE id=$4 AND clinic_id=$5 RETURNING id,status,review_notes,reviewed_by,updated_at',[status,review_notes.trim(),req.user.id,before.id,req.user.clinic_id])).rows[0];await client.query("INSERT INTO audit_trail(user_id,action,table_name,record_id,old_data,new_data) VALUES($1,'review_disease_alert','disease_monitoring_alerts',$2,$3::jsonb,$4::jsonb)",[req.user.id,row.id,JSON.stringify({clinic_id:req.user.clinic_id,status:before.status}),JSON.stringify({...row,clinic_id:req.user.clinic_id})]);await client.query('COMMIT');return res.json(row);
+  if(expected_status!==undefined&&before.status!==expected_status){await client.query('ROLLBACK');return res.status(409).json({error:'This signal changed during review. Close and reopen it to load the latest status.'});}
+  if(before.status==='resolved'||(before.status==='new'&&status!=='under_review')){await client.query('ROLLBACK');return res.status(409).json({error:before.status==='resolved'?'Resolved signals are read-only. View Review History for prior actions.':'Start Review before resolving a signal.'});}
+  const row=(await client.query('UPDATE disease_monitoring_alerts SET status=$1,review_notes=$2,reviewed_by=COALESCE(reviewed_by,$3),updated_at=now() WHERE id=$4 AND clinic_id=$5 RETURNING id,status,review_notes,reviewed_by,updated_at,(SELECT name FROM users WHERE users.id=disease_monitoring_alerts.reviewed_by) AS reviewed_by_name',[status,(review_notes??before.review_notes??'').trim(),req.user.id,before.id,req.user.clinic_id])).rows[0];await client.query("INSERT INTO audit_trail(user_id,action,table_name,record_id,old_data,new_data) VALUES($1,'review_disease_alert','disease_monitoring_alerts',$2,$3::jsonb,$4::jsonb)",[req.user.id,row.id,JSON.stringify({clinic_id:req.user.clinic_id,status:before.status,review_notes:before.review_notes}),JSON.stringify({...row,clinic_id:req.user.clinic_id})]);await client.query('COMMIT');return res.json(row);
   }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+ }catch(error){return next(error);}
+};
+exports.alertHistory=async(req,res,next)=>{
+ try {
+  const {has}=require('../utils/rolePermissions');
+  if(!has(req.user,'View Risk Monitoring')&&!has(req.user,'View Disease Monitoring'))return res.status(403).json({error:'Disease or Risk Monitoring permission required.'});
+  const id=Number(req.params.id);
+  if(!Number.isInteger(id)||id<1)return res.status(400).json({error:'Choose a valid signal.'});
+  const visible=await require('../services/diseaseMonitoring').read(req.user,{days:90});
+  if(!visible.alerts.some(row=>row.id===id))return res.status(404).json({error:'Signal is no longer visible in your clinic.'});
+  const history=(await db.query(`SELECT a.id,a.created_at,u.name AS reviewer,
+   a.old_data->>'status' AS previous_status,a.new_data->>'status' AS status,
+   a.new_data->>'review_notes' AS review_notes
+   FROM audit_trail a LEFT JOIN users u ON u.id=a.user_id
+   WHERE a.table_name='disease_monitoring_alerts' AND a.action='review_disease_alert'
+    AND a.record_id=$1 AND a.new_data->>'clinic_id'=$2
+   ORDER BY a.created_at DESC,a.id DESC`,[id,String(req.user.clinic_id)])).rows;
+  res.setHeader?.('Cache-Control','no-store');
+  return res.json({history});
  }catch(error){return next(error);}
 };

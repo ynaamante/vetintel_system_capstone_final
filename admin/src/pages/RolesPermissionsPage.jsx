@@ -1,3 +1,6 @@
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
+import RolePermissionTree, { visibleActions, permissionValue } from '../components/RolePermissionTree';
 import permissionCatalog from '../../../data/permissionCatalog.json';
 import { permissionAvailable } from '../utils/permissionUtils';
 import { useEffect, useState } from 'react';
@@ -21,93 +24,32 @@ const permissionCount = permissions => Object.values(permissions || {}).reduce(
 function PermissionModal({ role, onClose, onSave }) {
   const [permissions, setPermissions] = useState(() => {
     const next = emptyPermissions();
-    Object.entries(role.permissions || {}).forEach(([group, values]) => {
-      if (next[group]) Object.keys(next[group]).forEach(item => { next[group][item] = !!values[item]; });
-    });
+    for (const [group, items] of PERMISSION_GROUPS) for (const item of items) next[group][item] = role.permissions?.[group]?.[item] === true;
     return next;
   });
-  const [expanded, setExpanded] = useState({});
-  const availableGroups = PERMISSION_GROUPS.map(([group,items])=>[group,items.filter(item=>permissionAvailable(role.name,item))]).filter(([,items])=>items.length);
-  const toggle = (group, item) => setPermissions(prev => ({
-    ...prev,
-    [group]: { ...prev[group], [item]: !prev[group][item] },
-  }));
-  const setAll = value => setPermissions(Object.fromEntries(PERMISSION_GROUPS.map(([group, items]) => [group, Object.fromEntries(items.map(item => [item, value && permissionAvailable(role.name,item)]))])));
-
-  return (
-    <>
-      <div style={m.overlay} onClick={onClose} />
-      <div style={m.panel}>
-        <div style={m.header}>
-          <div><div style={m.kicker}>{role.name}</div><strong>Permission Configuration - {role.name}</strong></div>
-          <button type="button" aria-label="Close permission configuration" style={m.close} onClick={onClose}>{Icons.close}</button>
-        </div>
-        <div style={m.info}>Only permissions available to this staff role are shown. Changes apply to your clinic only. Veterinary actions remain restricted to qualified clinical roles.</div>
-        <div style={m.toolbar}><div><strong>Assign Permissions</strong><small>{permissionCount(permissions)} of {availableGroups.reduce((n, [, items]) => n + items.length, 0)} permissions enabled</small></div><span><button style={m.lightButton} onClick={() => setAll(true)}>Select All</button><button style={m.lightButton} onClick={() => setAll(false)}>Clear All</button></span></div>
-        <div style={m.scroll}>
-          {availableGroups.map(([group, items]) => {
-            const enabled = items.filter(item => permissions[group][item]).length;
-            const open = expanded[group] !== false;
-            return <div key={group} style={m.group}>
-              <button style={m.groupHeader} onClick={() => setExpanded(prev => ({ ...prev, [group]: !open }))}><span><input type="checkbox" checked={enabled === items.length} onChange={() => setPermissions(prev=>({...prev,[group]:{...prev[group],...Object.fromEntries(items.map(item=>[item,enabled!==items.length]))}}))} onClick={e => e.stopPropagation()} /> {group}</span><span>{enabled}/{items.length} &nbsp;⌄</span></button>
-              {open && <div style={m.items}>{items.map(item => <label key={item} style={{ ...m.item, color: permissions[group][item] ? '#111827' : '#8aa0c0' }}><input type="checkbox" checked={permissions[group][item]} onChange={() => toggle(group, item)} />{item}</label>)}</div>}
-            </div>;
-          })}
-        </div>
-        <div style={m.footer}><button style={m.cancel} onClick={onClose}>Cancel</button><button style={m.save} onClick={() => onSave(permissions)}>Save Permissions</button></div>
-      </div>
-    </>
-  );
+  const actions = visibleActions(role.name);
+  const setAll = value => setPermissions(Object.fromEntries(PERMISSION_GROUPS.map(([group, items]) => [group, Object.fromEntries(items.map(item => [item, value && permissionAvailable(role.name, item)]))])));
+  return <>
+    <div style={m.overlay} onClick={onClose} />
+    <div style={m.panel}>
+      <div style={m.header}><div><div style={m.kicker}>{role.name}</div><strong>Permission Configuration - {role.name}</strong></div><button type="button" aria-label="Close permission configuration" style={m.close} onClick={onClose}>{Icons.close}</button></div>
+      <div style={m.info}>Choose the pages, tabs, and actions available to this role in your clinic. Shared actions stay synchronized wherever they appear. Veterinary actions are restricted to clinical roles.</div>
+      <div style={m.toolbar}><div><strong>Pages &amp; Actions</strong><small>{actions.filter(item => permissionValue(permissions, item)).length} of {actions.length} permissions enabled</small></div><span><button style={m.lightButton} onClick={() => setAll(true)}>Select All</button><button style={m.lightButton} onClick={() => setAll(false)}>Clear All</button></span></div>
+      <div style={m.scroll}><RolePermissionTree role={role.name} permissions={permissions} onChange={setPermissions} /></div>
+      <div style={m.footer}><button style={m.cancel} onClick={onClose}>Cancel</button><button style={m.save} onClick={() => onSave(permissions)}>Save Permissions</button></div>
+    </div>
+  </>;
 }
 
 function RoleViewModal({ role, onClose, staffCount }) {
-  const [expanded, setExpanded] = useState({});
-  const groups = PERMISSION_GROUPS.map(([group, items]) => [
-    group,
-    items.filter(item=>permissionAvailable(role.name,item)).map(item => [item, !!role.permissions?.[group]?.[item]]),
-  ]).filter(([,items])=>items.length);
-  const roleName = role.displayName || role.name;
-
-  return (
-    <>
-      <div style={m.overlay} onClick={onClose} />
-      <div style={m.viewPanel}>
-        <div style={m.viewHeader}>
-          <strong>{roleName} — Permission Summary</strong>
-          <button type="button" style={m.close} onClick={onClose} aria-label="Close permission summary">{Icons.close}</button>
-        </div>
-        <div style={m.viewBody}>
-          <div style={m.viewSummary}>
-            <div style={m.viewSummaryCard}><small style={m.viewSummaryLabel}>Permissions</small><strong>{permissionCount(role.permissions)}</strong></div>
-            <div style={m.viewSummaryCard}><small style={m.viewSummaryLabel}>Staff Assigned</small><strong>{staffCount}</strong></div>
-            <div style={m.viewSummaryCard}><small style={m.viewSummaryLabel}>Status</small><StatusIndicator status="Active" /></div>
-          </div>
-          {groups.map(([group, items]) => {
-            const enabled = items.filter(([, allowed]) => allowed).length;
-            const open = expanded[group] === true;
-            return (
-              <div key={group} style={m.viewGroup}>
-                <button type="button" style={m.viewGroupHeader} onClick={() => setExpanded(prev => ({ ...prev, [group]: !open }))} aria-expanded={open}>
-                  <span>{group}</span>
-                  <span style={m.viewCount}>{enabled}/{items.length}</span>
-                  <span style={{ ...m.viewChevron, transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}>⌄</span>
-                </button>
-                {open && <div style={m.viewItems}>{items.map(([item, allowed]) => (
-                  <div key={item} style={{ ...m.viewItem, color: allowed ? '#111827' : '#8aa0c0' }}>
-                    <span style={{ color: allowed ? '#16a34a' : '#ef4444', fontWeight: 700 }}>{allowed ? '✓' : '×'}</span>
-                    <span>{item}</span>
-                  </div>
-                ))}</div>}
-              </div>
-            );
-          })}
-        </div>
-        <div style={m.viewFooter}>
-          <button type="button" style={m.viewCancel} onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </>
-  );
+  return <>
+    <div style={m.overlay} onClick={onClose} />
+    <div style={m.viewPanel}>
+      <div style={m.viewHeader}><strong>{role.displayName || role.name} ? Permission Summary</strong><button type="button" style={m.close} aria-label="Close permission summary" onClick={onClose}>{Icons.close}</button></div>
+      <div style={m.viewBody}><p>{staffCount} staff assigned</p><RolePermissionTree role={role.name} permissions={role.permissions} /></div>
+      <div style={m.viewFooter}><button type="button" style={m.viewCancel} onClick={onClose}>Close</button></div>
+    </div>
+  </>;
 }
 
 function RequestRoleModal({ onClose, onSubmit }) {
@@ -146,9 +88,9 @@ function RequestRoleModal({ onClose, onSubmit }) {
 }
 
 export default function RolesPermissionsPage({ user }) {
-  const [roles, setRoles] = useState([]);
-  const [roleRequests, setRoleRequests] = useState([]);
-  const [staff, setStaff] = useState([]);
+  const [roles, setRoles] = usePageState(user, "pages/RolesPermissionsPage.jsx:roles", []);
+  const [roleRequests, setRoleRequests] = usePageState(user, "pages/RolesPermissionsPage.jsx:roleRequests", []);
+  const [staff, setStaff] = usePageState(user, "pages/RolesPermissionsPage.jsx:staff", []);
   const [selected, setSelected] = useState(null);
   const [viewed, setViewed] = useState(null);
   const [requestOpen, setRequestOpen] = useState(false);

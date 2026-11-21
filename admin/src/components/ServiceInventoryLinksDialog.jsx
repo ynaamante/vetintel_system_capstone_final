@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import {useEffect,useRef,useState} from 'react';
 const api=(import.meta.env.VITE_API_URL||'http://localhost:3000/api').replace(/\/+$/,'');
 export default function ServiceInventoryLinksDialog({user,row,onClose,onSaved}){

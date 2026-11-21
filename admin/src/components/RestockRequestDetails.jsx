@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import {useEffect,useRef,useState} from 'react';
 import {RestockProduct,restockStatus} from './RestockRequestDialog';
 import {hasAction} from '../utils/permissionUtils';

@@ -1,3 +1,4 @@
+import AppHeader from '../components/AppHeader';
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,8 +28,9 @@ export default function HealthHistoryScreen({ route, navigation }: any) {
   const { colors: tc, isDark } = useTheme();
   const [filter, setFilter] = useState<Sev>('all');
   const s = styles(tc, isDark);
-  const pet = mockPets.find(p => p.id === petId) || mockPets[0];
-  const shown = filter === 'all' ? MOCK_HISTORY : MOCK_HISTORY.filter(h => h.severity === filter);
+  const pet = route.params?.pet || mockPets.find(p => p.id === petId) || mockPets[0];
+  const history = route.params?.pet ? [] : MOCK_HISTORY;
+  const shown = filter === 'all' ? history : history.filter(h => h.severity === filter);
 
   const Card = ({ item }: { item: typeof MOCK_HISTORY[0] }) => {
     const sc = sevColor[item.severity];
@@ -58,11 +60,7 @@ export default function HealthHistoryScreen({ route, navigation }: any) {
 
   return (
     <SafeAreaView style={s.safe}>
-      <View style={s.nav}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><Ionicons name="arrow-back" size={22} color={tc.text} /></TouchableOpacity>
-        <Text style={s.navTitle}>Health History</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <AppHeader title="Health History" />
 
       <View style={s.petBadge}>
         <Ionicons name="paw" size={16} color={colors.primary} />

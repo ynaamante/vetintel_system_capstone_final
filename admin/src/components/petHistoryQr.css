@@ -1,0 +1,23 @@
+﻿.pet-share-backdrop { position: fixed; inset: 0; z-index: 1500; background: #10231bcc; display: grid; place-items: center; padding: 20px; }
+.pet-share-dialog { width: min(760px,100%); max-height: 90dvh; overflow-y: auto; background: #fafbf8; color: #14211c; border-radius: 18px; padding: 24px; box-shadow: 0 20px 70px #0004; }
+.pet-share-dialog header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.pet-share-dialog h2 { font-size: 22px; margin: 0 0 8px; color: #013826; }
+.pet-share-dialog h3 { font-size: 17px; margin: 0 0 10px; }
+.pet-share-dialog p { font-size: 14px; line-height: 1.6; margin: 6px 0 14px; }
+.pet-share-dialog button,.pet-share-upload { background: #086b50; color: #fff; padding: 11px 16px; border: 0; border-radius: 10px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.pet-share-dialog header button { background: transparent; color: #14211c; font-size: 26px; padding: 0 8px; }
+.pet-share-dialog button:disabled { opacity: .55; cursor: default; }
+.pet-share-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0 20px; }
+.pet-share-upload input { display: block; width: 210px; font-size: 12px; margin-top: 7px; }
+.pet-share-code { display: block; font-size: 14px; margin-bottom: 12px; }
+.pet-share-code textarea { display: block; width: 100%; min-height: 80px; border: 1px solid #d5d9d6; border-radius: 10px; background: #fff; color: #14211c; padding: 12px; font: inherit; margin-top: 8px; }
+.pet-share-camera { width: 100%; max-height: 300px; border-radius: 12px; background: #111; }
+.pet-share-camera[hidden] { display: none; }
+.pet-share-error { color: #a72a24; background: #fcebea; padding: 12px; border-radius: 10px; }
+.pet-share-status { padding: 16px; border: 1px solid #bed6c5; border-radius: 12px; background: #e7f4ec; margin: 14px 0; }
+.pet-share-history-section { background: #fff; border: 1px solid #e0e2e1; border-radius: 12px; padding: 16px; margin: 14px 0; }
+.pet-share-history-section dl { padding: 12px 0; margin: 0; border-top: 1px solid #e0e2e1; }
+.pet-share-history-section dl div { display: grid; grid-template-columns: minmax(110px,1fr) 2fr; gap: 14px; padding: 4px 0; }
+.pet-share-history-section dt { font-weight: 700; font-size: 13px; }
+.pet-share-history-section dd { font-size: 14px; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media(max-width:600px) { .pet-share-backdrop { padding: 8px; }.pet-share-dialog { padding: 16px; max-height: 95dvh; }.pet-share-history-section dl div { grid-template-columns: 1fr; gap: 4px; } }

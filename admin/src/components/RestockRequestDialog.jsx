@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import {useEffect,useRef,useState} from 'react';
 import './restockDialogs.css';
 export const restockStatus=value=>({pending:'Pending Approval',approved:'Approved',rejected:'Declined',fulfilled:'Fulfilled'}[value]||value);

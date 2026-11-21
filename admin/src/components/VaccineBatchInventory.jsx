@@ -1,8 +1,10 @@
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import '../pages/clinic/vaccinationVisit.css';
 import { useEffect, useState } from 'react';
 const api=(import.meta.env.VITE_API_URL||'http://localhost:3000/api').replace(/\/+$/,'');
 export default function VaccineBatchInventory({user}){
-  const [rows,setRows]=useState([]),[error,setError]=useState(''),[open,setOpen]=useState(false),[saving,setSaving]=useState(false);
+  const [rows,setRows]=usePageState(user, "components/VaccineBatchInventory.jsx:rows", []),[error,setError]=usePageState(user, "components/VaccineBatchInventory.jsx:error", ''),[open,setOpen]=useState(false),[saving,setSaving]=useState(false);
   const request=async(body)=>{const response=await fetch(`${api}/clinic-records/vaccine-inventory`,{method:body?'POST':'GET',headers:{Authorization:`Bearer ${user.token}`,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const result=await response.json();if(!response.ok)throw new Error(result.error||'Unable to load vaccine inventory.');return result;};
   const load=async()=>{try{setRows(await request());setError('');}catch(e){setError(e.message);}};
   useEffect(()=>{load();},[user.token]);

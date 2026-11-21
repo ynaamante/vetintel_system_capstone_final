@@ -1,3 +1,4 @@
+import AppHeader from '../components/AppHeader';
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -47,8 +48,8 @@ export default function VaccinationsScreen({ route, navigation }: any) {
   const [sharedError, setSharedError] = useState('');
   const [sharedRetry, setSharedRetry] = useState(0);
   const s = styles(tc, isDark);
-  const pet = mockPets.find(p => p.id === petId) || mockPets[0];
-  const vacs = mockVaccinations.filter(v => v.petId === petId);
+  const pet = route.params?.pet || mockPets.find(p => p.id === petId) || mockPets[0];
+  const vacs = route.params?.pet ? [] : mockVaccinations.filter(v => v.petId === petId);
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
   useEffect(() => {
@@ -129,11 +130,7 @@ export default function VaccinationsScreen({ route, navigation }: any) {
 
   return (
     <SafeAreaView style={s.safe}>
-      <View style={s.nav}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><Ionicons name="arrow-back" size={22} color={tc.text} /></TouchableOpacity>
-        <Text style={s.navTitle}>Vaccinations</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => setModal(true)}><Ionicons name="add" size={20} color={colors.primary} /></TouchableOpacity>
-      </View>
+      <AppHeader title="Vaccinations" /><TouchableOpacity accessibilityLabel="Add vaccination" style={s.addBtn} onPress={() => setModal(true)}><Ionicons name="add" size={24} color={colors.primary} /></TouchableOpacity>
 
       <View style={s.petBadge}>
         <Ionicons name="paw" size={16} color={colors.primary} />

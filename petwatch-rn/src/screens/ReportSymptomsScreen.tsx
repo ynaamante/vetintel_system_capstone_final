@@ -1,3 +1,4 @@
+import AppHeader from '../components/AppHeader';
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,7 +32,7 @@ export default function ReportSymptomsScreen({ route, navigation }: any) {
   const [duration, setDuration] = useState('');
   const [notes, setNotes] = useState('');
   const s = styles(tc, isDark);
-  const pet = mockPets.find(p => p.id === petId) || mockPets[0];
+  const pet = route.params?.pet || mockPets.find(p => p.id === petId) || mockPets[0];
 
   const toggle = (id: string) => setSelected(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
@@ -57,11 +58,7 @@ export default function ReportSymptomsScreen({ route, navigation }: any) {
 
   return (
     <SafeAreaView style={s.safe}>
-      <View style={s.nav}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><Ionicons name="arrow-back" size={22} color={tc.text} /></TouchableOpacity>
-        <Text style={s.navTitle}>Report Symptoms</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <AppHeader title="Report Symptoms" />
       <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
         <View style={s.petBadge}>
           <Ionicons name="paw" size={16} color={colors.primary} />

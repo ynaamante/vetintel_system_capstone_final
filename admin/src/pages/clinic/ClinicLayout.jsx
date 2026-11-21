@@ -1,3 +1,5 @@
+import { usePageState } from '../../utils/usePageState.js';
+import { apiFetch as fetch } from '../../utils/apiFetch.js';
 import LabVisitOverview from '../../components/LabVisitOverview';
 import LabResultEditor from '../../components/LabResultEditor';
 import LabTestDrawer from '../../components/LabTestDrawer';
@@ -403,16 +405,16 @@ function ClinicSectionPlaceholder({ label }) {
 export function LabResultsTab({ patientName, patientRecord, user, onCountChange, appointments = [], requestOnly = false, onRequestClose, diagnosisId } = {}) {
   const { testTypes: labTestTypes, diseases: labDiseases, error: labTestTypesError } = useLabTestTypes(user);
   const [search, setSearch] = useState('');
-  const [localResults, setLocalResults] = useState([]);
+  const [localResults, setLocalResults] = usePageState(user, `LabResultsTab:localResults:all`, []);
   const [clinicPatients, setClinicPatients] = useState(() => (
     patientRecord ? [normalizeLabPatient(patientRecord)] : []
   ));
-  const [clinicOwners, setClinicOwners] = useState([]);
+  const [clinicOwners, setClinicOwners] = usePageState(user, `LabResultsTab:clinicOwners:all`, []);
   const [patientSearch, setPatientSearch] = useState('');
   const [testTypeOptionsOpen, setTestTypeOptionsOpen] = useState(false);
   const [patientLoadError, setPatientLoadError] = useState('');
   const [patientsLoading, setPatientsLoading] = useState(false);
-  const [clinicVeterinarians, setClinicVeterinarians] = useState([]);
+  const [clinicVeterinarians, setClinicVeterinarians] = usePageState(user, `LabResultsTab:clinicVeterinarians:all`, []);
   const [veterinarianLoadError, setVeterinarianLoadError] = useState('');
   const [newRequestOpen, setNewRequestOpen] = useState(requestOnly);
   const [savedLabTest, setSavedLabTest] = useState(null);
@@ -462,8 +464,8 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
   const [historyResult, setHistoryResult] = useState(null);
   const [historyTab, setHistoryTab] = useState('details');
   const [viewResult, setViewResult] = useState(null);
-  const [labTestsLoading, setLabTestsLoading] = useState(false);
-  const [labTestsLoadError, setLabTestsLoadError] = useState('');
+  const [labTestsLoading, setLabTestsLoading] = usePageState(user, 'LabResultsTab:loading:all', true, 'loading');
+  const [labTestsLoadError, setLabTestsLoadError] = usePageState(user, `LabResultsTab:labTestsLoadError:all`, '');
   useEffect(() => {
     if (!user?.token || !user?.clinic_id) {
       setClinicPatients(patientRecord ? [normalizeLabPatient(patientRecord)] : []);
@@ -478,7 +480,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
     const loadRecords = async () => {
       const [petsResponse, ownersResponse] = await Promise.all([
         fetch(`${apiUrl}/clinic-records/pets${query}`, { headers, signal: controller.signal }),
-        fetch(`${apiUrl}/clinic-records/clients${query}`, { headers, signal: controller.signal }),
+        fetch(`${apiUrl}/clinic-records/owners${query}`, { headers, signal: controller.signal }),
       ]);
       const petsPayload = await petsResponse.json().catch(() => null);
       if (!petsResponse.ok) {
@@ -1951,12 +1953,12 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
 function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAdmissionRequest = null, onExternalAdmissionClose, onExternalAdmissionSave }) {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [localRecords, setLocalRecords] = useState([]);
-  const [clinicPets, setClinicPets] = useState([]);
-  const [treatmentPlans, setTreatmentPlans] = useState([]);
-  const [doctorOptions, setDoctorOptions] = useState([]);
-  const [loadingRecords, setLoadingRecords] = useState(true);
-  const [recordsError, setRecordsError] = useState('');
+  const [localRecords, setLocalRecords] = usePageState(user, `InpatientTab:localRecords:all`, []);
+  const [clinicPets, setClinicPets] = usePageState(user, `InpatientTab:clinicPets:all`, []);
+  const [treatmentPlans, setTreatmentPlans] = usePageState(user, `InpatientTab:treatmentPlans:all`, []);
+  const [doctorOptions, setDoctorOptions] = usePageState(user, `InpatientTab:doctorOptions:all`, []);
+  const [loadingRecords, setLoadingRecords] = usePageState(user, `InpatientTab:loadingRecords:all`, true, "loading");
+  const [recordsError, setRecordsError] = usePageState(user, `InpatientTab:recordsError:all`, '');
   const [careLogs, setCareLogs] = useState({ observations: [], medications: [], attachments: [] });
   const [loadingCare, setLoadingCare] = useState(false);
   const [showObservationForm, setShowObservationForm] = useState(false);
@@ -2439,7 +2441,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
             onClick={() => setFilter(value)}
           >{label}<span>{count}</span></button>)}
         </div>
-        <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Order Laboratory Tests')} onClick={() => setAdmitOpen(true)}>{Icons.plus} Admit Patient</button>
+        <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Manage Inpatient Care')} onClick={() => setAdmitOpen(true)}>{Icons.plus} Admit Patient</button>
       </div>
       <div className="lab-filter-bar clinic-inpatient-filter-bar">
         <label className="lab-results-search">
@@ -3072,10 +3074,10 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
   const [doseLog, setDoseLog] = useState({});
   const [archivingPlan, setArchivingPlan] = useState(false);
   const [archivePlanError, setArchivePlanError] = useState('');
-  const [savedPlans, setSavedPlans] = useState([]);
-  const [clinicPets, setClinicPets] = useState([]);
-  const [clinicVeterinarians, setClinicVeterinarians] = useState([]);
-  const [clinicalRecordsError, setClinicalRecordsError] = useState('');
+  const [savedPlans, setSavedPlans] = usePageState(user, `TreatmentPlansTab:savedPlans:all`, []);
+  const [clinicPets, setClinicPets] = usePageState(user, `TreatmentPlansTab:clinicPets:all`, []);
+  const [clinicVeterinarians, setClinicVeterinarians] = usePageState(user, `TreatmentPlansTab:clinicVeterinarians:all`, []);
+  const [clinicalRecordsError, setClinicalRecordsError] = usePageState(user, `TreatmentPlansTab:clinicalRecordsError:all`, '');
   const [savingPlan, setSavingPlan] = useState(false);
   const [savingPlanProgress, setSavingPlanProgress] = useState(false);
   const [clinicalRecordsVersion, setClinicalRecordsVersion] = useState(0);
@@ -4464,10 +4466,10 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
 }
 
 function BillingTab({ user, initialInvoiceId = null }) {
-  const [invoices, setInvoices] = useState([]);
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [invoices, setInvoices] = usePageState(user, `BillingTab:invoices:all`, []);
+  const [payments, setPayments] = usePageState(user, `BillingTab:payments:all`, []);
+  const [loading, setLoading] = usePageState(user, `BillingTab:loading:all`, true, "loading");
+  const [error, setError] = usePageState(user, `BillingTab:error:all`, '');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState(initialInvoiceId);
   const [invoiceAttachmentError, setInvoiceAttachmentError] = useState('');
   const [invoiceAttachmentUploading, setInvoiceAttachmentUploading] = useState(false);
@@ -5187,9 +5189,9 @@ function DashboardTab({ summary, user, onViewAppointments, onViewPets, onViewDis
 }
 
 function LocalAuditTab({ user }) {
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = usePageState(user, `LocalAuditTab:logs:all`, []);
   const [search, setSearch] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = usePageState(user, `LocalAuditTab:error:all`, '');
 
   useEffect(() => {
     const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
@@ -5720,7 +5722,7 @@ function OwnersTab({ owners, user, onOwnersChange }) {
   const archiveOwner = async owner => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
     const query = user.clinic_id ? `?clinic_id=${encodeURIComponent(user.clinic_id)}` : '';
-    const response = await fetch(`${apiUrl}/clinic-records/clients/${owner.id}/archive${query}`, {
+    const response = await fetch(`${apiUrl}/clinic-records/owners/${owner.id}/archive${query}`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ archived: !owner.archived }),
@@ -5742,7 +5744,7 @@ function OwnersTab({ owners, user, onOwnersChange }) {
     }
     const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
     const query = user.clinic_id ? `?clinic_id=${encodeURIComponent(user.clinic_id)}` : '';
-    const response = await fetch(`${apiUrl}/clinic-records/clients${query}`, {
+    const response = await fetch(`${apiUrl}/clinic-records/owners${query}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(owner),
@@ -5766,7 +5768,7 @@ function OwnersTab({ owners, user, onOwnersChange }) {
   };
   const editOwner = async values => {
     const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
-    const response = await fetch(apiUrl + '/clinic-records/clients/' + editingOwner.id + '?clinic_id=' + encodeURIComponent(user.clinic_id), {
+    const response = await fetch(apiUrl + '/clinic-records/owners/' + editingOwner.id + '?clinic_id=' + encodeURIComponent(user.clinic_id), {
       method: 'PUT', headers: { Authorization: 'Bearer ' + user.token, 'Content-Type': 'application/json' }, body: JSON.stringify(values),
     });
     const payload = await readApiResponse(response, 'Unable to update owner.');
@@ -5790,7 +5792,7 @@ function OwnersTab({ owners, user, onOwnersChange }) {
   return <div className="clinic-management-tab" style={{ ...T.wrap, padding: '20px 20px 18px', borderRadius: 14 }}>
     {editingOwner && <AddOwnerModal owner={editingOwner} onClose={() => setEditingOwner(null)} onAdd={editOwner} />}
     {addOpen && <AddOwnerModal onClose={() => setAddOpen(false)} onAdd={addOwner} />}
-  {actionOwner && <RecordActionsModal
+  {actionOwner && <RecordActionsModal user={user}
     title="Owner Actions"
     recordLabel={`Owner #${actionOwner.id}`}
     recordName={actionOwner.name || 'Owner'}
@@ -5800,9 +5802,9 @@ function OwnersTab({ owners, user, onOwnersChange }) {
     error={archiveError}
     actions={[
       { label: 'View Details', description: 'Review the owner profile and linked pets.', onClick: () => { setOwnerDetailsTab('details'); setSelectedOwner(actionOwner); } },
-      { label: 'Edit Owner', description: 'Update the owner profile and contact details.', onClick: () => setEditingOwner(actionOwner) },
+      { disabled: !hasAction(user.permissions, user.role, 'Edit Owner'), label: 'Edit Owner', description: 'Update the owner profile and contact details.', onClick: () => setEditingOwner(actionOwner) },
       { label: 'Audit History', description: 'Review recorded changes to this owner profile.', onClick: () => { setOwnerDetailsTab('audit'); setSelectedOwner(actionOwner); } },
-      { label: actionOwner.archived ? 'Restore Owner' : 'Archive Owner', description: actionOwner.archived ? 'Return this owner record to the active list.' : 'Move this owner record out of the active list.', destructive: !actionOwner.archived, onClick: async () => {
+      { disabled: !hasAction(user.permissions, user.role, 'Archive Owner'), label: actionOwner.archived ? 'Restore Owner' : 'Archive Owner', description: actionOwner.archived ? 'Return this owner record to the active list.' : 'Move this owner record out of the active list.', destructive: !actionOwner.archived, onClick: async () => {
         try {
           await archiveOwner(actionOwner);
           setArchiveError('');
@@ -5811,7 +5813,7 @@ function OwnersTab({ owners, user, onOwnersChange }) {
           setArchiveError(error.message || 'Unable to update the owner record.');
         }
       } },
-    ]}
+    ].filter(action => !action.disabled)}
   />}
   {selectedOwner && <OwnerDetailsModal user={user}
     owner={selectedOwner}
@@ -5830,7 +5832,7 @@ function OwnersTab({ owners, user, onOwnersChange }) {
         <button type="button" role="tab" aria-selected={!showArchived} className={!showArchived ? 'active' : ''} onClick={() => setShowArchived(false)}>Active<span>{ownerStatusCounts.active}</span></button>
         <button type="button" role="tab" aria-selected={showArchived} className={showArchived ? 'active' : ''} onClick={() => setShowArchived(true)}>Archived<span>{ownerStatusCounts.archived}</span></button>
       </div>
-      <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Order Laboratory Tests')} onClick={() => setAddOpen(true)}>{Icons.plus} Add New Owner</button>
+      <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Create Owner')} onClick={() => setAddOpen(true)}>{Icons.plus} Add New Owner</button>
     </div>
     <label className="lab-results-search clinic-management-search">
       {Icons.search}
@@ -6221,7 +6223,7 @@ function PetsTab({ pets, owners, user, onPetsChange, onOwnersChange }) {
           <button type="button" role="tab" aria-selected={!showArchived} className={!showArchived ? 'active' : ''} onClick={() => setShowArchived(false)}>Active<span>{petStatusCounts.active}</span></button>
           <button type="button" role="tab" aria-selected={showArchived} className={showArchived ? 'active' : ''} onClick={() => setShowArchived(true)}>Archived<span>{petStatusCounts.archived}</span></button>
         </div>
-        <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Order Laboratory Tests')} onClick={() => setAddOpen(true)}>{Icons.plus} Add New Pet</button>
+        <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Create Pet Records')} onClick={() => setAddOpen(true)}>{Icons.plus} Add New Pet</button>
       </div>
       <div className="lab-filter-bar clinic-pet-filter-bar">
         <label className="lab-results-search clinic-management-search">
@@ -6470,7 +6472,7 @@ function AppointmentsTab({ onOpenVisit, onOpenPatient, onOpenVaccinations, onSta
           <h2 className="lab-results-title">Appointments</h2>
           <p className="lab-results-description">Manage and view all scheduled appointments.</p>
         </div>
-        <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Order Laboratory Tests')} onClick={() => { setInitialAppointmentType(''); setShowNewAppointment(true); }}>{Icons.plus} New Appointment</button>
+        <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Create Appointment')} onClick={() => { setInitialAppointmentType(''); setShowNewAppointment(true); }}>{Icons.plus} New Appointment</button>
       </div>
       <div className="clinic-appointment-type-tabs" role="tablist" aria-label="Filter appointments by type">
         {appointmentTypeTabs.map(([value, label]) => <button
@@ -7885,7 +7887,7 @@ function VaccinationsTab({ onVisitEnded, onAppointmentRequestHandled, openAppoin
             </button>
           ))}
         </div>
-        <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Order Laboratory Tests')} onClick={openAddVaccination}>{Icons.plus} Add Vaccination</button>
+        <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Manage Vaccination Records')} onClick={openAddVaccination}>{Icons.plus} Add Vaccination</button>
       </div>
       <div className="lab-filter-bar clinic-vaccinations-filters">
         <label className="lab-results-search">
@@ -8540,6 +8542,7 @@ export function TreatmentsTab({ treatments, user, pets = [] }) {
 
 // ── MAIN LAYOUT ────────────────────────────────────────────────────────
 export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard', initialInvoiceId = null }) {
+  const [savedLoadedRecords] = usePageState(user, 'clinic:loadedRecords', () => new Set());
   const [tab, setTab]           = useState(initialTab);
   const [openVisitId, setOpenVisitId] = useState(null);
   const [openVaccinationRequest, setOpenVaccinationRequest] = useState(null);
@@ -8548,24 +8551,26 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
   const [visitCheckupRequest, setVisitCheckupRequest] = useState(null);
   const [exportReportsOpen, setExportReportsOpen] = useState(false);
   const [showBanner, setShowBanner] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [clients, setClients] = useState([]);
-  const [pets, setPets] = useState([]);
-  const [appointments, setAppointments] = useState([]);
-  const [visits, setVisits] = useState([]);
-  const [visitsLoading, setVisitsLoading] = useState(true);
-  const [visitsError, setVisitsError] = useState('');
-  const [dashboardAlerts, setDashboardAlerts] = useState([]);
-  const [dashboardSummary, setDashboardSummary] = useState(null);
-  const [vaccinations, setVaccinations] = useState([]);
-  const [treatments, setTreatments] = useState([]);
-  const loadedClinicRecords = useRef(new Set());
-  const loadedClinicContext = useRef('');
+  const [loading, setLoading] = useState(() => !savedLoadedRecords.has('dashboardSummary'));
+  const [error, setError] = usePageState(user, "clinic:error", null);
+  const [clients, setClients] = usePageState(user, "clinic:clients", []);
+  const [pets, setPets] = usePageState(user, "clinic:pets", []);
+  const [appointments, setAppointments] = usePageState(user, "clinic:appointments", []);
+  const [visits, setVisits] = usePageState(user, "clinic:visits", []);
+  const [visitsLoading, setVisitsLoading] = useState(() => !savedLoadedRecords.has('visits'));
+  const [visitsError, setVisitsError] = usePageState(user, "clinic:visitsError", '');
+  const [dashboardAlerts, setDashboardAlerts] = usePageState(user, "clinic:dashboardAlerts", []);
+  const [dashboardSummary, setDashboardSummary] = usePageState(user, "clinic:dashboardSummary", null);
+  const [vaccinations, setVaccinations] = usePageState(user, "clinic:vaccinations", []);
+  const [treatments, setTreatments] = usePageState(user, "clinic:treatments", []);
+  const loadedClinicRecords = useRef(savedLoadedRecords);
+  const loadedClinicContext = useRef(`${user.clinic_id || ''}:${user.id || ''}:${user.token}`);
 
 
-  const canView = canViewFeature(user.permissions, user.role, 'Pet Profiles');
-  const tabFeatures={dashboard:'Medical Records',owners:'Client Management',pets:'Pet Profiles',appointments:'Appointment Management',visits:'Medical Records',vaccinations:'Medical Records',plans:'Treatment Plans','lab-results':'Laboratory',inpatient:'Inpatient Care',consultation:'Billing & Payments',inventory:'Inventory Management'};
+  const canView = canViewFeature(user.permissions, user.role, 'Local Clinic Records');
+  const canReadClients = hasAction(user.permissions, user.role, 'View Owners');
+  const canReadVaccinations = hasAction(user.permissions, user.role, 'View Vaccinations');
+  const tabFeatures={dashboard:'Clinic Dashboard',owners:'Clinic Record Owners',pets:'Pet Profiles',appointments:'Appointment Management',visits:'Visit & Check-up',vaccinations:'Vaccinations',plans:'Treatment Plans','lab-results':'Laboratory',inpatient:'Inpatient Care',consultation:'Billing & Payments',inventory:'Inventory Management'};
   const availableTabs=TABS.filter(item=>canViewFeature(user.permissions,user.role,tabFeatures[item.id]));
   const canViewTab=availableTabs.some(item=>item.id===tab);
   const firstAvailableTab=availableTabs[0]?.id;
@@ -8595,7 +8600,7 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
     const query = user.clinic_id ? `?clinic_id=${encodeURIComponent(user.clinic_id)}` : '';
     const headers = { Authorization: `Bearer ${user.token}` };
     const records = {
-      clients: { path: `/clinic-records/clients${query}`, save: setClients },
+      clients: { path: `/clinic-records/owners${query}`, save: setClients },
       pets: { path: `/clinic-records/pets${query}`, save: setPets },
       appointments: { path: `/clinic-records/appointments${query}`, save: setAppointments },
       dashboardSummary: { path: `/clinic-records/dashboard/summary${query}`, save: setDashboardSummary },
@@ -8615,7 +8620,10 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
       treatments: ['pets', 'treatments'],
       inpatient: ['appointments'],
     };
-    const requiredKeys = requiredByTab[tab] || [];
+    // Related directories are optional. Pet/appointment access does not grant
+    // access to the separate client directory or vaccination history.
+    const requiredKeys = (requiredByTab[tab] || []).filter(key =>
+      (key !== 'clients' || canReadClients) && (key !== 'vaccinations' || canReadVaccinations));
     // Refresh the compact dashboard snapshot each time the user returns to it.
     const missingKeys = requiredKeys;
     setLoading(requiredKeys.some(key => !loadedClinicRecords.current.has(key)));
@@ -8652,7 +8660,7 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
 
     loadRecords();
     return () => controller.abort();
-  }, [user?.token, user?.clinic_id, user?.id, canView, canViewTab, tab, workflowRevision]);
+  }, [user?.token, user?.clinic_id, user?.id, canView, canViewTab, canReadClients, canReadVaccinations, tab, workflowRevision]);
 
   const refreshWorkflow = () => setWorkflowRevision(value => value + 1);
   useEffect(() => {

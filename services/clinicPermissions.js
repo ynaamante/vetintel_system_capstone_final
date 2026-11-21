@@ -2,13 +2,13 @@ const db=require('../config/db');
 const policy=require('../utils/rolePermissions');
 exports.ensureSchema=()=>db.query(require('fs').readFileSync(require('path').join(__dirname,'../scripts/clinic_role_permissions_schema.sql'),'utf8'));
 exports.loadPrincipal=async id=>{
-  const result=await db.query(`SELECT u.id,u.name,u.email,u.is_active,u.clinic_id,r.name AS role,c.name AS clinic_name,
+  const result=await db.query(`SELECT u.id,u.name,u.email,u.is_active,u.clinic_id,u.email_verification_required,u.email_verified_at,u.password_reset_at,r.name AS role,c.name AS clinic_name,
     r.permissions AS base_permissions,p.permissions AS clinic_permissions
     FROM users u LEFT JOIN roles r ON r.id=u.role_id LEFT JOIN clinics c ON c.id=u.clinic_id
     LEFT JOIN clinic_role_permissions p ON p.clinic_id=u.clinic_id
       AND p.role_key=lower(regexp_replace(trim(r.name),'[[:space:]-]+','_','g')) WHERE u.id=$1`,[id]);
   const row=result.rows[0];
-  if(!row || row.is_active===false) return null;
+  if(!row || row.is_active===false || (row.email_verification_required && !row.email_verified_at)) return null;
   const {base_permissions,clinic_permissions,is_active,...user}=row;
   user.role=policy.normalize(user.role);
   return {...user,permissions:policy.resolve(user.role,base_permissions,clinic_permissions)};

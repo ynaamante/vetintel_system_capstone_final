@@ -2,7 +2,7 @@ import catalog from '../../../data/permissionCatalog.json';
 export const normalizeFeatureName=feature=>String(feature||'').trim();
 export const normalizeRoleName=role=>String(role||'').trim().toLowerCase().replace(/[-\s]+/g,'_');
 export const roleProfile=role=>['owner','clinic_owner'].includes(normalizeRoleName(role))?'owner':['doctor','assistant_doctor','veterinarian'].includes(normalizeRoleName(role))?'doctor':normalizeRoleName(role);
-export const permissionAvailable=(role,item)=>catalog.ownerDoctorOnly.includes(item)&&!['owner','doctor'].includes(roleProfile(role))?false:roleProfile(role)==='owner'?!catalog.clinicalOnly.includes(item):
+export const permissionAvailable=(role,item)=>catalog.receptionistOnly?.includes(item)&&!['owner','receptionist'].includes(roleProfile(role))?false:catalog.ownerDoctorOnly.includes(item)&&!['owner','doctor'].includes(roleProfile(role))?false:roleProfile(role)==='owner'?!catalog.clinicalOnly.includes(item):
   ['doctor','receptionist'].includes(roleProfile(role))&&!catalog.ownerOnly.includes(item)&&(roleProfile(role)==='doctor'||(!catalog.clinicalOnly.includes(item)&&!catalog.receptionistExcluded.includes(item)));
 export const hasAction=(permissions,role,item)=>normalizeRoleName(role)==='super_admin'||catalog.groups.some(([group])=>permissionAvailable(role,item)&&permissions?.[group]?.[item]===true);
 const featureAction=(permissions,role,feature,action)=>{

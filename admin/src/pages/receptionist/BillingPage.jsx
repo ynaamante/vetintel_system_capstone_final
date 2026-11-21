@@ -1,3 +1,5 @@
+import { usePageState } from '../../utils/usePageState.js';
+import { apiFetch as fetch } from '../../utils/apiFetch.js';
 import { useEffect, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import PropTypes from 'prop-types';
@@ -50,16 +52,16 @@ export default function BillingPage({ user }) {
   const [queueOpen, setQueueOpen] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [viewInvoice, setViewInvoice] = useState(null);
-  const [invoices, setInvoices] = useState([]);
-  const [payments, setPayments] = useState([]);
+  const [invoices, setInvoices] = usePageState(user, "pages/receptionist/BillingPage.jsx:invoices", []);
+  const [payments, setPayments] = usePageState(user, "pages/receptionist/BillingPage.jsx:payments", []);
   const [processingInvoice, setProcessingInvoice] = useState(null);
   const [paymentForm, setPaymentForm] = useState({ amount: '', method: 'cash', reference: '', paidAt: '', notes: '' });
-  const [clinicStaff, setClinicStaff] = useState([]);
-  const [staffLoadError, setStaffLoadError] = useState('');
+  const [clinicStaff, setClinicStaff] = usePageState(user, "pages/receptionist/BillingPage.jsx:clinicStaff", []);
+  const [staffLoadError, setStaffLoadError] = usePageState(user, "pages/receptionist/BillingPage.jsx:staffLoadError", '');
   const [paymentError, setPaymentError] = useState('');
   const [savingPayment, setSavingPayment] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = usePageState(user, "pages/receptionist/BillingPage.jsx:loading", true, "loading");
+  const [error, setError] = usePageState(user, "pages/receptionist/BillingPage.jsx:error", null);
 
   const canView = canViewFeature(user.permissions, user.role, 'Billing & Payments');
 

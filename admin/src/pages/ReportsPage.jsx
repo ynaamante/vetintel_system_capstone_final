@@ -1,391 +1,122 @@
-import { useSurveillanceRefresh } from '../utils/useSurveillanceRefresh';
-import { jsPDF } from 'jspdf';
-import { csvCell } from '../utils/billingView';
-import { useEffect, useState } from 'react';
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
+import { useEffect, useMemo, useState } from 'react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import Topbar from '../components/Topbar';
-import StatusIndicator from '../components/StatusIndicator';
+import FilterSelect from '../components/FilterSelect';
 import { Icons } from '../icons';
-import { canViewFeature } from '../utils/permissionUtils';
-import { hasAction } from '../utils/permissionUtils';
+import { canViewFeature, hasAction } from '../utils/permissionUtils';
+import { signalStatus } from '../utils/diseaseSignals';
+import { useSurveillanceRefresh } from '../utils/useSurveillanceRefresh';
+import { REPORT_TYPES, buildSurveillanceReport, reportTime } from '../utils/surveillanceReports';
+import './reportsPage.css';
 
-/* ── DATA ── */
-const REPORT_CARDS = [
-  {
-    category: 'Disease Intelligence',
-    title: 'Monthly Disease Summary',
-    desc: 'Comprehensive overview of disease trends and patterns',
-    lastGen: 'Not generated this session',
-    size: '-',
-    status: 'Ready',   // fresh | stale | outdated
-  },
-  {
-    category: 'Risk Analysis',
-    title: 'Risk Assessment Report',
-    desc: 'Community-wide risk analysis and contributing factors',
-    lastGen: 'Not generated this session',
-    size: '-',
-    status: 'Ready',
-  },
-  {
-    category: 'Prevention',
-    title: 'Vaccination Coverage Report',
-    desc: 'Network vaccination rates and coverage gaps',
-    lastGen: 'Not generated this session',
-    size: '-',
-    status: 'Ready',
-  },
-  {
-    category: 'Surveillance',
-    title: 'Outbreak Alert Summary',
-    desc: 'All active and resolved outbreak alerts',
-    lastGen: 'Not generated this session',
-    size: '-',
-    status: 'Ready',
-  },
-  {
-    category: 'Network Health',
-    title: 'Clinic Network Analysis',
-    desc: 'Performance and participation metrics across network',
-    lastGen: 'Not generated this session',
-    size: '-',
-    status: 'Ready',
-  },
-  {
-    category: 'Executive',
-    title: 'Quarterly Intelligence Brief',
-    desc: 'Executive summary of key trends and insights',
-    lastGen: 'Not generated this session',
-    size: '-',
-    status: 'Ready',
-  },
-];
-
-const REPORT_TYPES  = ['Disease Summary', 'Risk Assessment', 'Vaccination Coverage', 'Outbreak Alert', 'Clinic Network', 'Quarterly Brief'];
-
-const TIME_OPTS = ['Last 30 Days', 'Last 60 Days', 'Last 90 Days'];
-const FORMAT_OPTS = ['PDF', 'CSV'];
-
-
-
-/* ── MAIN PAGE ── */
-export function ReportsPage({ user }) {
-  const surveillanceRevision = useSurveillanceRefresh();
-  const [reportType, setReportType] = useState('Disease Summary');
-  const [disease,    setDisease]    = useState('All Diseases');
-  const [timeRange,  setTimeRange]  = useState('Last 30 Days');
-  const [format,     setFormat]     = useState('PDF');
-  const [generating, setGenerating] = useState(null);
-  const [RECENT_REPORTS, setReports] = useState([]);
-  const [error, setError] = useState('');
-  const [DISEASE_OPTS, setDiseaseOptions] = useState(['All Diseases']);
-
-  const canView = canViewFeature(user.permissions, user.role, 'Reports');
-  const canGenerateReport = hasAction(user.permissions,user.role,'Generate Reports');
-  const canBuildCustomReport = canGenerateReport;
-  const canManageReportActions = hasAction(user.permissions,user.role,'Export Reports');
-
-  useEffect(() => {
-    if (!canView) return;
-    const controller = new AbortController();
-    const api = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
-    fetch(api + '/disease-intelligence/summary?days=90', { headers: { Authorization: 'Bearer ' + user.token }, signal: controller.signal })
-      .then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Unable to load report options.'); if (!controller.signal.aborted) setDiseaseOptions(['All Diseases', ...(data.disease_options || []).map(row => row.disease)]); })
-      .catch(failure => { if (!controller.signal.aborted) setError(failure.message); });
-    return () => controller.abort();
-  }, [canView, user.token, user.clinic_id, surveillanceRevision]);
-  const download = async (blob,filename) => {
-    if(!canManageReportActions){setError('Your role cannot export reports.');return;}
-    try {
-      const api=(import.meta.env.VITE_API_URL||'http://localhost:3000/api').replace(/\/+$/,'');
-      const response=await fetch(`${api}/disease-intelligence/export-data?days=30`,{headers:{Authorization:`Bearer ${user.token}`}});
-      if(!response.ok)throw new Error((await response.json()).error||'Export is not permitted.');
-      const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);
-    }catch(failure){setError(failure.message);}
-  };  async function handleGenerate(title) {
-    if (!canGenerateReport || generating) return;
-    setGenerating(title); setError('');
-    try {
-      const api = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
-      const query = new URLSearchParams({ days: String(parseInt(timeRange.match(/\d+/)?.[0] || '30', 10)) });
-      if (disease !== 'All Diseases') query.set('disease', disease);
-      const response = await fetch(api + '/disease-intelligence/report-data?' + query, { headers: { Authorization: 'Bearer ' + user.token } });
-      const summary = await response.json();
-      if (!response.ok) throw new Error(summary.error || 'Unable to load report data.');
-      const riskReport = /risk/i.test(title);
-      const vaccineReport = /vaccin/i.test(title);
-      const clinicReport = /clinic|network/i.test(title);
-      const alertReport = /outbreak|alert/i.test(title);
-      const source = riskReport ? summary.risk_distribution : vaccineReport ? summary.vaccination_trend : clinicReport ? summary.clinics : alertReport ? (summary.alerts || []) : summary.diseases;
-      const entries = source || [];
-      const columns = [...new Set(entries.flatMap(row => Object.keys(row)))];
-      const rows = [[title], ['Scope', vaccineReport ? 'Your clinic' : 'Participating clinic network'], ['Generated', summary.generated_at], ['Period', timeRange], ['Disease', disease], ['Privacy', summary.privacy?.notice || ''], [], columns, ...entries.map(row => columns.map(key => row[key]))];
-      if (!entries.length) rows.push(['No recorded data for these filters.']);
-      if (alertReport) rows.push(['Alerts are calculated from recorded case increases, not confirmed outbreaks.']);
-      let blob;
-      if (format === 'CSV') blob = new Blob([rows.map(row => row.map(csvCell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
-      else {
-        const doc = new jsPDF({ orientation: 'landscape' }); let y = 16;
-        doc.setFontSize(9);
-        for (const row of rows) {
-          const lines = doc.splitTextToSize(row.join(' | '), 265);
-          for (const line of lines) { if (y > 190) { doc.addPage(); y = 16; } doc.text(line, 14, y); y += 6; }
-        }
-        blob = doc.output('blob');
-      }
-      const filename = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.' + format.toLowerCase();
-      if(canManageReportActions)await download(blob, filename);
-      setReports(previous => [{ name: title, type: format, date: new Date(summary.generated_at).toLocaleString('en-PH'), size: (blob.size / 1024).toFixed(1) + ' KB', blob, filename }, ...previous]);
-    } catch (failure) { setError(failure.message); } finally { setGenerating(null); }
-  }
-
-  if (!canView) {
-    return (
-      <div style={s.main}>
-        <Topbar user={user} title="Reports" subtitle="Generate and manage custom reports" />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', color: '#64748b' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔒</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>Access Denied</div>
-          <div style={{ fontSize: '0.95rem' }}>You do not have permission to view this feature</div>
-        </div>
-      </div>
-    );
-  }
-
-  const previewText = `${reportType} report for ${disease} for your clinic - ${timeRange} (${format})`;
-
-  return (
-    <div style={s.main}>
-      <Topbar
-        user={user}
-        title="Reports"
-        subtitle="Generate and manage intelligence reports"
-      />
-      <div style={s.page}>
-        {error && <p role="alert">{error}</p>}
-
-        {/* REPORT CARDS GRID */}
-        <div style={s.grid}>
-          {REPORT_CARDS.map((r, i) => (
-            <div key={i} style={s.reportCard}>
-              <div style={s.reportTop}>
-                <span style={s.categoryTag}>{r.category}</span>
-              </div>
-              <div style={s.reportTitle}>{r.title}</div>
-              <div style={s.reportDesc}>{r.desc}</div>
-              <div style={s.reportMeta}>
-                <StatusIndicator status={RECENT_REPORTS.some(row => row.name === r.title) ? 'Generated' : 'Ready'} />
-                <span style={s.metaText}>Last generated: {RECENT_REPORTS.find(row => row.name === r.title)?.date || 'Not generated this session'}</span>
-              </div>
-              <div style={s.reportSize}>Size: {RECENT_REPORTS.find(row => row.name === r.title)?.size || '-'}</div>
-              <button
-                style={{
-                  ...s.generateBtn,
-                  opacity: !canGenerateReport ? 0.45 : generating === r.title ? 0.7 : 1,
-                  cursor: canGenerateReport ? 'pointer' : 'not-allowed',
-                }}
-                onClick={() => handleGenerate(r.title)}
-                disabled={!canGenerateReport || !!generating}
-              >
-                <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.file}</span>
-                {generating === r.title ? 'Generating…' : 'Generate Report'}
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* CUSTOM REPORT BUILDER */}
-        <div style={s.card}>
-          <div style={s.cardTitle}>Custom Report Builder</div>
-          <div style={s.cardDesc}>Create a customized report with specific parameters</div>
-
-          <div style={s.builderRow}>
-            <select
-              disabled={!canBuildCustomReport}
-              style={{
-                ...s.select,
-                background: canBuildCustomReport ? '#f1f6ef' : '#f8fafc',
-                color: canBuildCustomReport ? '#0f1117' : '#64748b',
-                cursor: canBuildCustomReport ? 'pointer' : 'not-allowed',
-              }}
-              value={reportType}
-              onChange={e => setReportType(e.target.value)}
-            >
-              {REPORT_TYPES.map(r => <option key={r}>{r}</option>)}
-            </select>
-            <select
-              disabled={!canBuildCustomReport}
-              style={{
-                ...s.select,
-                background: canBuildCustomReport ? '#f1f6ef' : '#f8fafc',
-                color: canBuildCustomReport ? '#0f1117' : '#64748b',
-                cursor: canBuildCustomReport ? 'pointer' : 'not-allowed',
-              }}
-              value={disease}
-              onChange={e => setDisease(e.target.value)}
-            >
-              {DISEASE_OPTS.map(d => <option key={d}>{d}</option>)}
-            </select>
-            <select
-              disabled={!canBuildCustomReport}
-              style={{
-                ...s.select,
-                background: canBuildCustomReport ? '#f1f6ef' : '#f8fafc',
-                color: canBuildCustomReport ? '#0f1117' : '#64748b',
-                cursor: canBuildCustomReport ? 'pointer' : 'not-allowed',
-              }}
-              value={timeRange}
-              onChange={e => setTimeRange(e.target.value)}
-            >
-              {TIME_OPTS.map(t => <option key={t}>{t}</option>)}
-            </select>
-            <select
-              disabled={!canBuildCustomReport}
-              style={{
-                ...s.select,
-                background: canBuildCustomReport ? '#f1f6ef' : '#f8fafc',
-                color: canBuildCustomReport ? '#0f1117' : '#64748b',
-                cursor: canBuildCustomReport ? 'pointer' : 'not-allowed',
-              }}
-              value={format}
-              onChange={e => setFormat(e.target.value)}
-            >
-              {FORMAT_OPTS.map(f => <option key={f}>{f}</option>)}
-            </select>
-          </div>
-
-          <div style={s.previewBox}>
-            <div style={s.previewLabel}>Live Preview</div>
-            <div style={s.previewText}>{previewText}</div>
-          </div>
-
-          <button
-            style={{
-              ...s.buildBtn,
-              opacity: canBuildCustomReport ? 1 : 0.65,
-              background: canBuildCustomReport ? '#0f1117' : '#f8fafc',
-              color: canBuildCustomReport ? '#fff' : '#64748b',
-              border: canBuildCustomReport ? 'none' : '1px solid #cbd5e1',
-              cursor: canBuildCustomReport ? 'pointer' : 'not-allowed',
-            }}
-            disabled={!canBuildCustomReport || !!generating} onClick={() => handleGenerate(reportType)}
-          >
-            Build Custom Report
-          </button>
-        </div>
-
-        {/* RECENT REPORTS */}
-        <div style={s.card}>
-          <div style={{ ...s.cardTitle, marginBottom: 16 }}>Recent Reports (this session)</div>
-          <div style={s.tableHead}>
-            {['Report Name', 'Type', 'Generated Date', 'File Size', 'Actions'].map(h => (
-              <div key={h} style={s.th}>{h}</div>
-            ))}
-          </div>
-          {!RECENT_REPORTS.length && <p>No reports generated this session.</p>}
-          {RECENT_REPORTS.map((r, i) => (
-            <div key={i} style={{
-              ...s.tableRow,
-              borderBottom: i < RECENT_REPORTS.length - 1 ? '1px solid #f1f5f9' : 'none',
-            }}>
-              <div style={{ ...s.td, fontWeight: 500, color: '#0f1117', fontSize: '.82rem' }}>{r.name}</div>
-              <div style={s.td}>
-                <span style={{
-                  ...s.typeBadge,
-                  background: r.type === 'PDF' ? '#0f1117' : '#139b76',
-                }}>
-                  {r.type}
-                </span>
-              </div>
-              <div style={{ ...s.td, color: '#64748b', fontSize: '.78rem' }}>{r.date}</div>
-              <div style={{ ...s.td, color: '#64748b', fontSize: '.78rem' }}>{r.size}</div>
-              <div style={{ ...s.td, gap: 12 }}>
-                <button type="button" onClick={() => download(r.blob, r.filename)} disabled={!canManageReportActions}>Download</button>
-                
-                <button type="button" onClick={() => setReports(rows => rows.filter(item => item !== r))} disabled={!canManageReportActions}>Remove</button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-      </div>
-    </div>
-  );
+const api=(import.meta.env.VITE_API_URL||'http://localhost:3000/api').replace(/\/+$/,'');
+async function get(user,path,signal) {
+  const response=await fetch(`${api}/${path}`,{cache:'no-store',headers:{Authorization:`Bearer ${user.token}`},signal});
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||'Unable to load report data.');
+  return data;
 }
+function ReportTable({section,limit}) {
+  const rows=limit?section.rows.slice(0,limit):section.rows;
+  return <><div className="reports-table-scroll"><table><thead><tr>{section.columns.map(column=><th key={column}>{column}</th>)}</tr></thead><tbody>{rows.map((row,index)=><tr key={index}>{row.map((cell,cellIndex)=><td key={cellIndex}>{cell}</td>)}</tr>)}{!rows.length&&<tr><td className="reports-empty" colSpan={section.columns.length}>No matching data for these filters.</td></tr>}</tbody></table></div>{limit&&section.rows.length>limit&&<p className="reports-caption">Showing {limit} of {section.rows.length} rows. All matching rows are included in the file.</p>}</>;
+}
+export function ReportsPage({user,initialFilters={},generatedReports=[],onReportsChange}) {
+  const revision=useSurveillanceRefresh();
+  const [type,setType]=usePageState(user, "pages/ReportsPage.jsx:type", REPORT_TYPES.some(item=>item.id===initialFilters.report_type)?initialFilters.report_type:'disease');
+  const [filters,setFilters]=usePageState(user, "pages/ReportsPage.jsx:filters", {days:initialFilters.days||'30',disease:initialFilters.disease||'',clinic_id:initialFilters.clinic_id||'',area:initialFilters.area||'',search:initialFilters.search||''});
+  const [search,setSearch]=usePageState(user, "pages/ReportsPage.jsx:search", initialFilters.search||'');
+  const [status,setStatus]=usePageState(user, "pages/ReportsPage.jsx:status", initialFilters.report_status||'');
+  const [activeFormat,setActiveFormat]=useState('');
+  const [format,setFormat]=useState('PDF');
+  const [options,setOptions]=usePageState(user, "pages/ReportsPage.jsx:options", {diseases:[],clinics:[],areas:[]});
+  const [snapshot,setSnapshot]=usePageState(user, "pages/ReportsPage.jsx:snapshot", null);
+  const [loading,setLoading]=usePageState(user, "pages/ReportsPage.jsx:loading", true, "loading");
+  const [generating,setGenerating]=useState(false);
+  const [downloading,setDownloading]=useState(null);
+  const [error,setError]=usePageState(user, "pages/ReportsPage.jsx:error", '');
+  const [refresh,setRefresh]=useState(0);
+  const canView=canViewFeature(user.permissions,user.role,'Reports');
+  const canGenerate=hasAction(user.permissions,user.role,'Generate Reports');
+  const canExport=hasAction(user.permissions,user.role,'Export Reports');
+  const query=new URLSearchParams({days:filters.days,...(filters.disease?{disease:filters.disease}:{}),...(filters.clinic_id?{clinic_id:filters.clinic_id}:{}),...(filters.area?{area:filters.area}:{}),...(filters.search?{search:filters.search}:{})}).toString();
+  const searchPending=search.trim()!==filters.search;
+  useEffect(()=>{const timer=setTimeout(()=>setFilters(current=>({...current,search:search.trim()})),300);return()=>clearTimeout(timer);},[search]);
+  useEffect(()=>{
+    if(!canView||generating)return;
+    const controller=new AbortController();setLoading(true);setError('');
+    get(user,`disease-intelligence/summary?${query}`,controller.signal).then(data=>{
+      buildSurveillanceReport(data,filters,'disease');
+      setOptions({diseases:data.disease_options||[],clinics:data.clinic_options||[],areas:data.area_options||[]});
+      setSnapshot({key:query,data});
+    }).catch(failure=>{if(failure.name!=='AbortError')setError(failure.message);}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+    return()=>controller.abort();
+    // Query is the canonical representation of the API filters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[canView,user.token,user.clinic_id,query,revision,refresh,generating]);
+  const reportState=useMemo(()=>{
+    if(!snapshot||snapshot.key!==query)return {report:null,error:''};
+    try{return {report:buildSurveillanceReport(snapshot.data,filters,type,type==='signals'?status:''),error:''};}catch(failure){return {report:null,error:failure.message};}
+  },[snapshot,query,filters,type,status]);
+  const report=reportState.report;
+  const ready=!!report&&!loading&&!searchPending&&!error&&!reportState.error;
+  const setFilter=(key,value)=>setFilters(current=>({...current,[key]:value}));
+  const verifyPermissions=async generate=>{
+    const current=await get(user,'me');
+    if(!canViewFeature(current.permissions,current.role,'Reports')||!hasAction(current.permissions,current.role,'Export Reports')||(generate&&!hasAction(current.permissions,current.role,'Generate Reports')))throw new Error('Your report permissions changed. Refresh the page to load your current access.');
+  };
+  const saveFile=(blob,filename)=>{
+    const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
+  const generate=async selectedFormat=>{
+    if(!ready||!canGenerate||!canExport||generating)return;
+    // Capture exactly what is displayed, before awaiting permission/file work.
+    const captured=report,generatedAt=new Date().toISOString();
+    setGenerating(true);setActiveFormat(selectedFormat);setError('');
+    try {
+      await verifyPermissions(true);
+      const {createSurveillanceFile}=await import('../utils/surveillanceReportExport');
+      const blob=await createSurveillanceFile(captured,selectedFormat,generatedAt);
+      const filename=`${captured.title.toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${captured.period.start}-to-${captured.period.end}-${generatedAt.replace(/[:.]/g,'-')}.${selectedFormat.toLowerCase()}`;
+      saveFile(blob,filename);
+      onReportsChange?.(previous=>[{id:filename,name:`${captured.title} – ${captured.period.start} to ${captured.period.end}`,generatedAt,snapshotAt:captured.snapshotAt,format:selectedFormat,scope:captured.scope,filename,blob},...previous]);
+    }catch(failure){setError(failure.message);}finally{setGenerating(false);setActiveFormat('');}
+  };
+  const download=async row=>{
+    if(!canExport||downloading)return;
+    setDownloading(row.id);setError('');
+    try {
+      await verifyPermissions(false);
+      saveFile(row.blob,row.filename);
+    }catch(failure){setError(failure.message);}finally{setDownloading(null);}
+  };
+  const field=(key,label,items)=><div className="reports-field"><span>{label}</span><FilterSelect label={label} value={filters[key]} onChange={value=>setFilter(key,value)} options={items}/></div>;
+  return <main className="reports-page">
+    <Topbar className="reports-topbar" user={user} title="Reports" subtitle="Create and export disease surveillance summaries." actions={<label className="reports-search">{Icons.search}<input aria-label="Search report scope" placeholder="Search diseases, clinics, or barangays…" value={search} disabled={generating} onChange={event=>setSearch(event.target.value)}/></label>}/>
+    {!canView?<p className="reports-body">You do not have permission to view Reports.</p>:<div className="reports-body">
+      <section className="reports-panel"><h2>Report Type</h2><p>Choose the type of report to generate.</p><fieldset className="reports-types" disabled={generating}><legend className="reports-sr">Report type</legend>{REPORT_TYPES.map(item=><label key={item.id} className={type===item.id?'selected':''}><input type="radio" name="report-type" value={item.id} checked={type===item.id} onChange={()=>setType(item.id)}/><span><strong>{item.title}</strong><small>{item.description}</small></span></label>)}</fieldset></section>
+      <section className="reports-panel reports-controls"><h2>Filters</h2><p>Refine the report scope.</p>
+        <fieldset className="reports-filter-fields reports-unified-filters" disabled={generating}><legend className="reports-sr">Report filters</legend>
+          {field('disease','Disease',[{value:'',label:'All Diseases'},...options.diseases.map(row=>({value:row.disease_key,label:row.disease}))])}
+          {field('clinic_id','Participating Clinic',[{value:'',label:'All Clinics'},...options.clinics.map(row=>({value:String(row.id),label:row.name}))])}
+          {field('area','Reporting Barangay',[{value:'',label:'All Barangays'},...[...new Set([...options.areas,...(filters.area?[filters.area]:[])])].map(area=>({value:area,label:area}))])}
+          {field('days','Date Range',[30,60,90].map(days=>({value:String(days),label:'Last '+days+' Days'})))}
+          {type==='signals'&&<div className="reports-field"><span>Status</span><FilterSelect label="Status" value={status} onChange={setStatus} options={[{value:'',label:'All Statuses'},...['new','under_review','resolved'].map(value=>({value,label:signalStatus(value)}))]}/></div>}
+        </fieldset>
+        <div className="reports-export-row"><fieldset className="reports-format" disabled={generating}><legend>Export Format</legend>{['PDF','CSV'].map(value=><label key={value}><input type="radio" name="report-format" checked={format===value} onChange={()=>setFormat(value)}/>{value}</label>)}</fieldset><button className="reports-primary" disabled={!ready||!canGenerate||!canExport||generating||!!downloading} onClick={()=>generate(format)}>{generating?'Preparing '+activeFormat+'...':'Generate Report'}</button></div>
+        {(!canGenerate||!canExport)&&<p className="reports-caption">Report downloads are not enabled for your account.</p>}
+      </section>
+      {(error||reportState.error)&&<div className="reports-error" role="alert">{error||reportState.error}<button onClick={()=>setRefresh(value=>value+1)}>Refresh Preview</button></div>}
+      <section className="reports-panel reports-preview" aria-busy={loading||searchPending}><header><div><h2>Report Preview</h2><p>Preview your selected report.</p></div>{report&&<span className="reports-snapshot">Snapshot: {reportTime(report.snapshotAt)} (Asia/Manila)</span>}</header>
+        {loading||searchPending?<p role="status" className="reports-empty">Updating report preview…</p>:!report?<p className="reports-empty">Report data is unavailable. Refresh the preview to try again.</p>:<>
+          <div className="reports-scope"><strong>{report.title}</strong><span>{report.period.start} – {report.period.end} · {report.scope.disease} · {report.scope.clinic} · {report.scope.area}{type==='signals'?` · ${report.scope.status}`:''}{filters.search?` · Search: ${filters.search}`:''}</span></div>
+          <div className="reports-preview-grid"><section className="reports-preview-content">{type==='disease'?<><h3>Confirmed Cases Trend</h3><div className="reports-chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={report.trend} margin={{top:24,right:18,left:-18,bottom:5}}><defs><linearGradient id="reportTrend" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10862f" stopOpacity={0.23}/><stop offset="100%" stopColor="#10862f" stopOpacity={0.02}/></linearGradient></defs><CartesianGrid stroke="#e4ece6" vertical={false}/><XAxis dataKey="label" tick={{fontSize:11}} interval="preserveStartEnd" minTickGap={18}/><YAxis allowDecimals={false} domain={[0,max=>Math.max(1,max)]} tick={{fontSize:11}}/><Tooltip formatter={value=>[value,'Released confirmed cases']} labelFormatter={(label,payload)=>`${label}${payload?.[0]?.payload?.suppressed?' · Some groups withheld':''}`}/><Area type="linear" dataKey="cases" stroke="#0a852d" fill="url(#reportTrend)" strokeWidth={2.5} dot={{r:3}} connectNulls={false}><LabelList dataKey="cases" position="top" formatter={value=>value>0?value:''} fontSize={12} fill="#145426"/></Area></AreaChart></ResponsiveContainer></div></>:<><h3>{report.sections[0].title}</h3><ReportTable section={report.sections[0]} limit={10}/></>}</section><section className="reports-summary"><h3>Summary</h3><dl>{report.summary.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl></section></div>
+          <p className="reports-caption">{type==='signals'?'Potential signals require review and do not confirm an outbreak.':'Confirmed cases only. Privacy protections apply.'}</p>
 
-const s = {
-  main: { flex: 1, overflowY: 'auto', background: '#f1f6ef' },
-  page: { padding: '24px 28px' },
-
-  grid: {
-    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: 14, marginBottom: 16,
-  },
-  reportCard: {
-    background: '#fff', border: '1px solid #e8ecf0',
-    borderRadius: 14, padding: '20px 20px',
-    display: 'flex', flexDirection: 'column',
-  },
-  reportTop:    { marginBottom: 10 },
-  categoryTag: {
-    display: 'inline-block', fontSize: '.67rem', fontWeight: 600,
-    color: '#64748b', background: '#f1f6ef',
-    border: '1px solid #e8ecf0', borderRadius: 6,
-    padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '.05em',
-  },
-  reportTitle: { fontSize: '.9rem', fontWeight: 600, color: '#0f1117', marginBottom: 6, letterSpacing: '-.01em' },
-  reportDesc:  { fontSize: '.75rem', color: '#64748b', lineHeight: 1.5, marginBottom: 14, flex: 1 },
-  reportMeta:  { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 },
-  statusDot:   { width: 7, height: 7, borderRadius: '50%', flexShrink: 0 },
-  metaText:    { fontSize: '.72rem', color: '#64748b' },
-  reportSize:  { fontSize: '.7rem', color: '#64748b', marginBottom: 14 },
-  generateBtn: {
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-    padding: '9px 0', background: '#fff',
-    border: '1px solid #e8ecf0', borderRadius: 9,
-    fontSize: '.8rem', fontWeight: 500, color: '#0f1117',
-    cursor: 'pointer', width: '100%', transition: 'background .12s',
-  },
-
-  card: {
-    background: '#fff', border: '1px solid #e8ecf0',
-    borderRadius: 14, padding: '20px 22px', marginBottom: 16,
-  },
-  cardTitle: { fontSize: '.88rem', fontWeight: 600, color: '#0f1117', letterSpacing: '-.01em', marginBottom: 4 },
-  cardDesc:  { fontSize: '.73rem', color: '#64748b', marginBottom: 18 },
-
-  builderRow: { display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' },
-  select: {
-    flex: 1, minWidth: 140,
-    padding: '9px 12px', border: '1px solid #e8ecf0', borderRadius: 8,
-    fontSize: '.82rem', color: '#0f1117', background: '#f1f6ef',
-    outline: 'none', cursor: 'pointer',
-  },
-  previewBox: {
-    background: '#f1f6ef', border: '1px solid #e8ecf0',
-    borderRadius: 8, padding: '12px 16px', marginBottom: 14,
-  },
-  previewLabel: { fontSize: '.7rem', fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.05em' },
-  previewText:  { fontSize: '.82rem', color: '#64748b' },
-  buildBtn: {
-    width: '100%', padding: '11px 0',
-    background: '#0f1117', color: '#fff',
-    border: 'none', borderRadius: 9,
-    fontSize: '.84rem', fontWeight: 500, cursor: 'pointer',
-  },
-
-  tableHead: {
-    display: 'grid', gridTemplateColumns: '1fr 80px 160px 100px 100px',
-    paddingBottom: 10, borderBottom: '1px solid #f1f5f9', gap: 12,
-  },
-  th: { fontSize: '.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.04em' },
-  tableRow: {
-    display: 'grid', gridTemplateColumns: '1fr 80px 160px 100px 100px',
-    padding: '14px 0', alignItems: 'center', gap: 12,
-  },
-  td: { display: 'flex', alignItems: 'center' },
-  typeBadge: {
-    display: 'inline-block', padding: '2px 10px',
-    color: '#fff', fontSize: '.7rem', fontWeight: 700,
-    borderRadius: 5, letterSpacing: '.04em',
-  },
-};
+        </>}
+      </section>
+      <details className="reports-panel reports-recent"><summary>Recent downloads (this session)</summary><div className="reports-table-scroll"><table><thead><tr><th>Report Name</th><th>Generated (Asia/Manila)</th><th>Format</th><th>Action</th></tr></thead><tbody>{generatedReports.map(row=><tr key={row.id}><td><strong>{row.name}</strong><small className="reports-file-scope">{row.scope.disease} · {row.scope.clinic} · {row.scope.area}{row.scope.status!=='Not applicable'?` · ${row.scope.status}`:''}</small></td><td>{reportTime(row.generatedAt)}</td><td>{row.format}</td><td><button className="reports-download" disabled={!canExport||!!downloading} onClick={()=>download(row)}>{downloading===row.id?'Downloading…':'Download'}</button></td></tr>)}{!generatedReports.length&&<tr><td colSpan={4} className="reports-empty">No downloads yet.</td></tr>}</tbody></table></div>{!canExport&&<p className="reports-caption">Your role cannot download report files.</p>}</details>
+    </div>}
+  </main>;
+}

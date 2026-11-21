@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useRef, useState } from 'react';
 
 // Keep a small per-tab cache so a pet photo reused by another view doesn't

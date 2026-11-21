@@ -1,44 +1,44 @@
 // Shared veterinary palette used across VetIntel and Petwatch.
 export const colors = {
-  deepForest: '#075F4F',
-  botanicalTeal: '#087A70',
-  eucalyptus: '#6F9D8D',
-  paleSage: '#E1EFE8',
-  warmIvory: '#F7F8F5',
+  deepForest: '#013826',
+  botanicalTeal: '#086B50',
+  eucalyptus: '#A9D6B7',
+  paleSage: '#E7F4EC',
+  warmIvory: '#FAFBF8',
   white: '#FFFFFF',
 
   // Compatibility aliases used throughout existing Petwatch screens.
-  teal: '#087A70',
-  blue: '#087A70',
-  violet: '#6F9D8D',
+  teal: '#086B50',
+  blue: '#086B50',
+  violet: '#A9D6B7',
   deepSpace: '#12352D',
-  primary: '#087A70',
-  ink: '#1F2D28',
-  slate: '#526B62',
-  slateLight: '#6F8178',
+  primary: '#086B50',
+  ink: '#14211C',
+  slate: '#172B24',
+  slateLight: '#34463D',
   mist: '#91A79C',
-  fog: '#D5E3DB',
-  cloud: '#E1EFE8',
-  paper: '#F7F8F5',
+  fog: '#BED6C5',
+  cloud: '#E7F4EC',
+  paper: '#FAFBF8',
 
   // Semantic colors remain distinct from the brand palette.
   success: '#16845B',
-  successBg: '#E1EFE8',
+  successBg: '#E7F4EC',
   warning: '#B7791F',
   warningBg: '#FFF4D6',
   danger: '#C53E3E',
   dangerBg: '#FCE9E7',
-  secondary: '#6F9D8D',
-  secondaryBg: '#E1EFE8',
+  secondary: '#086B50',
+  secondaryBg: '#E7F4EC',
 
   light: {
-    background: '#F7F8F5',
+    background: '#FAFBF8',
     surface: '#FFFFFF',
-    border: '#D5E3DB',
-    inputBg: '#F7F8F5',
-    text: '#1F2D28',
-    textSecondary: '#526B62',
-    textMuted: '#71877C',
+    border: '#BED6C5',
+    inputBg: '#FAFBF8',
+    text: '#14211C',
+    textSecondary: '#172B24',
+    textMuted: '#34463D',
   },
 
   dark: {
@@ -46,15 +46,15 @@ export const colors = {
     surface: '#18362E',
     border: '#3D6859',
     inputBg: '#18362E',
-    text: '#F7F8F5',
+    text: '#FAFBF8',
     textSecondary: '#D2E5DC',
     textMuted: '#A9C3B7',
   },
 };
 
 export const gradients = {
-  brand: ['#075F4F', '#087A70', '#6F9D8D'] as const,
-  brandSubtle: ['#075F4F22', '#087A7022', '#6F9D8D22'] as const,
+  brand: ['#013826', '#086B50', '#086B50'] as const,
+  brandSubtle: ['#01382622', '#086B5022', '#A9D6B722'] as const,
 };
 
 export const spacing = {

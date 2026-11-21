@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useId, useState } from 'react';
 import LabTestDrawer from './LabTestDrawer';
 import { hasAvailableLabResult } from '../utils/diagnosisLaboratory';

@@ -1,3 +1,6 @@
+import { apiFetch as fetch, clearApiCache } from './utils/apiFetch.js';
+import { clearPageState } from './utils/pageStateStore.js';
+import BackgroundPagePreloader from './components/BackgroundPagePreloader';
 import { watchClinicEvents } from './utils/clinicEvents';
 import { useEffect, useState } from 'react';
 import './styles/global.css';
@@ -65,7 +68,7 @@ const DEDICATED = [
 const PAGE_FEATURE_MAP = {
   dashboard: 'Intelligence Dashboard',
   disease: 'Disease Monitoring',
-  clinic: 'Pet Profiles',
+  clinic: 'Local Clinic Records',
   schedule: 'My Schedule',
   'patient-intakes': 'Patient Intakes',
   'patient-queue': 'Patient Queue',
@@ -129,6 +132,9 @@ export default function App() {
   const [user, setUser] = useState(null);
   useEffect(() => { if (user?.token && user?.clinic_id) return watchClinicEvents(user); return undefined; }, [user?.token, user?.clinic_id]);
   const [page, setPage] = useState('dashboard');
+  const [monitoringFilters, setMonitoringFilters] = useState({});
+  const [generatedReports, setGeneratedReports] = useState([]);
+  const navigateSurveillance = (nextPage, filters) => { if (filters) setMonitoringFilters(filters); setPage(nextPage); };
   const [clinicInitialTab, setClinicInitialTab] = useState('dashboard');
   const [clinicInitialInvoiceId, setClinicInitialInvoiceId] = useState(null);
   const [inboxPatientRequest, setInboxPatientRequest] = useState(null);
@@ -152,6 +158,8 @@ export default function App() {
         setUser(current=>{
           if(!current||current.token!==permissionToken)return current;
           if(JSON.stringify(current.permissions)===JSON.stringify(me.permissions)&&current.role===me.role)return current;
+          clearApiCache();
+          clearPageState();
           const next={...current,...me};localStorage.setItem('vetintel_user',JSON.stringify(next));return next;
         });
         setPage(current=>canAccessPage(current,me.permissions,me.role)?current:getFirstAllowedPage(me.permissions,me.role));
@@ -250,6 +258,10 @@ export default function App() {
   }, []);
 
   function handleLogin(userData) {
+    clearApiCache();
+    clearPageState();
+    setMonitoringFilters({});
+    setGeneratedReports([]);
     const { token, ...rest } = userData;
     const userWithToken = { ...rest, token };
 
@@ -282,6 +294,10 @@ export default function App() {
   }
 
   function handleLogout() {
+    clearApiCache();
+    clearPageState();
+    setMonitoringFilters({});
+    setGeneratedReports([]);
     try {
       localStorage.clear();
       sessionStorage.clear();
@@ -348,9 +364,9 @@ export default function App() {
         }}
       />
 
-      <main className={`admin-content ${['owner', 'clinic_owner'].includes(normalizeRoleName(user.role)) ? 'owner-content' : ''} ${page === 'inbox' ? 'inbox-content' : ''} ${page === 'clinics' ? 'owner-overview-content' : ''}`}>
-        {page === 'dashboard' && <DashboardPage user={user} onNavigate={setPage} />}
-        {page === 'disease' && <DiseaseMonitoringPage user={user} />}
+      <main key={JSON.stringify([user.token, user.id, user.clinic_id, user.role, user.permissions])} className={`admin-content ${['owner', 'clinic_owner'].includes(normalizeRoleName(user.role)) ? 'owner-content' : ''} ${page === 'inbox' ? 'inbox-content' : ''} ${page === 'clinics' ? 'owner-overview-content' : ''}`}>
+        {page === 'dashboard' && <DashboardPage user={user} initialFilters={monitoringFilters} onFiltersChange={setMonitoringFilters} onNavigate={navigateSurveillance} />}
+        {page === 'disease' && <DiseaseMonitoringPage user={user} initialFilters={monitoringFilters} onFiltersChange={setMonitoringFilters} onNavigate={navigateSurveillance} />}
         {page === 'clinic' && <ClinicLayout user={user} initialTab={clinicInitialTab} initialInvoiceId={clinicInitialInvoiceId} onNavigate={(nextPage, context) => { if (nextPage === 'patient-records') setInboxPatientRequest(context); if (nextPage === 'clinic') { setClinicInitialTab(context?.tab || 'dashboard'); setClinicInitialInvoiceId(context?.invoiceId || null); } setPage(nextPage); }} />}
         {page === 'schedule' && <MySchedulePage user={user} />}
         {page === 'patient-intakes' && <PatientIntakesPage user={user} />}
@@ -374,9 +390,9 @@ export default function App() {
           initialPatient={inboxPatientRequest}
         />}
 
-        {page === 'risk' && <RiskMonitoringPage user={user} />}
+        {page === 'risk' && <RiskMonitoringPage user={user} initialFilters={monitoringFilters} onFiltersChange={setMonitoringFilters} onNavigate={navigateSurveillance} />}
         {page === 'settings' && <SettingsPage user={user} />}
-        {page === 'reports' && <ReportsPage user={user} />}
+        {page === 'reports' && <ReportsPage user={user} initialFilters={monitoringFilters} generatedReports={generatedReports} onReportsChange={setGeneratedReports} />}
 
         {page === 'clinics' && <ClinicOverviewPage user={user} onNavigate={setPage} />}
         {page === 'users' && <UserRoleManagementPage user={user} />}
@@ -402,6 +418,10 @@ export default function App() {
 
         {!DEDICATED.includes(page) && <PlaceholderPage user={user} />}
       </main>
+      <BackgroundPagePreloader
+        key={JSON.stringify([user.token, user.id, user.clinic_id, user.role, user.permissions])}
+        user={user} activePage={page} canAccessPage={canAccessPage}
+      />
       {toast && (
         <div role="status" aria-live="polite" style={{
           position: 'fixed', top: 24, right: 24, zIndex: 2000, display: 'flex',

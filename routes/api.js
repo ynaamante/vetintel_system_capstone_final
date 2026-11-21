@@ -20,7 +20,34 @@ router.use((req,res,next)=>clinicRbac.protectedPath(req.path)
 
 // Auth endpoints
 router.post('/login', users.login);
+router.post('/password/forgot', require('../controllers/ownerPasswordResetController').request);
+router.post('/password/verify', require('../controllers/ownerPasswordResetController').verify);
+router.post('/password/reset', require('../controllers/ownerPasswordResetController').reset);
 router.post('/register', users.register);
+router.post('/verify-email', require('../controllers/petOwnerAccountController').verify);
+router.post('/resend-verification', require('../controllers/petOwnerAccountController').resend);
+router.get('/owner/pets', auth.required, require('../controllers/petOwnerAccountController').pets);
+router.get('/owner/pets/:id', auth.required, require('../controllers/petOwnerAccountController').getPet);
+router.put('/owner/pets/:id', auth.required, require('../controllers/petOwnerAccountController').updatePet);
+router.post('/owner/pets', auth.required, require('../controllers/petOwnerAccountController').addPet);
+router.get('/owner/care', auth.required, require('../controllers/ownerCareController').overview);
+router.get('/owner/inbox', auth.required, require('../controllers/ownerInboxController').list);
+router.post('/owner/inbox', auth.required, require('../controllers/ownerInboxController').create);
+router.patch('/owner/inbox/:id', auth.required, require('../controllers/ownerInboxController').update);
+router.get('/owner/clinic-pets/:id/medical-activity', auth.required, require('../controllers/ownerMedicalActivityController').list);
+router.get('/owner/archived-pets', auth.required, require('../controllers/ownerPetArchiveController').list);
+router.post('/owner/pet-archive', auth.required, require('../controllers/ownerPetArchiveController').set);
+router.post('/owner/clinic-pets/:id/qr', auth.required, require('../controllers/petSharingController').issue);
+router.get('/owner/sharing-requests', auth.required, require('../controllers/petSharingController').ownerRequests);
+router.post('/owner/sharing-requests/:id/decision', auth.required, require('../controllers/petSharingController').decide);
+router.patch('/owner/sharing-requests/read-all', auth.required, require('../controllers/petSharingController').read);
+router.patch('/owner/sharing-requests/:id/read', auth.required, require('../controllers/petSharingController').read);
+router.post('/pet-sharing/requests', auth.required, require('../controllers/petSharingController').request);
+router.get('/pet-sharing/requests/:id', auth.required, require('../controllers/petSharingController').view);
+router.put('/owner/clinic-pets/:id', auth.required, require('../controllers/ownerCareController').updatePet);
+router.post('/owner/clinic-pets/:id/photo', auth.required, require('../controllers/ownerPetPhotoController').clinic);
+router.post('/owner/pets/:id/photo', auth.required, require('../controllers/ownerPetPhotoController').personal);
+router.post('/owner/appointments', auth.required, require('../controllers/ownerCareController').book);
 router.get('/me', auth.required, users.me);
 router.post('/password/change', auth.required, users.changePassword);
 
@@ -34,6 +61,7 @@ router.delete('/users/:id/permanent', auth.required, users.permanentDelete);
 
 // Clinic endpoints
 router.get('/clinics', auth.required, clinics.list);
+router.get('/clinics/nearby', auth.required, require('../controllers/nearbyClinicsController').list);
 router.get('/clinics/:id', auth.required, clinics.getById);
 router.post('/clinic-applications', auth.optional, clinics.createApplication);
 router.get('/clinics/:id/staff', auth.required, clinics.getStaffByClinic);
@@ -44,8 +72,14 @@ router.post('/clinics/export/log', auth.required, clinics.logExport);
 
 // Clinic records endpoints
 router.get('/clinic-records/inbox', auth.required, require('../controllers/clinicInboxController').list);
+router.get('/clinic-records/inbox/patients', auth.required, require('../controllers/clinicInboxController').patients);
 router.post('/clinic-records/inbox', auth.required, require('../controllers/clinicInboxController').create);
 router.patch('/clinic-records/inbox/:id', auth.required, require('../controllers/clinicInboxController').update);
+// Owners tab access is separate from Client Management; clinic scoping is shared.
+router.get('/clinic-records/owners', auth.required, clinicRecords.listClients);
+router.post('/clinic-records/owners', auth.required, clinicRecords.createClient);
+router.put('/clinic-records/owners/:id', auth.required, clinicRecords.updateClient);
+router.patch('/clinic-records/owners/:id/archive', auth.required, clinicRecords.archiveClient);
 router.get('/clinic-records/clients', auth.required, clinicRecords.listClients);
 router.post('/clinic-records/clients', auth.required, clinicRecords.createClient);
 router.get('/clinic-records/registration-screening/config', auth.required, patientRegistrations.screeningConfig);
@@ -108,6 +142,7 @@ router.get('/disease-intelligence/monitoring',auth.required,require('../controll
 router.get('/disease-intelligence/monitoring-export',auth.required,require('../controllers/diseaseIntelligenceController').monitoring);
 router.put('/disease-intelligence/alert-rules',auth.required,require('../controllers/diseaseIntelligenceController').saveRule);
 router.patch('/disease-intelligence/alerts/:id/review',auth.required,require('../controllers/diseaseIntelligenceController').reviewAlert);
+router.get('/disease-intelligence/alerts/:id/history',auth.required,require('../controllers/diseaseIntelligenceController').alertHistory);
 router.get('/clinic-records/dashboard/summary', auth.required, clinicRecords.getClinicDashboardSummary);
 router.post('/clinic-records/appointments', auth.required, clinicRecords.createAppointment);
 router.patch('/clinic-records/appointments/:id/vaccination-details', auth.required, clinicRecords.updateScheduledVaccinationAppointment);

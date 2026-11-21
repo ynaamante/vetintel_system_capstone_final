@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../../utils/apiFetch.js';
 import VaccinationVisitModal from './VaccinationVisitModal';
 import {useEffect,useRef,useState} from 'react';
 import StatusIndicator from '../../components/StatusIndicator';

@@ -1,14 +1,16 @@
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useState } from 'react';
 import Topbar from '../components/Topbar';
 import { Icons } from '../icons';
 import { formatDateTimeText } from '../utils/dateFormatting';
 
 export default function LocalAuditTrailPage({ user }) {
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = usePageState(user, "pages/LocalAuditTrailPage.jsx:logs", []);
   const [search, setSearch] = useState('');
   const [action, setAction] = useState('All Actions');
   const [selectedLog, setSelectedLog] = useState(null);
-  const [error, setError] = useState('');
+  const [error, setError] = usePageState(user, "pages/LocalAuditTrailPage.jsx:error", '');
 
   useEffect(() => {
     const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');

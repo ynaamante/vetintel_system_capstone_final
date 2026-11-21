@@ -1,3 +1,6 @@
+import { hasAction } from '../utils/permissionUtils';
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import IntakeScreeningReview from '../components/IntakeScreeningReview';
 import screening from '../../../data/intakeScreening.json';
 import { useEffect, useMemo, useState } from 'react';
@@ -81,9 +84,9 @@ function AlertIcon() {
 }
 
 export default function PatientIntakesPage({ user }) {
-  const [intakes, setIntakes] = useState([]);
-  const [doctors, setDoctors] = useState([]);
-  const [loadError, setLoadError] = useState('');
+  const [intakes, setIntakes] = usePageState(user, "pages/PatientIntakesPage.jsx:intakes", []);
+  const [doctors, setDoctors] = usePageState(user, "pages/PatientIntakesPage.jsx:doctors", []);
+  const [loadError, setLoadError] = usePageState(user, "pages/PatientIntakesPage.jsx:loadError", '');
   const [actionError, setActionError] = useState('');
   const [correctionSubmitting, setCorrectionSubmitting] = useState(false);
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
@@ -208,6 +211,7 @@ export default function PatientIntakesPage({ user }) {
     ? ['Rejected', 'Duplicated'].includes(item.status)
     : item.status === status).length;
   const runReviewAction = async (intake, action, reason = '', assignedDoctorId = null) => {
+    if (!hasAction(user.permissions, user.role, 'Manage Patient Intakes')) { setActionError('Your role cannot review patient intakes.'); return; }
     setReviewSubmitting(true);
     setActionError('');
     try {
@@ -501,7 +505,7 @@ export default function PatientIntakesPage({ user }) {
             </section>
           </div>
           {actionError && <div className="intake-load-error" role="alert">{actionError}</div>}
-          {selected.status !== 'Approved' && <footer className="intake-detail-actions">
+          {selected.status !== 'Approved' && hasAction(user.permissions, user.role, 'Manage Patient Intakes') && <footer className="intake-detail-actions">
             {selected.status === 'Needs review' ? (
               <>
                 <div className="intake-more-wrap">

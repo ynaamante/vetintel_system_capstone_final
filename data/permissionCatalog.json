@@ -1,454 +1,884 @@
-﻿{
-    "groups":  [
-                   [
-                       "User Management",
-                       [
-                           "View Users",
-                           "Create Users",
-                           "Edit Users",
-                           "Deactivate Users",
-                           "Assign Roles"
-                       ]
-                   ],
-                   [
-                       "Role Management",
-                       [
-                           "View Roles",
-                           "Create Roles",
-                           "Edit Roles",
-                           "Assign Permissions"
-                       ]
-                   ],
-                   [
-                       "Appointments",
-                       [
-                           "View Appointments",
-                           "View Own Schedule",
-                           "Create Appointment",
-                           "Approve Appointment",
-                           "Reschedule Appointment",
-                           "Cancel Appointment",
-                           "Complete Appointment",
-                           "Manage Walk-ins",
-                           "Manage Follow-ups",
-                           "Manage No-shows",
-                           "View Patient Queue",
-                           "Manage Patient Queue"
-                       ]
-                   ],
-                   [
-                       "Client Management",
-                       [
-                           "View Clients",
-                           "Create Client",
-                           "Edit Client",
-                           "View Client History"
-                       ]
-                   ],
-                   [
-                       "Patient / Pet Records",
-                       [
-                           "View Pet Records",
-                           "Create Pet Records",
-                           "Edit Pet Records",
-                           "View Medical History",
-                           "View Patient Intakes",
-                           "Manage Patient Intakes",
-                           "Archive Pet Records"
-                       ]
-                   ],
-                   [
-                       "Medical Workflow",
-                       [
-                           "Create Consultation",
-                           "Edit Consultation",
-                           "Create Prescription",
-                           "Manage Vaccination Records",
-                           "View Laboratory Results",
-                           "View Diagnoses",
-                           "Create Diagnosis",
-                           "Edit Diagnosis",
-                           "Finalize Diagnosis",
-                           "Confirm Diagnosis",
-                           "Order Laboratory Tests",
-                           "Record Laboratory Results",
-                           "Verify Laboratory Results",
-                           "Manage Laboratory Reports",
-                           "View Treatment Plans",
-                           "Manage Treatment Plans",
-                           "View Inpatient Care",
-                           "Manage Inpatient Care"
-                       ]
-                   ],
-                   [
-                       "Inventory",
-                       [
-                           "View Inventory",
-                           "Add Inventory",
-                           "Edit Inventory",
-                           "Restock Inventory",
-                           "Archive Inventory",
-                           "Request Restock",
-                           "View Stock Movement"
-                       ]
-                   ],
-                   [
-                       "Billing \u0026 Financial",
-                       [
-                           "View Billing",
-                           "Create Invoice",
-                           "Process Payment",
-                           "View Financial Reports",
-                           "View Revenue"
-                       ]
-                   ],
-                   [
-                       "Services",
-                       [
-                           "View Services",
-                           "Create Services",
-                           "Edit Services",
-                           "Activate / Deactivate Services"
-                       ]
-                   ],
-                   [
-                       "Disease Intelligence",
-                       [
-                           "View Intelligence Dashboard",
-                           "View Disease Monitoring",
-                           "View Risk Monitoring",
-                           "View Community Analytics",
-                           "View Reports",
-                           "Export Reports",
-                           "View Data Sync Status",
-                           "Generate Reports",
-                           "Alert Clinics",
-                           "Flag for Follow-up",
-                           "Review Disease Alerts",
-                           "Configure Alert Rules"
-                       ]
-                   ],
-                   [
-                       "Clinic Management",
-                       [
-                           "Clinic Overview",
-                           "View Clinic Overview"
-                       ]
-                   ],
-                   [
-                       "Communication",
-                       [
-                           "View Pet Owner Messages",
-                           "Send Pet Owner Messages",
-                           "Manage Conversations",
-                           "Send Notifications",
-                           "View Notification History"
-                       ]
-                   ],
-                   [
-                       "Audit",
-                       [
-                           "View Audit Trail"
-                       ]
-                   ]
-               ],
-    "clinicalOnly":  [
-                         "View Own Schedule",
-                         "Manage Patient Intakes",
-                         "Create Consultation",
-                         "Edit Consultation",
-                         "Create Prescription",
-                         "Manage Vaccination Records",
-                         "Create Diagnosis",
-                         "Edit Diagnosis",
-                         "Finalize Diagnosis",
-                         "Confirm Diagnosis",
-                         "Order Laboratory Tests",
-                         "Record Laboratory Results",
-                         "Verify Laboratory Results",
-                         "Manage Laboratory Reports",
-                         "Manage Treatment Plans",
-                         "Manage Inpatient Care",
-                         "Complete Appointment",
-                         "Request Restock"
-                     ],
-    "ownerOnly":  [
-                      "View Users",
-                      "Create Users",
-                      "Edit Users",
-                      "Deactivate Users",
-                      "Assign Roles",
-                      "View Roles",
-                      "Create Roles",
-                      "Edit Roles",
-                      "Assign Permissions",
-                      "Create Services",
-                      "Edit Services",
-                      "Activate / Deactivate Services",
-                      "Add Inventory",
-                      "Edit Inventory",
-                      "Restock Inventory",
-                      "Archive Inventory",
-                      "View Clinic Overview",
-                      "Configure Alert Rules"
-                  ],
-    "defaults":  {
-                     "doctor":  [
-                                    "View Appointments",
-                                    "View Own Schedule",
-                                    "Complete Appointment",
-                                    "Manage Follow-ups",
-                                    "View Patient Queue",
-                                    "View Clients",
-                                    "View Client History",
-                                    "View Pet Records",
-                                    "Create Pet Records",
-                                    "Edit Pet Records",
-                                    "View Medical History",
-                                    "View Patient Intakes",
-                                    "Manage Patient Intakes",
-                                    "Create Consultation",
-                                    "Edit Consultation",
-                                    "Create Prescription",
-                                    "Manage Vaccination Records",
-                                    "View Laboratory Results",
-                                    "View Diagnoses",
-                                    "Create Diagnosis",
-                                    "Edit Diagnosis",
-                                    "Finalize Diagnosis",
-                                    "Confirm Diagnosis",
-                                    "Order Laboratory Tests",
-                                    "Record Laboratory Results",
-                                    "Verify Laboratory Results",
-                                    "Manage Laboratory Reports",
-                                    "View Treatment Plans",
-                                    "Manage Treatment Plans",
-                                    "View Inpatient Care",
-                                    "Manage Inpatient Care",
-                                    "View Inventory",
-                                    "Request Restock",
-                                    "View Services",
-                                    "View Intelligence Dashboard",
-                                    "View Disease Monitoring",
-                                    "View Risk Monitoring",
-                                    "View Community Analytics",
-                                    "View Reports",
-                                    "Export Reports",
-                                    "View Pet Owner Messages",
-                                    "Send Pet Owner Messages",
-                                    "View Notification History",
-                                    "View Billing",
-                                    "Create Invoice",
-                                    "Generate Reports",
-                                    "Review Disease Alerts"
-                                ],
-                     "receptionist":  [
-                                          "View Appointments",
-                                          "Create Appointment",
-                                          "Approve Appointment",
-                                          "Reschedule Appointment",
-                                          "Cancel Appointment",
-                                          "Manage Walk-ins",
-                                          "Manage Follow-ups",
-                                          "Manage No-shows",
-                                          "View Patient Queue",
-                                          "Manage Patient Queue",
-                                          "View Clients",
-                                          "Create Client",
-                                          "Edit Client",
-                                          "View Client History",
-                                          "View Pet Records",
-                                          "Create Pet Records",
-                                          "Edit Pet Records",
-                                          "View Inventory",
-                                          "View Billing",
-                                          "Create Invoice",
-                                          "Process Payment",
-                                          "View Services",
-                                          "View Pet Owner Messages",
-                                          "Send Pet Owner Messages",
-                                          "Manage Conversations",
-                                          "Send Notifications",
-                                          "View Notification History",
-                                          "View Patient Intakes"
-                                      ]
-                 },
-    "features":  {
-                     "Intelligence Dashboard":  [
-                                                    "Disease Intelligence",
-                                                    "View Intelligence Dashboard"
-                                                ],
-                     "Disease Monitoring":  [
-                                                "Disease Intelligence",
-                                                "View Disease Monitoring"
-                                            ],
-                     "Risk Monitoring":  [
-                                             "Disease Intelligence",
-                                             "View Risk Monitoring"
-                                         ],
-                     "Community Analytics":  [
-                                                 "Disease Intelligence",
-                                                 "View Community Analytics"
-                                             ],
-                     "Reports":  [
-                                     "Disease Intelligence",
-                                     "View Reports",
-                                     "Generate Reports"
-                                 ],
-                     "Data Sync Status":  [
-                                              "Disease Intelligence",
-                                              "View Data Sync Status"
-                                          ],
-                     "Pet Profiles":  [
-                                          "Patient / Pet Records",
-                                          "View Pet Records",
-                                          "Create Pet Records",
-                                          "Edit Pet Records",
-                                          "Archive Pet Records"
-                                      ],
-                     "Medical Records":  [
-                                             "Patient / Pet Records",
-                                             "View Medical History"
-                                         ],
-                     "Patient Records":  [
-                                             "Patient / Pet Records",
-                                             "View Medical History"
-                                         ],
-                     "Patient Intakes":  [
-                                             "Patient / Pet Records",
-                                             "View Patient Intakes",
-                                             "Manage Patient Intakes",
-                                             "Manage Patient Intakes"
-                                         ],
-                     "New Patient Registration":  [
-                                                      "Patient / Pet Records",
-                                                      "Create Pet Records",
-                                                      "Create Pet Records",
-                                                      "Edit Pet Records"
-                                                  ],
-                     "My Schedule":  [
-                                         "Appointments",
-                                         "View Own Schedule"
-                                     ],
-                     "Patient Queue":  [
-                                           "Appointments",
-                                           "View Patient Queue",
-                                           "Manage Patient Queue",
-                                           "Manage Patient Queue"
-                                       ],
-                     "Due Dates \u0026 Reminders":  [
-                                                        "Appointments",
-                                                        "Manage Follow-ups",
-                                                        "Manage Follow-ups",
-                                                        "Manage Follow-ups"
-                                                    ],
-                     "Appointment Management":  [
-                                                    "Appointments",
-                                                    "View Appointments",
-                                                    "Create Appointment",
-                                                    "Reschedule Appointment",
-                                                    "Cancel Appointment"
-                                                ],
-                     "Client Management":  [
-                                               "Client Management",
-                                               "View Clients",
-                                               "Create Client",
-                                               "Edit Client"
-                                           ],
-                     "User \u0026 Role Management":  [
-                                                         "User Management",
-                                                         "View Users",
-                                                         "Create Users",
-                                                         "Edit Users",
-                                                         "Deactivate Users"
-                                                     ],
-                     "Roles \u0026 Permissions":  [
-                                                      "Role Management",
-                                                      "View Roles",
-                                                      "Create Roles",
-                                                      "Assign Permissions"
-                                                  ],
-                     "Billing \u0026 Payments":  [
-                                                     "Billing \u0026 Financial",
-                                                     "View Billing",
-                                                     "Create Invoice",
-                                                     "Process Payment"
-                                                 ],
-                     "Financial Monitoring":  [
-                                                  "Billing \u0026 Financial",
-                                                  "View Financial Reports"
-                                              ],
-                     "Inventory Management":  [
-                                                  "Inventory",
-                                                  "View Inventory",
-                                                  "Add Inventory",
-                                                  "Edit Inventory",
-                                                  "Archive Inventory"
-                                              ],
-                     "Services Management":  [
-                                                 "Services",
-                                                 "View Services",
-                                                 "Create Services",
-                                                 "Edit Services",
-                                                 "Activate / Deactivate Services"
-                                             ],
-                     "Audit Trail":  [
-                                         "Audit",
-                                         "View Audit Trail"
-                                     ],
-                     "Shared Inbox":  [
-                                          "Communication",
-                                          "View Pet Owner Messages",
-                                          "Send Pet Owner Messages",
-                                          "Manage Conversations"
-                                      ],
-                     "Clinic Overview":  [
-                                             "Clinic Management",
-                                             "View Clinic Overview"
-                                         ],
-                     "Diagnoses":  [
-                                       "Medical Workflow",
-                                       "View Diagnoses",
-                                       "Create Diagnosis",
-                                       "Edit Diagnosis"
-                                   ],
-                     "Laboratory":  [
-                                        "Medical Workflow",
-                                        "View Laboratory Results",
-                                        "Order Laboratory Tests",
-                                        "Record Laboratory Results"
-                                    ],
-                     "Treatment Plans":  [
-                                             "Medical Workflow",
-                                             "View Treatment Plans",
-                                             "Manage Treatment Plans",
-                                             "Manage Treatment Plans"
-                                         ],
-                     "Inpatient Care":  [
-                                            "Medical Workflow",
-                                            "View Inpatient Care",
-                                            "Manage Inpatient Care",
-                                            "Manage Inpatient Care"
-                                        ]
-                 },
-    "receptionistExcluded":  [
-                                 "View Medical History",
-                                 "View Diagnoses",
-                                 "View Laboratory Results",
-                                 "View Treatment Plans",
-                                 "View Inpatient Care"
-                             ],
-    "ownerDoctorOnly":  [
-                            "View Intelligence Dashboard",
-                            "View Disease Monitoring",
-                            "View Risk Monitoring",
-                            "View Community Analytics",
-                            "View Reports",
-                            "Export Reports",
-                            "View Data Sync Status",
-                            "Generate Reports",
-                            "Alert Clinics",
-                            "Flag for Follow-up",
-                            "Review Disease Alerts"
-                        ]
+{
+  "groups": [
+    [
+      "User Management",
+      [
+        "View Users",
+        "Create Users",
+        "Edit Users",
+        "Deactivate Users",
+        "Assign Roles"
+      ]
+    ],
+    [
+      "Role Management",
+      [
+        "View Roles",
+        "Create Roles",
+        "Edit Roles",
+        "Assign Permissions"
+      ]
+    ],
+    [
+      "Appointments",
+      [
+        "View Appointments",
+        "View Own Schedule",
+        "Create Appointment",
+        "Approve Appointment",
+        "Reschedule Appointment",
+        "Cancel Appointment",
+        "Complete Appointment",
+        "Manage Walk-ins",
+        "Manage Follow-ups",
+        "Manage No-shows",
+        "View Patient Queue",
+        "Manage Patient Queue",
+        "View Reminders"
+      ]
+    ],
+    [
+      "Client Management",
+      [
+        "View Clients",
+        "Create Client",
+        "Edit Client",
+        "View Client History"
+      ]
+    ],
+    [
+      "Local Clinic Records",
+      [
+        "View Owners",
+        "Create Owner",
+        "Edit Owner",
+        "Archive Owner",
+        "View Clinic Records",
+        "View Clinic Dashboard",
+        "View Visits",
+        "View Vaccinations"
+      ]
+    ],
+    [
+      "Patient / Pet Records",
+      [
+        "View Pet Records",
+        "Create Pet Records",
+        "Edit Pet Records",
+        "View Medical History",
+        "View Patient Intakes",
+        "Manage Patient Intakes",
+        "Archive Pet Records",
+        "View Registrations"
+      ]
+    ],
+    [
+      "Medical Workflow",
+      [
+        "Create Consultation",
+        "Edit Consultation",
+        "Create Prescription",
+        "Manage Vaccination Records",
+        "View Laboratory Results",
+        "View Diagnoses",
+        "Create Diagnosis",
+        "Edit Diagnosis",
+        "Finalize Diagnosis",
+        "Confirm Diagnosis",
+        "Order Laboratory Tests",
+        "Record Laboratory Results",
+        "Verify Laboratory Results",
+        "Manage Laboratory Reports",
+        "View Treatment Plans",
+        "Manage Treatment Plans",
+        "View Inpatient Care",
+        "Manage Inpatient Care"
+      ]
+    ],
+    [
+      "Inventory",
+      [
+        "View Inventory",
+        "Add Inventory",
+        "Edit Inventory",
+        "Restock Inventory",
+        "Archive Inventory",
+        "Request Restock",
+        "View Stock Movement"
+      ]
+    ],
+    [
+      "Billing & Financial",
+      [
+        "View Billing",
+        "Create Invoice",
+        "Process Payment",
+        "View Financial Reports",
+        "View Revenue"
+      ]
+    ],
+    [
+      "Services",
+      [
+        "View Services",
+        "Create Services",
+        "Edit Services",
+        "Activate / Deactivate Services"
+      ]
+    ],
+    [
+      "Disease Intelligence",
+      [
+        "View Intelligence Dashboard",
+        "View Disease Monitoring",
+        "View Risk Monitoring",
+        "View Community Analytics",
+        "View Reports",
+        "Export Reports",
+        "View Data Sync Status",
+        "Generate Reports",
+        "Alert Clinics",
+        "Flag for Follow-up",
+        "Review Disease Alerts",
+        "Configure Alert Rules"
+      ]
+    ],
+    [
+      "Clinic Management",
+      [
+        "Clinic Overview",
+        "View Clinic Overview"
+      ]
+    ],
+    [
+      "Communication",
+      [
+        "View Pet Owner Messages",
+        "Send Pet Owner Messages",
+        "Manage Conversations",
+        "Send Notifications",
+        "View Notification History"
+      ]
+    ],
+    [
+      "Audit",
+      [
+        "View Audit Trail"
+      ]
+    ]
+  ],
+  "clinicalOnly": [
+    "View Own Schedule",
+    "Manage Patient Intakes",
+    "Create Consultation",
+    "Edit Consultation",
+    "Create Prescription",
+    "Manage Vaccination Records",
+    "Create Diagnosis",
+    "Edit Diagnosis",
+    "Finalize Diagnosis",
+    "Confirm Diagnosis",
+    "Order Laboratory Tests",
+    "Record Laboratory Results",
+    "Verify Laboratory Results",
+    "Manage Laboratory Reports",
+    "Manage Treatment Plans",
+    "Manage Inpatient Care",
+    "Complete Appointment",
+    "Request Restock"
+  ],
+  "ownerOnly": [
+    "View Users",
+    "Create Users",
+    "Edit Users",
+    "Deactivate Users",
+    "Assign Roles",
+    "View Roles",
+    "Create Roles",
+    "Edit Roles",
+    "Assign Permissions",
+    "Create Services",
+    "Edit Services",
+    "Activate / Deactivate Services",
+    "Add Inventory",
+    "Edit Inventory",
+    "Restock Inventory",
+    "Archive Inventory",
+    "View Clinic Overview",
+    "Configure Alert Rules"
+  ],
+  "defaults": {
+    "doctor": [
+      "View Appointments",
+      "View Own Schedule",
+      "Complete Appointment",
+      "Manage Follow-ups",
+      "View Patient Queue",
+      "View Clients",
+      "View Client History",
+      "View Pet Records",
+      "Create Pet Records",
+      "Edit Pet Records",
+      "View Medical History",
+      "View Patient Intakes",
+      "Manage Patient Intakes",
+      "Create Consultation",
+      "Edit Consultation",
+      "Create Prescription",
+      "Manage Vaccination Records",
+      "View Laboratory Results",
+      "View Diagnoses",
+      "Create Diagnosis",
+      "Edit Diagnosis",
+      "Finalize Diagnosis",
+      "Confirm Diagnosis",
+      "Order Laboratory Tests",
+      "Record Laboratory Results",
+      "Verify Laboratory Results",
+      "Manage Laboratory Reports",
+      "View Treatment Plans",
+      "Manage Treatment Plans",
+      "View Inpatient Care",
+      "Manage Inpatient Care",
+      "View Inventory",
+      "Request Restock",
+      "View Services",
+      "View Intelligence Dashboard",
+      "View Disease Monitoring",
+      "View Risk Monitoring",
+      "View Community Analytics",
+      "View Reports",
+      "Export Reports",
+      "View Pet Owner Messages",
+      "Send Pet Owner Messages",
+      "View Notification History",
+      "View Billing",
+      "Create Invoice",
+      "Generate Reports",
+      "Review Disease Alerts"
+    ],
+    "receptionist": [
+      "View Appointments",
+      "Create Appointment",
+      "Approve Appointment",
+      "Reschedule Appointment",
+      "Cancel Appointment",
+      "Manage Walk-ins",
+      "Manage Follow-ups",
+      "Manage No-shows",
+      "View Patient Queue",
+      "Manage Patient Queue",
+      "View Clients",
+      "Create Client",
+      "Edit Client",
+      "View Client History",
+      "View Pet Records",
+      "Create Pet Records",
+      "Edit Pet Records",
+      "View Inventory",
+      "View Billing",
+      "Create Invoice",
+      "Process Payment",
+      "View Services",
+      "View Pet Owner Messages",
+      "Send Pet Owner Messages",
+      "Manage Conversations",
+      "Send Notifications",
+      "View Notification History",
+      "View Patient Intakes"
+    ]
+  },
+  "features": {
+    "Intelligence Dashboard": [
+      "Disease Intelligence",
+      "View Intelligence Dashboard"
+    ],
+    "Disease Monitoring": [
+      "Disease Intelligence",
+      "View Disease Monitoring"
+    ],
+    "Risk Monitoring": [
+      "Disease Intelligence",
+      "View Risk Monitoring"
+    ],
+    "Community Analytics": [
+      "Disease Intelligence",
+      "View Community Analytics"
+    ],
+    "Reports": [
+      "Disease Intelligence",
+      "View Reports",
+      "Generate Reports"
+    ],
+    "Data Sync Status": [
+      "Disease Intelligence",
+      "View Data Sync Status"
+    ],
+    "Pet Profiles": [
+      "Patient / Pet Records",
+      "View Pet Records",
+      "Create Pet Records",
+      "Edit Pet Records",
+      "Archive Pet Records"
+    ],
+    "Medical Records": [
+      "Patient / Pet Records",
+      "View Medical History"
+    ],
+    "Patient Records": [
+      "Patient / Pet Records",
+      "View Medical History"
+    ],
+    "Patient Intakes": [
+      "Patient / Pet Records",
+      "View Patient Intakes",
+      "Manage Patient Intakes",
+      "Manage Patient Intakes"
+    ],
+    "New Patient Registration": [
+      "Patient / Pet Records",
+      "View Registrations",
+      "Create Pet Records",
+      "Edit Pet Records"
+    ],
+    "My Schedule": [
+      "Appointments",
+      "View Own Schedule"
+    ],
+    "Patient Queue": [
+      "Appointments",
+      "View Patient Queue",
+      "Manage Patient Queue",
+      "Manage Patient Queue"
+    ],
+    "Due Dates & Reminders": [
+      "Appointments",
+      "View Reminders",
+      "Manage Follow-ups",
+      "Manage Follow-ups"
+    ],
+    "Appointment Management": [
+      "Appointments",
+      "View Appointments",
+      "Create Appointment",
+      "Reschedule Appointment",
+      "Cancel Appointment"
+    ],
+    "Clinic Record Owners": [
+      "Local Clinic Records",
+      "View Owners",
+      "Create Owner",
+      "Edit Owner",
+      "Archive Owner"
+    ],
+    "Client Management": [
+      "Client Management",
+      "View Clients",
+      "Create Client",
+      "Edit Client"
+    ],
+    "User & Role Management": [
+      "User Management",
+      "View Users",
+      "Create Users",
+      "Edit Users",
+      "Deactivate Users"
+    ],
+    "Roles & Permissions": [
+      "Role Management",
+      "View Roles",
+      "Create Roles",
+      "Assign Permissions"
+    ],
+    "Billing & Payments": [
+      "Billing & Financial",
+      "View Billing",
+      "Create Invoice",
+      "Process Payment"
+    ],
+    "Financial Monitoring": [
+      "Billing & Financial",
+      "View Financial Reports"
+    ],
+    "Inventory Management": [
+      "Inventory",
+      "View Inventory",
+      "Add Inventory",
+      "Edit Inventory",
+      "Archive Inventory"
+    ],
+    "Services Management": [
+      "Services",
+      "View Services",
+      "Create Services",
+      "Edit Services",
+      "Activate / Deactivate Services"
+    ],
+    "Audit Trail": [
+      "Audit",
+      "View Audit Trail"
+    ],
+    "Shared Inbox": [
+      "Communication",
+      "View Pet Owner Messages",
+      "Send Pet Owner Messages",
+      "Manage Conversations"
+    ],
+    "Clinic Overview": [
+      "Clinic Management",
+      "View Clinic Overview"
+    ],
+    "Diagnoses": [
+      "Medical Workflow",
+      "View Diagnoses",
+      "Create Diagnosis",
+      "Edit Diagnosis"
+    ],
+    "Laboratory": [
+      "Medical Workflow",
+      "View Laboratory Results",
+      "Order Laboratory Tests",
+      "Record Laboratory Results"
+    ],
+    "Treatment Plans": [
+      "Medical Workflow",
+      "View Treatment Plans",
+      "Manage Treatment Plans",
+      "Manage Treatment Plans"
+    ],
+    "Inpatient Care": [
+      "Medical Workflow",
+      "View Inpatient Care",
+      "Manage Inpatient Care",
+      "Manage Inpatient Care"
+    ],
+    "Local Clinic Records": [
+      "Local Clinic Records",
+      "View Clinic Records"
+    ],
+    "Clinic Dashboard": [
+      "Local Clinic Records",
+      "View Clinic Dashboard"
+    ],
+    "Visit & Check-up": [
+      "Local Clinic Records",
+      "View Visits",
+      "Create Consultation",
+      "Edit Consultation"
+    ],
+    "Vaccinations": [
+      "Local Clinic Records",
+      "View Vaccinations",
+      "Manage Vaccination Records",
+      "Manage Vaccination Records"
+    ]
+  },
+  "receptionistExcluded": [
+    "View Medical History",
+    "View Diagnoses",
+    "View Laboratory Results",
+    "View Treatment Plans",
+    "View Inpatient Care",
+    "View Clinic Dashboard",
+    "View Visits",
+    "View Vaccinations"
+  ],
+  "ownerDoctorOnly": [
+    "View Intelligence Dashboard",
+    "View Disease Monitoring",
+    "View Risk Monitoring",
+    "View Community Analytics",
+    "View Reports",
+    "Export Reports",
+    "View Data Sync Status",
+    "Generate Reports",
+    "Alert Clinics",
+    "Flag for Follow-up",
+    "Review Disease Alerts"
+  ],
+  "legacyActions": {
+    "View Clinic Records": [
+      "View Pet Records"
+    ],
+    "View Clinic Dashboard": [
+      "View Medical History"
+    ],
+    "View Visits": [
+      "View Medical History"
+    ],
+    "View Vaccinations": [
+      "View Medical History"
+    ],
+    "View Reminders": [
+      "Manage Follow-ups"
+    ],
+    "View Registrations": [
+      "Create Pet Records"
+    ]
+  },
+  "pagePermissions": {
+    "doctor": [
+      {
+        "label": "My Schedule",
+        "actions": [
+          "View Own Schedule",
+          "View Appointments",
+          "Create Appointment",
+          "Approve Appointment",
+          "Reschedule Appointment",
+          "Cancel Appointment",
+          "Complete Appointment",
+          "Manage No-shows"
+        ]
+      },
+      {
+        "label": "Patient Intakes",
+        "actions": [
+          "View Patient Intakes",
+          "Manage Patient Intakes"
+        ]
+      },
+      {
+        "label": "Local Clinic Records",
+        "actions": [
+          "View Clinic Records"
+        ],
+        "children": [
+          {
+            "label": "Dashboard",
+            "actions": [
+              "View Clinic Dashboard"
+            ]
+          },
+          {
+            "label": "Owners",
+            "actions": [
+              "View Owners",
+              "Create Owner",
+              "Edit Owner",
+              "Archive Owner"
+            ]
+          },
+          {
+            "label": "Pets",
+            "actions": [
+              "View Pet Records",
+              "Create Pet Records",
+              "Edit Pet Records",
+              "Archive Pet Records"
+            ]
+          },
+          {
+            "label": "Appointments",
+            "actions": [
+              "View Appointments",
+              "Create Appointment",
+              "Approve Appointment",
+              "Reschedule Appointment",
+              "Cancel Appointment",
+              "Complete Appointment",
+              "Manage No-shows"
+            ]
+          },
+          {
+            "label": "Visit & Check-up",
+            "actions": [
+              "View Visits"
+            ],
+            "children": [
+              {
+                "label": "Consultations",
+                "actions": [
+                  "Create Consultation",
+                  "Edit Consultation",
+                  "Complete Appointment"
+                ]
+              },
+              {
+                "label": "Diagnoses",
+                "actions": [
+                  "View Diagnoses",
+                  "Create Diagnosis",
+                  "Edit Diagnosis",
+                  "Finalize Diagnosis",
+                  "Confirm Diagnosis"
+                ]
+              },
+              {
+                "label": "Prescriptions",
+                "actions": [
+                  "Create Prescription"
+                ]
+              }
+            ]
+          },
+          {
+            "label": "Vaccinations",
+            "actions": [
+              "View Vaccinations",
+              "Manage Vaccination Records"
+            ]
+          },
+          {
+            "label": "Treatments & Plans",
+            "actions": [
+              "View Treatment Plans",
+              "Manage Treatment Plans",
+              "Create Prescription"
+            ]
+          },
+          {
+            "label": "Lab Test",
+            "actions": [
+              "View Laboratory Results",
+              "Order Laboratory Tests",
+              "Record Laboratory Results",
+              "Verify Laboratory Results",
+              "Manage Laboratory Reports"
+            ]
+          },
+          {
+            "label": "Inpatient",
+            "actions": [
+              "View Inpatient Care",
+              "Manage Inpatient Care"
+            ]
+          },
+          {
+            "label": "Billing",
+            "actions": [
+              "View Billing",
+              "Create Invoice",
+              "Process Payment"
+            ]
+          },
+          {
+            "label": "Inventory",
+            "actions": [
+              "View Inventory",
+              "Request Restock",
+              "View Stock Movement"
+            ]
+          }
+        ]
+      },
+      {
+        "label": "Patient Records",
+        "actions": [
+          "View Medical History",
+          "Edit Pet Records"
+        ],
+        "children": [
+          {
+            "label": "Consultations",
+            "actions": [
+              "Create Consultation",
+              "Edit Consultation",
+              "Complete Appointment"
+            ]
+          },
+          {
+            "label": "Diagnoses",
+            "actions": [
+              "View Diagnoses",
+              "Create Diagnosis",
+              "Edit Diagnosis",
+              "Finalize Diagnosis",
+              "Confirm Diagnosis"
+            ]
+          },
+          {
+            "label": "Prescriptions",
+            "actions": [
+              "Create Prescription"
+            ]
+          }
+        ]
+      },
+      {
+        "label": "Due Dates & Reminders",
+        "actions": [
+          "View Reminders",
+          "Manage Follow-ups"
+        ]
+      }
+    ],
+    "receptionist": [
+      {
+        "label": "New Patient Registration",
+        "actions": [
+          "View Registrations",
+          "Create Pet Records",
+          "Edit Pet Records",
+          "View Patient Intakes"
+        ]
+      },
+      {
+        "label": "Appointment Management",
+        "actions": [
+          "View Appointments",
+          "Create Appointment",
+          "Approve Appointment",
+          "Reschedule Appointment",
+          "Cancel Appointment",
+          "Complete Appointment",
+          "Manage No-shows",
+          "Manage Walk-ins",
+          "Manage Follow-ups"
+        ]
+      },
+      {
+        "label": "Patient Queue",
+        "actions": [
+          "View Patient Queue",
+          "Manage Patient Queue",
+          "Manage Walk-ins"
+        ]
+      },
+      {
+        "label": "Billing & Payments",
+        "actions": [
+          "View Billing",
+          "Create Invoice",
+          "Process Payment"
+        ]
+      },
+      {
+        "label": "Client Management",
+        "actions": [
+          "View Clients",
+          "Create Client",
+          "Edit Client",
+          "View Client History"
+        ]
+      },
+      {
+        "label": "Local Clinic Records",
+        "actions": [
+          "View Clinic Records"
+        ],
+        "children": [
+          {
+            "label": "Dashboard",
+            "actions": [
+              "View Clinic Dashboard"
+            ]
+          },
+          {
+            "label": "Owners",
+            "actions": [
+              "View Owners",
+              "Create Owner",
+              "Edit Owner",
+              "Archive Owner"
+            ]
+          },
+          {
+            "label": "Pets",
+            "actions": [
+              "View Pet Records",
+              "Create Pet Records",
+              "Edit Pet Records",
+              "Archive Pet Records"
+            ]
+          },
+          {
+            "label": "Appointments",
+            "actions": [
+              "View Appointments",
+              "Create Appointment",
+              "Approve Appointment",
+              "Reschedule Appointment",
+              "Cancel Appointment",
+              "Complete Appointment",
+              "Manage No-shows"
+            ]
+          },
+          {
+            "label": "Visit & Check-up",
+            "actions": [
+              "View Visits"
+            ],
+            "children": [
+              {
+                "label": "Consultations",
+                "actions": [
+                  "Create Consultation",
+                  "Edit Consultation",
+                  "Complete Appointment"
+                ]
+              },
+              {
+                "label": "Diagnoses",
+                "actions": [
+                  "View Diagnoses",
+                  "Create Diagnosis",
+                  "Edit Diagnosis",
+                  "Finalize Diagnosis",
+                  "Confirm Diagnosis"
+                ]
+              },
+              {
+                "label": "Prescriptions",
+                "actions": [
+                  "Create Prescription"
+                ]
+              }
+            ]
+          },
+          {
+            "label": "Vaccinations",
+            "actions": [
+              "View Vaccinations",
+              "Manage Vaccination Records"
+            ]
+          },
+          {
+            "label": "Treatments & Plans",
+            "actions": [
+              "View Treatment Plans",
+              "Manage Treatment Plans",
+              "Create Prescription"
+            ]
+          },
+          {
+            "label": "Lab Test",
+            "actions": [
+              "View Laboratory Results",
+              "Order Laboratory Tests",
+              "Record Laboratory Results",
+              "Verify Laboratory Results",
+              "Manage Laboratory Reports"
+            ]
+          },
+          {
+            "label": "Inpatient",
+            "actions": [
+              "View Inpatient Care",
+              "Manage Inpatient Care"
+            ]
+          },
+          {
+            "label": "Billing",
+            "actions": [
+              "View Billing",
+              "Create Invoice",
+              "Process Payment"
+            ]
+          },
+          {
+            "label": "Inventory",
+            "actions": [
+              "View Inventory",
+              "Request Restock",
+              "View Stock Movement"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "receptionistOnly": [
+    "View Registrations"
+  ]
 }
