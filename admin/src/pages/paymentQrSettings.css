@@ -16,3 +16,70 @@
 .financial-payment-qr > summary { padding: 18px; cursor: pointer; color: var(--color-botanical-teal); font-weight: 600; }
 .financial-payment-qr .payment-qr-settings { padding: 0 18px 18px; }
 .financial-payment-qr .payment-qr-settings form { max-width: none; border: 0; padding: 8px 0; }
+
+.payment-qr-page { min-height: 100%; padding: 0 22px 24px; background: #f8faf9; font-size: 14px; }
+.payment-qr-page form { max-width: 960px; margin: 0 auto; padding: 0; border: 0; background: transparent; }
+.payment-qr-breadcrumb { display:flex; align-items:center; gap:10px; min-height:46px; border-bottom:1px solid #e5ebe7; color:#17231d; font-size:13px; }
+.payment-qr-breadcrumb button { border:0; background:none; color:#34443b; font:inherit; cursor:pointer; }
+.payment-qr-breadcrumb strong { font-weight:700; }
+.payment-qr-page-heading { max-width:960px; margin:18px auto; display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.payment-qr-page-heading h1 { margin:0 0 5px; color:#06452d; font-size:24px; }
+.payment-qr-page-heading p { margin:0; color:#536159; }
+.payment-qr-page-heading > button,.payment-qr-actions button:first-child { border:0; border-radius:8px; padding:10px 15px; background:#087341; color:white; font:inherit; font-weight:650; cursor:pointer; }
+.payment-qr-tabs { max-width:960px; margin:0 auto 16px; display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.payment-qr-tabs button { padding:10px; border:1px solid #dce4df; border-radius:9px; background:white; color:#17231d; font:inherit; font-weight:600; cursor:pointer; }
+.payment-qr-tabs button.active { background:#087341; border-color:#087341; color:white; }
+.payment-qr-page fieldset { max-width:960px; margin:0 auto; padding:0; }
+.payment-qr-page-grid { display:grid; grid-template-columns: .85fr 1.15fr; gap:16px; }
+.payment-qr-preview-card,.payment-qr-details-card { min-width:0; padding:18px; border:1px solid #e3e9e5; border-radius:14px; background:white; }
+.payment-qr-preview-card { background:#f0f8f3; text-align:center; }
+.payment-qr-card-heading { display:flex; align-items:center; justify-content:space-between; }
+.payment-qr-card-heading h2,.payment-qr-details-card h2 { margin:0; color:#06452d; font-size:17px; }
+.payment-qr-status { padding:7px 12px; border-radius:20px; background:#eef1ef; color:#65716a; font-size:13px; }
+.payment-qr-status.active { background:#dcf6e8; color:#087341; }
+.payment-qr-page .payment-qr-preview { width:min(220px,100%); height:220px; margin:18px auto 6px; }
+.payment-qr-empty { display:grid; place-items:center; width:min(220px,100%); height:220px; margin:18px auto 6px; border:1px dashed #b9c9bf; border-radius:10px; color:#64736a; }
+.payment-qr-preview-card > p { margin:8px 0 18px; font-weight:600; }
+.payment-qr-preview-actions { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
+.payment-qr-preview-actions a,.payment-qr-preview-actions label { display:inline-flex; padding:10px 18px; border:1px solid #178456; border-radius:9px; color:#087341; background:white; text-decoration:none; font-weight:600; cursor:pointer; }
+.payment-qr-preview-actions input { display:none; }
+.payment-qr-details-card dl { margin:14px 0; }
+.payment-qr-details-card dl div { display:grid; grid-template-columns: minmax(130px, .8fr) 1fr; gap:10px; padding:10px 0; border-bottom:1px solid #e5e9e7; }
+.payment-qr-details-card dt { font-weight:650; }
+.payment-qr-details-card dd { margin:0; }
+.payment-qr-details-card > label { display:grid; gap:8px; margin:16px 0; font-weight:600; }
+.payment-qr-details-card > label input { padding:12px; border:1px solid var(--border); border-radius:9px; font:inherit; }
+.payment-qr-page .payment-qr-actions { justify-content:space-between; margin-top:18px; }
+.payment-qr-page .payment-qr-actions button:last-child { padding:12px 18px; border:1px solid #d84848; border-radius:9px; background:white; color:#bd2626; font:inherit; font-weight:600; cursor:pointer; }
+.payment-qr-page [role="alert"],.payment-qr-page [role="status"] { max-width:1120px; margin:12px auto; }
+@media(max-width:760px) { .payment-qr-page { padding:0 14px 24px; } .payment-qr-page-heading { align-items:flex-start; flex-direction:column; } .payment-qr-tabs { grid-template-columns:repeat(2,1fr); } .payment-qr-page-grid { grid-template-columns:1fr; } .payment-qr-details-card dl div { grid-template-columns:1fr; gap:5px; } }
+
+.payment-qr-dialog-backdrop { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:18px; background:rgba(13,28,21,.38); }
+.payment-qr-add-dialog { width:min(760px,100%); max-height:calc(100vh - 36px); overflow:auto; border:1px solid #e2e8e4; border-radius:12px; background:#fff; box-shadow:0 20px 60px rgba(0,0,0,.2); color:#17231d; font-size:13px; }
+.payment-qr-add-dialog > header { display:flex; align-items:center; gap:14px; padding:15px 22px; border-bottom:1px solid #e5ebe7; }
+.payment-qr-dialog-icon { display:grid; place-items:center; width:34px; height:34px; flex:none; border-radius:7px; background:#eaf6ef; color:#087341; font-size:25px; }
+.payment-qr-add-dialog h2 { margin:0 0 4px; color:#123c2c; font-size:18px; }
+.payment-qr-add-dialog header p { margin:0; color:#56635c; font-size:12px; }
+.payment-qr-dialog-close { margin-left:auto; border:0; background:transparent; color:#47544c; font:inherit; cursor:pointer; white-space:nowrap; }
+.payment-qr-dialog-close:first-letter { font-size:17px; }
+.payment-qr-add-dialog form { max-width:none; padding:0; border:0; border-radius:0; }
+.payment-qr-dialog-content { display:grid; grid-template-columns:1.25fr .9fr; gap:18px; padding:18px 22px; }
+.payment-qr-dialog-fields > label:not(.payment-qr-dropzone) { display:grid; gap:6px; margin:0 0 12px; color:#26372e; font-size:12px; font-weight:650; }
+.payment-qr-dialog-fields select,.payment-qr-dialog-fields input:not([type=file]) { box-sizing:border-box; width:100%; height:38px; padding:8px 10px; border:1px solid #d8dfdb; border-radius:8px; background:#fff; font:inherit; }
+.payment-qr-dropzone { min-height:148px; display:flex !important; align-items:center; justify-content:center; flex-direction:column; gap:6px !important; margin:0 !important; padding:12px; border:1px dashed #a8c8b5; border-radius:9px; color:#22372c; cursor:pointer; text-align:center; }
+.payment-qr-dropzone.dragging { background:#edf8f1; border-color:#07834a; }
+.payment-qr-dropzone input { display:none; }
+.payment-qr-upload-icon { display:grid; place-items:center; width:38px; height:38px; border-radius:8px; background:#e9f6ee; color:#087341; font-size:24px; }
+.payment-qr-dropzone > b { padding:6px 14px; border:1px solid #78ad90; border-radius:7px; color:#087341; font-size:12px; }
+.payment-qr-dropzone small { color:#6a766f; font-weight:400; }
+.payment-qr-dropzone img { max-width:90px; max-height:90px; object-fit:contain; }
+.payment-qr-dialog-preview { min-height:280px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; padding:18px; border-radius:10px; background:#f0f8f3; text-align:center; }
+.payment-qr-dialog-preview > img { width:150px; height:150px; object-fit:contain; background:white; }
+.payment-qr-dialog-preview > strong { max-width:240px; font-size:13px; }
+.payment-qr-dialog-preview > p { max-width:230px; margin:0; color:#66736b; font-size:12px; line-height:1.5; }
+.payment-qr-empty-icon { display:grid; place-items:center; width:64px; height:64px; border:1px solid #cbd8d0; border-radius:12px; background:white; color:#71887a; font-size:38px; }
+.payment-qr-add-dialog footer { display:flex; justify-content:flex-end; gap:10px; padding:12px 22px; border-top:1px solid #e5ebe7; }
+.payment-qr-add-dialog footer button { padding:9px 16px; border:1px solid #b9c8bf; border-radius:8px; background:white; color:#34443b; font:inherit; font-weight:600; cursor:pointer; }
+.payment-qr-add-dialog footer button[type=submit] { border-color:#087341; background:#087341; color:white; }
+.payment-qr-add-dialog footer button:disabled { opacity:.55; cursor:default; }
+@media(max-width:620px) { .payment-qr-dialog-content { grid-template-columns:1fr; } .payment-qr-dialog-preview { min-height:190px; } }

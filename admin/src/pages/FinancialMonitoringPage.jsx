@@ -1,7 +1,7 @@
 import useOwnerMonitoring from '../utils/useOwnerMonitoring';
 import { financialData, money } from '../utils/ownerMonitoring';
-import PaymentQrSettings from './PaymentQrSettings';
 import { useState } from 'react';
+import './summaryStats.css';
 import { jsPDF } from 'jspdf';
 import {
   LineChart, Line, BarChart, Bar,
@@ -47,7 +47,7 @@ const ServiceTooltip = ({ active, payload, label }) => {
   );
 };
 
-export default function FinancialMonitoringPage({ user }) {
+export default function FinancialMonitoringPage({ user, onNavigate }) {
   const [period, setPeriod] = useState('Monthly');
   const [exportFormat, setExportFormat] = useState('csv');
 
@@ -262,16 +262,16 @@ export default function FinancialMonitoringPage({ user }) {
     <div style={s.main}>
       <Topbar user={user} title="Financial Monitoring" subtitle="Track income, expenses, and revenue analytics" />
       <div style={s.page}>
-        {loading && <p role="status">Loading clinic financial data...</p>}{error && <p role="alert">{error}</p>}
-        <p>Income is based on payments recorded by receptionists. Expenses and profit are unavailable because expenses are not recorded in this system.</p>
+        {error && <p role="alert">{error}</p>}
 
+        <section className="financial-overview-panel">
         {/* PERIOD + EXPORT */}
-        <div style={s.toolbar}>
+        <div className="financial-overview-header" style={s.toolbar}>
           <div>
-            <div style={s.toolbarTitle}>Financial overview</div>
+            <div style={s.toolbarTitle}>Financial Overview</div>
             <div style={s.toolbarSubtitle}>Review income, expenses, and profit performance.</div>
           </div>
-          <div style={s.exportGroup}>
+          <div className="financial-export-group" style={s.exportGroup}>
             <select style={s.select} value={period} onChange={e => setPeriod(e.target.value)}>
               {['Monthly', 'Quarterly', 'Yearly'].map(p => <option key={p}>{p}</option>)}
             </select>
@@ -291,70 +291,73 @@ export default function FinancialMonitoringPage({ user }) {
           </div>
         </div>
 
-        {['owner', 'clinic_owner'].includes(String(user.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_')) && <details className="financial-payment-qr"><summary>Manage payment QR codes</summary><PaymentQrSettings user={user} /></details>}
         {/* STAT CARDS */}
-        <div style={s.statsGrid}>
+        <div className="overview-stats-band" style={s.statsGrid}>
           {[
-            ["Today's Income", data ? money(financial.today) : '-', 'Recorded payments today', '#f0fdf4', '#16a34a', Icons.dollar],
-            ['Monthly Income', data ? money(financial.monthly) : '-', 'Recorded payments this month', '#e7f4ec', '#013826', Icons.calendar],
-            ['Yearly Income', data ? money(financial.yearly) : '-', 'Recorded payments this year', '#faf5ff', '#7c3aed', Icons.file],
-            ['Outstanding', data ? money(financial.outstanding) : '-', 'Unpaid invoice balances', '#fffbeb', '#d97706', Icons.dollar],
-          ].map(([label, value, sub, iconBg, color, icon]) => (
-            <div style={s.statCard} key={label}>
-              <div style={{ ...s.statIcon, background: iconBg, color }}>
-                <span style={{ width: 18, height: 18, display: 'flex', color }}>{icon}</span>
-              </div>
-              <div style={s.statContent}>
-                <div style={s.statLabel}>{label}</div>
-                <div style={{ ...s.statValue, color }}>{value}</div>
-                <div style={{ ...s.statSub, color: '#64748b' }}>{sub}</div>
-              </div>
-            </div>
+            ["Today's Income", data ? money(financial.today) : '-', 'Recorded payments today'],
+            ['Monthly Income', data ? money(financial.monthly) : '-', 'Recorded payments this month'],
+            ['Yearly Income', data ? money(financial.yearly) : '-', 'Recorded payments this year'],
+            ['Outstanding', data ? money(financial.outstanding) : '-', 'Unpaid invoice balances'],
+          ].map(([label, value, sub], index) => (
+            <article className="overview-stats-cell" style={index ? s.statDivider : undefined} key={label}>
+              <div className="overview-stats-label">{label}</div>
+              <strong className="overview-stats-value">{value}</strong>
+              <small className="overview-stats-note">{sub}</small>
+            </article>
           ))}
         </div>
+        </section>
+
+        {['owner', 'clinic_owner'].includes(String(user.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_')) && <section className="financial-payment-qr financial-payment-qr-card">
+          <div className="financial-payment-qr-content">
+            <span className="financial-payment-qr-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="2.8"><path d="M4 4h12v12H4zM24 4h12v12H24zM4 24h12v12H4z"/><path d="M8 8h4v4H8zM28 8h4v4h-4zM8 28h4v4H8zM24 24h5v5h-5zM33 24h3v3h-3zM31 31h5v5h-5zM24 33h4v3h-4z" fill="currentColor" stroke="none"/></svg></span>
+            <span className="financial-payment-qr-copy"><strong>Manage Payment QR Codes</strong><small>View, update, or add your clinic's payment QR code.</small></span>
+            <button type="button" className="financial-payment-qr-cta" onClick={() => onNavigate?.('payment-qr-settings')}>Manage {Icons.chevronRight}</button>
+          </div>
+        </section>}
 
         {/* REVENUE TREND CHART */}
-        <div style={s.chartGrid}>
-          <div style={{ ...s.card, marginBottom: 0 }}>
+        <div className="financial-dashboard-charts" style={s.chartGrid}>
+          <div className="financial-dashboard-chart-card" style={{ ...s.card, marginBottom: 0, padding: '12px 16px 10px', borderColor: '#d7e5dd', borderRadius: 11, background: 'linear-gradient(120deg, #fff 40%, #fbfdfb)' }}>
             <div style={s.cardHeader}>
               <div>
-                <div style={s.cardTitle}>Recorded Payment Trend</div>
-                <div style={s.cardDescription}>Payments for the selected calendar period</div>
+                <div className="financial-dashboard-chart-title" style={s.cardTitle}>Recorded Payment Trend</div>
+                <div className="financial-dashboard-chart-description" style={s.cardDescription}>Payments for the selected calendar period</div>
               </div>
               <span style={s.periodBadge}>{period}</span>
             </div>
-            <ResponsiveContainer width="100%" height={275}>
-              <LineChart data={TREND_DATA} margin={{ top: 10, right: 8, left: -18, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="4 4" stroke="#dbe3ee" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#94a3b8' }} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#94a3b8' }} tickLine={false} />
+            <div className="financial-dashboard-chart"><ResponsiveContainer width="100%" height="100%">
+              <LineChart data={TREND_DATA} margin={{ top: 15, right: 18, left: -15, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="2 2" stroke="#e8eee9" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#29483c' }} axisLine={{ stroke: '#bcc9c0' }} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#40564b' }} axisLine={{ stroke: '#bcc9c0' }} tickLine={false} />
                 <Tooltip content={<TrendTooltip />} />
                 <Legend iconType="circle" iconSize={8} formatter={v => <span style={{ fontSize: '.72rem', color: '#64748b' }}>{v.charAt(0).toUpperCase() + v.slice(1)}</span>} />
-                <Line type="monotone" dataKey="revenue" stroke="#139b76" strokeWidth={2} dot={{ r: 3, fill: '#139b76', strokeWidth: 0 }} activeDot={{ r: 5 }} name="revenue" />
+                <Line type="linear" dataKey="revenue" stroke="#00731c" strokeWidth={2.4} dot={{ r: 3, fill: '#fff', stroke: '#00731c', strokeWidth: 2 }} activeDot={{ r: 5 }} name="revenue" />
               </LineChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer></div>
           </div>
-          <div style={{ ...s.card, marginBottom: 0 }}>
+          <div className="financial-dashboard-chart-card" style={{ ...s.card, marginBottom: 0, padding: '12px 16px 10px', borderColor: '#d7e5dd', borderRadius: 11, background: 'linear-gradient(120deg, #fff 40%, #fbfdfb)' }}>
             <div style={s.cardHeader}>
               <div>
-                <div style={s.cardTitle}>Revenue by Service Type</div>
-                <div style={s.cardDescription}>Income contribution by service</div>
+                <div className="financial-dashboard-chart-title" style={s.cardTitle}>Revenue by Service Type</div>
+                <div className="financial-dashboard-chart-description" style={s.cardDescription}>Income contribution by service</div>
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={275}>
-              <BarChart data={SERVICE_DATA} barSize={36} margin={{ top: 10, right: 8, left: -18, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="4 4" stroke="#dbe3ee" />
-                <XAxis dataKey="service" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={{ stroke: '#94a3b8' }} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={{ stroke: '#94a3b8' }} tickLine={false} />
+            <div className="financial-dashboard-chart"><ResponsiveContainer width="100%" height="100%">
+              <BarChart data={SERVICE_DATA} barSize={36} margin={{ top: 15, right: 18, left: -15, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="2 2" stroke="#e8eee9" />
+                <XAxis dataKey="service" tick={{ fontSize: 11, fill: '#29483c' }} axisLine={{ stroke: '#bcc9c0' }} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#40564b' }} axisLine={{ stroke: '#bcc9c0' }} tickLine={false} />
                 <Tooltip content={<ServiceTooltip />} />
-                <Bar dataKey="revenue" fill="#7c3aed" radius={[5, 5, 0, 0]} />
+                <Bar dataKey="revenue" fill="#00731c" radius={[7, 7, 0, 0]} />
               </BarChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer></div>
           </div>
         </div>
 
         {/* TRANSACTIONS TABLE */}
-        <div style={s.card}>
+        <div className="financial-transactions-panel" style={s.card}>
           <div style={s.cardHeader}>
             <div>
               <div style={s.cardTitle}>Recent Transactions</div>
@@ -362,7 +365,7 @@ export default function FinancialMonitoringPage({ user }) {
             </div>
             <span style={s.transactionCount}>{TRANSACTIONS.length} transactions</span>
           </div>
-          <table style={s.table}>
+          <div className="financial-dashboard-table-wrap"><table className="financial-dashboard-table" style={s.table}>
             <thead>
               <tr>
                 {['Transaction ID', 'Date', 'Service', 'Amount', 'Status'].map(h => (
@@ -382,7 +385,7 @@ export default function FinancialMonitoringPage({ user }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
 
       </div>
@@ -393,21 +396,16 @@ export default function FinancialMonitoringPage({ user }) {
 const s = {
   main: { minWidth: 0, flex: 1, overflowY: 'auto', background: '#f8fafc' },
   page: { padding: '24px 34px 48px', maxWidth: 1500, margin: '0 auto' },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14, marginBottom: 20 },
-  statCard: { display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 18px' },
-  statIcon: { width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  statContent: { minWidth: 0 },
-  statLabel: { fontSize: '.73rem', color: '#64748b', marginBottom: 4, whiteSpace: 'nowrap' },
-  statValue: { fontFamily: "'DM Sans', sans-serif", fontSize: '1.35rem', fontWeight: 700, letterSpacing: '-.03em', lineHeight: 1.1 },
-  statSub: { fontSize: '.68rem', marginTop: 6, whiteSpace: 'nowrap' },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 0, marginBottom: 20 },
+  statDivider: { borderLeft: '1px solid #c5d8cb' },
   toolbar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 18px', marginBottom: 16 },
   toolbarTitle: { color: '#0f172a', fontSize: '.95rem', fontWeight: 600 },
   toolbarSubtitle: { color: '#64748b', fontSize: '.74rem', marginTop: 3 },
   select: { padding: '8px 12px', border: '1px solid #dbe3ee', borderRadius: 8, fontSize: '.78rem', color: '#0f1117', background: '#f8fafc', outline: 'none', cursor: 'pointer' },
   exportGroup: { display: 'flex', alignItems: 'stretch', gap: 6 },
   exportSelect: { padding: '0 8px', border: '1px solid #dbe3ee', borderRadius: 8, fontSize: '.78rem', color: '#013826', background: '#e7f4ec', outline: 'none', cursor: 'pointer', fontWeight: 600 },
-  exportBtn: { display: 'flex', alignItems: 'center', gap: 7, padding: '9px 15px', background: '#0f1117', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer' },
-  chartGrid: { display: 'grid', gridTemplateColumns: 'minmax(0, 1.55fr) minmax(320px, 1fr)', gap: 20, marginBottom: 20 },
+  exportBtn: { display: 'flex', alignItems: 'center', gap: 7, padding: '9px 15px', background: '#087341', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer' },
+  chartGrid: { display: 'grid', gridTemplateColumns: 'minmax(0, 1.03fr) minmax(0, 1fr)', gap: 10, marginBottom: 10 },
   card: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '20px 22px', marginBottom: 20 },
   cardHeader: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 },
   cardTitle: { fontSize: '.88rem', fontWeight: 600, color: '#0f1117', letterSpacing: '-.01em' },

@@ -1,23 +1,17 @@
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
+import RolePermissionTree, { visibleActions, permissionValue } from '../components/RolePermissionTree';
+import permissionCatalog from '../../../data/permissionCatalog.json';
+import { permissionAvailable } from '../utils/permissionUtils';
 import { useEffect, useState } from 'react';
 import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
 import { Icons } from '../icons';
 import { formatDateText } from '../utils/dateFormatting';
+import './summaryStats.css';
+import './rolesPermissions.css';
 
-const PERMISSION_GROUPS = [
-  ['User Management', ['View Users', 'Create Users', 'Edit Users', 'Deactivate Users', 'Assign Roles']],
-  ['Role Management', ['View Roles', 'Create Roles', 'Edit Roles', 'Assign Permissions']],
-  ['Appointments', ['View Appointments', 'Create Appointment', 'Approve Appointment', 'Reschedule Appointment', 'Cancel Appointment', 'Complete Appointment', 'Manage Walk-ins', 'Manage Follow-ups', 'Manage No-shows']],
-  ['Client Management', ['View Clients', 'Create Client', 'Edit Client', 'View Client History']],
-  ['Patient / Pet Records', ['View Pet Records', 'Create Pet Records', 'Edit Pet Records', 'View Medical History']],
-  ['Medical Workflow', ['Create Consultation', 'Edit Consultation', 'Create Prescription', 'Manage Vaccination Records', 'View Laboratory Results']],
-  ['Inventory', ['View Inventory', 'Add Inventory', 'Edit Inventory', 'Restock Inventory', 'Archive Inventory', 'Request Restock', 'View Stock Movement']],
-  ['Billing & Financial', ['View Billing', 'Create Invoice', 'Process Payment', 'View Financial Reports', 'View Revenue']],
-  ['Services', ['View Services', 'Create Services', 'Edit Services', 'Activate / Deactivate Services']],
-  ['Disease Intelligence', ['View Intelligence Dashboard', 'View Disease Monitoring', 'View Risk Monitoring', 'View Community Analytics', 'View Reports', 'View Data Sync Status']],
-  ['Communication', ['View Pet Owner Messages', 'Send Pet Owner Messages', 'Manage Conversations', 'Send Notifications', 'View Notification History']],
-  ['Audit', ['View Audit Trail']],
-];
+const PERMISSION_GROUPS = permissionCatalog.groups;
 
 const emptyPermissions = () => Object.fromEntries(
   PERMISSION_GROUPS.map(([group, items]) => [group, Object.fromEntries(items.map(item => [item, false]))])
@@ -30,92 +24,32 @@ const permissionCount = permissions => Object.values(permissions || {}).reduce(
 function PermissionModal({ role, onClose, onSave }) {
   const [permissions, setPermissions] = useState(() => {
     const next = emptyPermissions();
-    Object.entries(role.permissions || {}).forEach(([group, values]) => {
-      if (next[group]) Object.keys(next[group]).forEach(item => { next[group][item] = !!values[item]; });
-    });
+    for (const [group, items] of PERMISSION_GROUPS) for (const item of items) next[group][item] = role.permissions?.[group]?.[item] === true;
     return next;
   });
-  const [expanded, setExpanded] = useState({});
-  const toggle = (group, item) => setPermissions(prev => ({
-    ...prev,
-    [group]: { ...prev[group], [item]: !prev[group][item] },
-  }));
-  const setAll = value => setPermissions(Object.fromEntries(PERMISSION_GROUPS.map(([group, items]) => [group, Object.fromEntries(items.map(item => [item, value]))])));
-
-  return (
-    <>
-      <div style={m.overlay} onClick={onClose} />
-      <div style={m.panel}>
-        <div style={m.header}>
-          <div><div style={m.kicker}>{role.name}</div><strong>Permission Configuration - {role.name}</strong></div>
-          <button type="button" aria-label="Close permission configuration" style={m.close} onClick={onClose}>{Icons.close}</button>
-        </div>
-        <div style={m.info}>Default permissions are provided as a starting configuration. You can customize permissions according to your clinic workflow.</div>
-        <div style={m.toolbar}><div><strong>Assign Permissions</strong><small>{permissionCount(permissions)} of {PERMISSION_GROUPS.reduce((n, [, items]) => n + items.length, 0)} permissions enabled</small></div><span><button style={m.lightButton} onClick={() => setAll(true)}>Select All</button><button style={m.lightButton} onClick={() => setAll(false)}>Clear All</button></span></div>
-        <div style={m.scroll}>
-          {PERMISSION_GROUPS.map(([group, items]) => {
-            const enabled = items.filter(item => permissions[group][item]).length;
-            const open = expanded[group] !== false;
-            return <div key={group} style={m.group}>
-              <button style={m.groupHeader} onClick={() => setExpanded(prev => ({ ...prev, [group]: !open }))}><span><input type="checkbox" checked={enabled === items.length} onChange={() => setAll(true)} onClick={e => e.stopPropagation()} /> {group}</span><span>{enabled}/{items.length} &nbsp;⌄</span></button>
-              {open && <div style={m.items}>{items.map(item => <label key={item} style={{ ...m.item, color: permissions[group][item] ? '#111827' : '#8aa0c0' }}><input type="checkbox" checked={permissions[group][item]} onChange={() => toggle(group, item)} />{item}</label>)}</div>}
-            </div>;
-          })}
-        </div>
-        <div style={m.footer}><button style={m.cancel} onClick={onClose}>Cancel</button><button style={m.save} onClick={() => onSave(permissions)}>Save Permissions</button></div>
-      </div>
-    </>
-  );
+  const actions = visibleActions(role.name);
+  const setAll = value => setPermissions(Object.fromEntries(PERMISSION_GROUPS.map(([group, items]) => [group, Object.fromEntries(items.map(item => [item, value && permissionAvailable(role.name, item)]))])));
+  return <>
+    <div style={m.overlay} onClick={onClose} />
+    <div style={m.panel}>
+      <div style={m.header}><div><div style={m.kicker}>{role.name}</div><strong>Permission Configuration - {role.name}</strong></div><button type="button" aria-label="Close permission configuration" style={m.close} onClick={onClose}>{Icons.close}</button></div>
+      <div style={m.info}>Choose the pages, tabs, and actions available to this role in your clinic. Shared actions stay synchronized wherever they appear. Veterinary actions are restricted to clinical roles.</div>
+      <div style={m.toolbar}><div><strong>Pages &amp; Actions</strong><small>{actions.filter(item => permissionValue(permissions, item)).length} of {actions.length} permissions enabled</small></div><span><button style={m.lightButton} onClick={() => setAll(true)}>Select All</button><button style={m.lightButton} onClick={() => setAll(false)}>Clear All</button></span></div>
+      <div style={m.scroll}><RolePermissionTree role={role.name} permissions={permissions} onChange={setPermissions} /></div>
+      <div style={m.footer}><button style={m.cancel} onClick={onClose}>Cancel</button><button style={m.save} onClick={() => onSave(permissions)}>Save Permissions</button></div>
+    </div>
+  </>;
 }
 
 function RoleViewModal({ role, onClose, staffCount }) {
-  const [expanded, setExpanded] = useState({});
-  const groups = PERMISSION_GROUPS.map(([group, items]) => [
-    group,
-    items.map(item => [item, !!role.permissions?.[group]?.[item]]),
-  ]);
-  const roleName = role.displayName || role.name;
-
-  return (
-    <>
-      <div style={m.overlay} onClick={onClose} />
-      <div style={m.viewPanel}>
-        <div style={m.viewHeader}>
-          <strong>{roleName} — Permission Summary</strong>
-          <button type="button" style={m.close} onClick={onClose} aria-label="Close permission summary">{Icons.close}</button>
-        </div>
-        <div style={m.viewBody}>
-          <div style={m.viewSummary}>
-            <div style={m.viewSummaryCard}><small style={m.viewSummaryLabel}>Permissions</small><strong>{permissionCount(role.permissions)}</strong></div>
-            <div style={m.viewSummaryCard}><small style={m.viewSummaryLabel}>Staff Assigned</small><strong>{staffCount}</strong></div>
-            <div style={m.viewSummaryCard}><small style={m.viewSummaryLabel}>Status</small><StatusIndicator status="Active" /></div>
-          </div>
-          {groups.map(([group, items]) => {
-            const enabled = items.filter(([, allowed]) => allowed).length;
-            const open = expanded[group] === true;
-            return (
-              <div key={group} style={m.viewGroup}>
-                <button type="button" style={m.viewGroupHeader} onClick={() => setExpanded(prev => ({ ...prev, [group]: !open }))} aria-expanded={open}>
-                  <span>{group}</span>
-                  <span style={m.viewCount}>{enabled}/{items.length}</span>
-                  <span style={{ ...m.viewChevron, transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}>⌄</span>
-                </button>
-                {open && <div style={m.viewItems}>{items.map(([item, allowed]) => (
-                  <div key={item} style={{ ...m.viewItem, color: allowed ? '#111827' : '#8aa0c0' }}>
-                    <span style={{ color: allowed ? '#16a34a' : '#ef4444', fontWeight: 700 }}>{allowed ? '✓' : '×'}</span>
-                    <span>{item}</span>
-                  </div>
-                ))}</div>}
-              </div>
-            );
-          })}
-        </div>
-        <div style={m.viewFooter}>
-          <button type="button" style={m.viewCancel} onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </>
-  );
+  return <>
+    <div style={m.overlay} onClick={onClose} />
+    <div style={m.viewPanel}>
+      <div style={m.viewHeader}><strong>{role.displayName || role.name} ? Permission Summary</strong><button type="button" style={m.close} aria-label="Close permission summary" onClick={onClose}>{Icons.close}</button></div>
+      <div style={m.viewBody}><p>{staffCount} staff assigned</p><RolePermissionTree role={role.name} permissions={role.permissions} /></div>
+      <div style={m.viewFooter}><button type="button" style={m.viewCancel} onClick={onClose}>Close</button></div>
+    </div>
+  </>;
 }
 
 function RequestRoleModal({ onClose, onSubmit }) {
@@ -154,9 +88,9 @@ function RequestRoleModal({ onClose, onSubmit }) {
 }
 
 export default function RolesPermissionsPage({ user }) {
-  const [roles, setRoles] = useState([]);
-  const [roleRequests, setRoleRequests] = useState([]);
-  const [staff, setStaff] = useState([]);
+  const [roles, setRoles] = usePageState(user, "pages/RolesPermissionsPage.jsx:roles", []);
+  const [roleRequests, setRoleRequests] = usePageState(user, "pages/RolesPermissionsPage.jsx:roleRequests", []);
+  const [staff, setStaff] = usePageState(user, "pages/RolesPermissionsPage.jsx:staff", []);
   const [selected, setSelected] = useState(null);
   const [viewed, setViewed] = useState(null);
   const [requestOpen, setRequestOpen] = useState(false);
@@ -180,13 +114,8 @@ export default function RolesPermissionsPage({ user }) {
       setNotification('Unable to load current roles and requests.');
     });
   }, [apiUrl, user.token]);
-  const approvedRoleNames = new Set(
-    roleRequests
-      .filter(request => String(request.status).toLowerCase() === 'approved')
-      .map(request => String(request.requested_role).trim().toLowerCase().replace(/[\s-]+/g, '_')),
-  );
   const visibleRoles = roles
-    .filter(role => approvedRoleNames.has(String(role.name).trim().toLowerCase().replace(/[\s-]+/g, '_')))
+    .filter(role => ['doctor','assistant_doctor','veterinarian','receptionist'].includes(String(role.name).trim().toLowerCase().replace(/[\s-]+/g,'_')))
     .map(role => ({
       ...role,
       displayName: String(role.name).toLowerCase() === 'doctor' ? 'Doctor' : role.name,
@@ -199,18 +128,17 @@ export default function RolesPermissionsPage({ user }) {
     counts[role] = (counts[role] || 0) + 1;
     return counts;
   }, {});
-  const save = permissions => {
-    setRoles(prev => prev.map(role => role.id === selected.id ? { ...role, permissions } : role));
-    if (selected.id && typeof selected.id === 'number') {
-      fetch(`${apiUrl}/roles/${selected.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` }, body: JSON.stringify({ permissions }) })
-        .then(response => response.ok ? response.json() : Promise.reject(new Error('Failed to save permissions')))
-        .catch(error => console.error('Failed to save role permissions', error));
-    }
-    setSelected(null);
-    setNotification(`Permissions for "${selected.displayName || selected.name}" saved successfully.`);
-    window.setTimeout(() => setNotification(''), 3000);
-  };
-  const submitRoleRequest = async form => {
+  const save = async permissions => {
+    try {
+      const response=await fetch(`${apiUrl}/roles/${selected.id}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${user.token}`},body:JSON.stringify({permissions})});
+      const saved=await response.json();
+      if(!response.ok)throw new Error(saved.error||'Unable to save role permissions.');
+      setRoles(prev=>prev.map(role=>role.id===saved.id?saved:role));
+      setSelected(null);
+      setNotification(`Permissions for ${selected.name} saved for your clinic.`);
+      window.dispatchEvent(new Event('vetintel:permissions-updated'));
+    }catch(error){setNotification(error.message);}
+  };  const submitRoleRequest = async form => {
     try {
       const response = await fetch(`${apiUrl}/my-role-requests`, {
         method: 'POST',
@@ -235,9 +163,18 @@ export default function RolesPermissionsPage({ user }) {
         <div style={s.notice}><span style={s.noticeIcon}>{Icons.lock}</span><div style={s.noticeContent}><strong>Role Availability</strong><span>Role types are approved and provisioned by <b>VetIntel Super Admin</b>. Your clinic can only use roles that have been granted by the platform administrator.</span></div></div>
         <div style={s.noticeBlue}><span style={{ ...s.noticeIcon, color: '#013826' }}>{Icons.settings}</span><div style={s.noticeContent}><strong>Permission Configuration</strong><span>Clinic Owners <b>can customize permissions</b> for approved roles according to their clinic's workflow. Configurations are clinic-specific.</span></div></div>
       </div>
-      <div style={s.stats}>{[[Icons.shield, '#e7f4ec', '#013826', approvedRoleCount, 'Approved Roles'], [Icons.check, '#f0fdf4', '#16a34a', activeRoleCount, 'Active Roles'], [Icons.users, '#faf5ff', '#9333ea', staff.length, 'Total Staff'], [Icons.clock, '#fffbeb', '#d97706', pendingRequestCount, 'Pending Requests']].map(([icon, bg, color, value, label]) => <div style={s.stat} key={label}><span style={{ ...s.statIcon, background: bg, color }}>{icon}</span><div style={s.statText}><strong>{value}</strong><span>{label}</span></div></div>)}</div>
-      <section style={s.card}><div style={s.cardHeader}><div style={s.cardHeading}><strong>Approved Role Types</strong><small>Role types provisioned for your clinic</small></div><button type="button" style={s.darkButton} onClick={() => setRequestOpen(true)}>+ &nbsp; Request New Role</button></div><table style={s.table}><colgroup><col style={{ width: '21%' }} /><col style={{ width: '25%' }} /><col style={{ width: '8%' }} /><col style={{ width: '10%' }} /><col style={{ width: '10%' }} /><col style={{ width: '12%' }} /><col style={{ width: '14%' }} /></colgroup><thead><tr>{['Role Name', 'Description', 'Staff', 'Permissions', 'Status', 'Provisioned', 'Actions'].map(label => <th style={s.th} key={label}>{label}</th>)}</tr></thead><tbody>{visibleRoles.map(role => <tr key={role.id}><td style={s.td}><strong>{role.displayName}</strong></td><td style={s.td}>{role.description || 'Approved clinic role and permissions'}</td><td style={s.td}>{staffByRole[String(role.name).trim().toLowerCase().replace(/[\s-]+/g, '_')] || 0}</td><td style={s.td}><span style={s.count}>{permissionCount(role.permissions)}</span></td><td style={s.td}><StatusIndicator status="Active" /></td><td style={s.td}>—</td><td style={s.td}><div style={s.actions}><button type="button" style={s.view} onClick={() => setViewed(role)}>View</button><button type="button" style={s.darkSmall} onClick={() => setSelected(role)}>Customize {Icons.settings}</button></div></td></tr>)}</tbody></table>{visibleRoles.length === 0 && <div style={{ textAlign: 'center', padding: '32px 20px', color: '#64748b', fontSize: '.8rem' }}>No approved roles have been provisioned for this clinic yet.</div>}</section>
-      <section style={s.card}><div style={s.cardHeader}><div style={s.cardHeading}><strong>Role Requests</strong><small>Requests submitted to VetIntel Super Admin for new role types</small></div></div><table style={s.requestTable}><colgroup><col style={{ width: '15%' }} /><col style={{ width: '29%' }} /><col style={{ width: '12%' }} /><col style={{ width: '15%' }} /><col style={{ width: '10%' }} /><col style={{ width: '19%' }} /></colgroup><thead><tr>{['Requested Role', 'Reason', 'Staff Needed', 'Date Requested', 'Status', 'Admin Note'].map(label => <th style={s.th} key={label}>{label}</th>)}</tr></thead><tbody>{roleRequests.map(request => <tr key={request.id}><td style={s.td}><strong>{request.requested_role}</strong></td><td style={s.td}>{request.reason || '—'}</td><td style={s.td}>{request.requested_users || 1}</td><td style={s.td}>{request.created_at ? formatDateText(request.created_at) : '—'}</td><td style={s.td}><StatusIndicator status={request.status} /></td><td style={s.td}><em style={s.adminNote}>{String(request.status).toLowerCase() === 'approved' ? 'Approved by Super Admin' : 'Awaiting Super Admin review'}</em></td></tr>)}</tbody></table></section>
+      <div className="overview-stats-band" style={s.stats}>{[
+        ['Approved Roles', approvedRoleCount, 'Provisioned for this clinic'],
+        ['Active Roles', activeRoleCount, 'Available to staff'],
+        ['Total Staff', staff.length, 'Across this clinic'],
+        ['Pending Requests', pendingRequestCount, 'Awaiting platform review'],
+      ].map(([label, value, note], index) => <article className="overview-stats-cell" style={index ? s.statDivider : undefined} key={label}>
+        <div className="overview-stats-label">{label}</div>
+        <strong className="overview-stats-value">{value}</strong>
+        <small className="overview-stats-note">{note}</small>
+      </article>)}</div>
+      <section className="roles-table-card" style={s.card}><div style={s.cardHeader}><div style={s.cardHeading}><strong>Approved Role Types</strong><small>Role types provisioned for your clinic</small></div><button type="button" style={s.darkButton} onClick={() => setRequestOpen(true)}>+ &nbsp; Request New Role</button></div><div className="roles-table-wrap"><table className="roles-table" style={s.table}><colgroup><col style={{ width: '21%' }} /><col style={{ width: '25%' }} /><col style={{ width: '8%' }} /><col style={{ width: '10%' }} /><col style={{ width: '10%' }} /><col style={{ width: '12%' }} /><col style={{ width: '14%' }} /></colgroup><thead><tr>{['Role Name', 'Description', 'Staff', 'Permissions', 'Status', 'Provisioned', 'Actions'].map(label => <th style={s.th} key={label}>{label}</th>)}</tr></thead><tbody>{visibleRoles.length ? visibleRoles.map(role => <tr key={role.id}><td style={s.td}><strong>{role.displayName}</strong></td><td style={s.td}>{role.description || 'Approved clinic role and permissions'}</td><td style={s.td}>{staffByRole[String(role.name).trim().toLowerCase().replace(/[\s-]+/g, '_')] || 0}</td><td style={s.td}><span style={s.count}>{permissionCount(role.permissions)}</span></td><td style={s.td}><StatusIndicator status="Active" /></td><td style={s.td}>—</td><td style={s.td}><div style={s.actions}><button type="button" style={s.view} onClick={() => setViewed(role)}>View</button><button type="button" style={s.darkSmall} onClick={() => setSelected(role)}>Customize {Icons.settings}</button></div></td></tr>) : <tr><td colSpan={7} className="roles-table-empty">No approved roles have been provisioned for this clinic yet.</td></tr>}</tbody></table></div></section>
+      <section className="roles-table-card" style={s.card}><div style={s.cardHeader}><div style={s.cardHeading}><strong>Role Requests</strong><small>Requests submitted to VetIntel Super Admin for new role types</small></div></div><div className="roles-table-wrap"><table className="roles-table" style={s.requestTable}><colgroup><col style={{ width: '15%' }} /><col style={{ width: '29%' }} /><col style={{ width: '12%' }} /><col style={{ width: '15%' }} /><col style={{ width: '10%' }} /><col style={{ width: '19%' }} /></colgroup><thead><tr>{['Requested Role', 'Reason', 'Staff Needed', 'Date Requested', 'Status', 'Admin Note'].map(label => <th style={s.th} key={label}>{label}</th>)}</tr></thead><tbody>{roleRequests.length ? roleRequests.map(request => <tr key={request.id}><td style={s.td}><strong>{request.requested_role}</strong></td><td style={s.td}>{request.reason || '—'}</td><td style={s.td}>{request.requested_users || 1}</td><td style={s.td}>{request.created_at ? formatDateText(request.created_at) : '—'}</td><td style={s.td}><StatusIndicator status={request.status} /></td><td style={s.td}><em style={s.adminNote}>{String(request.status).toLowerCase() === 'approved' ? 'Approved by Super Admin' : 'Awaiting Super Admin review'}</em></td></tr>) : <tr><td colSpan={6} className="roles-table-empty">No role requests have been submitted yet.</td></tr>}</tbody></table></div></section>
     </div>
     {viewed && <RoleViewModal role={viewed} staffCount={staffByRole[String(viewed.name).trim().toLowerCase().replace(/[\s-]+/g, '_')] || 0} onClose={() => setViewed(null)} />}
     {selected && <PermissionModal role={selected} onClose={() => setSelected(null)} onSave={save} />}
@@ -253,10 +190,8 @@ const s = {
   noticeBlue: { background: '#e7f4ec', border: '1px solid #b7e4d7', borderRadius: 12, padding: '14px 16px', display: 'flex', gap: 10, color: '#013826', fontSize: '.7rem' },
   noticeIcon: { width: 16, height: 16, display: 'flex', flexShrink: 0 },
   noticeContent: { display: 'flex', flexDirection: 'column', gap: 4, lineHeight: 1.3 },
-  stats: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 18 },
-  stat: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 10 },
-  statIcon: { width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  statText: { display: 'flex', flexDirection: 'column', gap: 2, fontSize: '.72rem' },
+  stats: { display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 0, marginBottom: 18 },
+  statDivider: { borderLeft: '1px solid #c5d8cb' },
   card: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', marginBottom: 18 },
   cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '17px 20px' },
   cardHeading: { display: 'flex', flexDirection: 'column', gap: 3, fontSize: '.8rem' },
@@ -267,7 +202,7 @@ const s = {
   count: { color: '#013826', background: '#e7f4ec', border: '1px solid #b7e4d7', borderRadius: 7, padding: '2px 7px' },
   active: { color: '#16a34a', background: '#dcfce7', borderRadius: 8, padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: 3 },
   provisioned: { display: 'inline-block', marginLeft: 7, color: '#374151', background: '#f1f5f9', borderRadius: 4, padding: '2px 5px', fontSize: '.58rem' },
-  darkButton: { background: '#0f0b22', color: '#fff', borderRadius: 7, padding: '8px 12px', fontSize: '.72rem', fontWeight: 600, whiteSpace: 'nowrap' },
+  darkButton: { background: '#087341', color: '#fff', borderRadius: 7, padding: '8px 12px', fontSize: '.72rem', fontWeight: 600, whiteSpace: 'nowrap' },
   actions: { display: 'flex', alignItems: 'center' },
   darkSmall: { background: '#0f0b22', color: '#fff', borderRadius: 6, padding: '6px 9px', marginLeft: 5, fontSize: '.68rem', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4 },
   view: { background: '#fff', border: '1px solid #dbe4ee', borderRadius: 6, padding: '6px 9px', fontSize: '.68rem' },

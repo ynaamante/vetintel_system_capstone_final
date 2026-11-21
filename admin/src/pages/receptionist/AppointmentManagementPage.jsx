@@ -1,3 +1,5 @@
+import { usePageState } from '../../utils/usePageState.js';
+import { apiFetch as fetch } from '../../utils/apiFetch.js';
 import { dateFilterValue } from '../../utils/dateFilters';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import RecordActionsModal from '../../components/RecordActionsModal';
@@ -8,7 +10,7 @@ import AppointmentWorkflowDialog, { appointmentRequest } from './AppointmentWork
 import Topbar from '../../components/Topbar';
 import LabDateTimePicker, { getUnavailableAppointmentTimes } from '../../components/LabDateTimePicker';
 import { Icons } from '../../icons';
-import { canViewFeature } from '../../utils/permissionUtils';
+import { canViewFeature, hasAction } from '../../utils/permissionUtils';
 
 const localDateValue = (value = new Date()) => dateFilterValue(value);
 
@@ -124,7 +126,7 @@ function AppointmentActionsModal({ appointment, user, onClose, onAction }) {
     user={user}
     showPetAvatar
     onClose={onClose}
-    actions={appointmentActions(appointment).map(action => ({
+    actions={appointmentActions(appointment).filter(action=>hasAction(user.permissions,user.role,({confirm:'Approve Appointment',checkin:'Manage Patient Queue',noshow:'Manage No-shows',reschedule:'Reschedule Appointment',cancel:'Cancel Appointment',queue:'View Patient Queue',follow_up:'Manage Follow-ups',rebook:'Create Appointment',history:'View Appointments',view:'View Appointments',visit:'View Appointments',request:'View Appointments'})[action])).map(action => ({
       label: actionDefinitions[action][0], description: actionDefinitions[action][1],
       destructive: ['cancel', 'noshow'].includes(action),
       onClick: () => onAction(appointment, action),
@@ -175,19 +177,19 @@ export default function AppointmentManagementPage({ user }) {
   const [openActionsId, setOpenActionsId] = useState(null);
   const [workflow, setWorkflow] = useState(null);
   const [showNewAppointment, setShowNewAppointment] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:search", '');
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
-  const [dateFrom, setDateFrom] = useState('');
-  const [doctorOptions, setDoctorOptions] = useState([]);
-  const [filterOptionsError, setFilterOptionsError] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:dateFrom", '');
+  const [doctorOptions, setDoctorOptions] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:doctorOptions", []);
+  const [filterOptionsError, setFilterOptionsError] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:filterOptionsError", '');
+  const [dateTo, setDateTo] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:dateTo", '');
   const [dateRangeSort, setDateRangeSort] = useState('newest');
-  const [practitionerFilter, setPractitionerFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [practitionerFilter, setPractitionerFilter] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:practitionerFilter", '');
+  const [statusFilter, setStatusFilter] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:statusFilter", 'all');
   const [page, setPage] = useState(1);
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [appointments, setAppointments] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:appointments", []);
+  const [loading, setLoading] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:loading", true, "loading");
+  const [error, setError] = usePageState(user, "pages/receptionist/AppointmentManagementPage.jsx:error", null);
   const dateRangeRef = useRef(null);
   const pageSize = 7;
 
@@ -397,7 +399,7 @@ export default function AppointmentManagementPage({ user }) {
               </button>
             ))}
           </nav>
-          <button type="button" className="appointment-new-button" onClick={() => setShowNewAppointment(true)}><span>{Icons.plus}</span>New Appointment</button>
+          <button type="button" className="appointment-new-button" disabled={!hasAction(user.permissions,user.role,'Create Appointment')} onClick={() => setShowNewAppointment(true)}><span>{Icons.plus}</span>New Appointment</button>
         </div>
 
         {error && <div className="appointment-error" role="alert">{error}</div>}

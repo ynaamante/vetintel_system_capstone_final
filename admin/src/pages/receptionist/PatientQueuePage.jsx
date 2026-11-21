@@ -1,10 +1,12 @@
+import { usePageState } from '../../utils/usePageState.js';
+import { apiFetch as fetch } from '../../utils/apiFetch.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Topbar from '../../components/Topbar';
 import StatusIndicator from '../../components/StatusIndicator';
 import RecordActionsModal from '../../components/RecordActionsModal';
 import LabDateTimePicker from '../../components/LabDateTimePicker';
 import { Icons } from '../../icons';
-import { canViewFeature } from '../../utils/permissionUtils';
+import { canViewFeature, hasAction } from '../../utils/permissionUtils';
 import AppointmentWorkflowDialog from './AppointmentWorkflowDialog';
 import './patientQueue.css';
 
@@ -69,14 +71,14 @@ function WalkInDialog({ user, onClose, onSaved }) {
 }
 
 export default function PatientQueuePage({ user }) {
-  const [queue, setQueue] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [queue, setQueue] = usePageState(user, "pages/receptionist/PatientQueuePage.jsx:queue", []);
+  const [loading, setLoading] = usePageState(user, "pages/receptionist/PatientQueuePage.jsx:loading", true, "loading");
+  const [error, setError] = usePageState(user, "pages/receptionist/PatientQueuePage.jsx:error", '');
   const [search, setSearch] = useState('');
-  const [date, setDate] = useState(() => localDate());
-  const [doctor, setDoctor] = useState('');
-  const [tab, setTab] = useState('all');
-  const [updated, setUpdated] = useState(null);
+  const [date, setDate] = usePageState(user, "pages/receptionist/PatientQueuePage.jsx:date", () => localDate());
+  const [doctor, setDoctor] = usePageState(user, "pages/receptionist/PatientQueuePage.jsx:doctor", '');
+  const [tab, setTab] = usePageState(user, "pages/receptionist/PatientQueuePage.jsx:tab", 'all');
+  const [updated, setUpdated] = usePageState(user, "pages/receptionist/PatientQueuePage.jsx:updated", null);
   const [now, setNow] = useState(() => new Date());
   const [refresh, setRefresh] = useState(0);
   const [walkIn, setWalkIn] = useState(false);
@@ -136,7 +138,7 @@ export default function PatientQueuePage({ user }) {
         ].map(([label,value,tone]) => <article className={`patient-queue-stat ${tone}`} key={label}><span>{label}</span><strong>{loading ? '—' : value}</strong></article>)}</section>
         <section className="patient-queue-card">
           <header className="patient-queue-card-heading"><h2>Current Queue</h2><div><span>{updated ? `Updated: ${updated.toLocaleDateString()} · ${time(updated)}` : 'Not yet updated'}</span><button type="button" className="patient-queue-refresh" aria-label="Refresh queue" onClick={refreshQueue}>{Icons.refresh || '↻'}</button></div></header>
-          <div className="patient-queue-toolbar"><nav aria-label="Queue status">{[['all','All',records.length],['waiting','Waiting',waiting.length],['in_consultation','In Consultation',consulting.length],['completed','Completed',completed.length]].map(([id,label,count]) => <button type="button" key={id} aria-pressed={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label} ({count})</button>)}</nav><button type="button" className="patient-queue-add" onClick={() => setWalkIn(true)}>{Icons.plus} Add Walk-in</button></div>
+          <div className="patient-queue-toolbar"><nav aria-label="Queue status">{[['all','All',records.length],['waiting','Waiting',waiting.length],['in_consultation','In Consultation',consulting.length],['completed','Completed',completed.length]].map(([id,label,count]) => <button type="button" key={id} aria-pressed={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label} ({count})</button>)}</nav><button type="button" className="patient-queue-add" disabled={!hasAction(user.permissions,user.role,'Manage Walk-ins')} onClick={() => setWalkIn(true)}>{Icons.plus} Add Walk-in</button></div>
           <div className="patient-queue-filters"><label className="patient-queue-search">{Icons.search}<input aria-label="Search pet, owner, or queue number" placeholder="Search pet, owner, or queue number…" value={search} onChange={event => setSearch(event.target.value)} /></label><LabDateTimePicker mode="date" label="Queue date" value={date} onChange={value => { if (value) setDate(value); }} /><select aria-label="Filter queue by veterinarian" value={doctor} onChange={event => setDoctor(event.target.value)}><option value="">All Veterinarians</option>{doctors.map(([id,name]) => <option key={id} value={id}>{name || 'Unassigned'}</option>)}</select></div>
           {error && <p className="reception-action-error" role="alert">{error}</p>}
           <div className="lab-results-table-wrap"><table className="lab-results-table patient-queue-table"><thead><tr>{['Queue #','Check-in Time','Pet','Owner','Visit Type','Veterinarian','Wait Time','Status',''].map(label => <th key={label} aria-label={label || 'Queue actions'}>{label}</th>)}</tr></thead><tbody>
@@ -148,7 +150,7 @@ export default function PatientQueuePage({ user }) {
         <section className="patient-queue-card"><h2>Queue Statistics</h2><div className="patient-queue-metrics">{[['Average Wait Time',waits.length ? `${Math.round(waits.reduce((sum,value) => sum + value,0) / waits.length)} min` : '—'],['Longest Current Wait',currentWaits.length ? `${Math.max(...currentWaits)} min` : '—'],[date === localDate() ? 'Patients Seen Today' : 'Patients Seen',completed.length]].map(([label,value]) => <div key={label}><span>{label}</span><strong>{loading ? '—' : value}</strong></div>)}</div></section>
       </>}
     </div>
-    {selected && <RecordActionsModal title="Queue Actions" recordLabel={`Queue #${selected.position}`} recordName={selected.pet || 'Patient'} recordMeta={`${selected.owner || 'Owner not recorded'} · ${selected.practitioner || 'Unassigned'}`} status={selected.status} onClose={() => setSelectedId(null)} actions={[
+    {selected && <RecordActionsModal user={user} title="Queue Actions" recordLabel={`Queue #${selected.position}`} recordName={selected.pet || 'Patient'} recordMeta={`${selected.owner || 'Owner not recorded'} · ${selected.practitioner || 'Unassigned'}`} status={selected.status} onClose={() => setSelectedId(null)} actions={[
       { label:'View Queue',description:'See arrival time, queue position, and waiting status.',onClick:() => openAction('queue') },
       { label:'View Details',description:'Review appointment, patient, owner, and veterinarian information.',onClick:() => openAction('view') },
       ...(['in_consultation','completed'].includes(normalize(selected.status)) ? [{ label:'View Visit',description:'View permitted consultation status and visit information.',onClick:() => openAction('visit') }] : []),

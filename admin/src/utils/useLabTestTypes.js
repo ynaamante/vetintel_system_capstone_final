@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch.js';
 import { useEffect, useState } from 'react';
 
 export default function useLabTestTypes(user) {

@@ -1,0 +1,76 @@
+const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
+const db = require('../config/db');
+const mailer = require('../utils/mailer');
+const verification = require('../services/emailVerification');
+const controller = require('../controllers/petOwnerAccountController');
+const users = require('../controllers/userController');
+const { loadPrincipal } = require('../services/clinicPermissions');
+const password = 'Verification-Test-Only-123';
+const email = `vetintel-test-${crypto.randomBytes(8).toString('hex')}@example.test`;
+let capturedCode;
+mailer.sendVerificationCode = async ({ code }) => { capturedCode = code; return { sent: true }; };
+async function call(handler, body = {}, user) {
+  const result = { status: 200 };
+  const res = { status(code) { result.status = code; return this; }, json(data) { result.body = data; return this; } };
+  await handler({ body, user }, res, error => { throw error; });
+  return result;
+}
+(async () => {
+  let id;
+  let clientId;
+  try {
+    await verification.ensureSchema();
+    const clinic = (await db.query('SELECT id FROM clinics WHERE COALESCE(archived,false)=false LIMIT 1')).rows[0];
+    assert.ok(clinic, 'Need an active clinic for doctor-first owner registration.');
+    clientId = (await db.query(`INSERT INTO clients(clinic_id,name,email,phone,address) VALUES($1,'Verification Test',$2,'09000000000','Test') RETURNING id`, [clinic.id,email])).rows[0].id;
+    assert.equal((await call(controller.register, { name: 'Test', email, password })).status, 400, 'Consent is enforced on the server.');
+    const pending = await call(controller.register, { name: 'Verification Test', email, password, accepted_terms: true });
+    assert.equal(pending.status, 201);
+    assert.equal(pending.body.verification_required, true);
+    assert.equal(pending.body.token, undefined, 'No session is issued before verification.');
+    id = (await db.query('SELECT id FROM users WHERE email=$1', [email])).rows[0].id;
+    const stored = (await db.query('SELECT * FROM pet_owner_email_verifications WHERE user_id=$1', [id])).rows[0];
+    assert.notEqual(stored.code_hash, capturedCode, 'Codes are never stored in plaintext.');
+    const firstCode = capturedCode;
+    assert.equal((await call(users.login, { email, password })).body.code, 'EMAIL_VERIFICATION_REQUIRED');
+    assert.equal(await loadPrincipal(id), null, 'Pending accounts cannot access authenticated endpoints.');
+    const cooldown = await call(controller.resend, { email });
+    assert.equal(cooldown.status, 429, 'Resend cooldown is enforced.');
+    assert.ok(cooldown.body.retry_after > 0 && cooldown.body.retry_after <= 60);
+    const bad = firstCode === '000000' ? '000001' : '000000';
+    assert.equal((await call(controller.verify, { email, code: bad })).status, 400);
+    assert.equal((await db.query('SELECT attempts FROM pet_owner_email_verifications WHERE user_id=$1', [id])).rows[0].attempts, 1);
+    await db.query("UPDATE pet_owner_email_verifications SET expires_at=now()-interval '1 second',sent_at=now()-interval '61 seconds' WHERE user_id=$1", [id]);
+    assert.equal((await call(controller.verify, { email, code: firstCode })).status, 410, 'Expired codes fail.');
+    assert.equal((await call(controller.resend, { email })).status, 200);
+    await db.query("UPDATE pet_owner_email_verifications SET sent_at=now()-interval '61 seconds' WHERE user_id=$1", [id]);
+    mailer.sendVerificationCode = async () => ({ sent: false, errorCode: 'email_ip_not_authorized', reason: 'Test provider blocked the server IP.' });
+    const rejected = await call(controller.resend, { email });
+    assert.equal(rejected.status, 503);
+    assert.equal(rejected.body.email_sent, false, 'Rejected email must never be reported as sent.');
+    assert.equal(rejected.body.delivery_error, 'email_ip_not_authorized');
+    mailer.sendVerificationCode = async ({ code }) => { capturedCode = code; return { sent: true }; };
+    assert.equal((await call(controller.resend, { email })).status, 200, 'A failed delivery does not impose a fake resend cooldown.');
+    await db.query('UPDATE pet_owner_email_verifications SET attempts=5 WHERE user_id=$1', [id]);
+    assert.equal((await call(controller.verify, { email, code: capturedCode })).status, 429, 'Attempt limits fail closed.');
+    await db.query('UPDATE pet_owner_email_verifications SET attempts=0 WHERE user_id=$1', [id]);
+    const verified = await call(controller.verify, { email, code: capturedCode });
+    assert.equal(verified.status, 200); assert.ok(verified.body.token);
+    assert.equal(verified.body.email_verified, true);
+    assert.equal((await call(controller.verify, { email, code: capturedCode })).status, 400, 'Codes are single-use.');
+    assert.ok((await call(users.login, { email, password })).body.token);
+    const principal = await loadPrincipal(id);
+    assert.ok(principal);
+    assert.equal((await call(controller.addPet, { name: 'Test Pet', species: 'dog', breed: 'Test', owner_id: 1 }, principal)).status, 201);
+    const pets = await call(controller.pets, {}, principal);
+    assert.equal(pets.body.length, 1, 'A verified owner can save and load their first pet.');
+    const otherPets = await call(controller.pets, {}, { ...principal, id: -1 });
+    assert.equal(otherPets.body.length, 0, 'One account cannot read another account’s pets.');
+    console.log('PASS: pending account, no premature session/access, hashed expiring single-use codes, resend/attempt limits, verified login, saved first pet, and account isolation. No real emails sent.');
+  } finally {
+    if (id) await db.query('DELETE FROM users WHERE id=$1 AND email=$2', [id, email]);
+    if (clientId) await db.query('DELETE FROM clients WHERE id=$1 AND email=$2', [clientId,email]);
+    await db.pool.end();
+  }
+})().catch(error => { console.error(error.stack); process.exitCode = 1; });

@@ -1111,6 +1111,7 @@ exports.listAppointments = async (req, res, next) => {
               CASE
                 WHEN LOWER(COALESCE(q.status, '')) = 'waiting' THEN 'checked_in'
                 WHEN LOWER(COALESCE(q.status, '')) IN ('in-consultation', 'in_consultation') THEN 'in_consultation'
+                WHEN a.workflow_type = 'pending_confirmation' AND a.status::text = 'scheduled' THEN 'pending'
                 WHEN LOWER(COALESCE(a.status::text, '')) = 'scheduled' AND a.start_time < now() THEN 'due'
                 ELSE a.status::text
               END AS status,
@@ -1231,174 +1232,7 @@ exports.listDashboardAlerts = async (req, res, next) => {
   } catch (error) { return next(error); }
 };
 
-exports.getDiseaseIntelligenceSummary = async (req, res, next) => {
-  try {
-    const role = String(req.user?.role || '').trim().toLowerCase();
-    const clinicId = getClinicIdFromRequest(req);
-    if (role !== 'super_admin' && !clinicId) {
-      return res.status(400).json({ error: 'Your account is not assigned to a clinic.' });
-    }
-    const days = Number.parseInt(req.query.days || '30', 10);
-    if (![30, 60, 90].includes(days)) {
-      return res.status(400).json({ error: 'Choose a 30, 60, or 90 day reporting period.' });
-    }
-
-    const clinicFilter = normalizeClinicId(req.query.clinic_id);
-    // Disease trends and risk summaries use recorded diagnoses only. Duplicate
-    // entries for the same pet, disease, clinic, and day count as one case.
-    const result = await db.query(
-      `WITH raw_cases AS (
-         SELECT d.clinic_id, d.pet_id, BTRIM(d.diagnosis) AS diagnosis, d.recorded_at AS reported_at,
-                d.clinical_assessment->>'severity' AS recorded_severity
-         FROM patient_diagnoses d
-         WHERE d.case_classification <> 'ruled_out'
-         UNION ALL
-         SELECT tp.clinic_id, tp.pet_id, BTRIM(tp.diagnosis) AS diagnosis, tp.created_at AS reported_at, tp.severity AS recorded_severity
-         FROM treatment_plans tp
-         WHERE COALESCE(tp.archived, false) = false AND NULLIF(BTRIM(tp.diagnosis), '') IS NOT NULL
-         UNION ALL
-         SELECT tr.clinic_id, tr.pet_id, BTRIM(tr.diagnosis), COALESCE(tr.performed_at, tr.created_at), NULL::text
-         FROM treatment_records tr
-         WHERE COALESCE(tr.archived, false) = false AND NULLIF(BTRIM(tr.diagnosis), '') IS NOT NULL
-         UNION ALL
-         SELECT s.clinic_id, s.pet_id, BTRIM(s.provisional_diagnosis), COALESCE(s.admitted_at, s.admitted_on::timestamptz), s.urgency_level
-         FROM clinic_inpatient_stays s
-         WHERE NULLIF(BTRIM(s.provisional_diagnosis), '') IS NOT NULL
-         UNION ALL
-         SELECT co.clinic_id, co.pet_id, BTRIM(co.notes->>'diagnosis'), COALESCE(co.completed_at, co.started_at, co.created_at), co.notes->>'severity'
-         FROM consultations co
-         WHERE NULLIF(BTRIM(co.notes->>'diagnosis'), '') IS NOT NULL
-       ), cases AS (
-         SELECT r.clinic_id, r.pet_id,
-                LOWER(REGEXP_REPLACE(BTRIM(r.diagnosis), '\\s+', ' ', 'g')) AS disease_key,
-                INITCAP(REGEXP_REPLACE(BTRIM(r.diagnosis), '\\s+', ' ', 'g')) AS disease,
-                DATE_TRUNC('day', r.reported_at)::date AS case_date,
-                c.name AS clinic_name,
-                MAX(r.reported_at) AS last_reported_at,
-                CASE MAX(CASE
-                  WHEN LOWER(COALESCE(r.recorded_severity, '')) IN ('critical', 'emergency') THEN 4
-                  WHEN LOWER(COALESCE(r.recorded_severity, '')) IN ('high', 'urgent') THEN 3
-                  WHEN LOWER(COALESCE(r.recorded_severity, '')) = 'moderate' THEN 2
-                  WHEN LOWER(COALESCE(r.recorded_severity, '')) IN ('low', 'mild', 'normal') THEN 1
-                  ELSE 0 END)
-                  WHEN 4 THEN 'Critical' WHEN 3 THEN 'High' WHEN 2 THEN 'Moderate'
-                  WHEN 1 THEN 'Low' ELSE 'Unrated' END AS risk_level
-         FROM raw_cases r
-         JOIN clinics c ON c.id = r.clinic_id
-         WHERE r.reported_at >= NOW() - GREATEST($1::int * 2, 185) * INTERVAL '1 day'
-           AND r.reported_at <= NOW()
-           AND ($2::int IS NULL OR r.clinic_id = $2::int)
-           AND ($4::int IS NULL OR r.clinic_id = $4::int)
-         GROUP BY r.clinic_id, r.pet_id,
-                  LOWER(REGEXP_REPLACE(BTRIM(r.diagnosis), '\\s+', ' ', 'g')),
-                  INITCAP(REGEXP_REPLACE(BTRIM(r.diagnosis), '\\s+', ' ', 'g')),
-                  DATE_TRUNC('day', r.reported_at)::date, c.name
-       ), filtered_cases AS (
-         SELECT * FROM cases WHERE ($3::text IS NULL OR disease_key = LOWER(BTRIM($3::text)))
-           AND case_date >= CURRENT_DATE - ($1::int * 2 - 1)
-       ), disease_counts AS (
-         SELECT disease_key, MAX(disease) AS disease,
-                COUNT(*) FILTER (WHERE case_date >= CURRENT_DATE - ($1::int - 1))::int AS cases,
-                COUNT(*) FILTER (WHERE case_date < CURRENT_DATE - ($1::int - 1))::int AS previous_cases,
-                MAX(last_reported_at) AS last_reported,
-                COUNT(DISTINCT clinic_id) FILTER (WHERE case_date >= CURRENT_DATE - ($1::int - 1))::int AS reporting_clinics,
-                STRING_AGG(DISTINCT clinic_name, ', ' ORDER BY clinic_name) FILTER (WHERE case_date >= CURRENT_DATE - ($1::int - 1)) AS reporting_area
-         FROM filtered_cases GROUP BY disease_key
-       ), monthly_disease_trend AS (
-         SELECT DATE_TRUNC('month',case_date)::date AS month,disease,COUNT(*)::int AS cases
-         FROM cases WHERE case_date >= DATE_TRUNC('month',CURRENT_DATE) - INTERVAL '5 months'
-           AND ($3::text IS NULL OR disease_key=LOWER(BTRIM($3::text)))
-         GROUP BY DATE_TRUNC('month',case_date)::date,disease
-       ), clinic_options AS (
-         SELECT id,name FROM clinics WHERE COALESCE(archived,false)=false
-           AND COALESCE((metadata->>'archived')::boolean,false)=false
-           AND ($2::int IS NULL OR id=$2::int)
-       ), trend_counts AS (
-         SELECT case_date, COUNT(*)::int AS cases
-         FROM filtered_cases
-         WHERE case_date >= CURRENT_DATE - ($1::int - 1)
-         GROUP BY case_date ORDER BY case_date
-       ), clinic_counts AS (
-         SELECT clinic_id, clinic_name, COUNT(*)::int AS cases
-         FROM filtered_cases
-         WHERE case_date >= CURRENT_DATE - ($1::int - 1)
-         GROUP BY clinic_id, clinic_name ORDER BY cases DESC, clinic_name
-       ), risk_counts AS (
-         SELECT risk_level, COUNT(*)::int AS cases
-         FROM filtered_cases
-         WHERE case_date >= CURRENT_DATE - ($1::int - 1)
-         GROUP BY risk_level
-       ), clinic_risk_counts AS (
-         SELECT clinic_name,
-           COUNT(*) FILTER (WHERE risk_level='Low')::int AS low,
-           COUNT(*) FILTER (WHERE risk_level='Moderate')::int AS moderate,
-           COUNT(*) FILTER (WHERE risk_level='High')::int AS high,
-           COUNT(*) FILTER (WHERE risk_level='Critical')::int AS critical
-         FROM filtered_cases
-         WHERE case_date >= CURRENT_DATE - ($1::int - 1)
-         GROUP BY clinic_name
-         ORDER BY COUNT(*) FILTER (WHERE risk_level IN ('High', 'Critical')) DESC, clinic_name
-       ), high_risk_cases AS (
-         SELECT 'CASE-' || UPPER(SUBSTRING(MD5(clinic_id::text || ':' || pet_id::text || ':' || disease_key || ':' || case_date::text), 1, 8)) AS case_id,
-                disease, risk_level, clinic_name, case_date
-         FROM filtered_cases
-         WHERE case_date >= CURRENT_DATE - ($1::int - 1) AND risk_level IN ('High', 'Critical')
-         ORDER BY case_date DESC, disease
-         LIMIT 100
-       ), clinic_totals AS (
-         SELECT COUNT(*) FILTER (WHERE COALESCE((metadata->>'archived')::boolean, false)=false
-           AND LOWER(COALESCE(metadata->>'status','active'))='active')::int AS active_clinics
-         FROM clinics
-         WHERE ($2::int IS NULL OR id=$2::int) AND ($4::int IS NULL OR id=$4::int)
-       ), pet_totals AS (
-         SELECT COUNT(*)::int AS active_pets,
-                COUNT(*) FILTER (WHERE EXISTS (
-                  SELECT 1 FROM vaccinations v
-                  WHERE v.pet_id=p.id AND v.clinic_id=p.clinic_id
-                    AND COALESCE(v.archived,false)=false
-                    AND LOWER(COALESCE(v.status,'administered'))='administered'
-                    AND v.next_due >= CURRENT_DATE
-                ))::int AS pets_with_current_vaccine_record
-         FROM pets p
-         WHERE COALESCE((p.metadata->>'archived')::boolean,false)=false
-           AND ($2::int IS NULL OR p.clinic_id=$2::int)
-           AND ($4::int IS NULL OR p.clinic_id=$4::int)
-       ), vaccination_trend AS (
-         SELECT DATE_TRUNC('month', v.date_given)::date AS month, COUNT(*)::int AS records
-         FROM vaccinations v
-         WHERE COALESCE(v.archived,false)=false AND LOWER(COALESCE(v.status,'administered'))='administered'
-           AND v.date_given >= CURRENT_DATE - INTERVAL '6 months'
-           AND ($2::int IS NULL OR v.clinic_id=$2::int)
-           AND ($4::int IS NULL OR v.clinic_id=$4::int)
-         GROUP BY DATE_TRUNC('month',v.date_given)::date ORDER BY month
-       )
-       SELECT
-         NOW() AS checked_at,
-         COALESCE((SELECT json_agg(monthly_disease_trend ORDER BY month,disease) FROM monthly_disease_trend),'[]'::json) AS monthly_disease_trend,
-         COALESCE((SELECT json_agg(clinic_options ORDER BY name) FROM clinic_options),'[]'::json) AS clinic_options,
-         COALESCE((SELECT json_agg(option_row ORDER BY disease) FROM (
-           SELECT DISTINCT disease FROM cases
-         ) option_row), '[]'::json) AS disease_options,
-         COALESCE((SELECT json_agg(disease_counts ORDER BY cases DESC, disease) FROM disease_counts), '[]'::json) AS diseases,
-         COALESCE((SELECT json_agg(trend_counts ORDER BY case_date) FROM trend_counts), '[]'::json) AS trend,
-         COALESCE((SELECT json_agg(clinic_counts ORDER BY cases DESC, clinic_name) FROM clinic_counts), '[]'::json) AS clinics,
-         COALESCE((SELECT json_agg(risk_counts ORDER BY CASE risk_level WHEN 'Critical' THEN 1 WHEN 'High' THEN 2 WHEN 'Moderate' THEN 3 WHEN 'Low' THEN 4 ELSE 5 END) FROM risk_counts), '[]'::json) AS risk_distribution,
-         COALESCE((SELECT json_agg(clinic_risk_counts ORDER BY high + critical DESC, clinic_name) FROM clinic_risk_counts), '[]'::json) AS risk_by_clinic,
-         COALESCE((SELECT json_agg(high_risk_cases ORDER BY case_date DESC) FROM high_risk_cases), '[]'::json) AS high_risk_cases,
-         COALESCE((SELECT json_agg(vaccination_trend ORDER BY month) FROM vaccination_trend), '[]'::json) AS vaccination_trend,
-         COALESCE((SELECT SUM(cases) FROM disease_counts), 0)::int AS total_cases,
-         COALESCE((SELECT SUM(previous_cases) FROM disease_counts), 0)::int AS previous_cases,
-         COALESCE((SELECT COUNT(*) FROM clinic_counts), 0)::int AS affected_clinics,
-         (SELECT active_clinics FROM clinic_totals)::int AS active_clinics,
-         (SELECT active_pets FROM pet_totals)::int AS active_pets,
-         (SELECT pets_with_current_vaccine_record FROM pet_totals)::int AS pets_with_current_vaccine_record`,
-      [days, clinicId, req.query.disease || null, clinicFilter]
-    );
-    return res.json(result.rows[0]);
-  } catch (error) {
-    return next(error);
-  }
-};
+exports.getDiseaseIntelligenceSummary = require('./diseaseIntelligenceController').summary;
 
 exports.getClinicDashboardSummary = async (req, res, next) => {
   try {
@@ -4305,7 +4139,7 @@ exports.listOwnerSharedRecords = async (req, res, next) => {
 
     const result = await db.query(
       `SELECT p.id AS pet_id, p.name AS pet_name, p.species, p.breed,
-              c.name AS clinic_name,
+              cl.name AS clinic_name,
               p.metadata->'owner_shared_records' AS shares
        FROM clients c
        JOIN pets p ON p.client_id = c.id AND p.clinic_id = c.clinic_id
@@ -4353,6 +4187,8 @@ const mapLabTest = row => {
     reportAttachmentId: row.report_attachment_id || null,
     fileName: row.report_filename || metadata.fileName || '',
     reportContentType: row.report_content_type || '',
+    reportUploadedAt: row.report_uploaded_at || null,
+    reportSizeBytes: Number(row.report_size_bytes) || null,
     downloadable: Boolean(row.report_attachment_id || metadata.downloadable),
   };
 };
@@ -4368,12 +4204,12 @@ exports.listLabTests = async (req, res, next) => {
       `SELECT lr.id, lr.pet_id, lr.test_name, lr.results, lr.collected_at, lr.reported_at, lr.metadata,
               p.name AS pet, c.name AS owner,
               report.id AS report_attachment_id, report.filename AS report_filename,
-              report.content_type AS report_content_type
+              report.content_type AS report_content_type, report.uploaded_at AS report_uploaded_at, report.metadata->>'file_size' AS report_size_bytes
        FROM lab_results lr
        JOIN pets p ON p.id = lr.pet_id AND p.clinic_id = lr.clinic_id
        LEFT JOIN clients c ON c.id = p.client_id
        LEFT JOIN LATERAL (
-         SELECT a.id, a.filename, a.content_type FROM attachments a
+         SELECT a.id, a.filename, a.content_type, a.uploaded_at, a.metadata FROM attachments a
          WHERE a.clinic_id = lr.clinic_id AND a.owner_table = 'lab_results'
            AND a.owner_id = lr.id AND a.metadata->>'source' = 'lab_result_report'
          ORDER BY a.uploaded_at DESC, a.id DESC LIMIT 1
@@ -4529,7 +4365,7 @@ exports.uploadLabReport = async (req, res, next) => {
        AND owner_id=$2 AND metadata->>'source'='lab_result_report'
        ORDER BY uploaded_at DESC, id DESC LIMIT 1`, [clinicId, id]
     );
-    const metadata = JSON.stringify({ source: 'lab_result_report', pet_id: test.rows[0].pet_id, uploaded_by: req.user.id });
+    const metadata = JSON.stringify({ source: 'lab_result_report', pet_id: test.rows[0].pet_id, uploaded_by: req.user.id, file_size: bytes.length });
     const saved = existing.rows.length
       ? await db.query(
           `UPDATE attachments SET filename=$1, content_type=$2, url=$3, metadata=$4::jsonb, uploaded_at=now()
@@ -4542,8 +4378,9 @@ exports.uploadLabReport = async (req, res, next) => {
            RETURNING id, filename, content_type, uploaded_at`,
           [clinicId, id, filename, contentType, data, metadata]
         );
+    await db.query("UPDATE lab_results SET metadata = (COALESCE(metadata,'{}'::jsonb) - 'verifiedBy' - 'verifiedByName' - 'verifiedAt') || '{\"verified\":false}'::jsonb WHERE id=$1 AND clinic_id=$2", [id, clinicId]);
     await logAudit({ user_id: req.user.id, role: req.user.role, action: 'upload_report', table_name: 'lab_results', record_id: id, reason: 'Laboratory report uploaded.', ip_address: req.ip || req.connection.remoteAddress });
-    return res.status(201).json({ id: saved.rows[0].id, filename: saved.rows[0].filename, content_type: saved.rows[0].content_type, uploaded_at: saved.rows[0].uploaded_at });
+    return res.status(201).json({ id: saved.rows[0].id, filename: saved.rows[0].filename, content_type: saved.rows[0].content_type, uploaded_at: saved.rows[0].uploaded_at, size_bytes: bytes.length });
   } catch (error) { return next(error); }
 };
 
@@ -4643,12 +4480,20 @@ exports.createLabTest = async (req, res, next) => {
     }
     const pet = await db.query(`SELECT id FROM pets WHERE id=$1 AND clinic_id=$2 AND COALESCE((metadata->>'archived')::boolean, false)=false`, [petId, clinicId]);
     if (!pet.rows.length) return res.status(404).json({ error: 'Patient not found in this clinic.' });
+    const diagnosisId = req.body.diagnosis_id;
+    if (req.body.requestedFromDiagnosis === true && diagnosisId == null) return res.status(422).json({ error: 'A diagnosis laboratory request must include its saved diagnosis link.' });
+    if (diagnosisId != null) {
+      if (!Number.isInteger(diagnosisId) || diagnosisId < 1) return res.status(422).json({ error: 'Invalid linked diagnosis.' });
+      const diagnosis = await db.query('SELECT id FROM patient_diagnoses WHERE id=$1 AND pet_id=$2 AND clinic_id=$3', [diagnosisId, petId, clinicId]);
+      if (!diagnosis.rows.length) return res.status(422).json({ error: 'Linked diagnosis must belong to this patient and clinic.' });
+    }
     const requestedOrderDateTime = req.body.orderDateTime ? new Date(req.body.orderDateTime) : new Date();
     if (Number.isNaN(requestedOrderDateTime.getTime())) {
       return res.status(422).json({ error: 'A valid order date and time are required.' });
     }
     const orderDateTime = requestedOrderDateTime.toISOString();
-    const metadata = { ...req.body, orderDateTime, status: 'ordered', laboratory: 'In-house' };
+    const metadata = { ...req.body, orderDateTime, status: 'ordered', laboratory: 'In-house', verified: false };
+    delete metadata.verifiedBy; delete metadata.verifiedByName; delete metadata.verifiedAt;
     delete metadata.pet_id;
     delete metadata.results;
     const result = await db.query(
@@ -4671,13 +4516,46 @@ exports.updateLabTest = async (req, res, next) => {
     const current = await db.query(`SELECT * FROM lab_results WHERE id=$1 AND clinic_id=$2`, [id, clinicId]);
     if (!current.rows.length) return res.status(404).json({ error: 'Lab test not found.' });
     const old = current.rows[0];
-    const allowed = ['testType', 'indication', 'priority', 'sampleId', 'specimenType', 'collectionDate', 'collectionTime', 'collectionMethod', 'collector', 'notes', 'requestedBy', 'status', 'laboratory', 'summary', 'interpretation', 'measurements', 'resultDate', 'resultTime', 'lastUpdatedBy'];
+    const allowed = ['testType', 'indication', 'priority', 'sampleId', 'specimenType', 'collectionDate', 'collectionTime', 'collectionMethod', 'collector', 'notes', 'requestedBy', 'status', 'laboratory', 'summary', 'interpretation', 'measurements', 'resultDate', 'resultTime', 'lastUpdatedBy', 'testResult', 'testSpecificResults'];
     const metadata = { ...(old.metadata || {}) };
     allowed.forEach(key => { if (Object.prototype.hasOwnProperty.call(req.body, key)) metadata[key] = req.body[key]; });
+    if (Object.hasOwn(req.body, 'diagnosis_id')) {
+      if (!canManageClinicalRecords(req.user?.role)) return res.status(403).json({ error: 'Clinical staff access required to link a diagnosis.' });
+      const diagnosisId = req.body.diagnosis_id;
+      if (!Number.isInteger(diagnosisId) || diagnosisId < 1) return res.status(422).json({ error: 'Select a valid diagnosis.' });
+      const diagnosis = await db.query('SELECT id FROM patient_diagnoses WHERE id=$1 AND pet_id=$2 AND clinic_id=$3', [diagnosisId, old.pet_id, clinicId]);
+      if (!diagnosis.rows.length) return res.status(422).json({ error: 'Linked diagnosis must belong to this patient and clinic.' });
+      if (old.metadata?.diagnosis_id && Number(old.metadata.diagnosis_id) !== diagnosisId) return res.status(409).json({ error: 'This test is already linked to another diagnosis.' });
+      metadata.diagnosis_id = diagnosisId;
+    }
     const results = { ...(old.results || {}) };
     ['summary', 'interpretation', 'measurements'].forEach(key => { if (Object.prototype.hasOwnProperty.call(req.body, key)) results[key] = req.body[key]; });
     const testName = String(req.body.testType || old.test_name || '').trim();
+    if (req.body.testResult != null && !['Positive','Negative','Inconclusive','Not applicable',''].includes(req.body.testResult)) return res.status(422).json({ error: 'Select a valid test result.' });
+    if (Object.hasOwn(req.body, 'testSpecificResults')) {
+      const fieldError = require('../utils/labResultSchema').validateTestSpecificResults(req.body.testSpecificResults, testName);
+      if (fieldError) return res.status(422).json({ error: fieldError });
+    } else if (testName !== old.test_name) { delete metadata.testSpecificResults; }
     const status = String(metadata.status || 'ordered').toLowerCase();
+    if (req.body.verifyResults === true) {
+      if (status !== 'finalized' || !['Positive','Negative','Inconclusive','Not applicable'].includes(metadata.testResult) || !String(results.summary || '').trim() || results.summary === 'Awaiting laboratory result' || !req.body.resultDate || !req.body.resultTime) return res.status(422).json({ error: 'Complete the laboratory result, summary, and result date and time before verification.' });
+      const verifier = await db.query('SELECT name FROM users WHERE id=$1 AND clinic_id=$2', [req.user.id, clinicId]);
+      metadata.verified = true;
+      metadata.verifiedBy = req.user.id;
+      metadata.verifiedByName = verifier.rows[0]?.name || null;
+      metadata.verifiedAt = new Date().toISOString();
+    } else if (['summary','interpretation','measurements','testResult','resultDate','resultTime','status','testType','testSpecificResults'].some(key => {
+      if (!Object.hasOwn(req.body, key)) return false;
+      const previous = ['summary','interpretation','measurements'].includes(key) ? old.results?.[key] : key === 'testType' ? old.test_name : old.metadata?.[key];
+      return !require('node:util').isDeepStrictEqual(req.body[key], previous);
+    })) {
+      // Changes to previously reviewed findings require a fresh verification.
+      metadata.verified = false;
+      delete metadata.verifiedBy;
+      delete metadata.verifiedByName;
+      delete metadata.verifiedAt;
+    }
+
     const hasResultDate = Boolean(req.body.resultDate);
     const hasResultTime = Boolean(req.body.resultTime);
     if (hasResultDate !== hasResultTime) return res.status(422).json({ error: 'Enter both a result date and time.' });
@@ -4700,7 +4578,10 @@ exports.updateLabTest = async (req, res, next) => {
        RETURNING id, pet_id, test_name, results, collected_at, reported_at, metadata`,
       [testName, JSON.stringify(results), req.body.collectionDate && req.body.collectionTime ? `${req.body.collectionDate}T${req.body.collectionTime}:00` : null, status, JSON.stringify(metadata), id, clinicId, resultDateTime]
     );
-    const joined = await db.query(`SELECT p.name AS pet, c.name AS owner FROM pets p LEFT JOIN clients c ON c.id=p.client_id WHERE p.id=$1 AND p.clinic_id=$2`, [old.pet_id, clinicId]);
+    const joined = await db.query(`SELECT p.name AS pet, c.name AS owner, report.id AS report_attachment_id, report.filename AS report_filename, report.content_type AS report_content_type, report.uploaded_at AS report_uploaded_at, report.metadata->>'file_size' AS report_size_bytes
+      FROM pets p LEFT JOIN clients c ON c.id=p.client_id
+      LEFT JOIN LATERAL (SELECT a.* FROM attachments a WHERE a.clinic_id=$2 AND a.owner_table='lab_results' AND a.owner_id=$3 AND a.metadata->>'source'='lab_result_report' ORDER BY a.uploaded_at DESC,a.id DESC LIMIT 1) report ON true
+      WHERE p.id=$1 AND p.clinic_id=$2`, [old.pet_id, clinicId, id]);
     return res.json(mapLabTest({ ...updated.rows[0], ...joined.rows[0] }));
   } catch (error) { return next(error); }
 };

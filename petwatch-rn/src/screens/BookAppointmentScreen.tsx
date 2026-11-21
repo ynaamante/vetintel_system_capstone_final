@@ -1,21 +1,28 @@
-import React, { useState } from 'react';
+import AppHeader from '../components/AppHeader';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '../context/ThemeContext';
 import { colors, spacing, radius } from '../theme/colors';
-import { mockPets, mockClinics } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { ownerCareApi } from '../services/api';
 
 const TYPES = ['General Checkup', 'Vaccination', 'Dental Cleaning', 'Deworming', 'Surgery Consultation', 'Emergency'];
 const TIMES = ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM'];
 const STEPS = ['Select Pet', 'Choose Clinic', 'Appointment Details', 'Confirm'];
 
-export default function BookAppointmentScreen({ navigation }: any) {
+export default function BookAppointmentScreen({ navigation, route }: any) {
+  const { token } = useAuth();
+  const [pets, setPets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const { colors: tc, isDark } = useTheme();
   const [step, setStep] = useState(0);
-  const [petId, setPetId] = useState('');
-  const [clinicId, setClinicId] = useState('');
+  const [petId, setPetId] = useState(route?.params?.clinicPetId || '');
+  const [clinicId, setClinicId] = useState(route?.params?.clinicId || '');
   const [type, setType] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -24,12 +31,21 @@ export default function BookAppointmentScreen({ navigation }: any) {
   const [timeModal, setTimeModal] = useState(false);
   const s = styles(tc, isDark);
 
-  const pet = mockPets.find(p => p.id === petId);
-  const clinic = mockClinics.find(c => c.id === clinicId);
+  const load = async () => {
+    if (!token) return;
+    setLoading(true); setError('');
+    try { const data = await ownerCareApi.overview(token); setPets(data.clinicPets.map((p: any) => ({ ...p, id: String(p.id), clinic_id: String(p.clinic_id) }))); }
+    catch (failure: any) { setError(failure.message || 'Unable to load clinic patients.'); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { void load(); }, [token]);
+  const pet = pets.find(p => p.id === petId);
+  const clinics = pet ? [{ id: pet.clinic_id, name: pet.clinic_name }] : [];
+  const clinic = clinics.find(c => c.id === clinicId);
 
   const canNext = () => {
-    if (step === 0) return !!petId;
-    if (step === 1) return !!clinicId;
+    if (step === 0) return !!pet && !loading;
+    if (step === 1) return !!clinic;
     if (step === 2) return !!type && !!date && !!time;
     return true;
   };
@@ -37,18 +53,27 @@ export default function BookAppointmentScreen({ navigation }: any) {
   const next = () => { if (step < 3) setStep(s => s + 1); };
   const back = () => { if (step > 0) setStep(s => s - 1); else navigation.goBack(); };
 
-  const confirm = () => {
-    Toast.show({ type: 'success', text1: 'Appointment booked!', text2: `${type} for ${pet?.name} on ${date}` });
-    navigation.goBack();
+  const confirm = async () => {
+    if (!token || saving || !pet || !clinic) return;
+    const match = time.match(/^(\d+):(\d+) (AM|PM)$/);
+    const start = new Date(date + 'T00:00:00');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !match || !Number.isFinite(start.getTime()) || start.getFullYear() !== Number(date.slice(0,4)) || start.getMonth()+1 !== Number(date.slice(5,7)) || start.getDate() !== Number(date.slice(8,10))) {
+      setError('Enter a valid date in YYYY-MM-DD format.'); return;
+    }
+    start.setHours(Number(match[1]) % 12 + (match[3] === 'PM' ? 12 : 0), Number(match[2]), 0, 0);
+    if (start.getTime() <= Date.now()) { setError('Choose a future date and time.'); return; }
+    setSaving(true); setError('');
+    try {
+      await ownerCareApi.book({ pet_id: petId, clinic_id: clinicId, start_time: start.toISOString(), reason: type, notes }, token);
+      Toast.show({ type: 'success', text1: 'Request sent to your clinic', text2: 'Awaiting clinic confirmation.' });
+      navigation.navigate('Main', { screen: 'Appointments' });
+    } catch (failure: any) { setError(failure.message || 'Unable to send request.'); }
+    finally { setSaving(false); }
   };
 
   return (
     <SafeAreaView style={s.safe}>
-      <View style={s.nav}>
-        <TouchableOpacity onPress={back} style={s.backBtn}><Ionicons name="arrow-back" size={22} color={tc.text} /></TouchableOpacity>
-        <Text style={s.navTitle}>Book Appointment</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <AppHeader title="Book Appointment" onBack={back} />
 
       <View style={s.stepperRow}>
         {STEPS.map((label, i) => (
@@ -65,17 +90,20 @@ export default function BookAppointmentScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
+        {!!error && <Text style={{ color: colors.danger, marginBottom: 12 }}>{error}</Text>}
+        {loading && <Text style={s.optSub}>Loading clinic patients...</Text>}
+        {!loading && !pets.length && <View style={s.formCard}><Text style={s.optTitle}>No linked clinic patients yet</Text><Text style={s.optSub}>Ask your clinic to register your pet using your account email. Your personal pet profile is separate from the clinic patient record.</Text><TouchableOpacity onPress={load}><Text style={{ color: colors.primary, marginTop: 12 }}>Retry</Text></TouchableOpacity></View>}
         {step === 0 && (
           <View>
             <Text style={s.stepTitle}>Which pet is this for?</Text>
-            {mockPets.map(p => (
-              <TouchableOpacity key={p.id} style={[s.optCard, petId === p.id && s.optCardActive]} onPress={() => setPetId(p.id)}>
+            {pets.map(p => (
+              <TouchableOpacity key={p.id} style={[s.optCard, petId === p.id && s.optCardActive]} onPress={() => { setPetId(p.id); setClinicId(p.clinic_id); }}>
                 <View style={[s.petAvatar, { backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF' }]}>
                   <Ionicons name="paw" size={24} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={s.optTitle}>{p.name}</Text>
-                  <Text style={s.optSub}>{p.breed} · {p.age} yrs</Text>
+                  <Text style={s.optSub}>{p.breed} · {p.clinic_name}</Text>
                 </View>
                 {petId === p.id && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
               </TouchableOpacity>
@@ -86,18 +114,14 @@ export default function BookAppointmentScreen({ navigation }: any) {
         {step === 1 && (
           <View>
             <Text style={s.stepTitle}>Choose a clinic</Text>
-            {mockClinics.map(c => (
+            {clinics.map(c => (
               <TouchableOpacity key={c.id} style={[s.optCard, clinicId === c.id && s.optCardActive]} onPress={() => setClinicId(c.id)}>
                 <View style={[s.clinicIcon, { backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF' }]}>
                   <Ionicons name="location" size={22} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={s.optTitle}>{c.name}</Text>
-                  <Text style={s.optSub}>{c.address}</Text>
-                  <View style={s.ratingRow}>
-                    <Ionicons name="star" size={12} color="#F59E0B" />
-                    <Text style={s.ratingText}>{c.rating} · {c.distance}</Text>
-                  </View>
+                  <Text style={s.optSub}>Clinic where this pet is registered</Text>
                 </View>
                 {clinicId === c.id && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
               </TouchableOpacity>
@@ -118,7 +142,7 @@ export default function BookAppointmentScreen({ navigation }: any) {
               <Text style={s.label}>Date * (YYYY-MM-DD)</Text>
               <TextInput style={s.input} value={date} onChangeText={setDate} placeholder="2026-07-15" placeholderTextColor={tc.textMuted} />
 
-              <Text style={s.label}>Time *</Text>
+              <Text style={s.label}>Requested time * (subject to clinic confirmation)</Text>
               <TouchableOpacity style={s.picker} onPress={() => setTimeModal(true)}>
                 <Text style={[s.pickerText, !time && { color: tc.textMuted }]}>{time || 'Select time...'}</Text>
                 <Ionicons name="chevron-down" size={16} color={tc.textMuted} />
@@ -151,9 +175,9 @@ export default function BookAppointmentScreen({ navigation }: any) {
               <Text style={s.nextBtnText}>Next</Text>
               <Ionicons name="arrow-forward" size={18} color="#fff" />
             </TouchableOpacity>
-          : <TouchableOpacity style={s.nextBtn} onPress={confirm}>
+          : <TouchableOpacity style={[s.nextBtn, saving && { opacity: 0.5 }]} onPress={confirm} disabled={saving}>
               <Ionicons name="checkmark" size={18} color="#fff" />
-              <Text style={s.nextBtnText}>Confirm Booking</Text>
+              <Text style={s.nextBtnText}>{saving ? 'Sending...' : 'Request appointment'}</Text>
             </TouchableOpacity>
         }
       </View>

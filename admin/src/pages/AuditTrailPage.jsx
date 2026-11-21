@@ -1,8 +1,12 @@
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import Topbar from '../components/Topbar';
 import { Icons } from '../icons';
 import { canViewFeature } from '../utils/permissionUtils';
+import './summaryStats.css';
+import './auditTrailTable.css';
 import { formatDateTimeText } from '../utils/dateFormatting';
 
 const ACTION_META = {
@@ -223,8 +227,8 @@ function DetailModal({ log, onClose }) {
 }
 
 export default function AuditTrailPage({ user }) {
-  const [logs, setLogs] = useState([]);
-  const [loadError, setLoadError] = useState('');
+  const [logs, setLogs] = usePageState(user, "pages/AuditTrailPage.jsx:logs", []);
+  const [loadError, setLoadError] = usePageState(user, "pages/AuditTrailPage.jsx:loadError", '');
   const [search, setSearch] = useState('');
   const [actionFilter, setAction] = useState('All Actions');
   const [userFilter, setUser] = useState('All Users');
@@ -299,28 +303,27 @@ export default function AuditTrailPage({ user }) {
       <div style={s.page}>
 
         {/* STAT CARDS */}
-        <div style={s.statsGrid}>{[
-        { icon: 'users', iconBg: '#d8f4e8', iconColor: '#013826', label: 'Active Users', value: String(users.length) },
-        { icon: 'file', iconBg: '#dcfce7', iconColor: '#16a34a', label: 'Total Actions', value: String(logs.length) },
-        { icon: 'calendar', iconBg: '#fef3c7', iconColor: '#f59e0b', label: "Today's Activity", value: String(logs.filter(log => new Date(log.timestamp).toDateString() === today).length) },
-        { icon: 'info', iconBg: '#f3e8ff', iconColor: '#9333ea', label: 'Critical Actions', value: String(criticalActions) },
+        <div className="overview-stats-band" style={s.statsGrid}>{[
+          { label: 'Active Users', value: String(users.length), note: 'Unique users in recorded activity' },
+          { label: 'Total Actions', value: String(logs.length), note: 'Recorded audit events' },
+          { label: "Today's Activity", value: String(logs.filter(log => new Date(log.timestamp).toDateString() === today).length), note: 'Actions recorded today' },
+          { label: 'Critical Actions', value: String(criticalActions), note: 'Deletes, archives, overrides, and cancellations' },
           ].map((c, i) => (
-            <div key={i} style={s.statCard}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                <div style={{ ...s.statIcon, background: c.iconBg }}>
-                  <span style={{ width: 18, height: 18, display: 'flex', color: c.iconColor }}>{Icons[c.icon]}</span>
-                </div>
-                <div>
-                  <div style={s.statLabel}>{c.label}</div>
-                  <div style={s.statValue}>{c.value}</div>
-                </div>
-              </div>
-            </div>
+            <article key={c.label} className="overview-stats-cell" style={i ? s.statDivider : undefined}>
+              <div className="overview-stats-label">{c.label}</div>
+              <strong className="overview-stats-value">{c.value}</strong>
+              <small className="overview-stats-note">{c.note}</small>
+            </article>
           ))}
         </div>
 
-        {/* FILTER BAR */}
-        <div style={s.filterBar}>
+        <section className="audit-log-panel">
+          <header className="audit-log-heading">
+            <div><h2>Activity Log</h2><p>Review system activity and security events.</p></div>
+            <span>{filtered.length} {filtered.length === 1 ? 'entry' : 'entries'}</span>
+          </header>
+          {loadError && <div role="alert" style={{ color: '#b91c1c', marginBottom: 12 }}>{loadError}</div>}
+        <div className="audit-log-filters" style={s.filterBar}>
           <div style={s.searchWrap}>
             <span style={s.searchIcon}>{Icons.search}</span>
             <input
@@ -361,17 +364,12 @@ export default function AuditTrailPage({ user }) {
           )}
           </div>
         </div>
-
-        {/* TABLE */}
-        <div style={s.card}>
-          {loadError && <div role="alert" style={{ color: '#b91c1c', marginBottom: 12 }}>{loadError}</div>}
-          <div style={{ ...s.cardTitle, marginBottom: 16 }}>Activity Log ({filtered.length} entries)</div>
-          <div style={{ overflowX: 'auto' }}>
+          <div className="audit-log-table-wrap">
             <table style={s.table}>
               <thead>
                 <tr>
-                  {['Audit ID', 'Timestamp', 'User', 'Action', 'Description', 'Entity', 'IP Address', 'Actions'].map(h => (
-                    <th key={h} style={s.th}>{h}</th>
+                  {['Audit ID', 'Timestamp', 'User', 'Action', 'Description', 'Entity', 'IP Address', 'Actions'].map((h, index) => (
+                    <th key={h} style={{ ...s.th, width: ['8%', '17%', '11%', '12%', '23%', '10%', '12%', '7%'][index] }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -395,15 +393,11 @@ export default function AuditTrailPage({ user }) {
                     </td>
                   </tr>
                 ))}
+                {filtered.length === 0 && <tr><td colSpan={8} className="audit-empty-cell" style={s.emptyCell}>No logs match your filters.</td></tr>}
               </tbody>
             </table>
           </div>
-          {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b', fontSize: '.84rem' }}>
-              No logs match your filters.
-            </div>
-          )}
-        </div>
+        </section>
 
       </div>
 
@@ -415,26 +409,22 @@ export default function AuditTrailPage({ user }) {
 const s = {
   main: { flex: 1, overflowY: 'auto', background: '#f1f6ef' },
   page: { padding: '24px 22px 34px' },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 },
-  statCard: { background: '#fff', border: '1px solid #e1e6ec', borderRadius: 11, padding: '16px 20px' },
-  statIcon: { width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  statLabel: { fontSize: '.67rem', color: '#8aa0bd', marginBottom: 4 },
-  statValue: { fontFamily: "'DM Sans', sans-serif", fontSize: '1.05rem', fontWeight: 700, color: '#111827', letterSpacing: '-.02em' },
-  filterBar: { display: 'flex', alignItems: 'center', gap: 12, background: '#fff', border: '1px solid #e1e6ec', borderRadius: 11, padding: '14px 20px', marginBottom: 20, flexWrap: 'wrap' },
-  searchWrap: { flex: 1, minWidth: 260, display: 'flex', alignItems: 'center', gap: 8, background: '#f1f2f5', border: 0, borderRadius: 7, padding: '8px 11px' },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 0, marginBottom: 20 },
+  statDivider: { borderLeft: '1px solid #c5d8cb' },
+  filterBar: { display: 'flex', alignItems: 'center', gap: 9, background: 'transparent', border: 0, borderRadius: 0, padding: 0, marginBottom: 14, flexWrap: 'wrap' },
+  searchWrap: { flex: 1, minWidth: 260, display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1px solid #cfd8e3', borderRadius: 8, padding: '9px 12px' },
   searchIcon: { width: 14, height: 14, display: 'flex', color: '#8aa0bd', flexShrink: 0 },
   searchInput: { border: 'none', background: 'transparent', outline: 'none', fontSize: '.72rem', color: '#334155', width: '100%' },
-  select: { minWidth: 145, padding: '8px 10px', border: 0, borderRadius: 7, fontSize: '.72rem', color: '#334155', background: '#f1f2f5', outline: 'none', cursor: 'pointer' },
+  select: { minWidth: 145, padding: '9px 11px', border: '1px solid #cfd8e3', borderRadius: 8, fontSize: '.72rem', color: '#334155', background: '#fff', outline: 'none', cursor: 'pointer' },
   exportWrap: { position: 'relative' },
-  exportBtn: { display: 'flex', alignItems: 'center', gap: 7, padding: '8px 13px', background: '#fff', color: '#334155', border: '1px solid #dbe3ee', borderRadius: 7, fontSize: '.72rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
+  exportBtn: { display: 'flex', alignItems: 'center', gap: 7, padding: '8px 13px', background: '#fff', color: '#087341', border: '1px solid #087341', borderRadius: 7, fontSize: '.72rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
   exportMenu: { position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 20, minWidth: 150, padding: 6, background: '#fff', border: '1px solid #dbe3ee', borderRadius: 8, boxShadow: '0 10px 24px rgba(15, 23, 42, .12)' },
   exportMenuLabel: { padding: '6px 8px 5px', fontSize: '.66rem', color: '#7185a2', fontWeight: 600 },
   exportOption: { display: 'block', width: '100%', padding: '8px', border: 0, borderRadius: 6, background: '#fff', color: '#334155', textAlign: 'left', fontSize: '.72rem', cursor: 'pointer' },
-  card: { background: '#fff', border: '1px solid #e1e6ec', borderRadius: 11, padding: '20px 20px 10px' },
-  cardTitle: { fontSize: '.78rem', fontWeight: 700, color: '#1e293b' },
-  table: { width: '100%', borderCollapse: 'collapse', minWidth: 900 },
-  th: { textAlign: 'left', padding: '10px 7px', fontSize: '.68rem', fontWeight: 700, color: '#1e293b', borderBottom: '1px solid #e5e9ee', whiteSpace: 'nowrap' },
-  td: { padding: '8px 7px', fontSize: '.69rem', borderBottom: '1px solid #e5e9ee', verticalAlign: 'middle', color: '#334155' },
+  table: { width: '100%', borderCollapse: 'collapse', minWidth: 1050, tableLayout: 'fixed' },
+  th: { textAlign: 'left', height: 40, padding: '0 11px', fontSize: '.72rem', fontWeight: 700, color: '#172b25', background: '#f6fafb', borderBottom: '1px solid #dce5ed', whiteSpace: 'nowrap' },
+  td: { height: 52, padding: '8px 11px', fontSize: '.74rem', borderBottom: '1px solid #e1e8ef', verticalAlign: 'middle', color: '#334155', overflowWrap: 'anywhere' },
+  emptyCell: { height: 80, padding: 14, textAlign: 'center', color: '#64748b', fontSize: '.84rem', borderBottom: 0 },
   detailsBtn: { padding: '6px 11px', background: '#fff', border: '1px solid #dbe3ee', borderRadius: 7, fontSize: '.68rem', fontWeight: 600, color: '#334155', cursor: 'pointer', whiteSpace: 'nowrap' },
 };
 

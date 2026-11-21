@@ -1,3 +1,4 @@
+import AppHeader from '../components/AppHeader';
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -58,13 +59,7 @@ export default function HealthTipsScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={s.safe}>
-      <View style={s.pageHeader}>
-        <View><Text style={s.pageTitle}>Health Tips</Text><Text style={s.pageSub}>Expert advice for your pets</Text></View>
-        <View style={s.savedChip}>
-          <Ionicons name="bookmark" size={14} color={colors.primary} />
-          <Text style={s.savedCount}>{saved.length}</Text>
-        </View>
-      </View>
+      <AppHeader title="Health Tips" subtitle="Expert advice for your pets" /><View style={[s.savedChip, { alignSelf: "flex-end", marginRight: 16 }]}><Ionicons name="bookmark" size={14} color={colors.primary} /><Text style={s.savedCount}>{saved.length}</Text></View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.catsRow}>
         {cats.map(c => {

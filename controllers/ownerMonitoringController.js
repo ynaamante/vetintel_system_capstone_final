@@ -71,3 +71,12 @@ exports.report = async (req, res, next) => {
     res.json({ ...summary, clinic_id: clinicId, generated_at: new Date().toISOString() });
   } catch (error) { next(error); }
 };
+
+exports.overview = async (req,res,next) => {
+  const clinic=clinicScope(req,res);if(!clinic)return;
+  try {
+    const sql=require('fs').readFileSync(require('path').join(__dirname,'../scripts/owner_clinic_overview.sql'),'utf8');
+    const result=await db.query(sql,[clinic,String(req.query.search||'').trim().slice(0,100)]);
+    return res.json({...result.rows[0],clinic_id:clinic});
+  }catch(error){return next(error);}
+};

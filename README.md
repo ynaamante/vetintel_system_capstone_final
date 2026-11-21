@@ -1,6 +1,17 @@
-# VETINEL - Veterinary Health Monitoring System
+# VetIntel - Veterinary Disease Monitoring System
 
-A comprehensive veterinary health monitoring and clinic management platform with three integrated applications: an admin portal for clinic management, a mobile app for pet owners, and a super admin portal for system oversight.
+VetIntel helps participating veterinary clinics in Santa Maria, Bulacan monitor reported infectious diseases, identify unusual increases, and review potential disease risks using privacy-protected shared information.
+
+This is the system's intended core purpose. Clinic management, the pet owner mobile app, and system administration support that purpose through three integrated applications.
+
+### Intended monitoring scope
+
+- Monitor reported infectious disease cases by disease, location, and reporting period, with suspected reports and confirmed diagnoses clearly distinguished.
+- Identify unusual increases by comparing reported case counts with an established baseline and flagging changes for veterinary review.
+- Help participating clinics review potential disease risks using the available reports and trends, with the reporting period and data limitations visible.
+- Use privacy-protected shared summaries for cross-clinic monitoring, keeping identifiable owner information and private patient records restricted to authorized access.
+
+These points define the intended requirements; they do not certify that every capability or privacy safeguard is already implemented. Monitoring signals support veterinary review and do not establish a confirmed outbreak or predict that an individual animal will become infected.
 
 ---
 

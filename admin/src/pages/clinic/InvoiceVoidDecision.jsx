@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../../utils/apiFetch.js';
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { notifySuccess } from '../../utils/notifications';

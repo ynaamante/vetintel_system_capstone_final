@@ -791,6 +791,11 @@ const port = process.env.PORT || 3000;
 (async () => {
   try {
     await runMigrations();
+    await require('./services/emailVerification').ensureSchema();
+    await require('./controllers/ownerPasswordResetController').ensureSchema();
+    await require('./controllers/petSharingController').ensureSchema();
+    await require('./controllers/ownerPetArchiveController').ensureSchema();
+    await require('./services/clinicPermissions').ensureSchema();
     await ensureClinicOwnerColumn();
     await ensureRolesSchema();
     await ensureSettingsSchema();
@@ -806,6 +811,8 @@ const port = process.env.PORT || 3000;
     await ensureBillingCatalogSchema();
     await require('./controllers/vaccineInventoryController').ensureSchema();
     await require('./controllers/inventoryController').ensureSchema();
+    await require('./controllers/restockRequestController').ensureSchema();
+    await require('./services/diseaseMonitoring').ensureSchema();
     await require('./controllers/catalogConnections').ensureSchema();
     await ensureTreatmentPlanSchema();
     await require('./controllers/reminderDetailsController').ensureSchema();

@@ -1,3 +1,5 @@
+import { usePageState } from '../../utils/usePageState.js';
+import { apiFetch as fetch } from '../../utils/apiFetch.js';
 import { dateFilterValue } from '../../utils/dateFilters';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -67,11 +69,11 @@ function PrescriptionForm({ user, patientId, plans, defaultPlanId, onSaved, onCa
 }
 
 export function PatientMedicationsPanel({ user, patientId, patientName, onCountChange }) {
-  const [medications, setMedications] = useState([]);
-  const [plans, setPlans] = useState([]);
-  const [treatmentRecords, setTreatmentRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [medications, setMedications] = usePageState(user, `PatientMedicationsPanel:medications:${patientId}`, []);
+  const [plans, setPlans] = usePageState(user, `PatientMedicationsPanel:plans:${patientId}`, []);
+  const [treatmentRecords, setTreatmentRecords] = usePageState(user, `PatientMedicationsPanel:treatmentRecords:${patientId}`, []);
+  const [loading, setLoading] = usePageState(user, `PatientMedicationsPanel:loading:${patientId}`, true, "loading");
+  const [error, setError] = usePageState(user, `PatientMedicationsPanel:error:${patientId}`, '');
   const [open, setOpen] = useState(false);
   const [medicationSearch, setMedicationSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -391,12 +393,12 @@ export function PatientMedicationsPanel({ user, patientId, patientName, onCountC
 }
 
 export function PatientTreatmentRecordsPanel({ user, patientId, patientName, onCountChange }) {
-  const [treatmentRecords, setTreatmentRecords] = useState([]);
-  const [treatmentPlans, setTreatmentPlans] = useState([]);
+  const [treatmentRecords, setTreatmentRecords] = usePageState(user, `PatientTreatmentRecordsPanel:treatmentRecords:${patientId}`, []);
+  const [treatmentPlans, setTreatmentPlans] = usePageState(user, `PatientTreatmentRecordsPanel:treatmentPlans:${patientId}`, []);
   const [selectedTreatmentRecord, setSelectedTreatmentRecord] = useState(null);
   const [standalonePlanRequest, setStandalonePlanRequest] = useState(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [error, setError] = usePageState(user, `PatientTreatmentRecordsPanel:error:${patientId}`, '');
+  const [loading, setLoading] = usePageState(user, `PatientTreatmentRecordsPanel:loading:${patientId}`, true, "loading");
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);

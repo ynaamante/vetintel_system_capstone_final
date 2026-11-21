@@ -1,0 +1,104 @@
+.roles-table-card {
+  overflow: hidden !important;
+  border-color: #dce7e2 !important;
+  border-radius: 14px !important;
+  background: #fff;
+}
+
+.roles-table-card > div:first-child {
+  min-height: 78px;
+  padding: 18px 26px !important;
+}
+
+.roles-table-card > div:first-child strong {
+  color: #123f32;
+  font-size: 16px;
+}
+
+.roles-table-card > div:first-child small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.roles-table-wrap {
+  overflow-x: auto;
+  padding: 10px;
+  border-top: 1px solid #edf2ee;
+}
+
+.roles-table {
+  width: 100%;
+  min-width: 780px;
+  table-layout: fixed;
+  border-collapse: separate !important;
+  border-spacing: 0;
+  font-size: 12px !important;
+}
+
+.roles-table th {
+  height: 42px;
+  padding: 8px 12px !important;
+  border: 0 !important;
+  background: #eaf3ec !important;
+  color: #143c2d !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+}
+
+.roles-table th:first-child {
+  padding-left: 20px !important;
+  border-radius: 10px 0 0 10px;
+}
+
+.roles-table th:last-child {
+  border-radius: 0 10px 10px 0;
+}
+
+.roles-table td {
+  height: 50px;
+  padding: 8px 12px !important;
+  border-bottom: 1px solid #e8eeea !important;
+  color: #172b25 !important;
+  font-size: 12px !important;
+}
+
+.roles-table td:first-child {
+  padding-left: 20px !important;
+}
+
+.roles-table tbody tr:last-child td {
+  border-bottom: 0 !important;
+}
+
+.roles-table tbody tr:hover:not(:has(.roles-table-empty)) {
+  background: #f5faf6;
+}
+
+.roles-table .roles-table-empty {
+  height: 84px;
+  padding: 20px !important;
+  color: #64756d !important;
+  font-size: 13px !important;
+  text-align: center;
+  white-space: normal;
+}
+
+.roles-table-card > div:first-child button {
+  min-height: 38px;
+  padding: 9px 16px !important;
+  border-radius: 9px !important;
+  font-size: 12px !important;
+}
+
+@media (max-width: 680px) {
+  .roles-table-card > div:first-child {
+    align-items: flex-start !important;
+    flex-wrap: wrap;
+    padding: 16px !important;
+  }
+
+  .roles-table {
+    min-width: 760px;
+  }
+}

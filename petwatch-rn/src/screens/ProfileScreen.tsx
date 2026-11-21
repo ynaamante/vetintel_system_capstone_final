@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import AppHeader from '../components/AppHeader';
+import React, { useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Switch, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,19 +7,32 @@ import Toast from 'react-native-toast-message';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing, radius } from '../theme/colors';
-import { mockUser, mockClinics } from '../data/mockData';
+import { useFocusEffect } from '@react-navigation/native';
+import { ownerCareApi } from '../services/api';
 
 export default function ProfileScreen({ navigation }: any) {
   const { colors: tc, isDark, toggleTheme } = useTheme();
-  const { logout, userEmail, userName } = useAuth();
+  const { logout, userEmail, userName, token } = useAuth();
   const [notifModal, setNotifModal] = useState(false);
   const [privacyModal, setPrivacyModal] = useState(false);
   const [helpModal, setHelpModal] = useState(false);
   const [editModal, setEditModal] = useState(false);
   const [notifs, setNotifs] = useState({ vaccination: true, appointments: true, deworming: true, outbreaks: true, tips: false });
-  const [editForm, setEditForm] = useState({ name: userName || mockUser.name, email: userEmail || mockUser.email, phone: mockUser.phone || '', location: mockUser.location || '' });
+  const [editForm, setEditForm] = useState({ name: userName || '', email: userEmail || '', phone: '', location: '' });
   const s = styles(tc, isDark);
-  const clinic = mockClinics.find(c => c.id === mockUser.selectedClinicId);
+  const [clinics, setClinics] = useState<{id: string; name: string}[]>([]);
+  const [clinicError, setClinicError] = useState('');
+  const [appearanceModal, setAppearanceModal] = useState(false);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    if (token) ownerCareApi.overview(token).then(data => {
+      if (!active) return;
+      const linked = new Map<string, {id: string; name: string}>();
+      data.clinicPets.forEach((pet: any) => { if (pet.clinic_id) linked.set(String(pet.clinic_id), {id: String(pet.clinic_id), name: pet.clinic_name}); });
+      setClinics([...linked.values()]); setClinicError('');
+    }).catch(() => { if (active) setClinicError('Unable to load linked clinics.'); });
+    return () => { active = false; };
+  }, [token]));
 
   const doLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -34,7 +48,7 @@ export default function ProfileScreen({ navigation }: any) {
 
   const MenuItem = ({ icon, label, onPress, danger, value, toggle }: { icon: string; label: string; onPress?: () => void; danger?: boolean; value?: boolean; toggle?: (v: boolean) => void }) => (
     <TouchableOpacity style={s.menuItem} onPress={onPress} disabled={!!toggle}>
-      <View style={[s.menuIcon, { backgroundColor: danger ? '#FEF2F2' : isDark ? '#1e3a5f' : '#EFF6FF' }]}>
+      <View style={s.menuIcon}>
         <Ionicons name={icon as any} size={18} color={danger ? colors.danger : colors.primary} />
       </View>
       <Text style={[s.menuLabel, danger && { color: colors.danger }]}>{label}</Text>
@@ -43,52 +57,22 @@ export default function ProfileScreen({ navigation }: any) {
   );
 
   return (
-    <SafeAreaView style={s.safe}>
-      <ScrollView contentContainerStyle={s.container}>
+    <SafeAreaView style={s.safe} edges={['top','left','right']}><AppHeader title="Profile" home />
+      <View style={s.panel}><ScrollView contentContainerStyle={s.container}>
         <View style={s.profileCard}>
-          <View style={s.avatar}>
-            <Text style={s.avatarText}>{(userName || mockUser.name).charAt(0).toUpperCase()}</Text>
-          </View>
-          <Text style={s.name}>{userName || mockUser.name}</Text>
-          <Text style={s.email}>{userEmail || mockUser.email}</Text>
-          {mockUser.location && <View style={s.locationRow}><Ionicons name="location-outline" size={14} color={tc.textMuted} /><Text style={s.location}>{mockUser.location}</Text></View>}
-          <TouchableOpacity style={s.editProfileBtn} onPress={() => setEditModal(true)}>
-            <Ionicons name="pencil-outline" size={14} color={colors.primary} />
-            <Text style={s.editProfileText}>Edit Profile</Text>
-          </TouchableOpacity>
+          <View style={s.avatar}><Text style={s.avatarText}>{(userName || 'Owner').split(' ').filter(Boolean).slice(0,2).map(part => part[0]).join('').toUpperCase()}</Text></View>
+          <View style={s.accountInfo}><Text style={s.name}>{userName || 'Pet owner'}</Text><View style={s.contactRow}><Ionicons name="mail-outline" size={14} color={tc.textSecondary} /><Text style={s.email} numberOfLines={1}>{userEmail || 'Email not recorded'}</Text></View><View style={s.contactRow}><Ionicons name="call-outline" size={14} color={tc.textSecondary} /><Text style={s.email}>{editForm.phone || 'Phone not recorded'}</Text></View></View>
+          <TouchableOpacity style={s.editProfileBtn} onPress={() => setEditModal(true)}><Ionicons name="pencil-outline" size={16} color="#FFFFFF" /><Text style={s.editProfileText}>Edit Profile</Text></TouchableOpacity>
         </View>
-
-        {clinic && (
-          <View style={s.clinicCard}>
-            <Ionicons name="medkit-outline" size={18} color={colors.primary} />
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={s.clinicLabel}>Preferred Clinic</Text>
-              <Text style={s.clinicName}>{clinic.name}</Text>
-            </View>
-            <TouchableOpacity onPress={() => navigation.navigate('ClinicSelection')}>
-              <Text style={s.changeText}>Change</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <Text style={s.sectionTitle}>Preferences</Text>
-        <View style={s.menuCard}>
-          <MenuItem icon="notifications-outline" label="Notification Settings" onPress={() => setNotifModal(true)} />
-          <MenuItem icon="moon-outline" label="Dark Mode" value={isDark} toggle={toggleTheme} />
-          <MenuItem icon="shield-outline" label="Privacy Settings" onPress={() => setPrivacyModal(true)} />
-        </View>
-
-        <Text style={s.sectionTitle}>Support</Text>
-        <View style={s.menuCard}>
-          <MenuItem icon="help-circle-outline" label="Help & FAQ" onPress={() => setHelpModal(true)} />
-          <MenuItem icon="document-text-outline" label="Terms of Service" onPress={() => {}} />
-          <MenuItem icon="information-circle-outline" label="App Version" onPress={() => Toast.show({ type: 'info', text1: 'PetWatch v1.0.0' })} />
-        </View>
-
-        <View style={s.menuCard}>
-          <MenuItem icon="log-out-outline" label="Log Out" onPress={doLogout} danger />
-        </View>
-      </ScrollView>
+        <Text style={s.sectionTitle}>My Veterinary Clinics</Text>
+        {clinics.length ? clinics.map(clinic => <View key={clinic.id} style={s.clinicCard}><View style={s.clinicIcon}><Ionicons name="paw-outline" size={27} color="#005638" /></View><View style={{flex:1}}><Text style={s.clinicName}>{clinic.name}</Text><View style={s.connected}><View style={s.connectedDot}/><Text style={s.clinicLabel}>Connected</Text></View></View><TouchableOpacity style={s.manage} onPress={() => navigation.navigate('Home', { screen: 'NearbyClinics' })}><Text style={s.changeText}>Manage</Text><Ionicons name="chevron-forward" size={17} color="#005638" /></TouchableOpacity></View>) : <TouchableOpacity style={s.clinicCard} onPress={() => navigation.navigate('Home', { screen: 'NearbyClinics' })}><Ionicons name="paw-outline" size={25} color="#005638" /><Text style={[s.menuLabel,{marginLeft:12}]}>{clinicError || 'Find a veterinary clinic'}</Text><Ionicons name="chevron-forward" size={18} color={tc.textMuted}/></TouchableOpacity>}
+        <Text style={s.sectionTitle}>Account & Privacy</Text>
+        <View style={s.menuCard}><MenuItem icon="person-outline" label="Personal & Contact Information" onPress={() => setEditModal(true)} /><MenuItem icon="notifications-outline" label="Notification Preferences" onPress={() => setNotifModal(true)} /><MenuItem icon="shield-checkmark-outline" label="Privacy & Sharing Permissions" onPress={() => setPrivacyModal(true)} /><MenuItem icon="receipt-outline" label="Billing History" onPress={() => Toast.show({type:'info',text1:'Billing history',text2:'Contact your clinic for billing records.'})} /></View>
+        <Text style={s.sectionTitle}>Preferences & Support</Text>
+        <View style={s.menuCard}><MenuItem icon="moon-outline" label="Appearance" onPress={() => setAppearanceModal(true)} /><MenuItem icon="help-circle-outline" label="Help & Support" onPress={() => setHelpModal(true)} /><MenuItem icon="information-circle-outline" label="About" onPress={() => Toast.show({type:'info',text1:'PetWatch v1.0.0'})} /></View>
+        <TouchableOpacity style={s.signOut} onPress={doLogout}><Ionicons name="log-out-outline" size={22} color={colors.danger}/><Text style={s.signOutText}>Sign Out</Text></TouchableOpacity>
+      </ScrollView></View>
+      <Modal visible={appearanceModal} transparent animationType="slide" onRequestClose={() => setAppearanceModal(false)}><View style={s.modalOverlay}><View style={s.modalBox}><Text style={s.modalTitle}>Appearance</Text><View style={s.notifRow}><Text style={s.notifLabel}>Dark mode</Text><Switch value={isDark} onValueChange={toggleTheme} trackColor={{true:colors.primary}} /></View><TouchableOpacity style={s.modalBtn} onPress={() => setAppearanceModal(false)}><Text style={s.modalBtnText}>Done</Text></TouchableOpacity></View></View></Modal>
 
       {/* Notification Modal */}
       <Modal visible={notifModal} transparent animationType="slide">
@@ -171,25 +155,25 @@ export default function ProfileScreen({ navigation }: any) {
 }
 
 const styles = (tc: any, isDark: boolean) => StyleSheet.create({
-  safe: { flex: 1, backgroundColor: tc.background },
-  container: { padding: spacing.md, paddingBottom: 40 },
-  profileCard: { alignItems: 'center', backgroundColor: tc.surface, borderRadius: radius.lg, padding: 24, marginBottom: 16, borderWidth: 1, borderColor: tc.border },
-  avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  avatarText: { fontSize: 32, fontWeight: '700', color: '#fff' },
-  name: { fontSize: 20, fontWeight: '700', color: tc.text },
-  email: { fontSize: 14, color: tc.textSecondary, marginTop: 2, marginBottom: 6 },
+  safe: { flex: 1, backgroundColor: '#005638' }, panel: { flex: 1, backgroundColor: isDark ? tc.background : '#FFFFFF', borderTopLeftRadius: 22, borderTopRightRadius: 22, overflow: 'hidden' }, accountInfo: { flex: 1, borderLeftWidth: 1, borderColor: tc.border, paddingLeft: 12 }, contactRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }, clinicIcon: { width: 50, height: 50, borderRadius: 11, backgroundColor: '#E1F3E6', alignItems: 'center', justifyContent: 'center', marginRight: 10 }, connected: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', backgroundColor: '#E1F3E6', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, marginTop: 4 }, connectedDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#005638' }, manage: { flexDirection: 'row', alignItems: 'center', gap: 6, borderLeftWidth: 1, borderColor: tc.border, paddingLeft: 12, marginLeft: 8 }, signOut: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, borderWidth: 1, borderColor: colors.danger, borderRadius: 12, backgroundColor: isDark ? tc.surface : '#FFF0F0', marginTop: 30 }, signOutText: { fontSize: 15, fontWeight: '700', color: colors.danger },
+  container: { padding: 10, paddingTop: 14, paddingBottom: 22 },
+  profileCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: tc.surface, borderRadius: 13, padding: 16, minHeight: 104, marginBottom: 16, borderWidth: 1, borderColor: isDark ? tc.border : '#E5E7E5' },
+  avatar: { width: 62, height: 62, borderRadius: 31, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 0 },
+  avatarText: { fontSize: 21, fontWeight: '700', color: '#fff' },
+  name: { fontSize: 19, fontWeight: '700', color: tc.text },
+  email: { flexShrink: 1, fontSize: 13, color: tc.textSecondary },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12 },
   location: { fontSize: 13, color: tc.textMuted },
-  editProfileBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: tc.border, borderRadius: radius.full, paddingHorizontal: 16, paddingVertical: 7 },
-  editProfileText: { fontSize: 13, color: colors.primary, fontWeight: '500' },
-  clinicCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF', borderRadius: radius.md, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: isDark ? '#2563EB' : '#BFDBFE' },
+  editProfileBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: tc.border, backgroundColor: '#005638', borderRadius: 7, paddingHorizontal: 10, paddingVertical: 10 },
+  editProfileText: { fontSize: 12, color: '#FFFFFF', fontWeight: '700' },
+  clinicCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: tc.surface, borderRadius: radius.md, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: isDark ? tc.border : '#E5E7E5' },
   clinicLabel: { fontSize: 12, color: isDark ? '#D2E5DC' : '#087A70' },
-  clinicName: { fontSize: 14, fontWeight: '600', color: isDark ? '#BFDBFE' : '#1E40AF' },
+  clinicName: { fontSize: 15, fontWeight: '600', color: tc.text },
   changeText: { fontSize: 13, color: colors.primary, fontWeight: '500' },
-  sectionTitle: { fontSize: 13, fontWeight: '600', color: tc.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: isDark ? tc.text : '#005638', marginBottom: 6, marginLeft: 4 },
   menuCard: { backgroundColor: tc.surface, borderRadius: radius.lg, marginBottom: 16, borderWidth: 1, borderColor: tc.border, overflow: 'hidden' },
-  menuItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: tc.border },
-  menuIcon: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 11, minHeight: 48, borderBottomWidth: 1, borderBottomColor: tc.border },
+  menuIcon: { width: 26, height: 24, borderRadius: 0, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   menuLabel: { flex: 1, fontSize: 15, color: tc.text },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalBox: { backgroundColor: tc.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },

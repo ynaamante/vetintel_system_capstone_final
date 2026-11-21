@@ -1,10 +1,12 @@
+import { usePageState } from './usePageState.js';
+import { apiFetch as fetch } from './apiFetch.js';
 import { useCallback, useEffect, useState } from 'react';
 import { readApiResponse } from './apiResponse';
 
 export default function useOwnerMonitoring(user, enabled = true, resource = 'summary') {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = usePageState(user, `owner:${resource}:data`, null);
+  const [error, setError] = usePageState(user, `owner:${resource}:error`, '');
+  const [loading, setLoading] = usePageState(user, `owner:${resource}:loading`, true, "loading");
   const [revision, setRevision] = useState(0);
   const refresh = useCallback(() => setRevision(value => value + 1), []);
   useEffect(() => {

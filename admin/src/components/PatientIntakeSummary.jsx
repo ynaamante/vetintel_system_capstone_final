@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import PatientIntakeSummaryDialog from './PatientIntakeSummaryDialog';
 import { useEffect, useState } from 'react';
 import indicators from '../../../data/intakeScreening.json';

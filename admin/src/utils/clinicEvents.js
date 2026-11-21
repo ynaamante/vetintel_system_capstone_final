@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch.js';
 export function watchClinicEvents(user) {
   const controller=new AbortController();
   let retry;
@@ -7,7 +8,7 @@ export function watchClinicEvents(user) {
       const response=await fetch(`${api}/clinic-records/events`,{headers:{Authorization:`Bearer ${user.token}`},signal:controller.signal});
       if(!response.ok||!response.body)throw new Error('Live events unavailable');
       const reader=response.body.getReader(),decoder=new TextDecoder();let pending='';
-      while(!controller.signal.aborted){const {done,value}=await reader.read();if(done)break;pending+=decoder.decode(value,{stream:true});let end;while((end=pending.indexOf('\n\n'))>=0){const packet=pending.slice(0,end);pending=pending.slice(end+2);if(packet.startsWith('data: ')){window.dispatchEvent(new Event('vetintel:appointment-updated'));window.dispatchEvent(new Event('vetintel:billing-updated'));try { if (JSON.parse(packet.slice(6)).type === 'registration') window.dispatchEvent(new Event('vetintel:registration-updated')); } catch {}}}}
+      while(!controller.signal.aborted){const {done,value}=await reader.read();if(done)break;pending+=decoder.decode(value,{stream:true});let end;while((end=pending.indexOf('\n\n'))>=0){const packet=pending.slice(0,end);pending=pending.slice(end+2);if(packet.startsWith('data: ')){window.dispatchEvent(new Event('vetintel:appointment-updated'));window.dispatchEvent(new Event('vetintel:billing-updated'));try { if(JSON.parse(packet.slice(6)).type==='permissions') window.dispatchEvent(new Event('vetintel:permissions-updated')); if (JSON.parse(packet.slice(6)).type === 'registration') window.dispatchEvent(new Event('vetintel:registration-updated')); } catch {}}}}
     }catch(error){if(error.name==='AbortError')return;}
     if(!controller.signal.aborted)retry=window.setTimeout(connect,3000);
   };

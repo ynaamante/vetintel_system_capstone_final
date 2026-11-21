@@ -1,3 +1,5 @@
+import { usePageState } from '../../utils/usePageState.js';
+import { apiFetch as fetch } from '../../utils/apiFetch.js';
 import { useEffect, useMemo, useState } from 'react';
 import Topbar from '../../components/Topbar';
 import { Icons } from '../../icons';
@@ -9,10 +11,10 @@ function formatDate(value) {
 }
 
 export default function ClientManagementPage({ user }) {
-  const [clients, setClients] = useState([]);
+  const [clients, setClients] = usePageState(user, "pages/receptionist/ClientManagementPage.jsx:clients", []);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = usePageState(user, "pages/receptionist/ClientManagementPage.jsx:loading", true, "loading");
+  const [error, setError] = usePageState(user, "pages/receptionist/ClientManagementPage.jsx:error", null);
 
   const canView = canViewFeature(user.permissions, user.role, 'Client Management');
 
@@ -121,7 +123,7 @@ export default function ClientManagementPage({ user }) {
           ) : error ? (
             <div style={{ padding: 40, color: '#dc2626' }}>{error}</div>
           ) : (
-            <table style={s.table}>
+            <div className="owner-client-table-wrap"><table style={s.table}>
               <thead>
                 <tr>{['Client ID', 'Name', 'Email', 'Phone', 'Pets', 'Joined', 'Actions'].map((h) => <th key={h} style={s.th}>{h}</th>)}</tr>
               </thead>
@@ -157,7 +159,7 @@ export default function ClientManagementPage({ user }) {
                   ))
                 )}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       </div>

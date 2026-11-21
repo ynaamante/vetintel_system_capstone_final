@@ -1,3 +1,6 @@
+import { hasAction } from '../utils/permissionUtils';
+import { usePageState } from '../utils/usePageState.js';
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { cloneElement, useEffect, useMemo, useState } from 'react';
 import Topbar from '../components/Topbar';
 import StatusIndicator from '../components/StatusIndicator';
@@ -178,17 +181,17 @@ function Badge({ children, tone }) {
 }
 
 export default function MySchedulePage({ user }) {
-  const [appointments, setAppointments] = useState([]);
-  const [approvedRegistrations, setApprovedRegistrations] = useState([]);
+  const [appointments, setAppointments] = usePageState(user, "pages/MySchedulePage.jsx:appointments", []);
+  const [approvedRegistrations, setApprovedRegistrations] = usePageState(user, "pages/MySchedulePage.jsx:approvedRegistrations", []);
   const [registrationActivityError, setRegistrationActivityError] = useState('');
   const [isDemoSchedule, setIsDemoSchedule] = useState(false);
-  const [vaccinations, setVaccinations] = useState([]);
-  const [treatments, setTreatments] = useState([]);
-  const [inpatientStays, setInpatientStays] = useState([]);
-  const [treatmentPlans, setTreatmentPlans] = useState([]);
-  const [clinicDoctors, setClinicDoctors] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [vaccinations, setVaccinations] = usePageState(user, "pages/MySchedulePage.jsx:vaccinations", []);
+  const [treatments, setTreatments] = usePageState(user, "pages/MySchedulePage.jsx:treatments", []);
+  const [inpatientStays, setInpatientStays] = usePageState(user, "pages/MySchedulePage.jsx:inpatientStays", []);
+  const [treatmentPlans, setTreatmentPlans] = usePageState(user, "pages/MySchedulePage.jsx:treatmentPlans", []);
+  const [clinicDoctors, setClinicDoctors] = usePageState(user, "pages/MySchedulePage.jsx:clinicDoctors", []);
+  const [loading, setLoading] = usePageState(user, "pages/MySchedulePage.jsx:loading", true, "loading");
+  const [error, setError] = usePageState(user, "pages/MySchedulePage.jsx:error", '');
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferAppointment, setTransferAppointment] = useState(null);
   const [recordAppointment, setRecordAppointment] = useState(null);
@@ -246,7 +249,7 @@ export default function MySchedulePage({ user }) {
     const loadCatalog = async () => {
       setBillingCatalogLoading(true);
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
         const response = await fetch(`${apiUrl}/clinic-records/billing-catalog`, {
           headers: { Authorization: 'Bearer ' + user.token },
           signal: controller.signal,
@@ -271,7 +274,7 @@ export default function MySchedulePage({ user }) {
   useEffect(() => {
     if (!user?.token) return undefined;
     const controller = new AbortController();
-    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
     let refreshing = false;
     const loadRegistrations = async () => {
       if (refreshing) return;
@@ -301,7 +304,7 @@ export default function MySchedulePage({ user }) {
   useEffect(() => {
     if (!user?.token) return undefined;
     const controller = new AbortController();
-    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
     const headers = { Authorization: `Bearer ${user.token}` };
     const clinicQuery = user.clinic_id ? `?clinic_id=${encodeURIComponent(user.clinic_id)}` : '';
     const { from, to } = getScheduleRange();
@@ -390,7 +393,7 @@ export default function MySchedulePage({ user }) {
     if (!showTransferModal || !user?.token || clinicDoctors.length) return undefined;
     const controller = new AbortController();
     const apiUrl = import.meta.env.VITE_API_URL || '';
-    fetch(`${apiUrl}/users`, {
+    fetch(`${apiUrl}/clinic-records/registration-doctors`, {
       headers: { Authorization: `Bearer ${user.token}` },
       signal: controller.signal,
     }).then(async response => {
@@ -1039,10 +1042,12 @@ export default function MySchedulePage({ user }) {
         ]);
       }
       const detailPanel = (label, value) => value && <div style={styles.appointmentInfoPanel} key={label}><span style={styles.detailLabel}>{label}</span><p style={styles.notesText}>{value}</p></div>;
-      const secondaryButton = (label, onClick, variant = 'outline') => <button type="button" key={label} style={{ ...styles.appointmentSecondaryAction, ...(variant === 'danger' ? styles.appointmentDangerAction : {}) }} onClick={onClick}>{label}</button>;
+      const actionPermission = label => ({'View Record':'View Medical History','Transfer':'Reschedule Appointment','Reschedule':'Reschedule Appointment','Reschedule Appointment':'Reschedule Appointment','Start Consultation':'Create Consultation','Complete Consultation':'Edit Consultation','Schedule Follow-up':'Create Appointment','Open Treatment Plan':'View Treatment Plans','Cancel':'Cancel Appointment','Confirm Appointment':'Approve Appointment','Check In Patient':'Manage Patient Queue'})[label];
+      const allowedAction = label => !actionPermission(label) || hasAction(user.permissions,user.role,actionPermission(label));
+      const secondaryButton = (label, onClick, variant = 'outline') => allowedAction(label) && <button type="button" key={label} style={{ ...styles.appointmentSecondaryAction, ...(variant === 'danger' ? styles.appointmentDangerAction : {}) }} onClick={onClick}>{label}</button>;
       const openRecord = () => openPatientRecord(selectedAppointment);
       const transfer = () => openTransferForAppointment(selectedAppointment);
-      const primaryButton = (label, onClick, disabled = false) => <button type="button" disabled={disabled} style={{ ...styles.appointmentPrimaryAction, ...(disabled ? styles.appointmentPrimaryDisabled : {}) }} onClick={onClick}>{label}</button>;
+      const primaryButton = (label, onClick, disabled = false) => allowedAction(label) && <button type="button" disabled={disabled} style={{ ...styles.appointmentPrimaryAction, ...(disabled ? styles.appointmentPrimaryDisabled : {}) }} onClick={onClick}>{label}</button>;
       const openRelatedAppointment = () => {
         const relatedAppointment = appointments.find(item => String(item.id) === String(selectedAppointment.related_appointment_id));
         if (!relatedAppointment) {

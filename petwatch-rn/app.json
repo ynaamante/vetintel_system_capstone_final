@@ -14,7 +14,17 @@
     },
     "plugins": [
       "expo-status-bar",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose a photo for your pet profile.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "expo-sharing",
+      ["expo-location", { "locationWhenInUsePermission": "Use your location to find nearby veterinary clinics." }]
     ]
   }
 }

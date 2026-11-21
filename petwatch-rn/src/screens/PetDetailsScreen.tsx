@@ -1,5 +1,6 @@
+import AppHeader from '../components/AppHeader';
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, Modal, TextInput, Linking, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, Modal, TextInput, Linking, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
@@ -7,9 +8,8 @@ import { format, parseISO } from 'date-fns';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { ownerSharedRecordsApi } from '../services/api';
+import { ownerSharedRecordsApi, petsApi } from '../services/api';
 import { colors, spacing, radius } from '../theme/colors';
-import { mockPets, mockVaccinations, mockSymptoms, mockClinics, mockUser } from '../data/mockData';
 type SharedRecordBundle = {
   id: string;
   petName: string;
@@ -20,21 +20,41 @@ type SharedRecordBundle = {
 };
 
 export default function PetDetailsScreen({ route, navigation }: any) {
-  const { petId } = route.params;
+  const { petId } = route.params || {};
   const { colors: tc, isDark } = useTheme();
-  const { token } = useAuth();
-  const pet = mockPets.find(p => p.id === petId);
-  const vacs = mockVaccinations.filter(v => v.petId === petId);
-  const symptoms = mockSymptoms.filter(s => s.petId === petId);
-  const clinic = mockClinics.find(c => c.id === mockUser.selectedClinicId);
+  const { token, userName } = useAuth();
+  const initialPet = route.params?.pet && String(route.params.pet.id) === String(petId) ? route.params.pet : null;
+  const [pet, setPet] = useState<any>(initialPet);
+  const [loading, setLoading] = useState(!initialPet);
+  const [loadError, setLoadError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const clinic = pet?.clinic || null;
   const [showQR, setShowQR] = useState(false);
-  const [editModal, setEditModal] = useState(false);
+  const [editModal, setEditModal] = useState(route.params?.openEdit === true);
   const [sharedRecordBundles, setSharedRecordBundles] = useState<SharedRecordBundle[]>([]);
   const [sharedRecordsLoading, setSharedRecordsLoading] = useState(true);
   const [sharedRecordsError, setSharedRecordsError] = useState('');
   const [sharedRecordsRetry, setSharedRecordsRetry] = useState(0);
   const [petData, setPetData] = useState({ name: pet?.name || '', breed: pet?.breed || '', age: String(pet?.age || ''), weight: String(pet?.weight || ''), color: pet?.color || '' });
   const s = styles(tc, isDark);
+  useEffect(() => {
+    let active = true;
+    setPet(initialPet); setLoading(!initialPet); setLoadError('');
+    if (!token || petId == null) {
+      setLoading(false); setLoadError('Sign in and choose a pet from My Pets.');
+      return () => { active = false; };
+    }
+    petsApi.getById(String(petId), token).then(result => {
+      if (!result || String(result.id) !== String(petId)) throw new Error('The server returned an invalid pet profile.');
+      if (active) setPet(result);
+    }).catch(error => {
+      if (!active) return;
+      if ([401,403,404].includes(error.status)) setPet(null);
+      setLoadError(error.message || 'Unable to load this pet.');
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [petId, token, retry]);
   useEffect(() => {
     let active = true;
     if (!token || !pet?.name) {
@@ -62,50 +82,71 @@ export default function PetDetailsScreen({ route, navigation }: any) {
       });
     return () => { active = false; };
   }, [token, pet?.name, sharedRecordsRetry]);
-  if (!pet) return <SafeAreaView style={s.safe}><View style={s.center}><Text style={{ color: tc.text }}>Pet not found</Text></View></SafeAreaView>;
-  const upcomingVacs = vacs.filter(v => v.status === 'upcoming');
-  const qrData = JSON.stringify({ name: pet.name, species: pet.species, breed: pet.breed, owner: mockUser.name, phone: mockUser.phone, clinic: clinic?.name });
+  if (!pet) return <SafeAreaView style={s.safe}>
+    <AppHeader title="Pet Profile" />
+    <View style={s.center}>{loading ? <><ActivityIndicator color={colors.primary} /><Text style={{ color: tc.textSecondary, marginTop: 12 }}>Loading pet profile…</Text></> : <>
+      <Text accessibilityRole="alert" style={{ color: tc.text, textAlign: 'center', margin: 20 }}>{loadError || 'This pet was not found in your account.'}</Text>
+      <TouchableOpacity onPress={() => setRetry(value => value + 1)}><Text style={{ color: colors.primary }}>Try again</Text></TouchableOpacity>
+    </>}</View>
+  </SafeAreaView>;
+  const qrData = JSON.stringify({ name: pet.name, species: pet.species, breed: pet.breed, owner: userName, clinic: clinic?.name });
+  const openEdit = () => {
+    setPetData({ name: pet.name || '', breed: pet.breed || '', age: String(pet.age ?? ''), weight: String(pet.weight ?? ''), color: pet.color || '' });
+    setEditModal(true);
+  };
+  const save = async () => {
+    if (!token || saving) return;
+    setSaving(true);
+    try {
+      const updated = await petsApi.update(String(petId), petData, token);
+      setPet(updated); setEditModal(false);
+      Toast.show({ type: 'success', text1: 'Profile updated!' });
+      if (route.params?.openEdit) navigation.goBack();
+    } catch (error: any) { Toast.show({ type: 'error', text1: 'Could not update profile', text2: error.message }); }
+    finally { setSaving(false); }
+  };
   const DOG = 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=300&q=80';
   const CAT = 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=300&q=80';
 
   return (
     <SafeAreaView style={s.safe}>
-      <View style={s.nav}><TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><Ionicons name="arrow-back" size={22} color={tc.text} /></TouchableOpacity><Text style={s.navTitle}>Pet Profile</Text><View style={{ width: 40 }} /></View>
+      <AppHeader title="Pet Profile" />
       <ScrollView contentContainerStyle={s.container}>
-        <TouchableOpacity style={s.emergencyBtn} onPress={() => clinic ? Linking.openURL(`tel:${clinic.phone}`) : Alert.alert('No clinic selected')}>
+        {clinic?.phone && <TouchableOpacity style={s.emergencyBtn} onPress={() => Linking.openURL(`tel:${clinic.phone}`)}>
           <Ionicons name="call" size={20} color="#fff" /><Text style={s.emergencyBtnText}>Emergency: Call {clinic?.name || 'Vet Clinic'}</Text>
-        </TouchableOpacity>
+        </TouchableOpacity>}
+        {!!loadError && <View style={{ marginBottom: 12 }}><Text accessibilityRole="alert" style={{ color: colors.danger }}>{loadError}</Text><TouchableOpacity onPress={() => setRetry(value => value + 1)}><Text style={{ color: colors.primary }}>Try again</Text></TouchableOpacity></View>}
         <View style={s.profileCard}>
           <View style={{ flexDirection: 'row', gap: 14, marginBottom: 14 }}>
-            <Image source={{ uri: pet.species === 'dog' ? DOG : CAT }} style={s.petImg} />
+            <Image source={{ uri: pet.photo_url || (pet.species === 'dog' ? DOG : CAT) }} style={s.petImg} />
             <View style={{ flex: 1 }}>
               <Text style={s.petName}>{pet.name}</Text>
               <View style={s.speciesBadge}><Text style={s.speciesText}>{pet.species}</Text></View>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                {[['Breed', pet.breed], ['Age', `${pet.age} yrs`], ['Weight', `${pet.weight} kg`], ['Color', pet.color]].map(([k, v]) => (
+                {[['Breed', pet.breed || 'Not recorded'], ['Age', pet.age ? `${pet.age} yrs` : 'Not recorded'], ['Weight', pet.weight != null ? `${pet.weight} kg` : 'Not recorded'], ['Color', pet.color || 'Not recorded']].map(([k, v]) => (
                   <View key={k} style={{ width: '50%', marginBottom: 6 }}><Text style={s.infoLabel}>{k}</Text><Text style={s.infoVal}>{v}</Text></View>
                 ))}
               </View>
             </View>
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity style={s.outlineBtn} onPress={() => setEditModal(true)}><Ionicons name="create-outline" size={16} color={tc.text} /><Text style={s.outlineBtnText}>Edit</Text></TouchableOpacity>
+            <TouchableOpacity style={s.outlineBtn} onPress={openEdit}><Ionicons name="create-outline" size={16} color={tc.text} /><Text style={s.outlineBtnText}>Edit</Text></TouchableOpacity>
             <TouchableOpacity style={s.outlineBtn} onPress={() => setShowQR(true)}><Ionicons name="qr-code-outline" size={16} color={tc.text} /><Text style={s.outlineBtnText}>QR Code</Text></TouchableOpacity>
           </View>
         </View>
         {pet.nextDewormingDate && (
           <View style={s.dewormCard}><View style={s.dewormIcon}><Ionicons name="medical-outline" size={20} color={colors.secondary} /></View><View style={{ flex: 1 }}><Text style={s.dewormTitle}>Deworming Schedule</Text><Text style={s.dewormSub}>Next: {format(parseISO(pet.nextDewormingDate), 'MMMM dd, yyyy')}</Text></View></View>
         )}
-        <TouchableOpacity style={s.reportBanner} onPress={() => navigation.navigate('HealthReport', { petId })}>
+        <TouchableOpacity style={s.reportBanner} onPress={() => navigation.navigate('HealthReport', { petId, pet })}>
           <View style={s.reportIcon}><Ionicons name="document-text" size={24} color="#fff" /></View>
           <View style={{ flex: 1 }}><Text style={s.reportTitle}>Send Health Report to Vet</Text><Text style={s.reportSub}>Share medical history with {clinic?.name || 'your vet'}</Text></View>
           <Ionicons name="chevron-forward" size={20} color="#fff" />
         </TouchableOpacity>
         <View style={s.quickGrid}>
-          {[{ icon: 'alert-circle-outline', label: 'Report Symptoms', c: colors.warning, route: 'ReportSymptoms', p: { petId } },
-            { icon: 'medical-outline', label: 'Vaccinations', c: colors.primary, route: 'Vaccinations', p: { petId } },
-            { icon: 'pulse-outline', label: 'Health History', c: colors.success, route: 'HealthHistory', p: { petId } },
-            { icon: 'calendar-outline', label: 'Appointments', c: colors.secondary, route: 'Appointments', p: undefined }].map(item => (
+          {[{ icon: 'alert-circle-outline', label: 'Report Symptoms', c: colors.warning, route: 'ReportSymptoms', p: { petId, pet } },
+            { icon: 'medical-outline', label: 'Vaccinations', c: colors.primary, route: 'Vaccinations', p: { petId, pet } },
+            { icon: 'pulse-outline', label: 'Health History', c: colors.success, route: 'HealthHistory', p: { petId, pet } },
+            { icon: 'calendar-outline', label: 'Appointments', c: colors.secondary, route: 'Main', p: { screen: 'Appointments' } }].map(item => (
             <TouchableOpacity key={item.label} style={s.quickCard} onPress={() => navigation.navigate(item.route, item.p)} activeOpacity={0.7}>
               <Ionicons name={item.icon as any} size={28} color={item.c} /><Text style={s.quickLabel}>{item.label}</Text>
             </TouchableOpacity>
@@ -150,40 +191,14 @@ export default function PetDetailsScreen({ route, navigation }: any) {
             <Text style={s.sharedRecordsHint}>Your clinic has not shared any records for {pet.name} yet.</Text>
           )}
         </View>
-        {upcomingVacs.length > 0 && (
-          <View style={s.section}>
-            <View style={s.sectionHeader}><Text style={s.sectionTitle}>Upcoming Vaccinations</Text><TouchableOpacity onPress={() => navigation.navigate('Vaccinations', { petId })}><Text style={s.seeAll}>View All</Text></TouchableOpacity></View>
-            {upcomingVacs.map(v => (
-              <View key={v.id} style={s.vacRow}><Ionicons name="medical" size={18} color={colors.warning} /><View style={{ flex: 1, marginLeft: 10 }}><Text style={s.vacName}>{v.vaccine}</Text><Text style={s.vacDate}>Due: {format(parseISO(v.nextDue), 'MMM dd, yyyy')}</Text></View></View>
-            ))}
-          </View>
-        )}
-        {symptoms.length > 0 && (
-          <View style={s.section}>
-            <View style={s.sectionHeader}><Text style={s.sectionTitle}>Recent Symptoms</Text><TouchableOpacity onPress={() => navigation.navigate('HealthHistory', { petId })}><Text style={s.seeAll}>View All</Text></TouchableOpacity></View>
-            {symptoms.slice(0, 3).map(sym => {
-              const rc = sym.riskLevel === 'high' ? { bg: '#FEF2F2', border: '#FECACA', badge: colors.danger } : sym.riskLevel === 'moderate' ? { bg: '#FFF7ED', border: '#FED7AA', badge: colors.warning } : { bg: '#EFF6FF', border: '#BFDBFE', badge: colors.primary };
-              return (
-                <View key={sym.id} style={[s.symRow, { backgroundColor: rc.bg, borderColor: rc.border }]}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <Text style={s.symSymptoms}>{sym.symptoms.join(', ')}</Text>
-                    <View style={[s.badge, { backgroundColor: rc.badge }]}><Text style={s.badgeText}>{sym.riskLevel}</Text></View>
-                  </View>
-                  <Text style={s.symDesc}>{sym.description}</Text>
-                  <Text style={s.symDate}>{format(parseISO(sym.date), 'MMM dd, yyyy')}</Text>
-                </View>
-              );
-            })}
-          </View>
-        )}
       </ScrollView>
       <Modal visible={showQR} transparent animationType="fade">
         <View style={s.modalOverlay}>
           <View style={s.qrBox}>
             <Text style={s.modalTitle}>{pet.name}'s QR Code</Text>
-            <Text style={s.modalSub}>Scan to view vaccination and medical history</Text>
+            <Text style={s.modalSub}>Basic pet and owner information</Text>
             <View style={s.qrWrap}><QRCode value={qrData} size={200} /></View>
-            <Text style={s.qrName}>{pet.name}</Text><Text style={s.qrBreed}>{pet.breed}</Text><Text style={s.qrOwner}>Owner: {mockUser.name}</Text>
+            <Text style={s.qrName}>{pet.name}</Text><Text style={s.qrBreed}>{pet.breed}</Text><Text style={s.qrOwner}>Owner: {userName}</Text>
             <TouchableOpacity style={s.primaryBtn} onPress={() => setShowQR(false)}><Text style={s.primaryBtnText}>Close</Text></TouchableOpacity>
           </View>
         </View>
@@ -196,13 +211,13 @@ export default function PetDetailsScreen({ route, navigation }: any) {
               {[['Name', 'name'], ['Breed', 'breed'], ['Age (years)', 'age'], ['Weight (kg)', 'weight'], ['Color', 'color']].map(([label, key]) => (
                 <View key={key} style={{ marginBottom: 14 }}>
                   <Text style={s.label}>{label}</Text>
-                  <TextInput style={s.input} value={(petData as any)[key]} onChangeText={v => setPetData(p => ({ ...p, [key]: v }))} placeholderTextColor={tc.textMuted} />
+                  <TextInput accessibilityLabel={label} style={s.input} value={(petData as any)[key]} onChangeText={v => setPetData(p => ({ ...p, [key]: v }))} placeholderTextColor={tc.textMuted} />
                 </View>
               ))}
             </ScrollView>
             <View style={s.modalBtns}>
               <TouchableOpacity style={s.outlineBtn} onPress={() => setEditModal(false)}><Text style={s.outlineBtnText}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={s.primaryBtn} onPress={() => { Toast.show({ type: 'success', text1: 'Profile updated!' }); setEditModal(false); }}><Text style={s.primaryBtnText}>Save</Text></TouchableOpacity>
+              <TouchableOpacity style={s.primaryBtn} disabled={saving} onPress={save}>{saving ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>Save</Text>}</TouchableOpacity>
             </View>
           </View>
         </View>

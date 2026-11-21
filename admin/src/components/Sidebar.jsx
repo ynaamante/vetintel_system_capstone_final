@@ -1,37 +1,44 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { Icons } from '../icons';
+import {useEffect,useState} from 'react';
+import {useSurveillanceRefresh} from '../utils/useSurveillanceRefresh';
 import { canViewFeature } from '../utils/permissionUtils';
 
 // All available features organized by section
 const ALL_NAV_ITEMS = [
   // Disease Intelligence
   { id: 'dashboard', label: 'Dashboard',              icon: 'grid',     section: 'Disease Intelligence', checkPermission: 'Intelligence Dashboard' },
-  { id: 'disease',   label: 'Disease Monitoring',     icon: 'activity', dot: true },
-  { id: 'risk',      label: 'Risk Monitoring',         icon: 'shield'   },
-  { id: 'reports',   label: 'Reports',                icon: 'file'     },
+  { id: 'disease',   label: 'Disease Monitoring',     icon: 'activity', section: 'Disease Intelligence', dot: true },
+  { id: 'risk',      label: 'Risk Monitoring',        icon: 'shield',   section: 'Disease Intelligence' },
+  { id: 'reports',   label: 'Reports',                icon: 'file',     section: 'Disease Intelligence' },
   // Clinic Management
   { id: 'clinics',   label: 'Clinic Overview',         icon: 'building', section: 'Clinic Management' },
-  { id: 'users',     label: 'User Management',         icon: 'users',   checkPermission: 'User & Role Management' },
-  { id: 'roles',     label: 'Roles & Permissions',     icon: 'lock',    checkPermission: 'User & Role Management' },
-  { id: 'financial', label: 'Financial Monitoring',   icon: 'dollar'   },
-  { id: 'services',  label: 'Services Management',    icon: 'settings', ownerOnly: true },
-  { id: 'client-mgmt', label: 'Client Management', icon: 'users' },
-  { id: 'audit',     label: 'Audit Trail',            icon: 'list'     },
+  { id: 'users',     label: 'User Management',         icon: 'users',   section: 'Clinic Management', checkPermission: 'User & Role Management' },
+  { id: 'roles',     label: 'Roles & Permissions',     icon: 'lock',    section: 'Clinic Management', checkPermission: 'Roles & Permissions' },
+  { id: 'financial', label: 'Financial Monitoring',   icon: 'dollar',  section: 'Clinic Management' },
+  { id: 'services',  label: 'Services Management',    icon: 'settings', section: 'Clinic Management', ownerOnly: true },
+  { id: 'client-mgmt', label: 'Client Management', icon: 'users', section: 'Clinic Management' },
+  { id: 'audit',     label: 'Audit Trail',            icon: 'list',    section: 'Clinic Management' },
   // Clinic Records
   { id: 'schedule',  label: 'My Schedule',             icon: 'calendar', section: 'Clinical Records', doctorOnly: true },
-  { id: 'patient-intakes', label: 'Patient Intakes',   icon: 'clipboard', doctorOnly: true },
-  { id: 'clinic',    label: 'Local Clinic Records',   icon: 'building', checkPermission: 'Pet Profiles' },
-  { id: 'patient-records', label: 'Patient Records',   icon: 'file', doctorOnly: true },
-  { id: 'reminders', label: 'Due Dates & Reminders', icon: 'bell', doctorOnly: true },
+  { id: 'patient-intakes', label: 'Patient Intakes',   icon: 'clipboard', section: 'Clinical Records', doctorOnly: true },
+  { id: 'clinic',    label: 'Local Clinic Records',   icon: 'building', section: 'Clinical Records', checkPermission: 'Local Clinic Records' },
+  { id: 'patient-records', label: 'Patient Records',   icon: 'file', section: 'Clinical Records', doctorOnly: true },
+  { id: 'reminders', label: 'Due Dates & Reminders', icon: 'bell', section: 'Clinical Records', doctorOnly: true },
   // Operations
   { id: 'patient-registration', label: 'New Patient Registration', icon: 'clipboard', section: 'Operations', receptionistOnly: true },
-  { id: 'appointments', label: 'Appointment Management', icon: 'calendar', receptionistOnly: true },
-  { id: 'patient-queue', label: 'Patient Queue', icon: 'users', receptionistOnly: true },
-  { id: 'billing', label: 'Billing & Payments', icon: 'dollar', receptionistOnly: true },
+  { id: 'appointments', label: 'Appointment Management', icon: 'calendar', section: 'Operations', receptionistOnly: true },
+  { id: 'patient-queue', label: 'Patient Queue', icon: 'users', section: 'Operations', receptionistOnly: true },
+  { id: 'billing', label: 'Billing & Payments', icon: 'dollar', section: 'Operations', receptionistOnly: true },
 ];
 
 const isDoctorRole = role => ['doctor', 'assistant_doctor', 'veterinarian'].includes(String(role || '').trim().toLowerCase().replace(/[-\s]+/g, '_'));
 
 export default function Sidebar({ active, setPage, user, onLogout, collapsed = false, onNavigate }) {
+  const [networkAlertCount,setNetworkAlertCount]=useState(0);
+  const surveillanceRevision=useSurveillanceRefresh();
+  const canMonitor=canViewFeature(user.permissions,user.role,'Disease Monitoring');
+  useEffect(()=>{if(!canMonitor||!user.token)return;const controller=new AbortController();const api=(import.meta.env.VITE_API_URL||'http://localhost:3000/api').replace(/\/+$/,'');fetch(`${api}/disease-intelligence/monitoring?days=30`,{headers:{Authorization:`Bearer ${user.token}`},signal:controller.signal}).then(async response=>{if(!response.ok)throw new Error('Unable to load alert count');return response.json();}).then(data=>setNetworkAlertCount(data.active_alerts||0)).catch(()=>{if(!controller.signal.aborted)setNetworkAlertCount(0);});return()=>controller.abort();},[user.token,user.clinic_id,canMonitor,surveillanceRevision]);
   const rawRole = String(user.role || '').trim().toLowerCase();
   const roleName = rawRole.replace(/[-\s]+/g, '_');
 
@@ -39,17 +46,20 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
 
   const canAccessPage = (item) => {
     if (roleName === 'super_admin') return true;
-    if (item.receptionistOnly && roleName !== 'receptionist') return false;
-    if (item.doctorOnly) return isDoctorRole(user.role);
-    if (item.ownerOnly && roleName === 'owner') return true;
-    if (item.sharedInbox && ['owner', 'doctor', 'receptionist'].includes(roleName)) return true;
-    // Use custom checkPermission field if specified, otherwise use label
+    if(item.receptionistOnly && roleName!=='receptionist') return false;
+    if(item.doctorOnly && !isDoctorRole(user.role)) return false;
     const featureName = item.checkPermission || item.label;
     return canViewFeature(permissions, user.role, featureName);
   };
 
   // Filter navigation items ONLY by permissions, not by role title
   const NAV = ALL_NAV_ITEMS.filter((item) => canAccessPage(item));
+  const groupedNav = NAV.reduce((groups, item) => {
+    const key = item.section || '__general__';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(item);
+    return groups;
+  }, {});
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 900;
   const navigate = (page) => {
     setPage(page);
@@ -103,28 +113,34 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
         </div>
       )}
 
-      {NAV.map(item => (
-        <div key={item.id} className={item.id === 'schedule' ? 'sidebar-clinical-section' : undefined}>
-          {item.section && !collapsed && <div className={`sidebar-section${item.section === 'Clinic Management' ? ' sidebar-section-clinic-management' : ''}`} style={s.section}>{item.section}</div>}
-          <div
-            className={`sidebar-nav-item${(active === item.id || (item.id === 'services' && active === 'inventory')) ? ' active' : ''}`}
-            style={{ ...s.item, ...(collapsed ? s.itemCollapsed : {}), ...((active === item.id || (item.id === 'services' && active === 'inventory')) ? s.itemActive : {}) }}
-            onClick={() => navigate(item.id)}
-            title={collapsed ? item.label : undefined}
-          >
-            <span className={`sidebar-icon${item.dot ? ' sidebar-alert-icon' : ''}`} style={{ ...s.icon, ...(collapsed ? s.iconCollapsed : {}) }}>
-              {Icons[item.icon]}
-              {item.dot && collapsed && <span style={s.collapsedAlertDot} />}
-            </span>
-            {!collapsed && <span>{item.label}</span>}
-            {item.dot && <span className="sidebar-alert-count" style={collapsed ? s.collapsedAlertCount : s.alertCount}>2 alerts</span>}
-          </div>
+      {Object.entries(groupedNav).map(([sectionKey, sectionItems]) => (
+        <div key={sectionKey}>
+          {sectionKey !== '__general__' && !collapsed && (
+            <div className={`sidebar-section${sectionKey === 'Clinic Management' ? ' sidebar-section-clinic-management' : ''}`} style={s.section}>{sectionKey}</div>
+          )}
+          {sectionItems.map(item => (
+            <div key={item.id} className={item.id === 'schedule' ? 'sidebar-clinical-section' : undefined}>
+              <div
+                className={`sidebar-nav-item${(active === item.id || (item.id === 'services' && active === 'inventory')) ? ' active' : ''}`}
+                style={{ ...s.item, ...(collapsed ? s.itemCollapsed : {}), ...((active === item.id || (item.id === 'services' && active === 'inventory')) ? s.itemActive : {}) }}
+                onClick={() => navigate(item.id)}
+                title={collapsed ? item.label : undefined}
+              >
+                <span className={`sidebar-icon${item.dot ? ' sidebar-alert-icon' : ''}`} style={{ ...s.icon, ...(collapsed ? s.iconCollapsed : {}) }}>
+                  {Icons[item.icon]}
+                  {item.dot && collapsed && <span style={s.collapsedAlertDot} />}
+                </span>
+                {!collapsed && <span>{item.label}</span>}
+                {item.dot && networkAlertCount>0 && <span className="sidebar-alert-count" style={collapsed ? s.collapsedAlertCount : s.alertCount}>{networkAlertCount} alerts</span>}
+              </div>
+            </div>
+          ))}
         </div>
       ))}
 
       <div style={{ flex: 1 }} />
 
-      {['owner', 'doctor', 'receptionist'].includes(roleName) && (
+      {canViewFeature(permissions,user.role,'Shared Inbox') && (
         <div
           className={`sidebar-nav-item sidebar-inbox-item${active === 'inbox' ? ' active' : ''}`}
           style={{ ...s.item, ...(collapsed ? s.itemCollapsed : {}), ...(roleName === 'owner' ? s.inboxOwnerItem : s.inboxItem), ...(active === 'inbox' ? s.itemActive : {}) }}
@@ -173,43 +189,43 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
 }
 
 const s = {
-  sidebar:    { width: 264, minHeight: '100vh', background: '#004f43', display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto', padding: '0 13px', color: '#fff', position: 'relative', isolation: 'isolate' },
+  sidebar:    { width: 264, minHeight: '100vh', background: '#0b3a36', display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto', padding: '0 14px', color: '#edf9f5', position: 'relative', isolation: 'isolate', boxShadow: 'inset -1px 0 0 rgba(255,255,255,.06)' },
   sidebarCollapsed: { width: 66, padding: '0 6px' },
   mobileSidebar: { position: 'fixed', top: 0, bottom: 0, left: 0, zIndex: 1000, transition: 'transform .2s ease' },
   mobileSidebarOpen: { width: 264, boxShadow: '8px 0 24px rgba(6,72,56,.25)' },
   backdrop: { position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(15,23,42,.42)' },
-  brand:      { padding: 0, fontFamily: "'DM Sans', sans-serif", fontSize: '1.1rem', fontWeight: 700, color: '#fff', letterSpacing: '-.01em', lineHeight: 1, whiteSpace: 'nowrap' },
+  brand:      { padding: 0, fontFamily: "'DM Sans', sans-serif", fontSize: '1.2rem', fontWeight: 700, color: '#edf9f5', letterSpacing: '-.02em', lineHeight: 1, whiteSpace: 'nowrap' },
   brandCollapsed: { fontSize: '1rem', letterSpacing: 0 },
-  brandRow:   { display: 'flex', alignItems: 'center', gap: 10, minHeight: 70, padding: '10px 10px' },
-  brandRowCollapsed: { justifyContent: 'center', gap: 0, minHeight: 98, padding: '14px 0 20px', marginBottom: 1, borderBottom: '1px solid rgba(255,255,255,.2)' },
+  brandRow:   { display: 'flex', alignItems: 'center', gap: 10, minHeight: 68, padding: '10px 8px 10px 4px' },
+  brandRowCollapsed: { justifyContent: 'center', gap: 0, minHeight: 98, padding: '14px 0 20px', marginBottom: 1, borderBottom: '1px solid rgba(255,255,255,.12)' },
   brandToggle: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, padding: 0, border: 0, borderRadius: 10, background: 'transparent', cursor: 'pointer' },
   brandIcon: { width: 40, height: 40, borderRadius: 10, background: 'transparent', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, flexShrink: 0 },
   brandIconCollapsed: { width: 34, height: 34, borderRadius: 9, padding: 8 },
-  menuButton: { width: 26, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: 7, background: 'transparent', color: '#fff', cursor: 'pointer', marginLeft: 'auto' },
-  clinicCard: { minHeight: 54, padding: '8px 10px', marginBottom: 4, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, overflow: 'hidden' },
-  clinicName: { color: '#fff', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  clinicMeta: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, color: 'rgba(255,255,255,.94)', fontSize: 12, whiteSpace: 'nowrap' },
-  status:     { display: 'inline-flex', alignItems: 'center', gap: 5, color: '#eafff6', fontSize: 12 },
-  statusDot:  { width: 8, height: 8, borderRadius: '50%', background: '#55e595', boxShadow: '0 0 0 3px rgba(85,229,149,.18)', flexShrink: 0 },
-  section:    { padding: '13px 10px 5px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.95)', letterSpacing: '.08em', textTransform: 'uppercase' },
-  item:       { display: 'flex', alignItems: 'center', gap: 12, minHeight: 42, padding: '9px 11px', margin: '1px 0', borderRadius: 11, color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', position: 'relative', whiteSpace: 'nowrap', transition: 'background .15s ease, color .15s ease, transform .15s ease' },
+  menuButton: { width: 26, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: 7, background: 'transparent', color: '#dffaf3', cursor: 'pointer', marginLeft: 'auto' },
+  clinicCard: { minHeight: 52, padding: '2px 4px 8px', marginBottom: 8, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, overflow: 'hidden' },
+  clinicName: { color: '#fff', fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4 },
+  clinicMeta: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, color: 'rgba(255,255,255,.82)', fontSize: 12, whiteSpace: 'nowrap' },
+  status:     { display: 'inline-flex', alignItems: 'center', gap: 5, color: '#dffaf3', fontSize: 12 },
+  statusDot:  { width: 8, height: 8, borderRadius: '50%', background: '#53d38d', boxShadow: '0 0 0 3px rgba(83,211,141,.18)', flexShrink: 0 },
+  section:    { padding: '14px 4px 8px', marginTop: 2, fontSize: 11, fontWeight: 700, color: 'rgba(220,245,239,.82)', letterSpacing: '.12em', textTransform: 'uppercase' },
+  item:       { display: 'flex', alignItems: 'center', gap: 12, minHeight: 42, padding: '9px 10px', margin: '4px 0', borderRadius: 10, color: '#ebf9f5', fontSize: 15, fontWeight: 500, cursor: 'pointer', position: 'relative', whiteSpace: 'nowrap', transition: 'background .15s ease, color .15s ease, transform .15s ease', border: '1px solid transparent' },
   itemCollapsed: { justifyContent: 'center', gap: 0, minHeight: 41, padding: 6, margin: '0 0 0' },
-  itemActive: { background: '#0a966b', color: '#fff', boxShadow: 'none', fontWeight: 700 },
-  inboxItem: { margin: '0 0 8px', color: '#fff' },
-  inboxOwnerItem: { margin: '16px 0 8px', color: '#fff' },
-  inboxCount: { marginLeft: 'auto', minWidth: 21, height: 21, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 11, background: '#f45128', color: '#fff', fontSize: 11, fontWeight: 700 },
-  icon:       { width: 18, height: 18, flexShrink: 0, display: 'flex', alignItems: 'center', opacity: 1 },
+  itemActive: { background: '#1c8a76', color: '#f0fffb', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.06)', fontWeight: 700 },
+  inboxItem: { margin: '8px 0 0', color: '#ebf9f5' },
+  inboxOwnerItem: { margin: '12px 0 0', color: '#ebf9f5' },
+  inboxCount: { marginLeft: 'auto', minWidth: 21, height: 21, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 11, background: '#eef7f2', color: '#236b5b', fontSize: 11, fontWeight: 700 },
+  icon:       { width: 18, height: 18, flexShrink: 0, display: 'flex', alignItems: 'center', opacity: 1, color: '#effaf5' },
   iconCollapsed: { width: 20, height: 20, justifyContent: 'center' },
-  alertCount: { marginLeft: 'auto', padding: '2px 7px', borderRadius: 12, background: '#fff', color: '#bd3e1f', fontSize: 11, fontWeight: 700, lineHeight: 1.5 },
-  collapsedAlertCount: { position: 'absolute', zIndex: 1, top: -10, left: '50%', transform: 'translateX(-50%)', padding: '1px 4px', borderRadius: 8, background: '#fff', color: '#bd3e1f', fontSize: 7, fontWeight: 700, lineHeight: 1.3, whiteSpace: 'nowrap' },
+  alertCount: { marginLeft: 'auto', padding: '2px 8px', borderRadius: 12, background: '#ecf9f5', color: '#265f52', fontSize: 11, fontWeight: 700, lineHeight: 1.5 },
+  collapsedAlertCount: { position: 'absolute', zIndex: 1, top: -10, left: '50%', transform: 'translateX(-50%)', padding: '1px 4px', borderRadius: 8, background: '#ecf9f5', color: '#265f52', fontSize: 7, fontWeight: 700, lineHeight: 1.3, whiteSpace: 'nowrap' },
   collapsedAlertDot: { display: 'none' },
-  collapsedInboxCount: { position: 'absolute', top: -4, right: -5, minWidth: 12, height: 12, padding: '0 2px', borderRadius: 7, background: '#f45128', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, lineHeight: 1 },
-  userBox:    { minHeight: 56, padding: '7px 8px', marginBottom: 11, display: 'flex', alignItems: 'center', gap: 10, borderRadius: 10, background: 'rgba(255,255,255,.12)' },
-  avatar: { width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 },
+  collapsedInboxCount: { position: 'absolute', top: -4, right: -5, minWidth: 12, height: 12, padding: '0 2px', borderRadius: 7, background: '#ecf9f5', color: '#265f52', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, lineHeight: 1 },
+  userBox:    { minHeight: 56, padding: '8px 8px', margin: '10px 0 12px', display: 'flex', alignItems: 'center', gap: 10, borderRadius: 10, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.08)' },
+  avatar: { width: 38, height: 38, borderRadius: '50%', background: '#edf9f5', color: '#0b3a36', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 },
   userDetails: { minWidth: 0, flex: 1 },
   userName:   { width: 'fit-content', maxWidth: '100%', fontSize: 13, color: '#fff', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  userRole:   { fontSize: 12, color: 'rgba(255,255,255,.85)', marginTop: 1 },
-  actions:    { padding: '6px 0 8px', borderTop: '1px solid rgba(255,255,255,.25)' },
-  action:     { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 11px', borderRadius: 8, color: '#fff', fontSize: 13, cursor: 'pointer', transition: 'background .15s ease, color .15s ease' },
-  logoutButton: { width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', borderRadius: 6, flexShrink: 0 },
+  userRole:   { fontSize: 12, color: 'rgba(255,255,255,.8)', marginTop: 1, textTransform: 'lowercase' },
+  actions:    { padding: '6px 0 8px', borderTop: '1px solid rgba(255,255,255,.12)' },
+  action:     { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 11px', borderRadius: 8, color: '#edf9f5', fontSize: 14, cursor: 'pointer', transition: 'background .15s ease, color .15s ease' },
+  logoutButton: { width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#edf9f5', borderRadius: 8, border: '1px solid rgba(255,255,255,.12)', flexShrink: 0, background: 'rgba(255,255,255,.03)' },
 };

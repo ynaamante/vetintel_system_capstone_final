@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useRef, useState } from 'react';
 import StatusIndicator from './StatusIndicator';
 import { Icons } from '../icons';

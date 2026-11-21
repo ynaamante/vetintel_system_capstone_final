@@ -1,3 +1,5 @@
+import { usePageState } from '../../utils/usePageState.js';
+import { apiFetch as fetch } from '../../utils/apiFetch.js';
 import ReminderDetailsModal from './ReminderDetailsModal';
 import FilterSelect from '../../components/FilterSelect';
 import { reminderFilterOptions } from '../../utils/reminderFilterOptions';
@@ -51,22 +53,22 @@ function dateDistance(value) {
 }
 
 export default function RemindersPage({ user, onNavigate }) {
-  const [reminders, setReminders] = useState([]);
+  const [reminders, setReminders] = usePageState(user, "pages/receptionist/RemindersPage.jsx:reminders", []);
   const [activeView, setActiveView] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [doctorFilter, setDoctorFilter] = useState('all');
-  const [appointmentFilter, setAppointmentFilter] = useState('all');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [search, setSearch] = usePageState(user, "pages/receptionist/RemindersPage.jsx:search", '');
+  const [doctorFilter, setDoctorFilter] = usePageState(user, "pages/receptionist/RemindersPage.jsx:doctorFilter", 'all');
+  const [appointmentFilter, setAppointmentFilter] = usePageState(user, "pages/receptionist/RemindersPage.jsx:appointmentFilter", 'all');
+  const [fromDate, setFromDate] = usePageState(user, "pages/receptionist/RemindersPage.jsx:fromDate", '');
+  const [toDate, setToDate] = usePageState(user, "pages/receptionist/RemindersPage.jsx:toDate", '');
   const [selectedReminderId, setSelectedReminderId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [loading, setLoading] = usePageState(user, "pages/receptionist/RemindersPage.jsx:loading", true, "loading");
+  const [error, setError] = usePageState(user, "pages/receptionist/RemindersPage.jsx:error", '');
   const [revision, setRevision] = useState(0);
-  const [filterOptions, setFilterOptions] = useState({ doctors: [], appointment_types: [] });
-  const [filterError, setFilterError] = useState('');
-  const [metadata, setMetadata] = useState({ counts: { all: 0, overdue: 0, 'due-soon': 0, upcoming: 0, completed: 0 }, filters: { doctors: [], appointment_types: [] }, total: 0 });
+  const [filterOptions, setFilterOptions] = usePageState(user, "pages/receptionist/RemindersPage.jsx:filterOptions", { doctors: [], appointment_types: [] });
+  const [filterError, setFilterError] = usePageState(user, "pages/receptionist/RemindersPage.jsx:filterError", '');
+  const [metadata, setMetadata] = usePageState(user, "pages/receptionist/RemindersPage.jsx:metadata", { counts: { all: 0, overdue: 0, 'due-soon': 0, upcoming: 0, completed: 0 }, filters: { doctors: [], appointment_types: [] }, total: 0 });
 
   const canView = canViewFeature(user.permissions, user.role, 'Due Dates & Reminders');
 
@@ -80,7 +82,7 @@ export default function RemindersPage({ user, onNavigate }) {
       const rows = await response.json(); if (!response.ok) throw new Error(rows.error || 'Unable to load reminder filter options.');
       if (!Array.isArray(rows)) throw new Error('Invalid reminder filter options response.'); return rows;
     };
-    Promise.allSettled([get('/users'), get('/clinic-records/billing-catalog'), get('/clinic-records/appointments')]).then(results => {
+    Promise.allSettled([get('/clinic-records/registration-doctors'), get('/clinic-records/billing-catalog'), get('/clinic-records/appointments')]).then(results => {
       if (controller.signal.aborted) return;
       const arrays = results.map(result => result.status === 'fulfilled' ? result.value : []);
       setFilterOptions(reminderFilterOptions(...arrays));
