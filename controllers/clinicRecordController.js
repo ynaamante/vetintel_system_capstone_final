@@ -4,6 +4,7 @@ const dns = require('dns').promises;
 const crypto = require('crypto');
 const { validateOwnerFields, validateClinicalDates, validateOverrideReason } = require('../validation');
 const { logAudit } = require('../utils/audit');
+const { has: hasPermission } = require('../utils/rolePermissions');
 const defaultClinicCatalog = require('../data/defaultClinicCatalog');
 const labTestTypes = require('../data/labTestTypes');
 const additionalClinicCatalog = require('../data/additionalClinicCatalog');
@@ -3724,9 +3725,8 @@ exports.listPayments = async (req, res, next) => {
 };
 
 exports.createInvoicePayment = async (req, res, next) => {
-  const role = String(req.user?.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-  if (!['receptionist', 'clinic_owner', 'owner', 'super_admin'].includes(role)) {
-    return res.status(403).json({ error: 'Receptionist or clinic owner access is required to process payments.' });
+  if (!hasPermission(req.user, 'Process Payment')) {
+    return res.status(403).json({ error: 'Payment processing permission is required.' });
   }
   const client = await db.pool.connect();
   try {

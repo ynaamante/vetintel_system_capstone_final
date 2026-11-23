@@ -4,7 +4,7 @@ import DateRangePopoverFields from './DateRangePopoverFields';
 import { Icons } from '../icons';
 import { getDateRangeLabel } from '../utils/dateRangePresets';
 
-export default function DateRangeFilter({ dateFrom, dateTo, onDateFromChange, onDateToChange, label = 'Filter by date', emptyLabel, className = '' }) {
+export default function DateRangeFilter({ dateFrom, dateTo, onDateFromChange, onDateToChange, label = 'Filter by date', emptyLabel, rangeLabel, className = '' }) {
   const [open, setOpen] = useState(false);
   const root = useRef(null);
   useEffect(() => {
@@ -22,7 +22,7 @@ export default function DateRangeFilter({ dateFrom, dateTo, onDateFromChange, on
   }, [open]);
   return <div className={`lab-date-range system-date-filter ${className}`.trim()} ref={root}>
     <button type="button" className="lab-date-range-trigger" aria-label={label} aria-expanded={open} onClick={() => setOpen(value => !value)}>
-      <span className="lab-date-range-calendar">{Icons.calendar}</span><span>{!dateFrom && !dateTo && emptyLabel ? emptyLabel : getDateRangeLabel(dateFrom, dateTo)}</span><span className={`lab-date-range-chevron${open ? ' open' : ''}`} aria-hidden="true" />
+      <span className="lab-date-range-calendar">{Icons.calendar}</span><span>{rangeLabel || (!dateFrom && !dateTo && emptyLabel ? emptyLabel : getDateRangeLabel(dateFrom, dateTo))}</span><span className={`lab-date-range-chevron${open ? ' open' : ''}`} aria-hidden="true" />
     </button>
     {open && <div className="lab-date-range-popover system-date-range-popover" role="group" aria-label={label}>
       <DateRangePopoverFields dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={onDateFromChange} onDateToChange={onDateToChange}
@@ -38,5 +38,6 @@ DateRangeFilter.propTypes = {
   onDateToChange: PropTypes.func.isRequired,
   label: PropTypes.string,
   emptyLabel: PropTypes.string,
+  rangeLabel: PropTypes.string,
   className: PropTypes.string,
 };

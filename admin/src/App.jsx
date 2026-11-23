@@ -34,6 +34,7 @@ import SharedInboxPage from './pages/SharedInboxPage';
 import { Icons } from './icons';
 import { canViewFeature } from './utils/permissionUtils';
 import './styles/ownerTables.css';
+import './styles/ownerPageHeaders.css';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
 import { subscribeToNotifications } from './utils/notifications';
@@ -98,14 +99,14 @@ const isDoctorRole = (role) => ['doctor', 'assistant_doctor', 'veterinarian'].in
 const getFirstAllowedPage = (permissions, role) => {
   const allPages = Object.keys(PAGE_FEATURE_MAP);
   if(isDoctorRole(role)&&canViewFeature(permissions,role,'My Schedule'))return 'schedule';
-  if(normalizeRoleName(role)==='receptionist'&&canViewFeature(permissions,role,'Appointment Management'))return 'appointments';
+  if(canViewFeature(permissions,role,'Appointment Management'))return 'appointments';
 
 
 
   for (const page of allPages) {
     const feature = PAGE_FEATURE_MAP[page];
 
-    if (feature && canViewFeature(permissions, role, feature)) {
+    if (feature && canAccessPage(page, permissions, role)) {
       return page;
     }
   }
@@ -116,8 +117,7 @@ const getFirstAllowedPage = (permissions, role) => {
 const canAccessPage = (pageKey, permissions, role) => {
   if (pageKey === 'settings') return true;
   if (pageKey === 'payment-qr-settings') return ['owner', 'clinic_owner'].includes(normalizeRoleName(role));
-  if(['patient-registration','patient-queue','appointments','billing'].includes(pageKey)&&normalizeRoleName(role)!=='receptionist')return false;
-  if(['schedule','patient-intakes','patient-records'].includes(pageKey)&&!isDoctorRole(role))return false;
+  if(['schedule','patient-intakes','patient-records','reminders'].includes(pageKey)&&!isDoctorRole(role)&&normalizeRoleName(role)!=='super_admin')return false;
   const feature = PAGE_FEATURE_MAP[pageKey];
   return feature ? canViewFeature(permissions, role, feature) : false;
 };
@@ -350,6 +350,10 @@ export default function App() {
     setPage(currentPage);
   }
 
+  const role = normalizeRoleName(user.role);
+  const ownerContent = ['owner', 'clinic_owner'].includes(role);
+  const staffContent = isDoctorRole(role) || role === 'receptionist';
+
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <GlobalSelectMenus />
@@ -364,7 +368,7 @@ export default function App() {
         }}
       />
 
-      <main key={JSON.stringify([user.token, user.id, user.clinic_id, user.role, user.permissions])} className={`admin-content ${['owner', 'clinic_owner'].includes(normalizeRoleName(user.role)) ? 'owner-content' : ''} ${page === 'inbox' ? 'inbox-content' : ''} ${page === 'clinics' ? 'owner-overview-content' : ''}`}>
+      <main key={JSON.stringify([user.token, user.id, user.clinic_id, user.role, user.permissions])} className={`admin-content ${ownerContent ? 'owner-content' : ''} ${ownerContent || staffContent ? 'themed-page-headers' : ''} ${page === 'inbox' ? 'inbox-content' : ''} ${page === 'clinics' ? 'owner-overview-content' : ''}`}>
         {page === 'dashboard' && <DashboardPage user={user} initialFilters={monitoringFilters} onFiltersChange={setMonitoringFilters} onNavigate={navigateSurveillance} />}
         {page === 'disease' && <DiseaseMonitoringPage user={user} initialFilters={monitoringFilters} onFiltersChange={setMonitoringFilters} onNavigate={navigateSurveillance} />}
         {page === 'clinic' && <ClinicLayout user={user} initialTab={clinicInitialTab} initialInvoiceId={clinicInitialInvoiceId} onNavigate={(nextPage, context) => { if (nextPage === 'patient-records') setInboxPatientRequest(context); if (nextPage === 'clinic') { setClinicInitialTab(context?.tab || 'dashboard'); setClinicInitialInvoiceId(context?.invoiceId || null); } setPage(nextPage); }} />}

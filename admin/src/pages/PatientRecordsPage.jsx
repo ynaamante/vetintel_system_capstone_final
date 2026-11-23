@@ -110,7 +110,7 @@ const styles = `
   .patient-records-page .records-topbar h2 { margin: 0 !important; color: #064b50 !important; font-size: 24px !important; font-weight: 750 !important; line-height: 1.15 !important; }
   .patient-records-page .records-topbar p { margin: 4px 0 0 !important; color: #263238 !important; font-size: 14px !important; line-height: 1.3 !important; }
   .patient-records-page .records-topbar > div:last-child { gap: 10px; }
-  .patient-records-page .records-topbar [style*="border-radius: 30px"] { background: #f3f8fa; border: 0 !important; }
+  :where(.admin-content:not(.themed-page-headers)) .patient-records-page .records-topbar .page-topbar-account { background: #f3f8fa; border: 0 !important; }
   .patient-records-page .records-topbar h2 { font-size: 22px !important; }
   .patient-records-page .records-topbar p { font-size: 13px !important; }
   .patient-records-page .records-content { padding: 12px 13px 10px; }

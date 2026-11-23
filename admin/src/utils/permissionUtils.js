@@ -3,7 +3,9 @@ export const normalizeFeatureName=feature=>String(feature||'').trim();
 export const normalizeRoleName=role=>String(role||'').trim().toLowerCase().replace(/[-\s]+/g,'_');
 export const roleProfile=role=>['owner','clinic_owner'].includes(normalizeRoleName(role))?'owner':['doctor','assistant_doctor','veterinarian'].includes(normalizeRoleName(role))?'doctor':normalizeRoleName(role);
 export const permissionAvailable=(role,item)=>catalog.receptionistOnly?.includes(item)&&!['owner','receptionist'].includes(roleProfile(role))?false:catalog.ownerDoctorOnly.includes(item)&&!['owner','doctor'].includes(roleProfile(role))?false:roleProfile(role)==='owner'?!catalog.clinicalOnly.includes(item):
-  ['doctor','receptionist'].includes(roleProfile(role))&&!catalog.ownerOnly.includes(item)&&(roleProfile(role)==='doctor'||(!catalog.clinicalOnly.includes(item)&&!catalog.receptionistExcluded.includes(item)));
+  ['doctor','receptionist'].includes(roleProfile(role))&&!catalog.ownerOnly.includes(item)&&!catalog.staffManagementExcluded.includes(item)&&
+  (normalizeRoleName(role)!=='assistant_doctor'||!catalog.assistantDoctorExcluded.includes(item))&&
+  (roleProfile(role)==='doctor'||(!catalog.clinicalOnly.includes(item)&&!catalog.receptionistExcluded.includes(item)));
 export const hasAction=(permissions,role,item)=>normalizeRoleName(role)==='super_admin'||catalog.groups.some(([group])=>permissionAvailable(role,item)&&permissions?.[group]?.[item]===true);
 const featureAction=(permissions,role,feature,action)=>{
   if(normalizeRoleName(role)==='super_admin')return true;
@@ -17,7 +19,12 @@ const featureAction=(permissions,role,feature,action)=>{
   }
   return permissions?.[normalizeFeatureName(feature)]?.[action]===true;
 };
-export const canViewFeature=(p,r,f)=>featureAction(p,r,f,'view');
+export const canViewFeature=(p,r,f)=>{
+  const pagePermission = catalog.operationsPageViews[normalizeFeatureName(f)];
+  const profile = roleProfile(r);
+  if (pagePermission && profile !== 'super_admin' && (!['doctor', 'receptionist'].includes(profile) || !hasAction(p, r, pagePermission))) return false;
+  return featureAction(p,r,f,'view');
+};
 export const canCreateFeature=(p,r,f)=>featureAction(p,r,f,'create');
 export const canEditFeature=(p,r,f)=>featureAction(p,r,f,'edit');
 export const canDeleteFeature=(p,r,f)=>featureAction(p,r,f,'delete');

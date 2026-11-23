@@ -63,6 +63,7 @@ router.post('/profile/email/verify-code', auth.required, profile.verifyEmailCode
 
 // User endpoints
 router.get('/users', auth.required, users.list);
+router.get('/users/:id', auth.required, users.getStaff);
 router.post('/users', users.create);
 router.put('/users/:id', auth.required, users.update);
 router.delete('/users/:id', auth.required, users.delete);
@@ -153,6 +154,8 @@ router.get('/disease-intelligence/monitoring-export',auth.required,require('../c
 router.put('/disease-intelligence/alert-rules',auth.required,require('../controllers/diseaseIntelligenceController').saveRule);
 router.patch('/disease-intelligence/alerts/:id/review',auth.required,require('../controllers/diseaseIntelligenceController').reviewAlert);
 router.get('/disease-intelligence/alerts/:id/history',auth.required,require('../controllers/diseaseIntelligenceController').alertHistory);
+router.get('/disease-intelligence/alerts/:id/advisory',auth.required,require('../controllers/diseaseAdvisoryController').preview);
+router.post('/disease-intelligence/alerts/:id/advisory',auth.required,require('../controllers/diseaseAdvisoryController').send);
 router.get('/clinic-records/dashboard/summary', auth.required, clinicRecords.getClinicDashboardSummary);
 router.post('/clinic-records/appointments', auth.required, clinicRecords.createAppointment);
 router.patch('/clinic-records/appointments/:id/vaccination-details', auth.required, clinicRecords.updateScheduledVaccinationAppointment);

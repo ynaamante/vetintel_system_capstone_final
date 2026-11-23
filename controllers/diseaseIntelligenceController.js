@@ -3,6 +3,7 @@ const path = require('node:path');
 const db = require('../config/db');
 const sql = fs.readFileSync(path.join(__dirname, '../scripts/confirmed_surveillance_summary.sql'), 'utf8');
 const roles = new Set(['doctor','assistant_doctor','veterinarian','owner','clinic_owner','super_admin']);
+const { has } = require('../utils/rolePermissions');
 exports.catalog = async (req,res,next) => {
   try {
     const role = String(req.user?.role || '').trim().toLowerCase().replace(/[\s-]+/g,'_');
@@ -14,7 +15,8 @@ exports.catalog = async (req,res,next) => {
 exports.summary = async (req,res,next) => {
   try {
     const role = String(req.user?.role || '').trim().toLowerCase().replace(/[\s-]+/g,'_');
-    if (!roles.has(role)) return res.status(403).json({error:'Disease Intelligence access required.'});
+    const receptionistCanView = role === 'receptionist' && ['View Intelligence Dashboard', 'View Reports'].some(permission => has(req.user, permission));
+    if (!roles.has(role) && !receptionistCanView) return res.status(403).json({error:'Disease Intelligence access required.'});
     const ownClinic = Number(req.user?.clinic_id);
     if (role !== 'super_admin' && (!Number.isInteger(ownClinic) || ownClinic<1)) return res.status(400).json({error:'Your account is not assigned to a clinic.'});
     const days = Number(req.query.days ?? 30);
@@ -71,7 +73,7 @@ exports.reviewAlert=async(req,res,next)=>{
 exports.alertHistory=async(req,res,next)=>{
  try {
   const {has}=require('../utils/rolePermissions');
-  if(!has(req.user,'View Risk Monitoring')&&!has(req.user,'View Disease Monitoring'))return res.status(403).json({error:'Disease or Risk Monitoring permission required.'});
+  if(!['View Risk Monitoring','View Disease Monitoring','View Intelligence Dashboard'].some(permission=>has(req.user,permission)))return res.status(403).json({error:'Disease Intelligence view permission is required.'});
   const id=Number(req.params.id);
   if(!Number.isInteger(id)||id<1)return res.status(400).json({error:'Choose a valid signal.'});
   const visible=await require('../services/diseaseMonitoring').read(req.user,{days:90});

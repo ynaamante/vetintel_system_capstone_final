@@ -1695,48 +1695,25 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
           </footer>
         </form>
       </div>}
-      {actionLabTest && <div style={modalStyles.backdrop} onClick={() => setActionLabTest(null)}>
-        <div role="dialog" aria-modal="true" aria-labelledby="lab-test-actions-title" onClick={event => event.stopPropagation()} style={modalStyles.vaccinationActionsDialog}>
-          <button type="button" onClick={() => setActionLabTest(null)} style={{ ...modalStyles.vaccinationActionsClose, width: 'auto', height: 'auto', font: 'inherit', fontSize: '.72rem', fontWeight: 600 }}>Close</button>
-          <div style={modalStyles.vaccinationActionsHeader}>
-            <div>
-              <h2 id="lab-test-actions-title" style={modalStyles.vaccinationActionsTitle}>Lab Test Actions</h2>
-              <div style={modalStyles.vaccinationActionsSubtitle}>{actionLabTest.id} — {actionLabTest.testType || 'Laboratory test'} ({actionLabTest.pet || 'Selected Pet'})</div>
-            </div>
-          </div>
-          <div style={modalStyles.vaccinationActionsPet}>
-            <div style={modalStyles.vaccinationActionsPetInfo}>
-              <ClinicAttachmentImage src={actionLabTest.photo_url} attachmentId={actionLabTest.photo_attachment_id} user={user} alt={`${actionLabTest.pet || 'Pet'} profile`} style={modalStyles.vaccinationActionsPetImage} fallback={<span aria-hidden="true" style={{ ...modalStyles.vaccinationActionsPetImage, display: 'grid', placeItems: 'center', background: '#e7f4ec', color: '#013826', fontWeight: 700 }}>{String(actionLabTest.pet || 'P').slice(0, 1).toUpperCase()}</span>} />
-              <div>
-                <div style={modalStyles.vaccinationActionsPetName}>{actionLabTest.testType || 'Lab Test'}</div>
-                <div style={modalStyles.vaccinationActionsPetMeta}>
-                  {actionLabTest.laboratory || actionLabTest.specimenType || 'Laboratory test'}
-                  {' · '}{formatDateText(actionLabTest.date, undefined, actionLabTest.date)}
-                </div>
-              </div>
-            </div>
-            <StatusIndicator status={actionLabTest.status || 'ordered'} />
-          </div>
-          <div style={modalStyles.vaccinationActionsList}>
-            <button type="button" onClick={() => openLabTestView(actionLabTest)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}>
-              <span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>View Test</strong><small style={modalStyles.vaccinationActionCardDescription}>Review the test details and any recorded results.</small></span>
-            </button>
-            {!actionLabTest.archived && <button type="button" onClick={() => openResultEntryFromActions(actionLabTest)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}>
-              <span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Enter Results</strong><small style={modalStyles.vaccinationActionCardDescription}>Record findings and interpretation for this test.</small></span>
-            </button>}
-            {!actionLabTest.archived && <button type="button" disabled={getStatusKey(actionLabTest.status) === 'cancelled'} onClick={() => { setLabActionReturn(actionLabTest); setActionLabTest(null); requestLabTestAction('cancel', actionLabTest); }} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #cbd9e8', background: '#f2fbf8', opacity: getStatusKey(actionLabTest.status) === 'cancelled' ? 0.55 : 1, cursor: getStatusKey(actionLabTest.status) === 'cancelled' ? 'not-allowed' : 'pointer' }}>
-              <span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Cancel Test</strong><small style={modalStyles.vaccinationActionCardDescription}>Cancel this lab test order. You will be asked to confirm.</small></span>
-            </button>}
-            <button type="button" onClick={() => openLabTestHistory(actionLabTest)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}>
-              <span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>View Audit History</strong><small style={modalStyles.vaccinationActionCardDescription}>See changes and activity recorded for this lab test.</small></span>
-            </button>
-            <button type="button" onClick={() => { setLabActionReturn(actionLabTest); setActionLabTest(null); requestLabTestAction('archive', actionLabTest); }} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #ffc0c8', background: '#fff5f6' }}>
-              <span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>{actionLabTest.archived ? 'Restore Test' : 'Archive Test'}</strong><small style={modalStyles.vaccinationActionCardDescription}>{actionLabTest.archived ? 'Restore this test to the active lab-test list.' : 'Archive this lab test from the active list.'}</small></span>
-            </button>
-          </div>
-          <div style={modalStyles.vaccinationActionsFooter}><span style={modalStyles.vaccinationActionsNote}>These actions only affect the selected lab test ({actionLabTest.id}).</span><button type="button" style={modalStyles.vaccinationActionsCancel} onClick={() => setActionLabTest(null)}>Cancel</button></div>
-        </div>
-      </div>}
+      {actionLabTest && <RecordActionsModal
+        title="Lab Test Actions"
+        recordLabel={actionLabTest.id}
+        recordName={actionLabTest.testType || 'Lab Test'}
+        recordMeta={`${actionLabTest.pet || 'Selected Pet'} · ${actionLabTest.laboratory || actionLabTest.specimenType || 'Laboratory test'} · ${formatDateText(actionLabTest.date, undefined, actionLabTest.date)}`}
+        recordPhoto={actionLabTest.photo_url}
+        recordPhotoAttachmentId={actionLabTest.photo_attachment_id}
+        user={user}
+        showPetAvatar
+        status={actionLabTest.status || 'ordered'}
+        onClose={() => setActionLabTest(null)}
+        actions={[
+          { label: 'View Test', description: 'Review the test details and any recorded results.', onClick: () => openLabTestView(actionLabTest) },
+          { label: 'Enter Results', description: 'Record findings and interpretation for this test.', disabled: actionLabTest.archived, onClick: () => openResultEntryFromActions(actionLabTest) },
+          { label: 'Cancel Test', description: 'Cancel this lab test order. You will be asked to confirm.', disabled: actionLabTest.archived, unavailable: getStatusKey(actionLabTest.status) === 'cancelled', destructive: true, onClick: () => { setLabActionReturn(actionLabTest); setActionLabTest(null); requestLabTestAction('cancel', actionLabTest); } },
+          { label: 'View Audit History', description: 'See changes and activity recorded for this lab test.', onClick: () => openLabTestHistory(actionLabTest) },
+          { label: actionLabTest.archived ? 'Restore Test' : 'Archive Test', description: actionLabTest.archived ? 'Restore this test to the active lab-test list.' : 'Archive this lab test from the active list.', destructive: !actionLabTest.archived, onClick: () => { setLabActionReturn(actionLabTest); setActionLabTest(null); requestLabTestAction('archive', actionLabTest); } },
+        ]}
+      />}
       {resultEditor && editorMode === 'results' && <LabResultEditor key={resultEditor.id} record={resultEditor} setRecord={setResultEditor} user={user} testTypes={labTestTypes} onClose={() => { setResultEditor(null); setLabActionReturn(null); }} onSave={saveResultEditor} error={resultEditorError} setError={setResultEditorError} reading={reportReading} setReading={setReportReading} message={reportReadMessage} setMessage={setReportReadMessage} />}
       {resultEditor && editorMode !== 'results' && <div className="lab-result-editor-backdrop" style={{ ...modalStyles.backdrop, padding: editorMode === 'results' ? 12 : 20 }} onClick={() => { setResultEditor(null); setLabActionReturn(null); }}>
         <form
@@ -5587,7 +5564,6 @@ const modalStyles = {
   auditDescription: { margin: '0 0 8px', color: '#111827' },
   auditDetail: { display: 'block', padding: '9px 11px', borderRadius: 6, background: '#f8fafc', color: '#334155', fontSize: '.82rem', lineHeight: 1.65 },
   auditActor: { display: 'block', marginTop: 9, color: '#64748b', fontStyle: 'normal' },
-  vaccinationActionsDialog: { position: 'relative', width: 'min(540px, 100%)', maxWidth: '100%', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', boxSizing: 'border-box', background: '#fff', borderRadius: 14, padding: '18px 20px 15px', boxShadow: '0 20px 55px rgba(15,23,42,.25)', color: '#111827' },
   vaccinationActionsClose: { position: 'absolute', top: 17, right: 18, border: 0, background: 'none', color: '#111827', cursor: 'pointer', width: 18, height: 18, display: 'flex', padding: 0 },
   verifyVaccinationDialog: { position: 'relative', width: 'min(560px, 100%)', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', boxSizing: 'border-box', padding: '22px 24px 18px', border: '1px solid #dcebe5', borderRadius: 14, background: '#fff', boxShadow: '0 20px 55px rgba(15,23,42,.25)', color: '#173d37' },
   verifyVaccinationClose: { position: 'absolute', top: 16, right: 17, display: 'grid', width: 36, height: 36, placeItems: 'center', border: 0, borderRadius: 8, background: 'transparent', color: '#526b70', cursor: 'pointer' },
@@ -5610,27 +5586,8 @@ const modalStyles = {
   verifyVaccinationAudit: { margin: '12px 0 0', padding: '10px 12px', borderRadius: 9, background: '#f6f8fa', color: '#617184', fontSize: '.72rem', lineHeight: 1.45 },
   verifyVaccinationError: { marginTop: 12, padding: '9px 11px', border: '1px solid #fecaca', borderRadius: 8, background: '#fef2f2', color: '#b91c1c', fontSize: '.74rem', lineHeight: 1.45 },
   verifyVaccinationFooter: { display: 'flex', justifyContent: 'flex-end', gap: 9, marginTop: 14, paddingTop: 13, borderTop: '1px solid #e7eeeb' },
-  vaccinationActionsHeader: { display: 'flex', alignItems: 'center', gap: 11, marginBottom: 11, paddingRight: 25 },
-  vaccinationActionsHeaderIcon: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 11, background: '#e7f4ec', color: '#013826' },
   vaccinationActionsTitle: { margin: 0, color: '#004f43', fontSize: '1.05rem', fontWeight: 600, lineHeight: 1.25 },
   vaccinationActionsSubtitle: { marginTop: 4, color: '#111827', fontSize: '.78rem', lineHeight: 1.3 },
-  vaccinationActionsPet: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 12px', marginBottom: 11, borderRadius: 10, background: '#f2f8ff' },
-  vaccinationActionsPetInfo: { display: 'flex', alignItems: 'center', gap: 11 },
-  vaccinationActionsPetImage: { width: 38, height: 38, objectFit: 'cover', borderRadius: '50%' },
-  vaccinationActionsPetFallback: { width: 38, height: 38, flex: '0 0 38px', display: 'grid', placeItems: 'center', borderRadius: '50%', background: '#e7f4ec', color: '#013826', fontWeight: 700 },
-  vaccinationActionsPetName: { color: '#004f43', fontSize: '.9rem', fontWeight: 800 },
-  vaccinationActionsPetMeta: { marginTop: 2, color: '#111827', fontSize: '.66rem' },
-  vaccinationActionsActive: { padding: '6px 10px', borderRadius: 16, background: '#d8f4e8', color: '#087a55', fontSize: '.66rem', fontWeight: 700 },
-  vaccinationActionsList: { display: 'grid', gap: 8 },
-  vaccinationActionCard: { display: 'flex', alignItems: 'center', gap: 11, width: '100%', minHeight: 58, boxSizing: 'border-box', borderRadius: 10, padding: '8px 11px', textAlign: 'left', cursor: 'pointer' },
-  vaccinationActionCardIcon: { width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: 10 },
-  vaccinationActionCardText: { display: 'grid', gap: 3, flex: 1 },
-  vaccinationActionCardTitle: { color: '#004f43', fontSize: '.86rem', fontWeight: 800 },
-  vaccinationActionCardDescription: { color: '#111827', fontSize: '.65rem', lineHeight: 1.3 },
-  vaccinationActionArrow: { color: '#111827', fontSize: '1.35rem', lineHeight: 1 },
-  vaccinationActionsFooter: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12, paddingTop: 10, borderTop: '1px solid #e6edf3' },
-  vaccinationActionsNote: { color: '#111827', fontSize: '.62rem', lineHeight: 1.3 },
-  vaccinationActionsCancel: { border: '1px solid #cfdce9', borderRadius: 7, background: '#fff', color: '#111827', padding: '7px 12px', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' },
   editVaccinationDialog: { position: 'relative', width: 'min(614px, 100%)', maxWidth: '100%', maxHeight: 'calc(100vh - 68px)', overflowY: 'auto', boxSizing: 'border-box', background: '#fff', borderRadius: 8, padding: '20px 20px 18px', boxShadow: '0 12px 32px rgba(15,23,42,.28)', color: '#111827' },
   editVaccinationTitle: { margin: 0, color: '#111827', fontSize: '1rem', fontWeight: 700, lineHeight: 1.2 },
   editVaccinationIntro: { margin: '6px 0 14px', color: '#52627a', fontSize: '.75rem', lineHeight: 1.45 },
@@ -8043,65 +8000,39 @@ function VaccinationsTab({ onVisitEnded, onAppointmentRequestHandled, openAppoin
           <div style={modalStyles.addVaccinationFooter}><button type="button" style={modalStyles.cancel} onClick={closeAddVaccination}>Cancel</button><button type="submit" style={{ ...T.primaryBtn, padding: '8px 12px', fontSize: '.68rem', borderRadius: 7 }}>Add Record</button></div>
         </ModalDialog>
       </div>}
-      {actionVaccination && <div style={modalStyles.backdrop} onClick={() => setActionVaccination(null)}>
-        <div role="dialog" aria-modal="true" aria-labelledby="vaccination-actions-title" onClick={event => event.stopPropagation()} style={modalStyles.vaccinationActionsDialog}>
-          <button type="button" onClick={() => setActionVaccination(null)} style={{ ...modalStyles.vaccinationActionsClose, width: 'auto', height: 'auto', font: 'inherit', fontSize: '.72rem', fontWeight: 600 }}>Close</button>
-          <div style={modalStyles.vaccinationActionsHeader}>
-            <div><h2 id="vaccination-actions-title" style={modalStyles.vaccinationActionsTitle}>Vaccination Actions</h2><div style={modalStyles.vaccinationActionsSubtitle}>{actionVaccination.isScheduledAppointment ? `Appointment ${String(actionVaccination.appointmentId || actionVaccination.id).replace(/^appointment-/, '')}` : actionVaccination.id} — {actionVaccination.type} ({actionVaccination.pet})</div></div>
-          </div>
-          <div style={modalStyles.vaccinationActionsPet}>
-            <div style={modalStyles.vaccinationActionsPetInfo}><ClinicAttachmentImage src={actionVaccination.photo_url} attachmentId={actionVaccination.pet_photo_attachment_id} user={user} alt={`${actionVaccination.pet || 'Pet'} profile`} style={modalStyles.vaccinationActionsPetImage} fallback={<span aria-hidden="true" style={{ ...modalStyles.vaccinationActionsPetImage, display: 'grid', placeItems: 'center', background: '#e7f4ec', color: '#013826', fontWeight: 700 }}>{String(actionVaccination.pet || 'P').slice(0, 1).toUpperCase()}</span>} />
-              <div><div style={modalStyles.vaccinationActionsPetName}>{actionVaccination.pet || 'Selected Pet'}</div><div style={modalStyles.vaccinationActionsPetMeta}>{actionVaccination.isScheduledAppointment ? `Appointment · ${formatClinicDate(actionVaccination.dateGiven)} · Not administered` : `Patient record · ${actionVaccination.dateGiven || 'Vaccination date'} · ${actionVaccination.dose || 'Dose recorded'}`}</div></div></div>
-            <StatusIndicator status={actionVaccination.isScheduledAppointment || actionVaccination.status === 'scheduled' ? actionVaccination.status === 'due' ? 'Due' : 'Scheduled' : 'Active'} />
-          </div>
-          <div style={modalStyles.vaccinationActionsList}>
-            {(actionVaccination.isScheduledAppointment || actionVaccination.status === 'scheduled') && <button type="button" className="record-action-card vaccination-action-button" onClick={() => openVaccinationEditor(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Confirm Administration</strong><small style={modalStyles.vaccinationActionCardDescription}>Record that this vaccine was administered during the active consultation.</small></span></button>}
-            {archiveError && <p role="alert" style={{ color: '#b91c1c' }}>{archiveError}</p>}
-            <button
-              type="button"
-              className="record-action-card vaccination-action-button"
-              onClick={() => {
-                if (actionVaccination.isScheduledAppointment) setSelectedScheduledAppointment(actionVaccination);
-                else setSelectedVaccination(actionVaccination);
-                setActionVaccination(null);
-              }}
-              style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}
-            >
-              <span style={modalStyles.vaccinationActionCardText}>
-                <strong style={modalStyles.vaccinationActionCardTitle}>View Details</strong>
-                <small style={modalStyles.vaccinationActionCardDescription}>See a summary of this vaccination, patient, dates, and recorded vaccine details.</small>
-              </span>
-            </button>
-            {actionVaccination.isScheduledAppointment ? <>
-              <button type="button" className="record-action-card vaccination-action-button" onClick={() => openVaccinationEditor(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Edit Vaccination</strong><small style={modalStyles.vaccinationActionCardDescription}>Update vaccine details, batch numbers, or next due date.</small></span></button>
-              <button type="button" className="record-action-card vaccination-action-button" onClick={() => setHistoryVaccination(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>View Audit History</strong><small style={modalStyles.vaccinationActionCardDescription}>See the appointment history and vaccine details for this pet.</small></span></button>
-              <button type="button" className="record-action-card record-action-card-destructive vaccination-action-button" onClick={() => archiveScheduledAppointment(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #ffc0c8', background: '#fff5f6' }}><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Archive</strong><small style={modalStyles.vaccinationActionCardDescription}>Archive this scheduled vaccination appointment.</small></span></button>
-            </> : <>
-            <button type="button" className="record-action-card vaccination-action-button" onClick={() => openVaccinationEditor(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}>
-              <span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Edit Vaccination</strong><small style={modalStyles.vaccinationActionCardDescription}>Update vaccination details, batch numbers, or next due date.</small></span>
-            </button>
-            <button type="button" className="record-action-card vaccination-action-button" onClick={() => setHistoryVaccination(actionVaccination)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}>
-              <span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>View Audit History</strong><small style={modalStyles.vaccinationActionCardDescription}>See the complete vaccination record and history for this pet.</small></span>
-            </button>
-            {!actionVaccination.clinicVerified && actionVaccination.status !== 'scheduled' && <button
-              type="button"
-              className="record-action-card vaccination-action-button"
-              onClick={() => {
-                setVerifyVaccination(actionVaccination);
-                setActionVaccination(null);
-              }}
-              style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #cbd9e8', background: '#f2fbf8' }}
-            >
-              <span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Verify Record</strong><small style={modalStyles.vaccinationActionCardDescription}>Confirm the vaccination is valid and properly logged in the system.</small></span>
-            </button>}
-            <button type="button" className="record-action-card record-action-card-destructive vaccination-action-button" onClick={() => { archiveVaccination(actionVaccination); setActionVaccination(null); }} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #ffc0c8', background: '#fff5f6' }}>
-              <span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>{showArchived ? 'Restore Vaccination' : 'Archive'}</strong><small style={modalStyles.vaccinationActionCardDescription}>{showArchived ? 'Return this vaccination record to the active list.' : 'Archive this vaccination record.'}</small></span>
-            </button>
-            </>}
-          </div>
-          <div style={modalStyles.vaccinationActionsFooter}><span style={modalStyles.vaccinationActionsNote}>{actionVaccination.status === 'scheduled' ? `This vaccination record is saved and linked to appointment ${actionVaccination.appointment_id}. It remains scheduled until the doctor confirms administration.` : actionVaccination.isScheduledAppointment ? 'The vaccination record will be created after the service is confirmed as completed.' : `These actions only affect the selected vaccination record (${actionVaccination.id}).`}</span><button type="button" className="vaccination-actions-cancel" style={modalStyles.vaccinationActionsCancel} onClick={() => setActionVaccination(null)}>Cancel</button></div>
-        </div>
-      </div>}
+      {actionVaccination && <RecordActionsModal
+        title="Vaccination Actions"
+        recordLabel={actionVaccination.isScheduledAppointment ? `Appointment ${String(actionVaccination.appointmentId || actionVaccination.id).replace(/^appointment-/, '')}` : actionVaccination.id}
+        recordName={actionVaccination.pet || 'Selected Pet'}
+        recordMeta={actionVaccination.isScheduledAppointment
+          ? `${actionVaccination.type} · ${formatClinicDate(actionVaccination.dateGiven)} · Not administered`
+          : `${actionVaccination.type} · ${actionVaccination.dateGiven || 'Vaccination date'} · ${actionVaccination.dose || 'Dose recorded'}`}
+        recordPhoto={actionVaccination.photo_url}
+        recordPhotoAttachmentId={actionVaccination.pet_photo_attachment_id}
+        user={user}
+        showPetAvatar
+        status={actionVaccination.isScheduledAppointment || actionVaccination.status === 'scheduled' ? actionVaccination.status === 'due' ? 'Due' : 'Scheduled' : 'Active'}
+        onClose={() => setActionVaccination(null)}
+        error={archiveError}
+        footerNote={actionVaccination.status === 'scheduled'
+          ? `This record remains scheduled until the doctor confirms administration for appointment ${actionVaccination.appointment_id}.`
+          : actionVaccination.isScheduledAppointment ? 'The vaccination record will be created after the service is confirmed as completed.' : undefined}
+        actions={[
+          { label: 'Confirm Administration', description: 'Record that this vaccine was administered during the active consultation.', disabled: !actionVaccination.isScheduledAppointment && actionVaccination.status !== 'scheduled', onClick: () => openVaccinationEditor(actionVaccination) },
+          { label: 'View Details', description: 'Review the vaccination, patient, and recorded dates.', onClick: () => {
+            if (actionVaccination.isScheduledAppointment) setSelectedScheduledAppointment(actionVaccination);
+            else setSelectedVaccination(actionVaccination);
+            setActionVaccination(null);
+          } },
+          { label: 'Edit Vaccination', description: 'Update vaccine details, batch numbers, or next due date.', onClick: () => openVaccinationEditor(actionVaccination) },
+          { label: 'View Audit History', description: 'Review the recorded activity and changes for this vaccination.', onClick: () => setHistoryVaccination(actionVaccination) },
+          { label: 'Verify Record', description: 'Confirm the vaccination is valid and properly logged.', disabled: actionVaccination.isScheduledAppointment || actionVaccination.clinicVerified || actionVaccination.status === 'scheduled', onClick: () => { setVerifyVaccination(actionVaccination); setActionVaccination(null); } },
+          { label: !actionVaccination.isScheduledAppointment && showArchived ? 'Restore Vaccination' : 'Archive', description: !actionVaccination.isScheduledAppointment && showArchived ? 'Return this vaccination record to the active list.' : 'Move this vaccination out of the active list.', destructive: actionVaccination.isScheduledAppointment || !showArchived, onClick: () => {
+            if (actionVaccination.isScheduledAppointment) archiveScheduledAppointment(actionVaccination);
+            else { archiveVaccination(actionVaccination); setActionVaccination(null); }
+          } },
+        ]}
+      />}
       {verifyVaccination && <VaccinationVerificationDialog
         record={verifyVaccination}
         user={user}
@@ -8435,21 +8366,22 @@ export function TreatmentsTab({ treatments, user, pets = [] }) {
           <div style={modalStyles.doctorAppointmentFooter}><button type="button" style={modalStyles.cancel} onClick={() => setAddTreatment(false)}>Cancel</button><button type="submit" style={{ ...T.primaryBtn, padding: '8px 13px', fontSize: '.7rem', borderRadius: 7 }}>Add Treatment</button></div>
         </ModalDialog>
       </div>}
-      {actionTreatment && <div style={modalStyles.backdrop} onClick={() => setActionTreatment(null)}>
-        <div role="dialog" aria-modal="true" aria-labelledby="treatment-actions-title" onClick={event => event.stopPropagation()} style={modalStyles.vaccinationActionsDialog}>
-          <button type="button" aria-label="Close treatment actions" onClick={() => setActionTreatment(null)} style={modalStyles.vaccinationActionsClose}>{Icons.close}</button>
-          <div style={modalStyles.vaccinationActionsHeader}>
-            <div style={modalStyles.vaccinationActionsHeaderIcon}><span style={{ width: 25, height: 25, display: 'flex' }}>{Icons.stethoscope}</span></div>
-            <div><h2 id="treatment-actions-title" style={modalStyles.vaccinationActionsTitle}>Treatment Actions</h2><div style={modalStyles.vaccinationActionsSubtitle}>{actionTreatment.id} — {actionTreatment.diagnosis} ({actionTreatment.pet})</div></div>
-          </div>
-          <div style={modalStyles.vaccinationActionsPet}>
-            <div style={modalStyles.vaccinationActionsPetInfo}><ClinicAttachmentImage src={actionTreatment.photo_url} attachmentId={actionTreatment.photo_attachment_id} user={user} alt={`${actionTreatment.pet || 'Pet'} profile`} style={modalStyles.vaccinationActionsPetImage} fallback={<span aria-hidden="true" style={{ ...modalStyles.vaccinationActionsPetImage, display: 'grid', placeItems: 'center', background: '#e7f4ec', color: '#013826', fontWeight: 700 }}>{String(actionTreatment.pet || 'P').slice(0, 1).toUpperCase()}</span>} /><div><div style={modalStyles.vaccinationActionsPetName}>{actionTreatment.pet || 'Selected Pet'}</div><div style={modalStyles.vaccinationActionsPetMeta}>🐾 Patient record&nbsp; • &nbsp;{actionTreatment.diagnosis || 'Clinical treatment'}&nbsp; • &nbsp;{actionTreatment.date || 'Treatment date'}</div></div></div>
-            <StatusIndicator status={actionTreatment.status === 'finalized' ? 'Finalized' : 'Active'} />
-          </div>
-          <div style={modalStyles.vaccinationActionsList}>
-            <button type="button" onClick={() => setHistoryTreatment(actionTreatment)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}><span style={{ ...modalStyles.vaccinationActionCardIcon, background: '#e7f4ec', color: '#013826' }}><span style={{ width: 24, height: 24, display: 'flex' }}>{Icons.clipboard}</span></span><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>View Audit History</strong><small style={modalStyles.vaccinationActionCardDescription}>See the complete treatment record and history for this pet.</small></span><span style={modalStyles.vaccinationActionArrow}>›</span></button>
-            <button type="button" onClick={() => setEditTreatment(actionTreatment)} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #b7e4d7', background: '#f2fbf8' }}><span style={{ ...modalStyles.vaccinationActionCardIcon, background: '#d9f3ea', color: '#0d8a69' }}><span style={{ width: 23, height: 23, display: 'flex' }}>{Icons.edit}</span></span><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Edit Treatment</strong><small style={modalStyles.vaccinationActionCardDescription}>Update diagnosis, treatment details, medication, or cost.</small></span><span style={modalStyles.vaccinationActionArrow}>›</span></button>
-            {actionTreatment.status !== 'finalized' && <button type="button" onClick={async () => {
+      {actionTreatment && <RecordActionsModal
+        title="Treatment Actions"
+        recordLabel={actionTreatment.id}
+        recordName={actionTreatment.pet || 'Selected Pet'}
+        recordMeta={`${actionTreatment.diagnosis || 'Clinical treatment'} · ${actionTreatment.date || 'Treatment date'}`}
+        recordPhoto={actionTreatment.photo_url}
+        recordPhotoAttachmentId={actionTreatment.photo_attachment_id}
+        user={user}
+        showPetAvatar
+        status={actionTreatment.status === 'finalized' ? 'Finalized' : 'Active'}
+        onClose={() => setActionTreatment(null)}
+        error={archiveError}
+        actions={[
+          { label: 'View Audit History', description: 'See the recorded activity and changes for this treatment.', onClick: () => setHistoryTreatment(actionTreatment) },
+          { label: 'Edit Treatment', description: 'Update diagnosis, treatment details, medication, or cost.', onClick: () => setEditTreatment(actionTreatment) },
+          { label: 'Finalize Record', description: 'Confirm the treatment is complete and properly logged.', icon: Icons.shieldCheck, disabled: actionTreatment.status === 'finalized', onClick: async () => {
               try {
                 const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
                 const response = await fetch(`${apiUrl}/clinic-records/treatments/${actionTreatment.id}/finalize?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
@@ -8466,14 +8398,10 @@ export function TreatmentsTab({ treatments, user, pets = [] }) {
               } catch (error) {
                 setArchiveError(error.message || 'Unable to finalize the treatment record.');
               }
-            }} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #cbd9e8', background: '#f2fbf8' }}>
-              <span style={{ ...modalStyles.vaccinationActionCardIcon, background: '#e5edf6', color: '#294563' }}><span style={{ width: 23, height: 23, display: 'flex' }}>{Icons.shieldCheck}</span></span><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>Finalize Record</strong><small style={modalStyles.vaccinationActionCardDescription}>Confirm the treatment is complete and properly logged.</small></span><span style={modalStyles.vaccinationActionArrow}>›</span>
-            </button>}
-            <button type="button" onClick={() => { archiveTreatment(actionTreatment); setActionTreatment(null); }} style={{ ...modalStyles.vaccinationActionCard, border: '1px solid #ffc0c8', background: '#fff5f6' }}><span style={{ ...modalStyles.vaccinationActionCardIcon, background: '#ffdce1', color: '#c52e4a' }}><span style={{ width: 23, height: 23, display: 'flex' }}>{showArchived ? Icons.refresh : Icons.trash}</span></span><span style={modalStyles.vaccinationActionCardText}><strong style={modalStyles.vaccinationActionCardTitle}>{showArchived ? 'Restore Treatment' : 'Move to Trash'}</strong><small style={modalStyles.vaccinationActionCardDescription}>Remove this treatment record from the system.</small></span><span style={modalStyles.vaccinationActionArrow}>›</span></button>
-          </div>
-          <div style={modalStyles.vaccinationActionsFooter}><span style={modalStyles.vaccinationActionsNote}>ⓘ &nbsp;These actions only affect the selected treatment record ({actionTreatment.id}).</span><button type="button" style={modalStyles.vaccinationActionsCancel} onClick={() => setActionTreatment(null)}>Cancel</button></div>
-        </div>
-      </div>}
+            } },
+          { label: showArchived ? 'Restore Treatment' : 'Move to Trash', description: showArchived ? 'Return this treatment to the active list.' : 'Remove this treatment record from the active list.', destructive: !showArchived, onClick: () => { archiveTreatment(actionTreatment); setActionTreatment(null); } },
+        ]}
+      />}
       {historyTreatment && <div style={modalStyles.backdrop} onClick={() => setHistoryTreatment(null)}>
         <div className="lab-audit-dialog" role="dialog" aria-modal="true" aria-labelledby="treatment-audit-title" onClick={event => event.stopPropagation()}>
           <header className="lab-audit-header">
@@ -8570,7 +8498,7 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
   const canView = canViewFeature(user.permissions, user.role, 'Local Clinic Records');
   const canReadClients = hasAction(user.permissions, user.role, 'View Owners');
   const canReadVaccinations = hasAction(user.permissions, user.role, 'View Vaccinations');
-  const tabFeatures={dashboard:'Clinic Dashboard',owners:'Clinic Record Owners',pets:'Pet Profiles',appointments:'Appointment Management',visits:'Visit & Check-up',vaccinations:'Vaccinations',plans:'Treatment Plans','lab-results':'Laboratory',inpatient:'Inpatient Care',consultation:'Billing & Payments',inventory:'Inventory Management'};
+  const tabFeatures={dashboard:'Clinic Dashboard',owners:'Clinic Record Owners',pets:'Pet Profiles',appointments:'Clinic Record Appointments',visits:'Visit & Check-up',vaccinations:'Vaccinations',plans:'Treatment Plans','lab-results':'Laboratory',inpatient:'Inpatient Care',consultation:'Clinic Record Billing',inventory:'Inventory Management'};
   const availableTabs=TABS.filter(item=>canViewFeature(user.permissions,user.role,tabFeatures[item.id]));
   const canViewTab=availableTabs.some(item=>item.id===tab);
   const firstAvailableTab=availableTabs[0]?.id;

@@ -7,6 +7,8 @@ const INITIAL_NOTIFICATIONS = [];
 const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
 
 export default function Topbar({ user, title, subtitle, actions, headerContent, className = '' }) {
+  const avatarInitials = user?.initials?.trim() || user?.name?.trim().split(/\s+/).slice(0, 2)
+    .map(word => word.charAt(0).toUpperCase()).join('');
   const notificationStorageKey = `vetintel_notifications_${user?.id || user?.clinic_id || 'user'}`;
   const [notifications, setNotifications] = useState(() => {
     try {
@@ -122,8 +124,8 @@ export default function Topbar({ user, title, subtitle, actions, headerContent, 
   };
 
   return (
-    <div className={className} style={s.bar}>
-      <div>
+    <div className={`page-topbar ${className}`} style={s.bar}>
+      <div className="page-topbar-heading">
         {headerContent || (
           <>
             <h2 style={s.title}>{title}</h2>
@@ -132,59 +134,66 @@ export default function Topbar({ user, title, subtitle, actions, headerContent, 
         )}
       </div>
 
-      <div style={s.right}>
+      <div className="page-topbar-actions" style={s.right}>
         {actions}
-        <button type="button" style={{ ...s.notif, ...(showNotifications ? s.notifActive : {}) }} onClick={() => setShowNotifications(current => !current)} aria-label="Open notifications">
-          <span style={s.notifIcon}>{Icons.bell}</span>
-          {unreadCount > 0 && <span style={s.pip} />}
-        </button>
+        <div className="page-topbar-identity" style={s.identity}>
+          <button type="button" className="page-topbar-notifications" style={{ ...s.notif, ...(showNotifications ? s.notifActive : {}) }} onClick={() => setShowNotifications(current => !current)} aria-label="Open notifications" aria-expanded={showNotifications}>
+            <span style={s.notifIcon}>{Icons.bell}</span>
+            {unreadCount > 0 && <span style={s.pip} />}
+          </button>
 
-        {showNotifications && (
-          <div style={s.notificationPanel}>
-            <div style={s.notificationHeader}>
-              <div style={s.notificationHeading}>
-                <span style={s.notificationBell}>{Icons.bell}</span>
-                <strong>Notifications</strong>
-                {unreadCount > 0 && <span style={s.newBadge}>{unreadCount} new</span>}
-              </div>
-              <div style={s.notificationHeaderActions}>
-                <button type="button" style={{ ...s.filterButton, ...(unreadOnly ? s.filterButtonActive : {}) }} onClick={() => setUnreadOnly(current => !current)}>Unread only</button>
-                <button type="button" style={s.markAllButton} onClick={markAllRead}>Mark all read</button>
-                <button type="button" style={s.closeButton} onClick={() => setShowNotifications(false)} aria-label="Close notifications">{Icons.close}</button>
-              </div>
-            </div>
-            <div style={s.notificationSummary}>Showing notifications for <strong>{user.role}</strong> · {notifications.length} total</div>
-            {notificationError && <div role="alert" style={s.notificationSummary}>{notificationError}</div>}
-            <div style={s.notificationList}>
-              {visibleNotifications.map(notification => (
-                <div key={notification.id} style={{ ...s.notificationItem, ...(notification.unread ? s.unreadItem : {}) }}>
-                  <div style={{ ...s.notificationIcon, color: notification.color }}><span style={s.notificationIconSvg}>{Icons[notification.icon] || Icons.info}</span></div>
-                  <div style={s.notificationContent}>
-                    <div style={s.notificationTitle}>
-                      <span>{notification.title}</span>
-                      {notification.unread && <span style={{ ...s.unreadDot, background: notification.color }} />}
-                    </div>
-                    <div style={s.notificationText}>{notification.text}</div>
-                    <div style={s.notificationMeta}>{notification.time}{notification.pet ? `  ·  ${notification.pet}` : ''}</div>
-                  </div>
-                  <button type="button" style={s.notificationArrow} onClick={() => markRead(notification.id)} aria-label={notification.unread ? 'Mark notification as read' : 'Notification read'}>
-                    {notification.unread ? 'Mark read' : <span style={s.notificationArrowIcon}>{Icons.arrowRight}</span>}
-                  </button>
+          {showNotifications && (
+            <div style={s.notificationPanel}>
+              <div style={s.notificationHeader}>
+                <div style={s.notificationHeading}>
+                  <span style={s.notificationBell}>{Icons.bell}</span>
+                  <strong>Notifications</strong>
+                  {unreadCount > 0 && <span style={s.newBadge}>{unreadCount} new</span>}
                 </div>
-              ))}
-              {visibleNotifications.length === 0 && <div style={s.emptyNotifications}>No unread notifications</div>}
+                <div style={s.notificationHeaderActions}>
+                  <button type="button" style={{ ...s.filterButton, ...(unreadOnly ? s.filterButtonActive : {}) }} onClick={() => setUnreadOnly(current => !current)}>Unread only</button>
+                  <button type="button" style={s.markAllButton} onClick={markAllRead}>Mark all read</button>
+                  <button type="button" style={s.closeButton} onClick={() => setShowNotifications(false)} aria-label="Close notifications">{Icons.close}</button>
+                </div>
+              </div>
+              <div style={s.notificationSummary}>Showing notifications for <strong>{user.role}</strong> · {notifications.length} total</div>
+              {notificationError && <div role="alert" style={s.notificationSummary}>{notificationError}</div>}
+              <div style={s.notificationList}>
+                {visibleNotifications.map(notification => (
+                  <div key={notification.id} style={{ ...s.notificationItem, ...(notification.unread ? s.unreadItem : {}) }}>
+                    <div style={{ ...s.notificationIcon, color: notification.color }}><span style={s.notificationIconSvg}>{Icons[notification.icon] || Icons.info}</span></div>
+                    <div style={s.notificationContent}>
+                      <div style={s.notificationTitle}>
+                        <span>{notification.title}</span>
+                        {notification.unread && <span style={{ ...s.unreadDot, background: notification.color }} />}
+                      </div>
+                      <div style={s.notificationText}>{notification.text}</div>
+                      <div style={s.notificationMeta}>{notification.time}{notification.pet ? `  ·  ${notification.pet}` : ''}</div>
+                    </div>
+                    <button type="button" style={s.notificationArrow} onClick={() => markRead(notification.id)} aria-label={notification.unread ? 'Mark notification as read' : 'Notification read'}>
+                      {notification.unread ? 'Mark read' : <span style={s.notificationArrowIcon}>{Icons.arrowRight}</span>}
+                    </button>
+                  </div>
+                ))}
+                {visibleNotifications.length === 0 && <div style={s.emptyNotifications}>No unread notifications</div>}
+              </div>
+              <button type="button" style={s.viewAllButton} onClick={() => setShowAll(current => !current)}>
+                {showAll ? 'Show fewer notifications' : 'View all notifications'}
+              </button>
             </div>
-            <button type="button" style={s.viewAllButton} onClick={() => setShowAll(current => !current)}>
-              {showAll ? 'Show fewer notifications' : 'View all notifications'}
-            </button>
-          </div>
-        )}
+          )}
 
-        <div style={s.pill}>
-          <div style={s.avatar}>{user.initials}</div>
-          <div>
-            <div style={s.pillName}>{user.name}</div>
-            <div style={s.pillRole}>{user.role}</div>
+          <div className="page-topbar-account" style={s.pill}>
+            <div className="page-topbar-avatar" style={s.avatar} aria-hidden="true">
+              {avatarInitials || <span style={s.avatarIcon}>{Icons.user}</span>}
+            </div>
+            <div>
+              <div className="page-topbar-account-name" style={s.pillName}>{user.name}</div>
+              <div className="page-topbar-account-role" style={s.pillRole}>{user.role}</div>
+            </div>
+            <svg className="page-topbar-account-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="m4 6 4 4 4-4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </div>
         </div>
       </div>
@@ -213,6 +222,7 @@ const s = {
   },
   subtitle: { fontSize: '.9rem', color: '#64748b', marginTop: 1 },
   right: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 },
+  identity: { display: 'flex', alignItems: 'center', gap: 12 },
   notif: {
     position: 'relative',
     padding: 6,
@@ -292,6 +302,7 @@ const s = {
     fontWeight: 600,
     letterSpacing: '.02em',
   },
+  avatarIcon: { display: 'flex', width: 16, height: 16 },
   pillName: { fontSize: '.95rem', fontWeight: 500, color: '#0f1117' },
   pillRole: { fontSize: '.8rem', color: '#64748b' },
 };

@@ -124,7 +124,7 @@ export default function PatientRegistrationPage({ user }) {
   const canView = canViewFeature(user.permissions, user.role, 'New Patient Registration');
   const update = (key, value) => setForm(current => ({ ...current, [key]: value }));
   const loadIntakes = async () => {
-    const rows = await requestJson(`${apiBase}/clinic-records/registration-intakes`, { headers: authHeaders(user) });
+    const rows = await requestJson(`${apiBase}/clinic-records/registration-intakes?scope=registration`, { headers: authHeaders(user) });
     setSubmissions(rows.map(mapIntake));
   };
   const allSubmissions = useMemo(() => savedDraft ? [{
@@ -174,7 +174,7 @@ export default function PatientRegistrationPage({ user }) {
     setLoadError('');
     Promise.allSettled([
       requestJson(`${apiBase}/clinic-records/registration-doctors`, { headers: authHeaders(user) }),
-      requestJson(`${apiBase}/clinic-records/registration-intakes`, { headers: authHeaders(user) }),
+      requestJson(`${apiBase}/clinic-records/registration-intakes?scope=registration`, { headers: authHeaders(user) }),
     ]).then(([doctorResult, intakeResult]) => {
       if (!active) return;
       if (doctorResult.status === 'fulfilled') {
@@ -204,7 +204,7 @@ export default function PatientRegistrationPage({ user }) {
       if (refreshing) return;
       refreshing = true;
       try {
-        const rows = await requestJson(`${apiBase}/clinic-records/registration-intakes`, { headers: authHeaders(user) });
+        const rows = await requestJson(`${apiBase}/clinic-records/registration-intakes?scope=registration`, { headers: authHeaders(user) });
         if (active) {
           setSubmissions(rows.map(mapIntake));
           setLoadError('');

@@ -16,6 +16,22 @@ const add=(value,n)=>{const d=day(value);d.setUTCDate(d.getUTCDate()+n);return i
 const monday=value=>{const d=day(value);d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));return iso(d);};
 const sum=rows=>rows.reduce((n,r)=>n+r.cases,0);
 const group=(rows,key)=>{const result=new Map();for(const row of rows){const k=key(row);if(!result.has(k))result.set(k,[]);result.get(k).push(row);}return result;};
+function weeklyIncreases(cells, withheld, today) {
+ const week=add(monday(today),-7), previous=add(week,-7);
+ const key=row=>JSON.stringify([row.disease_key,row.area]);
+ const comparable=row=>row.week===week||row.week===previous;
+ const protectedGroups=new Set(withheld.filter(comparable).map(key));
+ return [...group(cells.filter(row=>comparable(row)&&row.area!=='Area not configured'),key)].flatMap(([id,rows])=>{
+  const observed=sum(rows.filter(row=>row.week===week));
+  const baseline=sum(rows.filter(row=>row.week===previous));
+  if(protectedGroups.has(id)||observed<3||observed-baseline<2||(observed-baseline)*2<baseline)return [];
+  const {disease_key,disease,area}=rows[0];
+  return [{disease_key,disease,area,period_start:week,period_end:add(week,6),baseline_period_start:previous,baseline_period_end:add(previous,6),
+   observed_cases:observed,baseline_cases:baseline,alert_type:'Weekly Case Increase',automatic:true,
+   rule_description:'Released confirmed cases rose between the two latest completed reporting weeks.'}];
+ });
+}
+exports.weeklyIncreases=weeklyIncreases;
 exports.ensureSchema=()=>db.query(fs.readFileSync(path.join(__dirname,'../scripts/disease_monitoring_schema.sql'),'utf8'));
 exports.read=async(user,filters={})=>{
  const days=Number(filters.days??30);if(![30,60,90].includes(days))throw Object.assign(new Error('Choose 30, 60 or 90 days.'),{status:400});
@@ -39,7 +55,7 @@ exports.read=async(user,filters={})=>{
   const overlapCurrent=cell.week<=today&&end>=start;
   const overlapPrevious=cell.week<start&&end>=previousStart;
   if(!overlapCurrent&&!overlapPrevious)continue;
-  const release=own||(cell.patients>=minimum&&cell.cases>=minimum&&((currentPeriod&&end<=today)||previousPeriod));
+  const release=own||(cell.patients>=minimum&&cell.cases>=minimum&&((currentPeriod&&end<today)||previousPeriod));
   if(!release){withheld=true;hidden.push({disease_key:cell.disease_key,disease:cell.disease,area:cell.area,clinic_id:cell.clinic_id,clinic_name:cell.clinic_name,week:cell.week});continue;}
   // For origin boundary weeks, obtain exact date-sliced counts separately below.
   if(currentPeriod||own&&overlapCurrent)current.push(cell);
@@ -84,10 +100,25 @@ exports.read=async(user,filters={})=>{
  const trend=[];for(let week=monday(start);week<=today;week=add(week,7)){const from=week<start?start:week,to=add(week,6)>today?today:add(week,6),count=sum(cur.filter(r=>r.week===week)),suppressed=hiddenFiltered.some(r=>r.week===week);trend.push({case_date:from,week_start:week,period_end:to,label:`${from.slice(5)} – ${to.slice(5)}`,cases:suppressed&&!count?null:count,suppressed,partial:from!==week||to!==add(week,6)});}
  const rules=(await db.query('SELECT * FROM disease_alert_rules WHERE clinic_id=$1 AND active ORDER BY id',[clinic])).rows;
  const alerts=[];
+ if(clinic){
+  if(selectedClinic!==null){
+   const unfiltered=await exports.read(user,{days});
+   alerts.push(...unfiltered.alerts.filter(signal=>signal.automatic&&cur.some(cell=>cell.week===signal.period_start&&cell.disease_key===signal.disease_key&&cell.area===signal.area)));
+  }else{
+   for(const snapshot of weeklyIncreases([...releasedCurrent,...releasedPrevious],hidden,today)){
+    const key='weekly-rise:'+JSON.stringify([snapshot.disease_key,snapshot.area,snapshot.period_start]);
+    const [saved]=(await db.query(`INSERT INTO disease_monitoring_alerts(clinic_id,signal_key,snapshot) VALUES($1,$2,$3::jsonb)
+     ON CONFLICT(clinic_id,signal_key) DO UPDATE SET snapshot=EXCLUDED.snapshot
+     RETURNING id,status,review_notes,reviewed_by,triggered_at,updated_at,(SELECT name FROM users WHERE users.id=disease_monitoring_alerts.reviewed_by) AS reviewed_by_name`,[clinic,key,JSON.stringify(snapshot)])).rows;
+    if(cur.some(cell=>cell.week===snapshot.period_start&&cell.disease_key===snapshot.disease_key&&cell.area===snapshot.area))alerts.push({...snapshot,...saved});
+   }
+  }
+ }
  for(const rule of rules){
   for(const [key,rows] of group(cur.filter(r=>r.disease_key===rule.disease_key&&(rule.area==='*'||r.area===rule.area)),r=>`${r.area}|${r.week}`)){
    if(rule.area==='*'&&rules.some(s=>s.disease_key===rule.disease_key&&s.area===rows[0].area))continue;
    const row=rows[0],observed=sum(rows),baselineHidden=hidden.some(r=>r.disease_key===rule.disease_key&&r.area===row.area&&r.week===add(row.week,-7)),baseline=baselineHidden?null:sum([...releasedCurrent,...releasedPrevious].filter(r=>r.disease_key===rule.disease_key&&r.area===row.area&&r.week===add(row.week,-7)));
+   if(alerts.some(signal=>signal.automatic&&signal.disease_key===row.disease_key&&signal.area===row.area&&signal.period_start===row.week))continue;
    const thresholdHit=observed>=rule.threshold,growthHit=baseline>0&&rule.growth_percent&&observed>=rule.threshold&&((observed-baseline)/baseline*100)>=rule.growth_percent;
    if(!thresholdHit&&!growthHit)continue;
    const snapshot={disease_key:rule.disease_key,disease:row.disease,area:row.area,period_start:row.week,period_end:add(row.week,6)>today?today:add(row.week,6),observed_cases:observed,baseline_cases:baseline,threshold:rule.threshold,interval_days:7,alert_type:thresholdHit&&growthHit?'Threshold and Growth Increase':growthHit?'Growth Increase':'Threshold Exceeded',severity:growthHit?'High':'Moderate',rule_description:`At least ${rule.threshold} released cases in a calendar week${rule.growth_percent?`; growth signal requires ${rule.growth_percent}% over the preceding week`:''}. Partial weeks are evaluated on cases observed so far.`};

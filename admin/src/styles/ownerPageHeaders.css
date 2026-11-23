@@ -1,0 +1,193 @@
+.themed-page-headers {
+  --page-header-height: 68px;
+}
+
+.admin-content > :is(.surveillance-dashboard, .dm-page, .reports-page) > :is(.surveillance-body, .dm-body, .reports-body) {
+  padding-top: 20px;
+}
+
+.owner-content:is(.owner-overview-content, :has(.dm-page)),
+.themed-page-headers.inbox-content {
+  --admin-content-scale: 1;
+}
+
+.themed-page-headers .si-banner {
+  box-sizing: border-box;
+  height: var(--page-header-height);
+  min-height: var(--page-header-height);
+}
+
+.themed-page-headers :is(.page-topbar, .payment-qr-page-heading) {
+  box-sizing: border-box;
+  min-height: var(--page-header-height);
+  height: auto;
+  flex-shrink: 0;
+  zoom: calc(1 / var(--admin-content-scale));
+  padding: 5px 18px 9px 26px !important;
+  gap: 12px !important;
+  align-items: center !important;
+  border: 0 !important;
+  background:
+    radial-gradient(ellipse 42% 43px at 70% 80px, #087d51 99%, transparent 100%),
+    linear-gradient(100deg, #006543, #004d32) !important;
+}
+
+.themed-page-headers :is(.page-topbar, .payment-qr-page-heading) > div:first-child :is(h1, h2) {
+  margin: 0 !important;
+  color: #fff !important;
+  font-size: 26px !important;
+  line-height: 31px !important;
+  font-weight: 700 !important;
+  letter-spacing: normal !important;
+}
+
+.themed-page-headers :is(.page-topbar, .payment-qr-page-heading) > div:first-child p {
+  margin: 0 !important;
+  color: #edf8f1 !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+}
+
+.themed-page-headers .page-topbar-actions {
+  flex-wrap: wrap;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.themed-page-headers .page-topbar-heading {
+  min-width: 0;
+}
+
+.themed-page-headers .page-topbar-identity {
+  margin-left: auto;
+}
+
+.themed-page-headers :is(.payment-qr-page-heading > button, .page-topbar-heading > .records-back) {
+  padding: 9px 14px !important;
+  border: 1px solid #e2ece7 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #005334 !important;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 2px 4px #0001;
+}
+
+.themed-page-headers .page-topbar-notifications {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% !important;
+  background: rgb(255 255 255 / 12%) !important;
+  color: #fff !important;
+}
+
+.themed-page-headers .page-topbar-notifications[aria-expanded="true"] {
+  background: rgb(255 255 255 / 18%) !important;
+}
+
+.themed-page-headers .page-topbar-actions > label:has(input:is([type="search"], [type="text"], :not([type]))) {
+  display: none;
+}
+
+.themed-page-headers .page-topbar-actions :is(.appointment-date-display, .clinic-dashboard-date) {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  max-width: 100%;
+  padding: 5px 12px;
+  border: 1px solid rgb(182 235 211 / 23%);
+  border-radius: 22px;
+  background: rgb(255 255 255 / 8%);
+  color: #fff;
+  font: 13px 'DM Sans', sans-serif;
+}
+
+.themed-page-headers .page-topbar-actions :is(.appointment-date-display, .clinic-dashboard-date) :is(small, svg) {
+  color: #e0f5ed;
+}
+
+.themed-page-headers .page-topbar-actions :is(.appointment-date-display, .clinic-dashboard-date) strong {
+  color: #fff;
+  font-size: 12px;
+}
+
+.themed-page-headers .page-topbar-actions .appointment-header-actions {
+  width: auto;
+}
+
+.themed-page-headers .page-topbar-notifications:focus-visible {
+  outline: 2px solid #b4dec4;
+  outline-offset: 2px;
+}
+
+.themed-page-headers .page-topbar-notifications svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 2;
+}
+
+.themed-page-headers .page-topbar-account {
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 3px 12px !important;
+  background: rgb(255 255 255 / 8%);
+  border-color: rgb(182 235 211 / 23%) !important;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.themed-page-headers .page-topbar-avatar {
+  width: 34px !important;
+  height: 34px !important;
+  flex-shrink: 0;
+  background: #004633 !important;
+}
+
+.themed-page-headers .page-topbar-account-name {
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+.themed-page-headers .page-topbar-account-role {
+  color: #e0f5ed !important;
+  font-size: 10px !important;
+  text-transform: capitalize;
+}
+
+.page-topbar-account-chevron {
+  display: none;
+}
+
+.themed-page-headers .page-topbar-account-chevron {
+  display: block;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  color: #e0f5ed;
+}
+
+@media (max-width: 900px) {
+  .themed-page-headers :is(.page-topbar, .payment-qr-page-heading) {
+    padding-inline: 16px !important;
+    flex-wrap: wrap;
+  }
+
+  .themed-page-headers .page-topbar-actions {
+    max-width: 100%;
+  }
+
+  .themed-page-headers :is(.page-topbar, .payment-qr-page-heading) > div:first-child :is(h1, h2) {
+    font-size: 22px !important;
+    line-height: 27px !important;
+  }
+
+  .themed-page-headers :is(.page-topbar, .payment-qr-page-heading) > div:first-child p {
+    font-size: 12px !important;
+    line-height: 17px !important;
+  }
+}

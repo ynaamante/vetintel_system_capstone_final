@@ -20,6 +20,7 @@ exports.ensureSchema = () => db.query(`CREATE TABLE IF NOT EXISTS clinic_reminde
     recipient_email TEXT NOT NULL,title TEXT NOT NULL,message TEXT NOT NULL,type TEXT NOT NULL,
     severity TEXT NOT NULL DEFAULT 'low',created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     received_at TIMESTAMPTZ,read_at TIMESTAMPTZ);
+  ALTER TABLE clinic_owner_notifications ALTER COLUMN pet_id DROP NOT NULL, ALTER COLUMN delivery_id DROP NOT NULL;
   CREATE INDEX IF NOT EXISTS clinic_owner_notifications_recipient_idx ON clinic_owner_notifications(recipient_email,created_at DESC);`);
 
 function scope(req,res,send=false) {

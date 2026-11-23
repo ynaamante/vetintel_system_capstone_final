@@ -8,9 +8,10 @@ function requirements(req) {
  if(/^\/roles(?:\/|$)/.test(p)) return one(get?'View Roles':'Assign Permissions');
  if(/^\/users(?:\/|$)/.test(p)) return one(get?'View Users':req.method==='POST'?'Create Users':b.is_active===false||req.method==='DELETE'?'Deactivate Users':'Edit Users');
  if(p.startsWith('/disease-intelligence/')) {
+   if(/^\/disease-intelligence\/alerts\/\d+\/advisory$/.test(p))return [['View Risk Monitoring','View Disease Monitoring','View Intelligence Dashboard'],['Alert Clinics']];
    if(p==='/disease-intelligence/alert-rules')return one('Configure Alert Rules');
-   if(/^\/disease-intelligence\/alerts\/\d+\/review$/.test(p))return [['View Disease Monitoring','View Risk Monitoring'],['Review Disease Alerts']];
-   if(/^\/disease-intelligence\/alerts\/\d+\/history$/.test(p))return [['View Disease Monitoring','View Risk Monitoring']];
+   if(/^\/disease-intelligence\/alerts\/\d+\/review$/.test(p))return [['View Disease Monitoring','View Risk Monitoring','View Intelligence Dashboard'],['Review Disease Alerts']];
+   if(/^\/disease-intelligence\/alerts\/\d+\/history$/.test(p))return [['View Disease Monitoring','View Risk Monitoring','View Intelligence Dashboard']];
    if(p.endsWith('/monitoring-export'))return [['View Disease Monitoring','View Risk Monitoring'],['Export Reports']];
    if(p.endsWith('/report-data'))return [['View Reports'],['Generate Reports']];
    if(p.endsWith('/export-data'))return [['View Intelligence Dashboard','View Disease Monitoring','View Risk Monitoring','View Community Analytics','View Reports'],['Export Reports']];

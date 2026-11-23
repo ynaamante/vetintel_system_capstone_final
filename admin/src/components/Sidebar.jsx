@@ -26,10 +26,10 @@ const ALL_NAV_ITEMS = [
   { id: 'patient-records', label: 'Patient Records',   icon: 'file', section: 'Clinical Records', doctorOnly: true },
   { id: 'reminders', label: 'Due Dates & Reminders', icon: 'bell', section: 'Clinical Records', doctorOnly: true },
   // Operations
-  { id: 'patient-registration', label: 'New Patient Registration', icon: 'clipboard', section: 'Operations', receptionistOnly: true },
-  { id: 'appointments', label: 'Appointment Management', icon: 'calendar', section: 'Operations', receptionistOnly: true },
-  { id: 'patient-queue', label: 'Patient Queue', icon: 'users', section: 'Operations', receptionistOnly: true },
-  { id: 'billing', label: 'Billing & Payments', icon: 'dollar', section: 'Operations', receptionistOnly: true },
+  { id: 'patient-registration', label: 'New Patient Registration', icon: 'clipboard', section: 'Operations' },
+  { id: 'appointments', label: 'Appointment Management', icon: 'calendar', section: 'Operations' },
+  { id: 'patient-queue', label: 'Patient Queue', icon: 'users', section: 'Operations' },
+  { id: 'billing', label: 'Billing & Payments', icon: 'dollar', section: 'Operations' },
 ];
 
 const isDoctorRole = role => ['doctor', 'assistant_doctor', 'veterinarian'].includes(String(role || '').trim().toLowerCase().replace(/[-\s]+/g, '_'));
@@ -46,7 +46,6 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
 
   const canAccessPage = (item) => {
     if (roleName === 'super_admin') return true;
-    if(item.receptionistOnly && roleName!=='receptionist') return false;
     if(item.doctorOnly && !isDoctorRole(user.role)) return false;
     const featureName = item.checkPermission || item.label;
     return canViewFeature(permissions, user.role, featureName);
@@ -130,7 +129,7 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
                   {Icons[item.icon]}
                   {item.dot && collapsed && <span style={s.collapsedAlertDot} />}
                 </span>
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && <span className="sidebar-nav-label">{item.label}</span>}
                 {item.dot && networkAlertCount>0 && <span className="sidebar-alert-count" style={collapsed ? s.collapsedAlertCount : s.alertCount}>{networkAlertCount} alerts</span>}
               </div>
             </div>

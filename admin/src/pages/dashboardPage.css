@@ -145,3 +145,13 @@
 .surveillance-stats .surveillance-stat > div { font-size: 13px; margin-top: 10px; color: #32483d; }
 @media (max-width: 850px) { .surveillance-stats { grid-template-columns: repeat(2,minmax(0,1fr)); } .surveillance-stats .surveillance-stat { padding: 0 16px; } .surveillance-stats .surveillance-stat:nth-child(3) { border-left: 0; } .surveillance-stats .surveillance-stat:nth-child(n+3) { border-top: 1px solid #c5d8cb; padding-top: 16px; } .surveillance-stats .surveillance-stat h2 { font-size: 14px; } .surveillance-stats .surveillance-stat > strong { font-size: 32px; } }
 @media (max-width: 600px) { .surveillance-stats { grid-template-columns: 1fr; padding: 6px 18px; } .surveillance-stats .surveillance-stat { padding: 14px 0; } .surveillance-stats .surveillance-stat + .surveillance-stat { border-left: 0; border-top: 1px solid #c5d8cb; } }
+
+.surveillance-trend-banner { gap: 14px; border-color: #efb761; background: #fff7e9; }
+.surveillance-trend-copy { flex: 1 1 260px; }
+.surveillance-trend-copy .surveillance-trend-label { margin: 0 0 3px; color: #984b00; font-size: .71rem; font-weight: 800; text-transform: uppercase; }
+.surveillance-trend-icon { display: grid; place-items: center; flex: 0 0 38px; height: 38px; border-radius: 8px; background: #fbe7c5; color: #985000; }
+.surveillance-trend-icon svg { width: 22px; height: 22px; }
+.surveillance-trend-counts { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0; }
+.surveillance-trend-counts dt { color: #664b36; font-size: .69rem; }
+.surveillance-trend-counts dd { margin: 2px 0 0; color: #713900; font-size: 1.25rem; font-weight: 800; }
+@media (max-width: 900px) { .surveillance-trend-banner { flex-wrap: wrap; } }

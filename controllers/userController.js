@@ -13,20 +13,47 @@ exports.list = async (req, res, next) => {
       clinicId = explicitClinicId;
     }
 
-    const users = await userModel.getAll(clinicId);
+    const role = String(req.user?.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    const includeInactive = Boolean(clinicId && ['owner', 'clinic_owner'].includes(role) && req.query.include_inactive === 'true');
+    const users = await userModel.getAll(clinicId, includeInactive);
     res.json(users);
   } catch (e) {
     next(e);
   }
 };
 
+exports.getStaff = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid staff ID' });
+
+    const role = String(req.user?.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    const clinicId = req.user?.clinic_id;
+    if (!clinicId || !['owner', 'clinic_owner'].includes(role)) {
+      return res.status(403).json({ error: 'Only clinic owners can view staff account details' });
+    }
+
+    const [staff] = await userModel.getAll(clinicId, true, id);
+    if (!staff) return res.status(404).json({ error: 'Staff account not found' });
+    res.json(staff);
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.create = async (req, res, next) => {
   try {
-    const { name, email, password, clinic_id, clinic_name, role_id, role_name } = req.body;
+    const { name, email, password, clinic_id, clinic_name, role_id, role_name, position, phone, is_active } = req.body;
     const normalizedEmail = String(email || '').trim();
 
     if (!name || !normalizedEmail || !password) {
       return res.status(400).json({ error: 'name, email and password required' });
+    }
+
+    if ((position != null && (typeof position !== 'string' || position.trim().length > 120))
+        || (phone != null && (typeof phone !== 'string' || phone.trim().length > 40))
+        || (is_active != null && typeof is_active !== 'boolean')) {
+      return res.status(400).json({ error: 'Check the position, contact number, and employment status.' });
     }
 
     let resolvedClinicId = clinic_id;
@@ -84,6 +111,9 @@ exports.create = async (req, res, next) => {
       password,
       clinic_id: resolvedClinicId,
       role_id: resolvedRoleId,
+      position: position?.trim() || null,
+      phone: phone?.trim() || null,
+      is_active: is_active ?? true,
     });
 
     const auditUserId = req.user && req.user.id ? parseInt(req.user.id, 10) : null;
