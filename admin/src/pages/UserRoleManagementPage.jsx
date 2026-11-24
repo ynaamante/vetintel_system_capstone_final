@@ -1,11 +1,14 @@
 import { usePageState } from '../utils/usePageState.js';
 import { apiFetch as fetch } from '../utils/apiFetch.js';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Topbar from '../components/Topbar';
+import RecordActionsModal from '../components/RecordActionsModal';
 import StatusIndicator from '../components/StatusIndicator';
 import { Icons } from '../icons';
 import { canViewFeature } from '../utils/permissionUtils';
 import './userRoleManagement.css';
+
+const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
 
 const ROLE_META = {
   owner: { color: '#d97706', bg: '#fffbeb', border: '#fde68a', icon: Icons.shield },
@@ -50,73 +53,112 @@ const RoleBadge = ({ role }) => {
 
 const StatusBadge = ({ status }) => <StatusIndicator status={status} />;
 
-const ActionIcon = ({ type }) => {
-  const paths = {
-    view: <><path d="M2 12s3.5-5 10-5 10 5 10 5-3.5 5-10 5S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" /></>,
-    edit: <><path d="M13.5 6.5 17.5 10.5" /><path d="m4 20 4.2-1 10.2-10.2a2.8 2.8 0 0 0-4-4L4.2 15Z" /></>,
-    user: <><circle cx="12" cy="7" r="3" /><path d="M5 20c.5-3.2 2.5-5 7-5s6.5 1.8 7 5" /></>,
-    deactivate: <><circle cx="12" cy="7" r="3" /><path d="M5 20c.5-3.2 2.5-5 7-5s6.5 1.8 7 5" /><path d="m18 5 4 4m0-4-4 4" /></>,
-    activate: <><circle cx="12" cy="7" r="3" /><path d="M5 20c.5-3.2 2.5-5 7-5s6.5 1.8 7 5" /><path d="M18 7h5m-2.5-2.5V9.5" /></>,
-  };
-  return <svg width="100%" height="100%" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[type]}</svg>;
-};
-
 /* ── ADD USER MODAL ── */
-function AddUserModal({ onClose, onAdd, approvedRoles }) {
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', role: '' });
-  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+function StaffPasswordField({ label, value, onChange, placeholder }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <label className="urm-add-field">
+      <span>{label} <span className="urm-add-required">*</span></span>
+      <span className="urm-add-password">
+        <input required minLength={8} autoComplete="new-password" type={visible ? 'text' : 'password'} value={value} onChange={onChange} placeholder={placeholder} />
+        <button type="button" onClick={() => setVisible(current => !current)} aria-label={`${visible ? 'Hide' : 'Show'} ${label.toLowerCase()}`}>{visible ? Icons.eyeOff : Icons.eye}</button>
+      </span>
+    </label>
+  );
+}
 
-  const handleSubmit = () => {
-    if (!form.firstName || !form.lastName || !form.email || !form.password || !form.role) return;
-    onAdd({ ...form, name: `${form.firstName} ${form.lastName}` });
-    onClose();
+function AddUserModal({ onClose, onAdd, approvedRoles }) {
+  const dialog = useRef(null);
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', role: '', position: '', password: '', confirmPassword: '', phone: '', status: 'Active' });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const set = key => event => setForm(current => ({ ...current, [key]: event.target.value }));
+
+  useEffect(() => {
+    const previous = document.activeElement;
+    dialog.current.showModal();
+    return () => previous?.focus();
+  }, []);
+
+  const handleSubmit = async event => {
+    event.preventDefault();
+    if (busy) return;
+    const firstName = form.firstName.trim();
+    const lastName = form.lastName.trim();
+    if (!firstName || !lastName) {
+      setError('Enter both the first name and last name.');
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords must match.');
+      return;
+    }
+    setError('');
+    setBusy(true);
+    try {
+      await onAdd({
+        name: `${firstName} ${lastName}`,
+        email: form.email.trim(),
+        password: form.password,
+        role: form.role,
+        position: form.position.trim(),
+        phone: form.phone.trim(),
+        isActive: form.status === 'Active',
+      });
+      onClose();
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 100 }} />
-      <div style={m.panel}>
-        <div style={m.header}>
-          <div style={m.headerTitle}><span style={m.headerIcon}>{Icons.shield}</span> Add Staff Account</div>
-          <button style={m.closeBtn} onClick={onClose}>
-            <span style={{ width: 18, height: 18, display: 'flex', color: '#64748b' }}>{Icons.close}</span>
-          </button>
-        </div>
-        <div style={m.divider} />
-        <div style={m.body}>
-          <div style={m.twoColumns}>
-            <div style={m.field}><label style={m.label}>First Name <span style={m.required}>*</span></label><input style={m.input} placeholder="Juan" value={form.firstName} onChange={set('firstName')} /></div>
-            <div style={m.field}><label style={m.label}>Last Name <span style={m.required}>*</span></label><input style={m.input} placeholder="Dela Cruz" value={form.lastName} onChange={set('lastName')} /></div>
-          </div>
-          <div style={m.field}>
-            <label style={m.label}>Email Address <span style={m.required}>*</span></label>
-            <input style={m.input} placeholder="staff@happypaws.com" value={form.email} onChange={set('email')} />
-            <small style={m.help}>This will be used to log in to the system.</small>
-          </div>
-          <div style={m.field}>
-            <label style={m.label}>Password <span style={m.required}>*</span></label>
-            <input style={m.input} type="password" placeholder="Minimum 8 characters" value={form.password} onChange={set('password')} />
-            <small style={m.help}>Staff will use this password on first login.</small>
-          </div>
-          <div style={m.field}>
-            <label style={m.label}>Role <span style={m.required}>*</span></label>
-            <select style={m.input} value={form.role} onChange={set('role')}>
-              <option value="">Select approved role...</option>
-              {APPROVED_STAFF_ROLES.filter(role => approvedRoles.includes(role.value)).map(role => (
-                <option key={role.value} value={role.value}>{role.label}</option>
-              ))}
-            </select>
-            <small style={m.help}>Only roles approved by Super Admin are shown.</small>
-          </div>
-          <div style={m.activeNotice}><span style={m.noticeIcon}><ActionIcon type="user" /></span><span>Account will be set to <strong>Active</strong> immediately upon creation.</span></div>
-        </div>
-        <div style={m.divider} />
-        <div style={m.footer}>
-          <button style={m.secondaryBtn} onClick={onClose}>Cancel</button>
-          <button style={m.primaryBtn} onClick={handleSubmit}>Create Account</button>
-        </div>
-      </div>
-    </>
+    <dialog ref={dialog} className="urm-add-dialog" aria-labelledby="urm-add-title" onCancel={event => { event.preventDefault(); if (!busy) onClose(); }}>
+      <header>
+        <div><h2 id="urm-add-title">Add Staff Account</h2><p>Create a new staff account and assign their role, access, and status.</p></div>
+        <button type="button" disabled={busy} onClick={onClose}>Close</button>
+      </header>
+      <form onSubmit={handleSubmit}>
+        <fieldset className="urm-add-fields" disabled={busy}>
+          <section aria-labelledby="urm-staff-info">
+            <h3 id="urm-staff-info">Staff Information</h3>
+            <div className="urm-add-grid">
+              <label className="urm-add-field"><span>First Name <span className="urm-add-required">*</span></span><input required autoComplete="given-name" placeholder="Enter first name" value={form.firstName} onChange={set('firstName')} /></label>
+              <label className="urm-add-field"><span>Last Name <span className="urm-add-required">*</span></span><input required autoComplete="family-name" placeholder="Enter last name" value={form.lastName} onChange={set('lastName')} /></label>
+              <label className="urm-add-field urm-add-wide"><span>Email Address <span className="urm-add-required">*</span></span><input required type="email" autoComplete="email" placeholder="Enter email address" value={form.email} onChange={set('email')} /></label>
+            </div>
+          </section>
+          <section aria-labelledby="urm-staff-access">
+            <h3 id="urm-staff-access">Account &amp; Access</h3>
+            <div className="urm-add-grid">
+              <label className="urm-add-field"><span>Role <span className="urm-add-required">*</span></span><select required value={form.role} onChange={set('role')}>
+                <option value="">Select role</option>
+                {APPROVED_STAFF_ROLES.filter(role => approvedRoles.includes(role.value)).map(role => <option key={role.value} value={role.value}>{role.label}</option>)}
+              </select></label>
+              <label className="urm-add-field"><span>Position / Title</span><input maxLength={120} autoComplete="organization-title" placeholder="e.g., Veterinarian, Receptionist" value={form.position} onChange={set('position')} /></label>
+              <StaffPasswordField label="Password" placeholder="Minimum 8 characters" value={form.password} onChange={set('password')} />
+              <StaffPasswordField label="Confirm Password" placeholder="Re-enter password" value={form.confirmPassword} onChange={set('confirmPassword')} />
+            </div>
+          </section>
+          <section aria-labelledby="urm-staff-extra">
+            <h3 id="urm-staff-extra">Additional Details <small>(Optional)</small></h3>
+            <div className="urm-add-grid">
+              <label className="urm-add-field"><span>Contact Number</span><input type="tel" maxLength={40} autoComplete="tel" placeholder="Enter contact number" value={form.phone} onChange={set('phone')} /></label>
+              <label className="urm-add-field"><span>Employment Status</span><span className="urm-add-status" data-status={form.status}>
+                <select value={form.status} onChange={set('status')}><option>Active</option><option>Inactive</option></select>
+              </span></label>
+            </div>
+          </section>
+        </fieldset>
+        <div className="urm-add-notice">{Icons.user}<span>Account will be set to <strong>{form.status}</strong> immediately upon creation.</span></div>
+        {error && <p role="alert" className="urm-add-error">{error}</p>}
+        <footer>
+          <button type="button" disabled={busy} onClick={onClose}>Cancel</button>
+          <button type="submit" className="urm-add-submit" disabled={busy}>{busy ? 'Creating…' : 'Create Account'}</button>
+        </footer>
+      </form>
+    </dialog>
   );
 }
 
@@ -130,6 +172,10 @@ export default function UserRoleManagementPage({ user }) {
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [profileUser, setProfileUser] = useState(null);
+  const [actionUserId, setActionUserId] = useState(null);
+  const actionUser = users.find(staff => staff.id === actionUserId);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState('');
   const [notification, setNotification] = useState('');
   const [editForm, setEditForm] = useState({ id: '', name: '', email: '', role: 'doctor', status: 'Active' });
 
@@ -137,10 +183,9 @@ export default function UserRoleManagementPage({ user }) {
 
   useEffect(() => {
     if (!canView || !user?.token) return;
-    const apiUrl = import.meta.env.VITE_API_URL || '';
     const headers = { Authorization: `Bearer ${user.token}` };
     Promise.all([
-      fetch(`${apiUrl}/users`, { headers }).then(response => response.ok ? response.json() : Promise.reject(new Error('Failed to load users'))),
+      fetch(`${apiUrl}/users?include_inactive=true`, { headers }).then(response => response.ok ? response.json() : Promise.reject(new Error('Failed to load users'))),
       fetch(`${apiUrl}/my-role-requests`, { headers }).then(response => response.ok ? response.json() : Promise.reject(new Error('Failed to load role requests'))),
       fetch(`${apiUrl}/roles`, { headers }).then(response => response.ok ? response.json() : Promise.reject(new Error('Failed to load roles'))),
     ]).then(([userRows, requestRows, roleRows]) => {
@@ -150,7 +195,7 @@ export default function UserRoleManagementPage({ user }) {
         return (role !== 'owner' && role !== 'clinic_owner') || !isCurrentOwner;
       });
       setUsers(staffRows.map(row => ({
-        id: row.id, name: row.name, email: row.email, role: row.role || '', status: row.is_active === false ? 'Inactive' : 'Active',
+        id: row.id, name: row.name, email: row.email, position: row.position, phone: row.phone, role: row.role || '', status: row.is_active === false ? 'Inactive' : 'Active',
         created: row.created_at?.slice(0, 10) || '—', lastLogin: '—',
       })));
       const approvedRequestedRoles = requestRows
@@ -196,21 +241,15 @@ export default function UserRoleManagementPage({ user }) {
     return matchSearch && matchRole && matchStatus;
   });
 
-  const handleAdd = async ({ name, email, password, role }) => {
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || '';
-      const response = await fetch(`${apiUrl}/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
-        body: JSON.stringify({ name, email, password, role_name: role, clinic_id: user.clinic_id }),
-      });
-      if (!response.ok) throw new Error((await response.json()).error || 'Failed to create staff account');
-      const row = await response.json();
-      setUsers(prev => [{ id: row.id, name: row.name, email: row.email, role, status: 'Active', created: row.created_at?.slice(0, 10) || '—', lastLogin: '—' }, ...prev]);
-    } catch (error) {
-      console.error('Failed to create staff account', error);
-      setNotification(error.message);
-    }
+  const handleAdd = async ({ name, email, password, role, position, phone, isActive }) => {
+    const response = await fetch(`${apiUrl}/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+      body: JSON.stringify({ name, email, password, role_name: role, clinic_id: user.clinic_id, position, phone, is_active: isActive }),
+    });
+    const row = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(row.error || 'Failed to create staff account.');
+    setUsers(prev => [{ id: row.id, name: row.name, email: row.email, position: row.position, phone: row.phone, role, status: row.is_active === false ? 'Inactive' : 'Active', created: row.created_at?.slice(0, 10) || '—', lastLogin: '—' }, ...prev]);
   };
 
   const openEdit = user => {
@@ -228,12 +267,11 @@ export default function UserRoleManagementPage({ user }) {
 
   const handleUpdate = () => {
     if (!editForm.name || !editForm.email) return;
-    const apiUrl = import.meta.env.VITE_API_URL || '';
     fetch(`${apiUrl}/users/${editForm.id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + localStorage.getItem('vetintel_token'),
+        Authorization: `Bearer ${user.token}`,
       },
       body: JSON.stringify({
         name: editForm.name,
@@ -264,20 +302,39 @@ export default function UserRoleManagementPage({ user }) {
 
   const setEditField = key => e => setEditForm(f => ({ ...f, [key]: e.target.value }));
 
-  const handleDeactivate = id => {
-    const selectedUser = users.find(u => u.id === id);
-    if (!selectedUser) return;
-    const nextStatus = selectedUser.status === 'Active' ? 'Inactive' : 'Active';
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: nextStatus } : u));
-    setNotification(`${selectedUser.name} ${nextStatus === 'Active' ? 'activated' : 'deactivated'}.`);
-    window.setTimeout(() => setNotification(''), 3000);
+  const runStaffAction = async action => {
+    setActionBusy(true);
+    setActionError('');
+    try {
+      const staff = actionUser;
+      const response = await fetch(`${apiUrl}/users/${staff.id}`, {
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+        ...(action === 'status' && { method: 'PUT', body: JSON.stringify({ is_active: staff.status !== 'Active' }) }),
+      });
+      const row = await response.json().catch(() => null);
+      if (!response.ok || !row) throw new Error(row?.error || 'Unable to complete the staff action.');
+      const status = row.is_active === false ? 'Inactive' : 'Active';
+      if (action === 'status') {
+        setUsers(prev => prev.map(u => u.id === staff.id ? { ...u, status } : u));
+        setNotification(`${staff.name} ${status === 'Active' ? 'activated' : 'deactivated'}.`);
+        window.setTimeout(() => setNotification(''), 3000);
+      } else {
+        const details = { ...staff, ...row, status };
+        if (action === 'edit') openEdit(details);
+        else setProfileUser(details);
+      }
+    } catch (error) {
+      setActionError(error.message);
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   return (
     <div style={s.main}>
       <Topbar user={user} title="User Management" subtitle="Manage staff accounts and role assignments" />
       {notification && (
-        <div style={s.notification}>
+        <div style={s.notification} className="urm-staff-notification">
           <span style={s.notificationIcon}>✓</span>
           <strong>{notification}</strong>
         </div>
@@ -335,31 +392,24 @@ export default function UserRoleManagementPage({ user }) {
           <table style={s.table}>
             <thead>
               <tr>
-                {['Staff Name', 'Email', 'Role', 'Status', 'Last Login', 'Actions'].map((h, index) => (
-                  <th key={h} style={{ ...s.th, width: ['20%', '22%', '14%', '14%', '18%', '12%'][index] }}>{h}</th>
+                {['Staff Name', 'Email', 'Role', 'Status', 'Last Login'].map((h, index) => (
+                  <th key={h} scope="col" style={{ ...s.th, width: ['22%', '25%', '17%', '15%', '16%'][index] }}>{h}</th>
                 ))}
+                <th scope="col" aria-label="Staff actions" style={{ ...s.th, width: '5%' }} />
               </tr>
             </thead>
             <tbody>
               {filtered.map((u, i) => (
-                <tr key={u.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
+                <tr key={u.id} className="urm-staff-row" style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }} onClick={() => { setActionError(''); setActionUserId(u.id); }}>
                   <td style={{ ...s.td, fontWeight: 500, color: '#0f1117' }}>{u.name}</td>
                   <td style={{ ...s.td, color: '#64748b' }}>{u.email}</td>
                   <td style={s.td}><RoleBadge role={u.role} /></td>
                   <td style={s.td}><StatusBadge status={u.status} /></td>
                   <td style={{ ...s.td, color: '#64748b' }}>{u.lastLogin}</td>
                   <td style={s.td}>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                      <button style={{ ...s.iconBtn, color: '#111827' }} title="View" onClick={() => setProfileUser(u)}>
-                        <ActionIcon type="view" />
-                      </button>
-                      <button style={s.iconBtn} title="Edit" onClick={() => openEdit(u)}>
-                        <ActionIcon type="edit" />
-                      </button>
-                      <button style={{ ...s.iconBtn, color: u.status === 'Active' ? '#ef3340' : '#16a34a' }} title={u.status === 'Active' ? 'Deactivate' : 'Activate'} onClick={() => handleDeactivate(u.id)}>
-                        <ActionIcon type={u.status === 'Active' ? 'deactivate' : 'activate'} />
-                      </button>
-                    </div>
+                    <button type="button" className="urm-staff-chevron" aria-label={`Open staff actions for ${u.name}`}>
+                      {Icons.chevronRight}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -374,6 +424,24 @@ export default function UserRoleManagementPage({ user }) {
       </div>
 
       {showAdd && <AddUserModal onClose={() => setShowAdd(false)} onAdd={handleAdd} approvedRoles={approvedRoles} />}
+      {actionUser && <RecordActionsModal
+        title="Staff Actions"
+        recordLabel="Staff account"
+        recordName={actionUser.name}
+        recordMeta={`${roleLabel(actionUser.role)} · ${actionUser.email}`}
+        recordInitials={actionUser.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()}
+        status={actionUser.status}
+        suspended={showEdit || Boolean(profileUser)}
+        onClose={() => { if (!actionBusy) setActionUserId(null); }}
+        error={actionError}
+        actions={[
+          { label: 'View Staff Details', description: 'Review staff profile, clinic role, and account information.', icon: Icons.user, onClick: () => runStaffAction('view'), unavailable: actionBusy },
+          { label: 'Edit Staff Account', description: 'Update the staff name, email, and assigned role.', icon: Icons.edit, onClick: () => runStaffAction('edit'), unavailable: actionBusy },
+          actionUser.status === 'Active'
+            ? { label: 'Deactivate Account', description: 'Disable access to this clinic account.', destructive: true, onClick: () => runStaffAction('status'), unavailable: actionBusy }
+            : { label: 'Activate Account', description: 'Restore access to this clinic account.', icon: Icons.refresh, onClick: () => runStaffAction('status'), unavailable: actionBusy },
+        ]}
+      />}
       {profileUser && <StaffProfileModal user={profileUser} rolePermissions={rolePermissions[normalizeRole(profileUser.role)] || {}} onClose={() => setProfileUser(null)} />}
       {showEdit && (
         <EditUserModal
@@ -392,12 +460,12 @@ function EditUserModal({ user, approvedRoles, onClose, onSave, onChange }) {
   const [firstName, ...lastParts] = user.name.split(' ');
   const lastName = lastParts.join(' ');
   return (
-    <>
+    <div className="urm-staff-secondary-modal">
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 100 }} />
-      <div style={m.panel}>
+      <div style={m.panel} role="dialog" aria-modal="true" aria-label="Edit Staff Account" onKeyDown={event => { if (event.key === 'Escape' && !event.defaultPrevented) onClose(); }}>
         <div style={m.header}>
           <div style={m.headerTitle}><span style={m.headerIcon}>{Icons.shield}</span> Edit Staff Account</div>
-          <button style={m.closeBtn} onClick={onClose}>
+          <button style={m.closeBtn} onClick={onClose} aria-label="Close staff editor" autoFocus>
             <span style={{ width: 18, height: 18, display: 'flex', color: '#64748b' }}>{Icons.close}</span>
           </button>
         </div>
@@ -435,7 +503,7 @@ function EditUserModal({ user, approvedRoles, onClose, onSave, onChange }) {
           <button style={m.primaryBtn} onClick={onSave}>Save Changes</button>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -448,13 +516,13 @@ function StaffProfileModal({ user, rolePermissions, onClose }) {
   ]);
   const permissionTotal = permissions.reduce((total, [, items]) => total + items.filter(([, allowed]) => allowed).length, 0);
   return (
-    <>
+    <div className="urm-staff-secondary-modal">
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 100 }} />
-      <div style={m.profilePanel}>
-        <div style={m.profileHeader}><strong>Staff Profile — {user.name}</strong><button style={m.closeBtn} onClick={onClose} aria-label="Close staff profile">{Icons.close}</button></div>
+      <div style={m.profilePanel} role="dialog" aria-modal="true" aria-label="Staff Profile" onKeyDown={event => { if (event.key === 'Escape') onClose(); }}>
+        <div style={m.profileHeader}><strong>Staff Profile — {user.name}</strong><button style={m.closeBtn} onClick={onClose} aria-label="Close staff profile" autoFocus>{Icons.close}</button></div>
         <div style={m.profileBody}>
           <div style={m.profileDetails}>
-            <div><small style={m.profileLabel}>NAME</small><strong>{user.name}</strong><small style={m.profileLabel}>EMAIL</small><span>{user.email}</span></div>
+            <div><small style={m.profileLabel}>NAME</small><strong>{user.name}</strong><small style={m.profileLabel}>EMAIL</small><span>{user.email}</span>{user.position && <><small style={m.profileLabel}>POSITION / TITLE</small><span>{user.position}</span></>}{user.phone && <><small style={m.profileLabel}>CONTACT NUMBER</small><span>{user.phone}</span></>}</div>
             <div><small style={m.profileLabel}>ASSIGNED ROLE</small><span style={m.rolePill}>{roleName}</span><small style={m.profileLabel}>ACCOUNT STATUS</small><StatusIndicator status={user.status} style={{ display: 'flex', marginBottom: 14 }} /><small style={m.profileLabel}>LAST LOGIN</small><span>{user.lastLogin === '—' ? 'Never' : user.lastLogin}</span></div>
           </div>
           <div style={m.profileDivider} />
@@ -481,7 +549,7 @@ function StaffProfileModal({ user, rolePermissions, onClose }) {
         </div>
         <div style={m.profileFooter}><button style={m.secondaryBtn} onClick={onClose}>Close</button></div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -506,7 +574,6 @@ const s = {
   td: { padding: '13px 11px', fontSize: '.8rem', color: '#374151', borderBottom: '1px solid #e9f0f2', verticalAlign: 'middle', overflowWrap: 'anywhere' },
   emptyCell: { height: 68, padding: '12px', textAlign: 'center', color: '#64748b', fontSize: '.84rem', borderBottom: '0' },
   idText: { fontFamily: 'monospace', fontSize: '.78rem', color: '#64748b' },
-  iconBtn: { background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24 },
   notification: { position: 'fixed', top: 18, right: 24, zIndex: 120, display: 'flex', alignItems: 'center', gap: 9, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 16px', boxShadow: '0 8px 24px rgba(15,23,42,.12)', color: '#111827', fontSize: '.78rem' },
   notificationIcon: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, borderRadius: '50%', background: '#111827', color: '#fff', fontSize: '.7rem' },
 };
@@ -525,8 +592,6 @@ const m = {
   required: { color: '#ef4444' },
   input: { width: '100%', padding: '10px 12px', border: 0, borderRadius: 8, fontSize: '.84rem', color: '#0f1117', outline: 'none', background: '#f1f1f3', boxSizing: 'border-box' },
   help: { display: 'block', color: '#8aa0c0', fontSize: '.68rem', marginTop: 6 },
-  activeNotice: { display: 'flex', alignItems: 'center', gap: 8, color: '#16a34a', border: '1px solid #86efac', background: '#f0fdf4', borderRadius: 9, padding: '11px 12px', fontSize: '.72rem' },
-  noticeIcon: { width: 22, height: 22, display: 'flex', flexShrink: 0 },
   buttonIcon: { width: 18, height: 18, display: 'flex' },
   profilePanel: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: '#fff', borderRadius: 12, width: 520, maxWidth: '92vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 101, boxShadow: '0 20px 60px rgba(0,0,0,.2)' },
   profileHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, padding: '20px 24px 14px', fontSize: '1rem', color: '#111827' },

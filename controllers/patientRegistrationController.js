@@ -2,10 +2,12 @@ const { evaluate: evaluateScreening, rules: screeningRules } = require('../utils
 const screening = require('../data/intakeScreening.json');
 const { publish } = require('../utils/clinicEvents');
 const db = require('../config/db');
+const { has } = require('../utils/rolePermissions');
 
 const normalizeRole = value => String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
 const receptionistRoles = new Set(['receptionist', 'clinic_owner', 'owner', 'super_admin']);
 const doctorRoles = new Set(['doctor', 'assistant_doctor', 'veterinarian']);
+const canWorkRegistration = user => receptionistRoles.has(normalizeRole(user?.role)) || has(user, 'View Registrations');
 const allowedTypes = new Set(['application/pdf', 'image/jpeg', 'image/png']);
 const maxFileBytes = 10 * 1024 * 1024;
 const maxFilesBytes = 10 * 1024 * 1024;
@@ -159,8 +161,10 @@ exports.listIntakes = async (req, res, next) => {
     const clinicId = clinicIdFor(req, res);
     if (!clinicId) return;
     const role = normalizeRole(req.user?.role);
-    const isDoctor = doctorRoles.has(role);
-    if (!isDoctor && !receptionistRoles.has(role)) return res.status(403).json({ error: 'You do not have access to registration intakes.' });
+    const registrationView = req.query.scope === 'registration';
+    if (registrationView && !has(req.user, 'View Registrations')) return res.status(403).json({ error: 'Registration access is required.' });
+    const isDoctor = doctorRoles.has(role) && !registrationView;
+    if (!isDoctor && !canWorkRegistration(req.user)) return res.status(403).json({ error: 'You do not have access to registration intakes.' });
     const result = await db.query(
       `SELECT i.id, i.assigned_doctor_id, i.client_id, i.pet_id, i.status, i.owner_data, i.pet_data, i.correction_note, i.activity,
               i.created_at, i.updated_at, i.submitted_at,
@@ -204,7 +208,7 @@ exports.submitIntake = async (req, res, next) => {
   try {
     const clinicId = clinicIdFor(req, res);
     if (!clinicId) return;
-    if (!receptionistRoles.has(normalizeRole(req.user?.role)) || !req.user?.id) return res.status(403).json({ error: 'Reception staff access is required to submit a registration.' });
+    if (!canWorkRegistration(req.user) || !req.user?.id) return res.status(403).json({ error: 'Registration access is required to submit a registration.' });
     const validated = validateSubmission(req.body);
     if (Object.keys(validated.errors).length) return res.status(422).json({ error: 'Complete the required owner and patient information.', fields: validated.errors });
     const doctorId = Number(req.body.assigned_doctor_id);
@@ -248,7 +252,7 @@ exports.resubmitIntake = async (req, res, next) => {
   try {
     const clinicId = clinicIdFor(req, res);
     if (!clinicId) return;
-    if (!receptionistRoles.has(normalizeRole(req.user?.role)) || !req.user?.id) return res.status(403).json({ error: 'Reception staff access is required to resubmit a registration.' });
+    if (!canWorkRegistration(req.user) || !req.user?.id) return res.status(403).json({ error: 'Registration access is required to resubmit a registration.' });
     const intakeId = Number(req.params.id);
     if (!Number.isInteger(intakeId) || intakeId < 1) return res.status(400).json({ error: 'Invalid registration ID.' });
     const validated = validateSubmission(req.body);

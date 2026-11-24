@@ -24,7 +24,8 @@ exports.saveOverride=async(req,role,permissions)=>{
   for(const [group,items] of Object.entries(input)) {
     if(!expected.has(group)||!items||typeof items!=='object'||Array.isArray(items)) throw Object.assign(new Error('Unknown permission group.'),{status:422});
     for(const [item,value] of Object.entries(items)) {
-      if(!expected.get(group).includes(item)||typeof value!=='boolean'||(value&&!policy.allowed(role.name,item))) throw Object.assign(new Error('A selected permission is not available to this role.'),{status:422});
+      if(!expected.get(group).includes(item)||typeof value!=='boolean') throw Object.assign(new Error(`Invalid permission in ${group}.`),{status:422});
+      if(value&&!policy.allowed(role.name,item)) throw Object.assign(new Error(`“${item}” is not available to the ${role.name} role.`),{status:422});
     }
   }
   const resolved=policy.resolve(role.name,{},input),client=await db.pool.connect();

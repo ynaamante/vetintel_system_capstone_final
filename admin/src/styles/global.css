@@ -6248,6 +6248,8 @@ html body .lab-intake-wizard .lab-wizard-test-options > button[aria-selected="tr
   min-height: 24px;
 }
 
+.sidebar-nav-label { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
+
 .sidebar-nav-item:hover,
 .sidebar-action:hover {
   background: rgba(255, 255, 255, .12);
@@ -6345,12 +6347,13 @@ html body .lab-intake-wizard .lab-wizard-test-options > button[aria-selected="tr
   min-height: 0;
   overflow: auto;
   font-size: 18px;
-  zoom: 1.12;
+  --admin-content-scale: 1.12;
+  zoom: var(--admin-content-scale);
 }
 
 @media (min-width: 901px) and (max-width: 1200px) {
   .admin-content {
-    zoom: 1;
+    --admin-content-scale: 1;
   }
 
   .clinic-records-shell > .clinic-records-content {

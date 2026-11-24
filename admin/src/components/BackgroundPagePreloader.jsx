@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import { pageStateStore } from '../utils/pageStateStore.js';
 import { canViewFeature } from '../utils/permissionUtils';
@@ -32,7 +33,7 @@ const loaded = key => {
 const written = key => pageStateStore.status(key).written;
 const pageLoading = file => () => loaded(`pages/${file}.jsx:loading`);
 
-// Run the normal read effects once off screen so they populate the same page
+// Run the normal read effects without rendering a visible page so they populate the same page
 // snapshots used during navigation. Unmounting each job cleans up its polling.
 export default function BackgroundPagePreloader({ user, activePage, canAccessPage }) {
   const jobs = useMemo(() => {
@@ -70,13 +71,13 @@ export default function BackgroundPagePreloader({ user, activePage, canAccessPag
         ['dashboard', 'Clinic Dashboard', recordsReady('dashboardSummary')],
         ['owners', 'Clinic Record Owners', recordsReady('clients')],
         ['pets', 'Pet Profiles', recordsReady('pets')],
-        ['appointments', 'Appointment Management', recordsReady('appointments')],
+        ['appointments', 'Clinic Record Appointments', recordsReady('appointments')],
         ['visits', 'Visit & Check-up', recordsReady('visits')],
         ['vaccinations', 'Vaccinations', recordsReady('vaccinations')],
         ['plans', 'Treatment Plans', () => written('TreatmentPlansTab:savedPlans:all')],
         ['lab-results', 'Laboratory', () => loaded('LabResultsTab:loading:all')],
         ['inpatient', 'Inpatient Care', () => loaded('InpatientTab:loadingRecords:all')],
-        ['consultation', 'Billing & Payments', () => loaded('BillingTab:loading:all')],
+        ['consultation', 'Clinic Record Billing', () => loaded('BillingTab:loading:all')],
         ['inventory', 'Inventory Management', () => loaded('components/SharedInventoryPanel.jsx:loading')],
       ];
       // Warm clinic records before the less frequently used management pages.
@@ -88,6 +89,7 @@ export default function BackgroundPagePreloader({ user, activePage, canAccessPag
   }, [user, canAccessPage]);
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
+  const [preloadContainer] = useState(() => document.createElement('div'));
   const job = jobs[index];
 
   useEffect(() => {
@@ -108,11 +110,8 @@ export default function BackgroundPagePreloader({ user, activePage, canAccessPag
   }, [started, job]);
 
   if (!started || !job || job.page === activePage || job.ready()) return null;
-  return <div key={job.id} data-background-preload={job.id} aria-hidden="true" inert=""
-    style={{ position: 'fixed', left: -100000, top: 0, width: 1280, height: 900,
-      overflow: 'hidden', visibility: 'hidden', pointerEvents: 'none' }}>
-    {job.content}
-  </div>;
+  // Keep effect-driven preloading outside the document and its layout.
+  return createPortal(job.content, preloadContainer, job.id);
 }
 
 BackgroundPagePreloader.propTypes = {

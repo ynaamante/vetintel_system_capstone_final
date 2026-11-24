@@ -319,7 +319,7 @@ export interface OwnerNotification {
   date: string;
   read: boolean;
   received: boolean;
-  petId: number;
+  petId: number | null;
   clinicName: string;
   accessRequestId?: string;
   requestStatus?: string;

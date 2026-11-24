@@ -2,11 +2,11 @@ WITH clock AS (
  SELECT (now() AT TIME ZONE 'Asia/Manila')::date AS today,
  date_trunc('month',now() AT TIME ZONE 'Asia/Manila')::date AS month
 ), patients AS (
- SELECT p.id,p.name,p.species,p.created_at,c.name AS owner
+ SELECT p.id,p.name,p.species,p.breed,p.created_at,c.name AS owner
  FROM pets p LEFT JOIN clients c ON c.id=p.client_id AND c.clinic_id=p.clinic_id
  WHERE p.clinic_id=$1 AND NOT COALESCE((p.metadata->>'archived')::boolean,false)
 ), bookings AS (
- SELECT a.*,p.name AS pet,c.name AS owner,u.name AS doctor FROM appointments a
+ SELECT a.*,p.name AS pet,p.species,c.name AS owner,u.name AS doctor FROM appointments a
  LEFT JOIN pets p ON p.id=a.pet_id AND p.clinic_id=a.clinic_id
  LEFT JOIN clients c ON c.id=a.client_id AND c.clinic_id=a.clinic_id
  LEFT JOIN users u ON u.id=a.practitioner_id AND u.clinic_id=a.clinic_id
@@ -30,18 +30,43 @@ WITH clock AS (
   WHEN 'update_diagnosis' THEN 'Updated diagnosis'
   WHEN 'request_restock' THEN 'Requested inventory restock'
   ELSE replace(a.action,'_',' ')
- END AS action,a.created_at AS timestamp,u.name AS actor
+ END AS action,a.action AS action_code,a.table_name AS category,a.created_at AS timestamp,u.name AS actor,
+ COALESCE(NULLIF(a.new_data #>> '{_audit,role}',''),r.name) AS actor_role
  FROM audit_trail a JOIN users u ON u.id=a.user_id JOIN roles r ON r.id=u.role_id
  WHERE NOT COALESCE(a.archived,false) AND u.clinic_id=$1
- AND regexp_replace(lower(trim(r.name)),'[-\s]+','_','g') IN ('doctor','assistant_doctor','veterinarian')
- AND COALESCE(NULLIF(a.new_data->>'clinic_id',''),NULLIF(a.old_data->>'clinic_id',''),u.clinic_id::text)=$1::text
- ORDER BY a.created_at DESC,a.id DESC LIMIT 20
+ AND regexp_replace(lower(trim(r.name)),'[-\s]+','_','g') IN ('doctor','assistant_doctor','veterinarian','receptionist')
+ AND COALESCE(NULLIF(a.new_data->>'clinic_id',''),u.clinic_id::text)=$1::text
+ AND COALESCE(NULLIF(a.old_data->>'clinic_id',''),u.clinic_id::text)=$1::text
+ AND (a.table_name IS DISTINCT FROM 'appointments' OR NOT EXISTS (
+   SELECT 1 FROM appointments other_appointment
+   WHERE other_appointment.id::text=a.record_id::text AND other_appointment.clinic_id IS DISTINCT FROM $1
+ ))
+ ORDER BY a.created_at DESC,a.id DESC LIMIT 100
 ), today_bookings AS (
- SELECT id,pet,owner,doctor,reason,status,start_time FROM bookings
+ SELECT id,pet,species,owner,doctor,reason,status,start_time FROM bookings
  WHERE (start_time AT TIME ZONE 'Asia/Manila')::date=(SELECT today FROM clock)
  AND lower(status::text) NOT IN ('cancelled','canceled') ORDER BY start_time LIMIT 100
 ), new_patients AS (
- SELECT * FROM patients WHERE (created_at AT TIME ZONE 'Asia/Manila')::date=(SELECT today FROM clock) ORDER BY created_at DESC LIMIT 100
+ SELECT p.*, COALESCE(submitter_role.name, creator.role) AS registered_by
+ FROM (
+   SELECT * FROM patients WHERE (created_at AT TIME ZONE 'Asia/Manila')::date=(SELECT today FROM clock)
+   ORDER BY created_at DESC,id DESC LIMIT 100
+ ) p
+ LEFT JOIN LATERAL (
+   SELECT i.submitted_by FROM patient_registration_intakes i
+   WHERE i.clinic_id=$1 AND i.pet_id=p.id ORDER BY i.id DESC LIMIT 1
+ ) intake ON true
+ LEFT JOIN users submitter ON submitter.id=intake.submitted_by AND submitter.clinic_id=$1
+ LEFT JOIN roles submitter_role ON submitter_role.id=submitter.role_id
+ LEFT JOIN LATERAL (
+   SELECT COALESCE(NULLIF(a.new_data #>> '{_audit,role}',''),r.name) AS role
+   FROM audit_trail a JOIN users u ON u.id=a.user_id AND u.clinic_id=$1
+   LEFT JOIN roles r ON r.id=u.role_id
+   WHERE a.table_name='pets' AND a.action='create' AND a.record_id=p.id
+     AND NOT COALESCE(a.archived,false)
+     AND COALESCE(NULLIF(a.new_data->>'clinic_id',''),u.clinic_id::text)=$1::text
+   ORDER BY a.created_at,a.id LIMIT 1
+ ) creator ON true
 ), patient_matches AS (
  SELECT * FROM patients WHERE NULLIF($2::text,'') IS NOT NULL
  AND position(lower($2::text) IN lower(concat_ws(' ',name,species,owner)))>0 ORDER BY name LIMIT 10

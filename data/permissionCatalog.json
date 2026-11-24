@@ -23,6 +23,7 @@
       "Appointments",
       [
         "View Appointments",
+        "View Appointment Management",
         "View Own Schedule",
         "Create Appointment",
         "Approve Appointment",
@@ -33,6 +34,7 @@
         "Manage Follow-ups",
         "Manage No-shows",
         "View Patient Queue",
+        "View Patient Queue Page",
         "Manage Patient Queue",
         "View Reminders"
       ]
@@ -111,6 +113,7 @@
       "Billing & Financial",
       [
         "View Billing",
+        "View Billing & Payments",
         "Create Invoice",
         "Process Payment",
         "View Financial Reports",
@@ -258,6 +261,10 @@
       "Review Disease Alerts"
     ],
     "receptionist": [
+      "View Intelligence Dashboard",
+      "View Disease Monitoring",
+      "View Risk Monitoring",
+      "View Reports",
       "View Appointments",
       "Create Appointment",
       "Approve Appointment",
@@ -287,6 +294,12 @@
       "View Notification History",
       "View Patient Intakes"
     ]
+  },
+  "operationsPageViews": {
+    "New Patient Registration": "View Registrations",
+    "Appointment Management": "View Appointment Management",
+    "Patient Queue": "View Patient Queue Page",
+    "Billing & Payments": "View Billing & Payments"
   },
   "features": {
     "Intelligence Dashboard": [
@@ -363,6 +376,14 @@
       "Create Appointment",
       "Reschedule Appointment",
       "Cancel Appointment"
+    ],
+    "Clinic Record Appointments": [
+      "Appointments",
+      "View Appointments"
+    ],
+    "Clinic Record Billing": [
+      "Billing & Financial",
+      "View Billing"
     ],
     "Clinic Record Owners": [
       "Local Clinic Records",
@@ -475,6 +496,10 @@
   },
   "receptionistExcluded": [
     "View Medical History",
+    "View Clinic Records",
+    "View Reminders",
+    "Archive Owner",
+    "Archive Pet Records",
     "View Diagnoses",
     "View Laboratory Results",
     "View Treatment Plans",
@@ -483,12 +508,26 @@
     "View Visits",
     "View Vaccinations"
   ],
-  "ownerDoctorOnly": [
-    "View Intelligence Dashboard",
-    "View Disease Monitoring",
-    "View Risk Monitoring",
+  "staffManagementExcluded": [
+    "Clinic Overview",
+    "View Audit Trail",
+    "View Financial Reports",
+    "View Revenue"
+  ],
+  "assistantDoctorExcluded": [
+    "Create Prescription",
+    "Confirm Diagnosis",
+    "Verify Laboratory Results",
     "View Community Analytics",
-    "View Reports",
+    "View Data Sync Status",
+    "Export Reports",
+    "Generate Reports",
+    "Alert Clinics",
+    "Flag for Follow-up",
+    "Review Disease Alerts"
+  ],
+  "ownerDoctorOnly": [
+    "View Community Analytics",
     "Export Reports",
     "View Data Sync Status",
     "Generate Reports",
@@ -705,6 +744,15 @@
     ],
     "receptionist": [
       {
+        "label": "Disease Intelligence",
+        "actions": [
+          "View Intelligence Dashboard",
+          "View Disease Monitoring",
+          "View Risk Monitoring",
+          "View Reports"
+        ]
+      },
+      {
         "label": "New Patient Registration",
         "actions": [
           "View Registrations",
@@ -716,6 +764,7 @@
       {
         "label": "Appointment Management",
         "actions": [
+          "View Appointment Management",
           "View Appointments",
           "Create Appointment",
           "Approve Appointment",
@@ -730,6 +779,7 @@
       {
         "label": "Patient Queue",
         "actions": [
+          "View Patient Queue Page",
           "View Patient Queue",
           "Manage Patient Queue",
           "Manage Walk-ins"
@@ -738,6 +788,7 @@
       {
         "label": "Billing & Payments",
         "actions": [
+          "View Billing & Payments",
           "View Billing",
           "Create Invoice",
           "Process Payment"
@@ -877,8 +928,5 @@
         ]
       }
     ]
-  },
-  "receptionistOnly": [
-    "View Registrations"
-  ]
+  }
 }

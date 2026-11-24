@@ -12,6 +12,12 @@ import './summaryStats.css';
 import './rolesPermissions.css';
 
 const PERMISSION_GROUPS = permissionCatalog.groups;
+const staffRoleLabel = role => String(role || '').trim().split(/[\s_-]+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+const roleGuidance = {
+  Doctor: 'Clinical Records contains your scheduling and patient pages. Enable Operations only for doctors who cover reception.',
+  'Assistant Doctor': 'Clinical Records contains scheduling, patient pages, and clinical support actions. Confirming diagnoses, prescribing, and verifying lab results require Doctor access.',
+  Receptionist: 'Operations contains registration, appointments, queue, and billing. Disease Intelligence is read-only.',
+};
 
 const emptyPermissions = () => Object.fromEntries(
   PERMISSION_GROUPS.map(([group, items]) => [group, Object.fromEntries(items.map(item => [item, false]))])
@@ -24,17 +30,23 @@ const permissionCount = permissions => Object.values(permissions || {}).reduce(
 function PermissionModal({ role, onClose, onSave }) {
   const [permissions, setPermissions] = useState(() => {
     const next = emptyPermissions();
-    for (const [group, items] of PERMISSION_GROUPS) for (const item of items) next[group][item] = role.permissions?.[group]?.[item] === true;
+    for (const [group, items] of PERMISSION_GROUPS) {
+      for (const item of items) {
+        next[group][item] = permissionAvailable(role.name, item) && role.permissions?.[group]?.[item] === true;
+      }
+    }
     return next;
   });
   const actions = visibleActions(role.name);
-  const setAll = value => setPermissions(Object.fromEntries(PERMISSION_GROUPS.map(([group, items]) => [group, Object.fromEntries(items.map(item => [item, value && permissionAvailable(role.name, item)]))])));
   return <>
     <div style={m.overlay} onClick={onClose} />
     <div style={m.panel}>
-      <div style={m.header}><div><div style={m.kicker}>{role.name}</div><strong>Permission Configuration - {role.name}</strong></div><button type="button" aria-label="Close permission configuration" style={m.close} onClick={onClose}>{Icons.close}</button></div>
-      <div style={m.info}>Choose the pages, tabs, and actions available to this role in your clinic. Shared actions stay synchronized wherever they appear. Veterinary actions are restricted to clinical roles.</div>
-      <div style={m.toolbar}><div><strong>Pages &amp; Actions</strong><small>{actions.filter(item => permissionValue(permissions, item)).length} of {actions.length} permissions enabled</small></div><span><button style={m.lightButton} onClick={() => setAll(true)}>Select All</button><button style={m.lightButton} onClick={() => setAll(false)}>Clear All</button></span></div>
+      <div style={m.header}><strong>{staffRoleLabel(role.name)} permissions</strong><button type="button" aria-label="Close permission configuration" style={m.close} onClick={onClose}>{Icons.close}</button></div>
+      <div style={m.info}>
+        {roleGuidance[staffRoleLabel(role.name)] && <p className="role-permission-guidance">{roleGuidance[staffRoleLabel(role.name)]}</p>}
+        Turn on Page access to show a page in the sidebar. Expand Actions and tabs to choose what staff can do. Changes apply to everyone with this role in your clinic.
+      </div>
+      <div className="role-permission-toolbar" style={m.toolbar}><strong>Pages &amp; Actions</strong><small>{actions.filter(item => permissionValue(permissions, item)).length} of {actions.length} permissions enabled</small></div>
       <div style={m.scroll}><RolePermissionTree role={role.name} permissions={permissions} onChange={setPermissions} /></div>
       <div style={m.footer}><button style={m.cancel} onClick={onClose}>Cancel</button><button style={m.save} onClick={() => onSave(permissions)}>Save Permissions</button></div>
     </div>
@@ -95,7 +107,7 @@ export default function RolesPermissionsPage({ user }) {
   const [viewed, setViewed] = useState(null);
   const [requestOpen, setRequestOpen] = useState(false);
   const [notification, setNotification] = useState('');
-  const apiUrl = import.meta.env.VITE_API_URL || '';
+  const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
   useEffect(() => {
     const headers = user.token ? { Authorization: `Bearer ${user.token}` } : {};
     Promise.all([
@@ -118,7 +130,7 @@ export default function RolesPermissionsPage({ user }) {
     .filter(role => ['doctor','assistant_doctor','veterinarian','receptionist'].includes(String(role.name).trim().toLowerCase().replace(/[\s-]+/g,'_')))
     .map(role => ({
       ...role,
-      displayName: String(role.name).toLowerCase() === 'doctor' ? 'Doctor' : role.name,
+      displayName: staffRoleLabel(role.name),
     }));
   const approvedRoleCount = visibleRoles.length;
   const activeRoleCount = visibleRoles.length;

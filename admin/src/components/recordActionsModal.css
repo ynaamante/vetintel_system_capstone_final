@@ -1,0 +1,89 @@
+.record-actions-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(15 23 42 / 56%);
+}
+
+.record-actions-dialog {
+  --record-dialog-padding: clamp(12px, 2.5vw, 18px);
+  box-sizing: border-box;
+  width: min(560px, 100%);
+  max-height: min(80dvh, 600px);
+  overflow: auto;
+  padding: 0 var(--record-dialog-padding) 12px;
+  border: 1px solid #d3e2da;
+  border-radius: 16px;
+  background: #fbfdfc;
+  box-shadow: 0 20px 55px rgb(15 23 42 / 25%);
+  color: #004d32;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.record-actions-dialog > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-inline: calc(-1 * var(--record-dialog-padding));
+  padding: 13px var(--record-dialog-padding) 11px;
+  background: radial-gradient(ellipse 67% 94px at 91% -49px, #ccecdf 99%, transparent 100%);
+}
+
+.record-actions-dialog h2 { margin: 0; font-size: 22px; font-weight: 800; line-height: 1.2; }
+.record-actions-dialog header p { margin: 4px 0 0; color: #43544d; font-size: 14px; overflow-wrap: anywhere; }
+.record-actions-close { display: inline-flex; align-items: center; gap: 6px; padding: 3px 0 3px 6px; border: 0; background: transparent; color: #004d32; font: 700 14px 'DM Sans', sans-serif; cursor: pointer; }
+.record-actions-close span, .record-actions-close svg { display: block; width: 17px; height: 17px; }
+
+.record-actions-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; padding: 8px 10px; margin-bottom: 10px; border: 1px solid #ccdcd5; border-radius: 11px; background: #fff; }
+.record-actions-avatar { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; background: #e1f1e7; color: #005334; font-weight: 800; }
+.record-actions-summary-text { display: grid; flex: 1 1 160px; min-width: 0; gap: 2px; overflow-wrap: anywhere; }
+.record-actions-summary > :is(img, .record-actions-avatar) + .record-actions-summary-text { border-left: 1px solid #d3e2da; padding-left: 13px; }
+.record-actions-summary-text strong { font-size: 16px; }
+.record-actions-summary-text > span { color: #43544d; font-size: 13px; }
+.record-actions-status { padding-left: 12px; border-left: 1px solid #d3e2da; }
+
+.record-actions-list { display: grid; gap: 7px; }
+.record-actions-option {
+  --action-color: #004d32;
+  --action-icon-bg: #d5efe1;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 50px;
+  padding: 7px 10px;
+  border: 1px solid #acd9c9;
+  border-radius: 11px;
+  background: #ebf8f2;
+  color: var(--action-color);
+  text-align: left;
+  cursor: pointer;
+}
+
+.record-actions-option.is-destructive { --action-color: #9f263d; --action-icon-bg: #fbdde1; border-color: #f4b9c2; background: #fff2f4; }
+.record-actions-option:hover:not(:disabled) { border-color: currentColor; }
+.record-actions-option:disabled { opacity: .55; cursor: not-allowed; }
+.record-actions-dialog button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.record-actions-icon { display: grid; place-items: center; width: 34px; height: 32px; border-radius: 8px; background: var(--action-icon-bg); }
+.record-actions-icon svg { width: 19px; height: 19px; }
+.record-actions-chevron svg { display: block; width: 16px; height: 16px; }
+.record-actions-option-copy { display: grid; gap: 2px; padding-left: 12px; border-left: 1px solid #b6d5c8; overflow-wrap: anywhere; }
+.record-actions-option.is-destructive .record-actions-option-copy { border-color: #e1bdc4; }
+.record-actions-option-copy strong { font-size: 14px; }
+.record-actions-option-copy small { color: #43544d; font-size: 13px; line-height: 1.35; }
+
+.record-actions-error { margin: 10px 0 0; color: #9f263d; font-size: 13px; }
+.record-actions-dialog > footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 11px; padding-top: 9px; border-top: 1px solid #d3e2da; }
+.record-actions-dialog > footer span { color: #43544d; font-size: 12px; }
+.record-actions-dialog > footer button { margin-left: auto; padding: 7px 15px; border: 1px solid #a6c1b6; border-radius: 8px; background: #fff; color: #004d32; font: 700 14px 'DM Sans', sans-serif; cursor: pointer; }
+
+@media (max-width: 480px) {
+  .record-actions-option { gap: 8px; padding-inline: 8px; }
+  .record-actions-option-copy { padding-left: 8px; }
+  .record-actions-status { padding-left: 0; border-left: 0; }
+}

@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+
+const enhancedSelect = 'select:not([multiple]):not([size])';
 
 // Keeps native select elements as the form controls, but presents their option
 // list with the same accessible, branded menu used by FilterSelect.
@@ -9,6 +11,16 @@ export default function GlobalSelectMenus() {
   const [activeIndex, setActiveIndex] = useState(0);
   const menuRef = useRef(null);
   const triggerRef = useRef(null);
+  const dialogHost = active?.closest('dialog[open]');
+  const menuReady = Boolean(position && active);
+
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    if (!menuReady || !dialogHost || !menu?.showPopover) return undefined;
+    menu.showPopover();
+    return () => { if (menu.matches(':popover-open')) menu.hidePopover(); };
+  }, [menuReady, dialogHost]);
+
   const options = active ? Array.from(active.options).map((option, index) => ({
     index,
     value: option.value,
@@ -18,22 +30,27 @@ export default function GlobalSelectMenus() {
   })) : [];
 
   const updatePosition = useCallback(() => {
-    const rect = triggerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const height = Math.min(options.length * 34 + 8, Math.min(260, window.innerHeight * .45));
-    const below = window.innerHeight - rect.bottom - 8;
-    const above = rect.top - 8;
-    const opensAbove = below < Math.min(height, 180) && above > below;
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    // The popover keeps its portal host's CSS zoom, while DOMRects use viewport pixels.
+    const zoom = (dialogHost || document.body).currentCSSZoom || 1;
+    const height = Math.min((options.length * 34 + 10) * zoom, 260 * zoom, window.innerHeight * .45);
+    const below = window.innerHeight - rect.bottom - 5;
+    const above = rect.top - 5;
+    const opensAbove = below < height && above > below;
+    const maxHeight = Math.max(0, Math.min(height, opensAbove ? above : below));
+    const width = dialogHost ? rect.width : Math.max(rect.width, 140 * zoom);
     setPosition({
-      top: opensAbove ? Math.max(8, rect.top - height - 5) : rect.bottom + 5,
-      left: Math.max(8, Math.min(rect.left, window.innerWidth - Math.max(rect.width, 140) - 8)),
-      width: Math.max(rect.width, 140),
-      maxHeight: height,
+      top: (opensAbove ? rect.top - maxHeight - 5 : rect.bottom + 5) / zoom,
+      left: (dialogHost ? rect.left : Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))) / zoom,
+      width: width / zoom,
+      maxHeight: maxHeight / zoom,
     });
-  }, [options.length]);
+  }, [dialogHost, options.length]);
 
   const open = useCallback(select => {
-    if (select.disabled || select.multiple || select.size > 1 || !select.options.length) return;
+    if (select.matches(':disabled') || select.multiple || select.size > 1 || !select.options.length) return;
     triggerRef.current = select;
     select.focus();
     setActiveIndex(Math.max(0, select.selectedIndex));
@@ -53,7 +70,7 @@ export default function GlobalSelectMenus() {
     };
     const onKeyDown = event => {
       if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); setActive(null); triggerRef.current?.focus(); }
-      if (event.key === 'Enter' && event.target === triggerRef.current) {
+      if (['Enter', ' '].includes(event.key) && event.target === triggerRef.current) {
         event.preventDefault(); event.stopImmediatePropagation();
         const option = options[activeIndex];
         if (option) choose(option);
@@ -79,24 +96,28 @@ export default function GlobalSelectMenus() {
   }, [active, activeIndex, options.length, updatePosition]);
 
   useEffect(() => {
-    const enhance = root => root.querySelectorAll?.('select:not([multiple]):not([size])').forEach(select => select.classList.add('global-native-select'));
+    const enhance = root => root.querySelectorAll?.(enhancedSelect).forEach(select => select.classList.add('global-native-select'));
     enhance(document);
     const observer = new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(node => {
       if (node.nodeType !== 1) return;
-      if (node.matches?.('select:not([multiple]):not([size])')) node.classList.add('global-native-select');
+      if (node.matches?.(enhancedSelect)) node.classList.add('global-native-select');
       enhance(node);
     })));
     observer.observe(document.body, { childList: true, subtree: true });
     const onPointerDown = event => {
-      const select = event.target.closest?.('select:not([multiple]):not([size])');
-      if (!select || select.disabled || select.closest('[data-native-select-menu]')) return;
+      const select = event.target.closest?.(enhancedSelect);
+      if (!select || select.matches(':disabled') || select.closest('[data-native-select-menu]')) return;
       event.preventDefault();
       event.stopPropagation();
+      if (menuRef.current && select === triggerRef.current) {
+        setActive(null);
+        return;
+      }
       open(select);
     };
     const onKeyDown = event => {
-      const select = event.target.closest?.('select:not([multiple]):not([size])');
-      if (!select || select.disabled) return;
+      const select = event.target.closest?.(enhancedSelect);
+      if (!select || select.matches(':disabled') || (menuRef.current && select === triggerRef.current)) return;
       if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(event.key)) {
         event.preventDefault();
         event.stopPropagation();
@@ -127,6 +148,7 @@ export default function GlobalSelectMenus() {
   return createPortal(<div
     ref={menuRef}
     className="filter-select-menu global-select-menu"
+    popover={dialogHost && typeof HTMLElement.prototype.showPopover === 'function' ? 'manual' : undefined}
     role="listbox"
     aria-label={active.getAttribute('aria-label') || active.labels?.[0]?.textContent?.trim() || 'Options'}
     style={{ position: 'fixed', inset: 'auto', margin: 0, boxSizing: 'border-box', zIndex: 3000, ...position }}
@@ -140,5 +162,5 @@ export default function GlobalSelectMenus() {
     disabled={option.disabled}
     onMouseEnter={() => setActiveIndex(index)}
     onClick={() => choose(option)}
-  >{option.label}</button>)}</div>, document.body);
+  >{option.label}</button>)}</div>, dialogHost || document.body);
 }

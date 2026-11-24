@@ -15,9 +15,20 @@ CREATE TABLE IF NOT EXISTS disease_monitoring_alerts (
  UNIQUE(clinic_id,signal_key)
 );
 ALTER TABLE disease_alert_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE disease_monitoring_alerts ALTER COLUMN rule_id DROP NOT NULL;
 ALTER TABLE disease_monitoring_alerts ENABLE ROW LEVEL SECURITY;
+CREATE TABLE IF NOT EXISTS disease_alert_deliveries (
+ alert_id INTEGER NOT NULL REFERENCES disease_monitoring_alerts(id) ON DELETE CASCADE,
+ clinic_id INTEGER NOT NULL REFERENCES clinics(id),
+ audience TEXT NOT NULL CHECK(audience IN ('clinic','owners')),
+ sent_by INTEGER NOT NULL REFERENCES users(id),
+ sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+ PRIMARY KEY(alert_id,clinic_id,audience)
+);
+ALTER TABLE disease_alert_deliveries ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON disease_alert_deliveries FROM PUBLIC;
 REVOKE ALL ON disease_alert_rules,disease_monitoring_alerts FROM PUBLIC;
 DO $$ BEGIN
- IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN REVOKE ALL ON disease_alert_rules,disease_monitoring_alerts FROM anon; END IF;
- IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN REVOKE ALL ON disease_alert_rules,disease_monitoring_alerts FROM authenticated; END IF;
+ IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN REVOKE ALL ON disease_alert_rules,disease_monitoring_alerts,disease_alert_deliveries FROM anon; END IF;
+ IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN REVOKE ALL ON disease_alert_rules,disease_monitoring_alerts,disease_alert_deliveries FROM authenticated; END IF;
 END $$;
