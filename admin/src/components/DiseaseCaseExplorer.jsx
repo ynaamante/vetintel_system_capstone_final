@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import Topbar from './Topbar';
 import FilterSelect from './FilterSelect';
@@ -36,7 +37,6 @@ export default function DiseaseCaseExplorer({user,data,loading,error,filters,sea
   const trend = (data.trend || []).map(row=>({...row,label:`${shortDate(row.case_date)}–${shortDate(row.period_end)}${row.partial?'*':''}`}));
   const value = number => loading || error ? '—' : number;
   const apply = next => {setDraft(next);setLimit(10);onApply(next);};
-  const rowFilters = row => ({...filters,disease:row.disease_key||filters.disease,clinic_id:row.clinic_id?String(row.clinic_id):filters.clinic_id,area:row.area||filters.area});
   const navigate = (page,context=filters) => onNavigate?.(page,context);
   const field = (key,label,options) => <div className="dce-field"><span>{label}</span><FilterSelect label={label} value={draft[key]} onChange={value=>setDraft(current=>({...current,[key]:value}))} options={options}/></div>;
   return <div className="dm-page dce-page">
@@ -67,7 +67,7 @@ export default function DiseaseCaseExplorer({user,data,loading,error,filters,sea
         </section>
       </div>
       <section className="dm-panel dce-summaries"><header><div><h2>Case Summaries</h2><p>Grouped confirmed case counts matching the applied filters.</p></div><div className="dce-view-controls">{[['disease','By Disease'],['clinic','By Clinic'],['area','By Barangay']].map(([key,label])=><button key={key} aria-pressed={mode===key} onClick={()=>{setMode(key);setLimit(10);}}>{label}</button>)}{canViewFeature(user.permissions,user.role,'Reports')&&<button className="monitoring-report-shortcut" onClick={()=>navigate('reports',{...filters,report_type:'disease'})}>Download Report</button>}</div></header>
-        <div className="dm-scroll"><table><thead><tr>{mode==='disease'&&<th>Disease</th>}{mode!=='area'&&<th>Participating Clinic</th>}<th>Reporting Barangay</th><th>Cases</th><th>Previous {filters.days} Days</th><th>Change</th><th><span className="dm-sr">Details</span></th></tr></thead><tbody>{rows.slice(0,limit).map((row,index)=><tr key={index}><td>{mode==='disease'?<strong>{row.disease}</strong>:mode==='clinic'?row.clinic_name:row.area}</td>{mode==='disease'&&<td>{row.clinic_name}</td>}{mode!=='area'&&<td>{row.area}</td>}<td><strong>{row.cases??'Withheld'}</strong>{row.has_withheld&&row.cases!==null&&<small className="dce-partial">Partial data</small>}</td><td>{row.previous_cases??'Withheld'}</td><td className={change(row).startsWith('+')?'dm-red':''}>{change(row)}</td><td><button className="dm-chevron" disabled={loading||!!error} aria-label={`View summary for ${mode==='disease'?row.disease:mode==='clinic'?row.clinic_name:row.area}`} onClick={()=>setSelected(row)}>{Icons.chevronRight}</button></td></tr>)}{!rows.length&&<tr><td colSpan={7} className="dm-empty">{loading?'Loading case summaries…':error?'Summaries unavailable.':'No case summaries match these filters.'}</td></tr>}</tbody></table></div>
+        <div className="dm-scroll"><table><thead><tr>{mode==='disease'&&<th>Disease</th>}{mode!=='area'&&<th>Participating Clinic</th>}<th>Reporting Barangay</th><th>Cases</th><th>Previous {filters.days} Days</th><th>Change</th><th><span className="dm-sr">Details</span></th></tr></thead><tbody>{rows.slice(0,limit).map((row,index)=><tr key={index} className={!loading&&!error?'dce-summary-row':undefined} onClick={()=>{if(!loading&&!error)setSelected(row);}}><td>{mode==='disease'?<strong>{row.disease}</strong>:mode==='clinic'?row.clinic_name:row.area}</td>{mode==='disease'&&<td>{row.clinic_name}</td>}{mode!=='area'&&<td>{row.area}</td>}<td><strong>{row.cases??'Withheld'}</strong>{row.has_withheld&&row.cases!==null&&<small className="dce-partial">Partial data</small>}</td><td>{row.previous_cases??'Withheld'}</td><td className={change(row).startsWith('+')?'dm-red':''}>{change(row)}</td><td><button className="dm-chevron" disabled={loading||!!error} aria-label={`View summary for ${mode==='disease'?row.disease:mode==='clinic'?row.clinic_name:row.area}`} onClick={()=>setSelected(row)}>{Icons.chevronRight}</button></td></tr>)}{!rows.length&&<tr><td colSpan={7} className="dm-empty">{loading?'Loading case summaries…':error?'Summaries unavailable.':'No case summaries match these filters.'}</td></tr>}</tbody></table></div>
         <div className="dce-table-footer"><span>Showing {Math.min(limit,rows.length)} of {rows.length} summaries · Total released cases: {value(data.total_cases??0)}</span>{limit<rows.length&&<button onClick={()=>setLimit(current=>current+10)}>Show more</button>}</div>
         <p className="dce-brief-note">{Icons.info} Finalized, confirmed cases only. Dates use the diagnosis episode’s first-recorded date.</p>
       </section>
@@ -78,12 +78,19 @@ export default function DiseaseCaseExplorer({user,data,loading,error,filters,sea
         {hasAction(user.permissions,user.role,'Export Reports')&&<button disabled={loading||!!error} onClick={onExport}>Export Report</button>}
       </div><p>Reporting barangay is assigned to the clinic, not the patient’s home barangay. * Partial weeks include selected dates only. Change compares equal-length periods; “New” means the previous count was zero. Comparisons are unavailable when data is withheld.</p><p>{data.privacy?.notice}</p>{data.period&&<p>Reporting period: {data.period.start} – {data.period.end} (Asia/Manila). Previous period: {data.period.previous_start} – {data.period.previous_end}.</p>}</section>}
     </div>
-    {selected&&<SummaryModal row={selected} onClose={()=>setSelected(null)} onExplore={()=>{apply(rowFilters(selected));setSelected(null);}} onSignals={canViewFeature(user.permissions,user.role,'Risk Monitoring')?()=>navigate('risk',rowFilters(selected)):null}/>}
+    {selected&&<SummaryModal row={selected} period={data.period} days={filters.days} onClose={()=>setSelected(null)}/>}
   </div>;
 }
 
-function SummaryModal({row,onClose,onExplore,onSignals}) {
+function SummaryModal({row,onClose,period,days}) {
   const ref=useRef(null);
   useEffect(()=>{const previous=document.activeElement;ref.current.showModal();return()=>previous?.focus();},[]);
-  return <dialog ref={ref} className="dm-dialog" onCancel={event=>{event.preventDefault();onClose();}}><header><h2>Case Summary</h2><button aria-label="Close summary" onClick={onClose}>×</button></header><dl className="dm-details">{[['Disease',row.disease],['Participating Clinic',row.clinic_name],['Reporting Barangay',row.area],['Released Cases',row.cases??'Withheld'],['Previous Period',row.previous_cases??'Withheld'],['Change',change(row)]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><p>Shared summaries contain no patient or owner identities.{row.has_withheld?' Protected groups are withheld; changes cannot be calculated.':''}</p><footer><button onClick={onExplore}>Explore this group</button>{onSignals&&<button className="dm-primary" onClick={onSignals}>Review related signals</button>}</footer></dialog>;
+  const formatDate=value=>new Date(`${value}T00:00:00Z`).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});
+  return createPortal(<dialog ref={ref} className="dm-dialog dce-summary-dialog" aria-labelledby="case-summary-title" onCancel={event=>{event.preventDefault();onClose();}}>
+    <header><h2 id="case-summary-title">Case Summary</h2><button type="button" aria-label="Close summary" onClick={onClose}>Close</button></header>
+    <div className="dce-summary-banner"><strong>Grouped confirmed cases</strong><span>{row.cases==null?'Count withheld':`${row.cases} confirmed ${Number(row.cases)===1?'case':'cases'}`}{row.has_withheld&&row.cases!=null&&<small>Partial data</small>}</span></div>
+    <dl className="dm-details">{[['Disease',row.disease],['Participating Clinic',row.clinic_name||'All selected clinics'],['Reporting Barangay',row.area||'Area not configured'],['Confirmed Cases',row.cases??'Withheld'],[`Previous ${days} Days`,row.previous_cases??'Withheld'],['Change',change(row)],['Date Range',period?`${formatDate(period.start)} – ${formatDate(period.end)}`:'Unavailable']].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+    <p className="dce-summary-privacy"><strong>Privacy Notice:</strong> Shared summaries contain no patient or owner identities. Counts reflect grouped confirmed cases matching the selected filters.{row.has_withheld?' Protected groups are withheld; comparisons may be unavailable.':''}</p>
+    <footer><button type="button" className="dm-primary" onClick={onClose}>Close</button></footer>
+  </dialog>,document.body);
 }

@@ -111,7 +111,7 @@
 .surveillance-chart-note { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 11px; }
 .surveillance-chart-note strong { color: #124c20; font-size: 12px; }
 .surveillance-card > .surveillance-period { margin: 9px 0 0; font-size: 11px; color: #52675a; line-height: 1.6; }
-.surveillance-alerts { margin: 0; }
+.surveillance-alerts { margin: 0; grid-column: 1 / -1; }
 .surveillance-alerts table { font-size: 12px; }
 .surveillance-alerts th { font-size: 12px; padding: 10px 8px; white-space: normal; }
 .surveillance-alerts th small { display: block; font-weight: 400; font-size: 10px; margin-top: 3px; }

@@ -3,8 +3,10 @@ import { apiFetch as fetch } from '../utils/apiFetch.js';
 import RolePermissionTree, { visibleActions, permissionValue } from '../components/RolePermissionTree';
 import permissionCatalog from '../../../data/permissionCatalog.json';
 import { permissionAvailable } from '../utils/permissionUtils';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Topbar from '../components/Topbar';
+import RoleRequestsSection from '../components/RoleRequestsSection';
 import StatusIndicator from '../components/StatusIndicator';
 import { Icons } from '../icons';
 import { formatDateText } from '../utils/dateFormatting';
@@ -27,42 +29,59 @@ const permissionCount = permissions => Object.values(permissions || {}).reduce(
   (total, group) => total + Object.values(group || {}).filter(Boolean).length, 0
 );
 
-function PermissionModal({ role, onClose, onSave }) {
+function RolePermissionsView({ role, user, onClose, onSave, staffCount }) {
   const [permissions, setPermissions] = useState(() => {
     const next = emptyPermissions();
     for (const [group, items] of PERMISSION_GROUPS) {
-      for (const item of items) {
-        next[group][item] = permissionAvailable(role.name, item) && role.permissions?.[group]?.[item] === true;
-      }
+      for (const item of items) next[group][item] = permissionAvailable(role.name, item) && role.permissions?.[group]?.[item] === true;
     }
     return next;
   });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const roleName = role.displayName || staffRoleLabel(role.name);
   const actions = visibleActions(role.name);
-  return <>
-    <div style={m.overlay} onClick={onClose} />
-    <div style={m.panel}>
-      <div style={m.header}><strong>{staffRoleLabel(role.name)} permissions</strong><button type="button" aria-label="Close permission configuration" style={m.close} onClick={onClose}>{Icons.close}</button></div>
-      <div style={m.info}>
-        {roleGuidance[staffRoleLabel(role.name)] && <p className="role-permission-guidance">{roleGuidance[staffRoleLabel(role.name)]}</p>}
-        Turn on Page access to show a page in the sidebar. Expand Actions and tabs to choose what staff can do. Changes apply to everyone with this role in your clinic.
-      </div>
-      <div className="role-permission-toolbar" style={m.toolbar}><strong>Pages &amp; Actions</strong><small>{actions.filter(item => permissionValue(permissions, item)).length} of {actions.length} permissions enabled</small></div>
-      <div style={m.scroll}><RolePermissionTree role={role.name} permissions={permissions} onChange={setPermissions} /></div>
-      <div style={m.footer}><button style={m.cancel} onClick={onClose}>Cancel</button><button style={m.save} onClick={() => onSave(permissions)}>Save Permissions</button></div>
+  const enabled = actions.filter(item => permissionValue(permissions, item)).length;
+  const savePermissions = async () => {
+    setSaving(true);
+    try { await onSave(permissions); }
+    catch (error) { setSaveError(error.message || 'Unable to save permissions.'); }
+    finally { setSaving(false); }
+  };
+  return <section className="role-permissions-screen" aria-labelledby="role-permissions-title">
+    <Topbar user={user} className="role-screen-topbar" headerContent={<><button className="records-back" type="button" aria-label="Back to roles" disabled={saving} onClick={onClose}>← Back</button><div><h2 id="role-permissions-title">{onSave?'Role Permissions':'Role Details'}</h2><p>{onSave?'Manage':'View'} access for {roleName}</p></div></>} />
+    <div className="role-screen-content">
+    <div className="role-screen-summary"><span className="role-screen-avatar">{roleName.split(/\s+/).slice(0,2).map(word=>word[0]).join('').toUpperCase()}</span><div className="role-screen-description"><h3>{roleName}</h3><p>{role.description || roleGuidance[staffRoleLabel(role.name)] || 'Approved clinic role and permissions.'}</p>{staffCount!=null&&<small>{staffCount} staff assigned</small>}</div><div><small>Total Permissions</small><strong>{actions.length}</strong></div><div><small>Enabled</small><strong className="role-enabled-total">{enabled}</strong></div><div><small>Disabled</small><strong>{actions.length-enabled}</strong></div></div>
+    <div className="role-screen-body"><RolePermissionTree workspace role={role.name} permissions={permissions} onChange={onSave&&!saving?setPermissions:undefined} /></div>
+    {saveError&&<p role="alert">{saveError}</p>}
+    <footer className="role-screen-footer"><p>{onSave?`Changes apply to all staff assigned to the ${roleName} role.`:'View the current permissions for this clinic role.'}</p><button type="button" disabled={saving} onClick={onClose}>{onSave?'Discard Changes':'Close'}</button>{onSave&&<button type="button" className="role-screen-save" disabled={saving} onClick={savePermissions}>{saving?'Saving…':'Save Permissions'}</button>}</footer>
     </div>
-  </>;
+  </section>;
 }
 
-function RoleViewModal({ role, onClose, staffCount }) {
-  return <>
-    <div style={m.overlay} onClick={onClose} />
-    <div style={m.viewPanel}>
-      <div style={m.viewHeader}><strong>{role.displayName || role.name} ? Permission Summary</strong><button type="button" style={m.close} aria-label="Close permission summary" onClick={onClose}>{Icons.close}</button></div>
-      <div style={m.viewBody}><p>{staffCount} staff assigned</p><RolePermissionTree role={role.name} permissions={role.permissions} /></div>
-      <div style={m.viewFooter}><button type="button" style={m.viewCancel} onClick={onClose}>Close</button></div>
+function PermissionModal(props) { return <RolePermissionsView {...props} />; }
+function RoleActionsDialog({ role, onClose, onView, onCustomize }) {
+  const dialog = useRef(null);
+  const roleName = role.displayName || staffRoleLabel(role.name);
+  const initials = roleName.split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase();
+  useEffect(() => {
+    const previous = document.activeElement;
+    dialog.current.showModal();
+    return () => previous?.focus({ preventScroll: true });
+  }, []);
+  return createPortal(<dialog ref={dialog} className="role-actions-dialog" aria-labelledby="role-actions-title" onCancel={event => { event.preventDefault(); onClose(); }}>
+    <header><h2 id="role-actions-title">Role Actions</h2><button type="button" aria-label="Close role actions" onClick={onClose}>{Icons.close}<span>Close</span></button></header>
+    <p>Approved role · {roleName}</p>
+    <div className="role-action-summary"><span className="role-action-avatar">{initials}</span><div><strong>{roleName}</strong><small>{permissionCount(role.permissions)} permissions enabled</small></div><span className="role-action-status"><i />Active</span></div>
+    <div className="role-action-options">
+      <button type="button" onClick={onView}><span className="role-action-icon">{Icons.users}</span><span className="role-action-copy"><strong>View Role Details</strong><small>Review role permissions and assigned staff count.</small></span>{Icons.chevronRight}</button>
+      <button type="button" onClick={onCustomize}><span className="role-action-icon">{Icons.settings}</span><span className="role-action-copy"><strong>Customize Permissions</strong><small>Configure page access and actions for your clinic.</small></span>{Icons.chevronRight}</button>
     </div>
-  </>;
+    <footer><button type="button" onClick={onClose}>Cancel</button></footer>
+  </dialog>, document.body);
 }
+
+function RoleViewModal(props) { return <RolePermissionsView {...props} />; }
 
 function RequestRoleModal({ onClose, onSubmit }) {
   const [form, setForm] = useState({ name: '', staffNeeded: '1', reason: '' });
@@ -105,6 +124,7 @@ export default function RolesPermissionsPage({ user }) {
   const [staff, setStaff] = usePageState(user, "pages/RolesPermissionsPage.jsx:staff", []);
   const [selected, setSelected] = useState(null);
   const [viewed, setViewed] = useState(null);
+  const [actionRole, setActionRole] = useState(null);
   const [requestOpen, setRequestOpen] = useState(false);
   const [notification, setNotification] = useState('');
   const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
@@ -167,6 +187,12 @@ export default function RolesPermissionsPage({ user }) {
       setNotification(error.message);
     }
   };
+  if (selected || viewed) {
+    const activeRole = selected || viewed;
+    return <RolePermissionsView key={`${activeRole.id}:${selected ? 'edit' : 'view'}`} role={activeRole} user={user}
+      staffCount={staffByRole[String(activeRole.name).trim().toLowerCase().replace(/[\s-]+/g, '_')] || 0}
+      onClose={() => { setSelected(null); setViewed(null); }} onSave={selected ? save : undefined} />;
+  }
   return <div style={s.main}>
     <Topbar user={user} title="Roles & Permissions" subtitle="Manage approved role types and configure permissions for your clinic" />
     {notification && <div style={s.notification}><span style={s.notificationIcon}>✓</span><strong>{notification}</strong></div>}
@@ -185,9 +211,10 @@ export default function RolesPermissionsPage({ user }) {
         <strong className="overview-stats-value">{value}</strong>
         <small className="overview-stats-note">{note}</small>
       </article>)}</div>
-      <section className="roles-table-card" style={s.card}><div style={s.cardHeader}><div style={s.cardHeading}><strong>Approved Role Types</strong><small>Role types provisioned for your clinic</small></div><button type="button" style={s.darkButton} onClick={() => setRequestOpen(true)}>+ &nbsp; Request New Role</button></div><div className="roles-table-wrap"><table className="roles-table" style={s.table}><colgroup><col style={{ width: '21%' }} /><col style={{ width: '25%' }} /><col style={{ width: '8%' }} /><col style={{ width: '10%' }} /><col style={{ width: '10%' }} /><col style={{ width: '12%' }} /><col style={{ width: '14%' }} /></colgroup><thead><tr>{['Role Name', 'Description', 'Staff', 'Permissions', 'Status', 'Provisioned', 'Actions'].map(label => <th style={s.th} key={label}>{label}</th>)}</tr></thead><tbody>{visibleRoles.length ? visibleRoles.map(role => <tr key={role.id}><td style={s.td}><strong>{role.displayName}</strong></td><td style={s.td}>{role.description || 'Approved clinic role and permissions'}</td><td style={s.td}>{staffByRole[String(role.name).trim().toLowerCase().replace(/[\s-]+/g, '_')] || 0}</td><td style={s.td}><span style={s.count}>{permissionCount(role.permissions)}</span></td><td style={s.td}><StatusIndicator status="Active" /></td><td style={s.td}>—</td><td style={s.td}><div style={s.actions}><button type="button" style={s.view} onClick={() => setViewed(role)}>View</button><button type="button" style={s.darkSmall} onClick={() => setSelected(role)}>Customize {Icons.settings}</button></div></td></tr>) : <tr><td colSpan={7} className="roles-table-empty">No approved roles have been provisioned for this clinic yet.</td></tr>}</tbody></table></div></section>
-      <section className="roles-table-card" style={s.card}><div style={s.cardHeader}><div style={s.cardHeading}><strong>Role Requests</strong><small>Requests submitted to VetIntel Super Admin for new role types</small></div></div><div className="roles-table-wrap"><table className="roles-table" style={s.requestTable}><colgroup><col style={{ width: '15%' }} /><col style={{ width: '29%' }} /><col style={{ width: '12%' }} /><col style={{ width: '15%' }} /><col style={{ width: '10%' }} /><col style={{ width: '19%' }} /></colgroup><thead><tr>{['Requested Role', 'Reason', 'Staff Needed', 'Date Requested', 'Status', 'Admin Note'].map(label => <th style={s.th} key={label}>{label}</th>)}</tr></thead><tbody>{roleRequests.length ? roleRequests.map(request => <tr key={request.id}><td style={s.td}><strong>{request.requested_role}</strong></td><td style={s.td}>{request.reason || '—'}</td><td style={s.td}>{request.requested_users || 1}</td><td style={s.td}>{request.created_at ? formatDateText(request.created_at) : '—'}</td><td style={s.td}><StatusIndicator status={request.status} /></td><td style={s.td}><em style={s.adminNote}>{String(request.status).toLowerCase() === 'approved' ? 'Approved by Super Admin' : 'Awaiting Super Admin review'}</em></td></tr>) : <tr><td colSpan={6} className="roles-table-empty">No role requests have been submitted yet.</td></tr>}</tbody></table></div></section>
+      <section className="roles-table-card" style={s.card}><div style={s.cardHeader}><div style={s.cardHeading}><strong>Approved Role Types</strong><small>Role types provisioned for your clinic</small></div><button type="button" style={s.darkButton} onClick={() => setRequestOpen(true)}>+ &nbsp; Request New Role</button></div><div className="roles-table-wrap"><table className="roles-table" style={s.table}><colgroup><col style={{ width: '21%' }} /><col style={{ width: '25%' }} /><col style={{ width: '8%' }} /><col style={{ width: '10%' }} /><col style={{ width: '10%' }} /><col style={{ width: '12%' }} /><col style={{ width: '14%' }} /></colgroup><thead><tr>{['Role Name', 'Description', 'Staff', 'Permissions', 'Status', 'Provisioned', 'Details'].map(label => <th style={s.th} key={label}>{label}</th>)}</tr></thead><tbody>{visibleRoles.length ? visibleRoles.map(role => <tr key={role.id} className="approved-role-row" onClick={() => setActionRole(role)}><td style={s.td}><strong>{role.displayName}</strong></td><td style={s.td}>{role.description || 'Approved clinic role and permissions'}</td><td style={s.td}>{staffByRole[String(role.name).trim().toLowerCase().replace(/[\s-]+/g, '_')] || 0}</td><td style={s.td}><span style={s.count}>{permissionCount(role.permissions)}</span></td><td style={s.td}><StatusIndicator status="Active" /></td><td style={s.td}>—</td><td style={s.td}><button type="button" className="approved-role-chevron" aria-label={`Open actions for ${role.displayName}`} aria-haspopup="dialog" onClick={event => { event.stopPropagation(); setActionRole(role); }}>{Icons.chevronRight}</button></td></tr>) : <tr><td colSpan={7} className="roles-table-empty">No approved roles have been provisioned for this clinic yet.</td></tr>}</tbody></table></div></section>
+      <RoleRequestsSection requests={roleRequests} />
     </div>
+    {actionRole && <RoleActionsDialog role={actionRole} onClose={() => setActionRole(null)} onView={() => { setViewed(actionRole); setActionRole(null); }} onCustomize={() => { setSelected(actionRole); setActionRole(null); }} />}
     {viewed && <RoleViewModal role={viewed} staffCount={staffByRole[String(viewed.name).trim().toLowerCase().replace(/[\s-]+/g, '_')] || 0} onClose={() => setViewed(null)} />}
     {selected && <PermissionModal role={selected} onClose={() => setSelected(null)} onSave={save} />}
     {requestOpen && <RequestRoleModal onClose={() => setRequestOpen(false)} onSubmit={submitRoleRequest} />}

@@ -6346,6 +6346,7 @@ html body .lab-intake-wizard .lab-wizard-test-options > button[aria-selected="tr
   min-width: 0;
   min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
   font-size: 18px;
   --admin-content-scale: 1.12;
   zoom: var(--admin-content-scale);
