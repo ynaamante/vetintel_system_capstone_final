@@ -52,8 +52,12 @@ exports.list = async (req, res, next) => {
 
 exports.getByFilter = async (req, res, next) => {
   try {
+    const role = String(req.user?.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    if (!['owner','clinic_owner','super_admin'].includes(role)) return res.status(403).json({error:'Clinic owner access required.'});
     const { user_id, action, table_name, record_id, days } = req.query;
-    const clinic_id = req.user?.role === 'super_admin' ? req.query.clinic_id : req.user?.clinic_id;
+    const clinic_id = role === 'super_admin' ? req.query.clinic_id : req.user?.clinic_id;
+    if (days && (!/^\d+$/.test(String(days)) || Number(days)<1 || Number(days)>3650)) return res.status(422).json({error:'Days must be between 1 and 3650.'});
+    if (req.query.before_id && !/^[1-9]\d*$/.test(String(req.query.before_id))) return res.status(422).json({error:'Invalid audit cursor.'});
     if (req.user?.role !== 'super_admin' && !clinic_id) return res.status(400).json({ error: 'Your account must be assigned to a clinic.' });
         let query = `
           SELECT a.id, a.user_id, a.action, a.table_name, a.record_id, a.old_data, a.new_data, a.ip_address, a.created_at,
@@ -95,7 +99,7 @@ exports.getByFilter = async (req, res, next) => {
         OR a.old_data->>'clinic_id' = $${paramCount}
         OR (COALESCE(a.new_data->>'clinic_id', a.old_data->>'clinic_id') IS NULL
             AND u.clinic_id::text = $${paramCount})
-        OR (
+        OR (COALESCE(a.new_data->>'clinic_id', a.old_data->>'clinic_id') IS NULL AND
           a.table_name = 'appointments'
           AND EXISTS (
             SELECT 1 FROM appointments appointment
@@ -108,10 +112,14 @@ exports.getByFilter = async (req, res, next) => {
     }
 
     if (days) {
-      query += ` AND a.created_at > now() - interval '${parseInt(days, 10)} days'`;
+      params.push(Number(days));
+      query += ` AND a.created_at > now() - ($${++paramCount}::int * interval '1 day')`;
     }
-
-    query += ' ORDER BY a.created_at DESC LIMIT 500';
+    if (req.query.before_id) {
+      params.push(req.query.before_id);
+      query += ` AND a.id < $${++paramCount}`;
+    }
+    query += req.query.paged === 'true' ? ' ORDER BY a.id DESC LIMIT 500' : ' ORDER BY a.created_at DESC,a.id DESC LIMIT 500';
     const result = await db.query(query, params);
 
     const rows = result.rows.map((row) => {
@@ -141,7 +149,7 @@ exports.getByFilter = async (req, res, next) => {
       };
     });
 
-    res.json(rows);
+    res.json(req.query.paged === 'true' ? {rows, next_cursor:rows.length===500?rows[rows.length-1].id:null} : rows);
   } catch (e) {
     next(e);
   }

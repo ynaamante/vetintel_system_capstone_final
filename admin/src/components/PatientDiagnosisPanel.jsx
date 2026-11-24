@@ -328,6 +328,16 @@ export default function PatientDiagnosisPanel({ patientId, patientName, patient,
         if (!Array.isArray(data)) throw Error('Unexpected diagnosis response.');
         if (active) {
           setRows(data);
+          setSelected(current => {
+            if (!current?.row || current.startEditing) return current;
+            const updated = data.find(item => item.id === current.row.id);
+            return updated ? { ...current, row: updated } : current;
+          });
+          setFullDiagnosis(current => {
+            if (!current) return current;
+            const updated = data.find(item => item.id === current.id);
+            return updated ? { ...current, ...updated } : current;
+          });
           setError('');
         }
       } catch (loadError) {

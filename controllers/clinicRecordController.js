@@ -4570,18 +4570,37 @@ exports.updateLabTest = async (req, res, next) => {
       resultDateTime = `${req.body.resultDate}T${req.body.resultTime}:00`;
     }
     const updated = await db.query(
-      `UPDATE lab_results SET test_name=$1, results=$2::jsonb,
+      `WITH saved_lab AS (UPDATE lab_results SET test_name=$1, results=$2::jsonb,
          collected_at=COALESCE($3::timestamptz, collected_at),
          reported_at=CASE WHEN $4 IN ('results-ready','finalized') THEN COALESCE($8::timestamptz, reported_at, now()) ELSE reported_at END,
          metadata=$5::jsonb
        WHERE id=$6 AND clinic_id=$7
-       RETURNING id, pet_id, test_name, results, collected_at, reported_at, metadata`,
-      [testName, JSON.stringify(results), req.body.collectionDate && req.body.collectionTime ? `${req.body.collectionDate}T${req.body.collectionTime}:00` : null, status, JSON.stringify(metadata), id, clinicId, resultDateTime]
+       RETURNING id, pet_id, test_name, results, collected_at, reported_at, metadata),
+       previous_diagnosis AS MATERIALIZED (
+         SELECT d.* FROM patient_diagnoses d JOIN saved_lab l
+           ON d.id::text=l.metadata->>'diagnosis_id' AND d.pet_id=l.pet_id
+         WHERE d.clinic_id=$7 AND d.record_status='finalized'
+           AND d.case_classification IN ('suspected','probable')
+           AND l.metadata->>'status'='finalized' AND l.metadata->>'testResult'='Positive'
+           AND l.metadata->>'verified'='true' AND COALESCE(l.metadata->>'archived','false')<>'true'
+         FOR UPDATE OF d
+       ), confirmed_diagnosis AS (
+         UPDATE patient_diagnoses d SET case_classification='confirmed',
+           clinical_assessment=COALESCE(d.clinical_assessment,'{}'::jsonb)||'{"final_diagnosis":"Confirmed"}'::jsonb,
+           updated_at=now()
+         FROM previous_diagnosis previous WHERE d.id=previous.id RETURNING d.*
+       ), diagnosis_audit AS (
+         INSERT INTO audit_trail(user_id,action,table_name,record_id,old_data,new_data)
+         SELECT $9,'confirm_diagnosis_from_lab','patient_diagnoses',d.id,to_jsonb(previous),to_jsonb(d)
+         FROM confirmed_diagnosis d JOIN previous_diagnosis previous ON previous.id=d.id
+       ) SELECT * FROM saved_lab`,
+      [testName, JSON.stringify(results), req.body.collectionDate && req.body.collectionTime ? `${req.body.collectionDate}T${req.body.collectionTime}:00` : null, status, JSON.stringify(metadata), id, clinicId, resultDateTime, req.user.id]
     );
     const joined = await db.query(`SELECT p.name AS pet, c.name AS owner, report.id AS report_attachment_id, report.filename AS report_filename, report.content_type AS report_content_type, report.uploaded_at AS report_uploaded_at, report.metadata->>'file_size' AS report_size_bytes
       FROM pets p LEFT JOIN clients c ON c.id=p.client_id
       LEFT JOIN LATERAL (SELECT a.* FROM attachments a WHERE a.clinic_id=$2 AND a.owner_table='lab_results' AND a.owner_id=$3 AND a.metadata->>'source'='lab_result_report' ORDER BY a.uploaded_at DESC,a.id DESC LIMIT 1) report ON true
       WHERE p.id=$1 AND p.clinic_id=$2`, [old.pet_id, clinicId, id]);
+    publishClinicEvent(clinicId, 'diagnosis');
     return res.json(mapLabTest({ ...updated.rows[0], ...joined.rows[0] }));
   } catch (error) { return next(error); }
 };

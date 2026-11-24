@@ -1,5 +1,6 @@
 import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { canViewFeature, hasAction } from '../utils/permissionUtils';
 import { signalStatus, signalTrigger, signalDate } from '../utils/diseaseSignals';
 import './signalAdvisory.css';
@@ -65,8 +66,20 @@ export default function SignalDetails({row,user,onClose,onSaved,onNavigate,filte
     } catch (failure) { setError(failure.message); }
     finally { setBusy(false); }
   };
-  return <dialog className="dm-dialog signal-details" ref={ref} onCancel={event=>{event.preventDefault();if(!busy)onClose();}}>
-    <header><h2>Signal Details</h2><button type="button" aria-label="Close signal details" disabled={busy} onClick={onClose}>×</button></header>
+  const increasing=signal.baseline_cases!=null&&Number(signal.observed_cases)>Number(signal.baseline_cases);
+  const increase=increasing?(Number(signal.baseline_cases)>0?`+${Math.round((signal.observed_cases-signal.baseline_cases)/signal.baseline_cases*100)}%`:'New activity'):null;
+  return createPortal(<dialog className="dm-dialog signal-details signal-drawer" aria-labelledby="signal-drawer-title" ref={ref} onCancel={event=>{event.preventDefault();if(!busy)onClose();}}>
+    <header><h2 id="signal-drawer-title">Signal Details</h2><button type="button" aria-label="Close signal details" disabled={busy} onClick={onClose}>×</button></header>
+    <section className="signal-trend-summary" aria-label="Disease trend summary">
+      <p className="signal-trend-label">{increasing?'Disease trend detected':'Disease signal detected'}</p>
+      <h3>{signal.disease} {increasing?'Cases Increasing':'Signal to Review'}</h3>
+      <p>{signal.area}. Review the signal before deciding whether to send an advisory.</p>
+      <dl>
+        <div><dt>Signal week</dt><dd>{signal.observed_cases}</dd></div>
+        <div><dt>Previous week</dt><dd>{signal.baseline_cases??'Withheld'}</dd></div>
+        {increase&&<div><dt>Increase</dt><dd>{increase}</dd></div>}
+      </dl>
+    </section>
     <p className="dm-callout">A signal highlights disease activity that needs review. It does not confirm an outbreak.</p>
     <dl className="dm-details">{[
       ['Disease',signal.disease],['Reporting Barangay',signal.area],['Signal Week',`${signal.period_start} – ${signal.period_end}`],
@@ -106,5 +119,5 @@ export default function SignalDetails({row,user,onClose,onSaved,onNavigate,filte
       <footer><button type="button" disabled={busy} onClick={()=>setAdvisory(null)}>Cancel</button><button className="dm-primary" disabled={busy || (!clinicIds.length && !notifyOwners)}>{busy ? 'Sending…' : 'Confirm and Send'}</button></footer>
     </form>}
     {historyOpen&&<section className="signal-history"><h3>Review History</h3>{historyLoading?<p role="status">Loading review history…</p>:history?.length?<ol>{history.map(entry=><li key={entry.id}><strong>{signalStatus(entry.status)}</strong><span>{entry.reviewer||'Staff member'} · {signalDate(entry.created_at)}</span><p>{entry.review_notes||'No review notes recorded.'}</p></li>)}</ol>:history&&<p>No review actions recorded yet.</p>}</section>}
-  </dialog>;
+  </dialog>,document.body);
 }

@@ -1,6 +1,5 @@
 import { apiFetch as fetch, clearApiCache } from './utils/apiFetch.js';
 import { clearPageState } from './utils/pageStateStore.js';
-import BackgroundPagePreloader from './components/BackgroundPagePreloader';
 import { watchClinicEvents } from './utils/clinicEvents';
 import { useEffect, useState } from 'react';
 import './styles/global.css';
@@ -355,7 +354,7 @@ export default function App() {
   const staffContent = isDoctorRole(role) || role === 'receptionist';
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', overflow: 'hidden' }}>
       <GlobalSelectMenus />
       <Sidebar
         active={page}
@@ -368,7 +367,7 @@ export default function App() {
         }}
       />
 
-      <main key={JSON.stringify([user.token, user.id, user.clinic_id, user.role, user.permissions])} className={`admin-content ${ownerContent ? 'owner-content' : ''} ${ownerContent || staffContent ? 'themed-page-headers' : ''} ${page === 'inbox' ? 'inbox-content' : ''} ${page === 'clinics' ? 'owner-overview-content' : ''}`}>
+      <main key={JSON.stringify([page, user.token, user.id, user.clinic_id, user.role, user.permissions])} className={`admin-content ${ownerContent ? 'owner-content' : ''} ${ownerContent || staffContent ? 'themed-page-headers' : ''} ${page === 'inbox' ? 'inbox-content' : ''} ${page === 'clinics' ? 'owner-overview-content' : ''}`}>
         {page === 'dashboard' && <DashboardPage user={user} initialFilters={monitoringFilters} onFiltersChange={setMonitoringFilters} onNavigate={navigateSurveillance} />}
         {page === 'disease' && <DiseaseMonitoringPage user={user} initialFilters={monitoringFilters} onFiltersChange={setMonitoringFilters} onNavigate={navigateSurveillance} />}
         {page === 'clinic' && <ClinicLayout user={user} initialTab={clinicInitialTab} initialInvoiceId={clinicInitialInvoiceId} onNavigate={(nextPage, context) => { if (nextPage === 'patient-records') setInboxPatientRequest(context); if (nextPage === 'clinic') { setClinicInitialTab(context?.tab || 'dashboard'); setClinicInitialInvoiceId(context?.invoiceId || null); } setPage(nextPage); }} />}
@@ -422,10 +421,6 @@ export default function App() {
 
         {!DEDICATED.includes(page) && <PlaceholderPage user={user} />}
       </main>
-      <BackgroundPagePreloader
-        key={JSON.stringify([user.token, user.id, user.clinic_id, user.role, user.permissions])}
-        user={user} activePage={page} canAccessPage={canAccessPage}
-      />
       {toast && (
         <div role="status" aria-live="polite" style={{
           position: 'fixed', top: 24, right: 24, zIndex: 2000, display: 'flex',

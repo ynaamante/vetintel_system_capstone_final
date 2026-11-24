@@ -1,6 +1,7 @@
 import { usePageState } from '../utils/usePageState.js';
 import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { jsPDF } from 'jspdf';
 import Topbar from '../components/Topbar';
 import { Icons } from '../icons';
@@ -33,26 +34,13 @@ const ACTION_ICONS = {
   'settings changed': 'settings',
 };
 
-const AUDIT_LOGS = [
-  { id: 'AUD-1045', timestamp: '2026-04-24 14:23:15', user: 'Dr. Sarah Chen', action: 'alert acknowledged', description: 'Acknowledged Parvovirus threshold alert', entity: 'Alert #ALT-2847', ip: '192.168.1.45' },
-  { id: 'AUD-1044', timestamp: '2026-04-24 13:45:32', user: 'Dr. Sarah Chen', action: 'update', description: 'Updated pet vaccination record', entity: 'Pet #PET-1023', ip: '192.168.1.45' },
-  { id: 'AUD-1043', timestamp: '2026-04-24 12:18:09', user: 'Dr. Sarah Chen', action: 'report generated', description: 'Generated Monthly Disease Summary report', entity: 'Report #RPT-789', ip: '192.168.1.45' },
-  { id: 'AUD-1042', timestamp: '2026-04-24 11:30:22', user: 'Dr. Sarah Chen', action: 'create', description: 'Created new appointment for Max Johnson', entity: 'Appointment #APT-445', ip: '192.168.1.45' },
-  { id: 'AUD-1041', timestamp: '2026-04-24 10:52:41', user: 'Dr. Sarah Chen', action: 'data sync', description: 'Synchronized 47 records with intelligence network', entity: '—', ip: '192.168.1.45' },
-  { id: 'AUD-1040', timestamp: '2026-04-24 09:15:03', user: 'Dr. Sarah Chen', action: 'login', description: 'User logged in successfully', entity: '—', ip: '192.168.1.45' },
-  { id: 'AUD-1039', timestamp: '2026-04-23 18:30:44', user: 'Dr. Sarah Chen', action: 'logout', description: 'User logged out', entity: '—', ip: '192.168.1.45' },
-  { id: 'AUD-1038', timestamp: '2026-04-23 17:22:18', user: 'Dr. Sarah Chen', action: 'delete', description: 'Deleted cancelled appointment', entity: 'Appointment #APT-442', ip: '192.168.1.45' },
-  { id: 'AUD-1037', timestamp: '2026-04-23 16:45:09', user: 'Dr. Sarah Chen', action: 'settings changed', description: 'Updated privacy settings for data sharing', entity: '—', ip: '192.168.1.45' },
-  { id: 'AUD-1036', timestamp: '2026-04-23 15:12:33', user: 'Dr. Sarah Chen', action: 'update', description: 'Updated owner contact information', entity: 'Owner #OWN-234', ip: '192.168.1.45' },
-];
-
 function downloadAuditCsv(logs) {
   const rows = [
     ['Audit ID', 'Timestamp', 'User', 'Action', 'Description', 'Entity', 'IP Address'],
     ...logs.map(log => [log.id, log.timestamp, log.user, log.action, log.description, log.entity, log.ip]),
   ];
   const csv = rows
-    .map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(','))
+    .map(row => row.map(value => `"${String(value ?? '').replace(/^[=+@-]/, "'$&").replace(/"/g, '""')}"`).join(','))
     .join('\r\n');
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
   const link = document.createElement('a');
@@ -147,13 +135,7 @@ const ActionBadge = ({ action }) => {
 /* ── VIEW DETAILS MODAL ── */
 function DetailModal({ log, onClose }) {
   if (!log) return null;
-  const additionalDetails = log.action === 'alert acknowledged'
-    ? [['alert Type:', 'Threshold Exceeded'], ['disease:', 'Parvovirus']]
-    : log.action === 'report generated'
-      ? [['report Type:', 'Monthly Disease Summary'], ['format:', 'PDF']]
-      : log.action === 'data sync'
-        ? [['records:', '47'], ['status:', 'Completed']]
-        : [['status:', 'Completed']];
+  const additionalDetails = [['Recorded action:', log.action], ['Record:', log.entity], ['Changed fields:', log.changedFields?.join(', ') || 'No field changes recorded']];
   const actionMeta = ACTION_META[log.action] || ACTION_META.login;
   return (
     <>
@@ -235,19 +217,32 @@ export default function AuditTrailPage({ user }) {
   const [dateFilter, setDate] = useState('Last 7 Days');
   const [modal, setModal] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
     if (!user?.token) return undefined;
     const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
-    fetch(`${apiUrl}/audit-trail/filter?clinic_id=${encodeURIComponent(user.clinic_id || '')}&days=365`, {
-      headers: { Authorization: `Bearer ${user.token}` },
-    })
-      .then(async response => {
-        const payload = await response.json().catch(() => []);
-        if (!response.ok) throw new Error(payload.error || 'Unable to load audit history.');
-        return payload;
-      })
-      .then(rows => {
+    const controller = new AbortController();
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      try {
+        let cursor = null;
+        const rows = [];
+        do {
+          const query = new URLSearchParams({ days: String(parseInt(dateFilter.match(/\d+/)?.[0] || '7', 10)), paged: 'true' });
+          if (cursor) query.set('before_id', cursor);
+          const response = await fetch(`${apiUrl}/audit-trail/filter?${query}`, { headers: { Authorization: `Bearer ${user.token}` }, signal: controller.signal, cache: 'no-store' });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.error || 'Unable to load audit history.');
+          if (!Array.isArray(payload.rows)) throw new Error('Unexpected audit history response.');
+          rows.push(...payload.rows);
+          cursor = payload.next_cursor;
+        } while (cursor && active);
+        if (!active) return;
+        setLoadError('');
         setLogs(rows.map(row => {
           const oldData = row.old_data || {};
           const newData = row.new_data || {};
@@ -256,19 +251,26 @@ export default function AuditTrailPage({ user }) {
             timestamp: row.timestamp,
             user: row.user || 'System',
             action: String(row.action || '').toLowerCase(),
-            description: row.reason || row.details || `${row.action || 'Updated'} ${row.category || 'clinic record'}`,
+            description: row.reason || (row.details && !row.details.startsWith('{') ? row.details : '') || `${row.action || 'Updated'} ${row.category || 'clinic record'}`,
             entity: `${row.category || 'record'}${row.record_id ? ` #${row.record_id}` : ''}`,
-            ip: row.ip_address || 'Local',
+            ip: row.ip_address || 'Not recorded',
             role: row.role,
+            changedFields: [...new Set([...Object.keys(oldData), ...Object.keys(newData)])].filter(key => key !== '_audit' && JSON.stringify(oldData[key]) !== JSON.stringify(newData[key])),
             reason: row.reason,
             previousValue: row.previousValue || oldData.status || oldData.value,
             newValue: row.newValue || newData.status || newData.value,
           };
         }));
-      })
-      .catch(error => setLoadError(error.message));
-    return undefined;
-  }, [user]);
+      } catch (error) { if (active && error.name !== 'AbortError') setLoadError(error.message); }
+      finally { if (active) setLoading(false); }
+    };
+    load();
+    const reload = () => setRefresh(value => value + 1);
+    window.addEventListener('focus', reload);
+    window.addEventListener('vetintel:appointment-updated', reload);
+    return () => { active = false; controller.abort(); window.removeEventListener('focus', reload); window.removeEventListener('vetintel:appointment-updated', reload); };
+  }, [user.token, user.clinic_id, dateFilter, refresh]);
+  useEffect(() => setPage(1), [search, actionFilter, userFilter, dateFilter]);
 
   const canView = canViewFeature(user.permissions, user.role, 'Audit Trail');
 
@@ -293,6 +295,9 @@ export default function AuditTrailPage({ user }) {
     const maxDays = dateFilter === 'Last 7 Days' ? 7 : dateFilter === 'Last 30 Days' ? 30 : 90;
     return matchSearch && matchAction && matchUser && Number.isFinite(ageDays) && ageDays <= maxDays;
   });
+  const pageCount = Math.max(1, Math.ceil(filtered.length / 10));
+  const currentPage = Math.min(page, pageCount);
+  const visibleLogs = filtered.slice((currentPage - 1) * 10, currentPage * 10);
   const users = [...new Set(logs.map(log => log.user).filter(Boolean))];
   const today = new Date().toDateString();
   const criticalActions = logs.filter(log => ['delete', 'archive', 'unverify', 'override', 'cancel'].some(keyword => log.action.includes(keyword))).length;
@@ -323,7 +328,7 @@ export default function AuditTrailPage({ user }) {
             <span>{filtered.length} {filtered.length === 1 ? 'entry' : 'entries'}</span>
           </header>
           {loadError && <div role="alert" style={{ color: '#b91c1c', marginBottom: 12 }}>{loadError}</div>}
-        <div className="audit-log-filters" style={s.filterBar}>
+        <button type="button" disabled={loading} onClick={() => setRefresh(value => value + 1)}>{loading ? 'Loading…' : 'Refresh'}</button><div role="status" aria-live="polite">{loading ? 'Loading audit history…' : ''}</div><div className="audit-log-filters" style={s.filterBar}>
           <div style={s.searchWrap}>
             <span style={s.searchIcon}>{Icons.search}</span>
             <input
@@ -334,7 +339,7 @@ export default function AuditTrailPage({ user }) {
             />
           </div>
           <select style={s.select} value={actionFilter} onChange={e => setAction(e.target.value)}>
-            {['All Actions', 'Alert Acknowledged', 'Update', 'Report Generated', 'Create', 'Data Sync', 'Login', 'Logout', 'Delete', 'Settings Changed'].map(a => (
+            {['All Actions', ...new Set(logs.map(log => log.action))].map(a => (
               <option key={a}>{a}</option>
             ))}
           </select>
@@ -374,7 +379,7 @@ export default function AuditTrailPage({ user }) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((log, i) => (
+                {visibleLogs.map((log, i) => (
                   <tr key={log.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
                     <td style={{ ...s.td, fontFamily: 'monospace', color: '#64748b', fontSize: '.76rem' }}>{log.id}</td>
                     <td style={{ ...s.td, color: '#64748b', whiteSpace: 'nowrap', fontSize: '.78rem' }}>{formatDateTimeText(log.timestamp)}</td>
@@ -397,11 +402,11 @@ export default function AuditTrailPage({ user }) {
               </tbody>
             </table>
           </div>
-        </section>
+          <nav className="role-request-pagination" aria-label="Audit log pages"><span>{filtered.length} entries</span><div><button type="button" disabled={currentPage===1} onClick={()=>setPage(currentPage-1)}>Previous</button><span>Page {currentPage} of {pageCount}</span><button type="button" disabled={currentPage===pageCount} onClick={()=>setPage(currentPage+1)}>Next</button></div></nav></section>
 
       </div>
 
-      <DetailModal log={modal} onClose={() => setModal(null)} />
+      {modal && createPortal(<DetailModal log={modal} onClose={() => setModal(null)} />, document.body)}
     </div>
   );
 }

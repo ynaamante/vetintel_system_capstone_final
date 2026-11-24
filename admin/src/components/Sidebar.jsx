@@ -188,7 +188,7 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
 }
 
 const s = {
-  sidebar:    { width: 264, minHeight: '100vh', background: '#0b3a36', display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto', padding: '0 14px', color: '#edf9f5', position: 'relative', isolation: 'isolate', boxShadow: 'inset -1px 0 0 rgba(255,255,255,.06)' },
+  sidebar:    { width: 264, height: '100%', minHeight: 0, background: '#0b3a36', display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto', overscrollBehaviorY: 'contain', padding: '0 14px', color: '#edf9f5', position: 'relative', isolation: 'isolate', boxShadow: 'inset -1px 0 0 rgba(255,255,255,.06)' },
   sidebarCollapsed: { width: 66, padding: '0 6px' },
   mobileSidebar: { position: 'fixed', top: 0, bottom: 0, left: 0, zIndex: 1000, transition: 'transform .2s ease' },
   mobileSidebarOpen: { width: 264, boxShadow: '8px 0 24px rgba(6,72,56,.25)' },
