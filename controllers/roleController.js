@@ -268,6 +268,30 @@ const nameChanged = name && roleCanonicalKey(before.rows[0].name) !== roleCanoni
   }
 };
 
+exports.updatePermissions = async (req, res, next) => {
+  try {
+    const policy = require('../utils/rolePermissions');
+    if (policy.profile(req.user?.role) !== 'owner' || !Number.isInteger(Number(req.user?.clinic_id)) || Number(req.user.clinic_id) < 1) {
+      return res.status(403).json({ error: 'Clinic owner access required.' });
+    }
+    if (!req.body || Object.keys(req.body).length !== 1 || !Object.hasOwn(req.body, 'permissions')) {
+      return res.status(400).json({ error: 'Provide only a permissions object.' });
+    }
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid role id.' });
+    const target = (await db.query('SELECT id, name, permissions FROM roles WHERE id=$1', [id])).rows[0];
+    if (!target) return res.status(404).json({ error: 'Role not found.' });
+    if (!['doctor', 'receptionist'].includes(policy.profile(target.name))) {
+      return res.status(403).json({ error: 'Only doctor and receptionist permissions can be configured.' });
+    }
+    const permissions = await require('../services/clinicPermissions').saveOverride(req, target, req.body.permissions);
+    res.json({ ...target, permissions, clinic_id: Number(req.user.clinic_id) });
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+};
+
 exports.delete = async (req, res, next) => {
   try {
     const { id } = req.params;

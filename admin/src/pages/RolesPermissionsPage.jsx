@@ -39,12 +39,13 @@ function RolePermissionsView({ role, user, onClose, onSave, staffCount }) {
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const roleName = role.displayName || staffRoleLabel(role.name);
   const actions = visibleActions(role.name);
   const enabled = actions.filter(item => permissionValue(permissions, item)).length;
   const savePermissions = async () => {
     setSaving(true);
-    try { await onSave(permissions); }
+    try { await onSave(permissions); setSaveSuccess(true); setSaveError(''); }
     catch (error) { setSaveError(error.message || 'Unable to save permissions.'); }
     finally { setSaving(false); }
   };
@@ -52,9 +53,10 @@ function RolePermissionsView({ role, user, onClose, onSave, staffCount }) {
     <Topbar user={user} className="role-screen-topbar" headerContent={<><button className="records-back" type="button" aria-label="Back to roles" disabled={saving} onClick={onClose}>← Back</button><div><h2 id="role-permissions-title">{onSave?'Role Permissions':'Role Details'}</h2><p>{onSave?'Manage':'View'} access for {roleName}</p></div></>} />
     <div className="role-screen-content">
     <div className="role-screen-summary"><span className="role-screen-avatar">{roleName.split(/\s+/).slice(0,2).map(word=>word[0]).join('').toUpperCase()}</span><div className="role-screen-description"><h3>{roleName}</h3><p>{role.description || roleGuidance[staffRoleLabel(role.name)] || 'Approved clinic role and permissions.'}</p>{staffCount!=null&&<small>{staffCount} staff assigned</small>}</div><div><small>Total Permissions</small><strong>{actions.length}</strong></div><div><small>Enabled</small><strong className="role-enabled-total">{enabled}</strong></div><div><small>Disabled</small><strong>{actions.length-enabled}</strong></div></div>
-    <div className="role-screen-body"><RolePermissionTree workspace role={role.name} permissions={permissions} onChange={onSave&&!saving?setPermissions:undefined} /></div>
-    {saveError&&<p role="alert">{saveError}</p>}
-    <footer className="role-screen-footer"><p>{onSave?`Changes apply to all staff assigned to the ${roleName} role.`:'View the current permissions for this clinic role.'}</p><button type="button" disabled={saving} onClick={onClose}>{onSave?'Discard Changes':'Close'}</button>{onSave&&<button type="button" className="role-screen-save" disabled={saving} onClick={savePermissions}>{saving?'Saving…':'Save Permissions'}</button>}</footer>
+    <div className="role-screen-body"><RolePermissionTree workspace role={role.name} permissions={permissions} onChange={onSave&&!saving?value=>{setPermissions(value);setSaveSuccess(false);setSaveError('');}:undefined} /></div>
+    {saveError&&<p className="role-screen-save-message is-error" role="alert">{saveError}</p>}
+    {saveSuccess&&<p className="role-screen-save-message is-success" role="status" aria-live="polite">Permissions for {roleName} have been saved for your clinic.</p>}
+    <footer className="role-screen-footer"><p>{onSave?`Changes apply to all staff assigned to the ${roleName} role.`:'View the current permissions for this clinic role.'}</p><button type="button" disabled={saving} onClick={onClose}>{onSave?'Discard Changes':'Close'}</button>{onSave&&<button type="button" className="role-screen-save" disabled={saving||saveSuccess} onClick={savePermissions}>{saving?'Saving…':saveSuccess?'Permissions Saved':'Save Permissions'}</button>}</footer>
     </div>
   </section>;
 }
@@ -146,6 +148,11 @@ export default function RolesPermissionsPage({ user }) {
       setNotification('Unable to load current roles and requests.');
     });
   }, [apiUrl, user.token]);
+  useEffect(() => {
+    if (!notification) return undefined;
+    const timer = window.setTimeout(() => setNotification(''), 4000);
+    return () => window.clearTimeout(timer);
+  }, [notification]);
   const visibleRoles = roles
     .filter(role => ['doctor','assistant_doctor','veterinarian','receptionist'].includes(String(role.name).trim().toLowerCase().replace(/[\s-]+/g,'_')))
     .map(role => ({
@@ -161,15 +168,21 @@ export default function RolesPermissionsPage({ user }) {
     return counts;
   }, {});
   const save = async permissions => {
+    const response=await fetch(`${apiUrl}/roles/${selected.id}/permissions`,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:`Bearer ${user.token}`},body:JSON.stringify({permissions})});
+    const saved=await response.json();
+    if(!response.ok)throw new Error(saved.error||'Unable to save role permissions.');
+    setRoles(prev=>prev.map(role=>String(role.id)===String(saved.id)?{...role,...saved}:role));
+    setSelected(saved);
+    setNotification(`Permissions for ${selected.name} saved for your clinic.`);
+    window.dispatchEvent(new Event('vetintel:permissions-updated'));
     try {
-      const response=await fetch(`${apiUrl}/roles/${selected.id}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${user.token}`},body:JSON.stringify({permissions})});
-      const saved=await response.json();
-      if(!response.ok)throw new Error(saved.error||'Unable to save role permissions.');
-      setRoles(prev=>prev.map(role=>role.id===saved.id?saved:role));
-      setSelected(null);
-      setNotification(`Permissions for ${selected.name} saved for your clinic.`);
-      window.dispatchEvent(new Event('vetintel:permissions-updated'));
-    }catch(error){setNotification(error.message);}
+      const refreshed=await fetch(`${apiUrl}/roles`,{headers:{Authorization:`Bearer ${user.token}`},cache:'no-store'});
+      if(!refreshed.ok)throw new Error('Unable to refresh roles');
+      setRoles(await refreshed.json());
+    } catch(error) {
+      console.error('Could not refresh role permissions after saving',error);
+    }
+    return saved;
   };  const submitRoleRequest = async form => {
     try {
       const response = await fetch(`${apiUrl}/my-role-requests`, {
@@ -189,9 +202,11 @@ export default function RolesPermissionsPage({ user }) {
   };
   if (selected || viewed) {
     const activeRole = selected || viewed;
-    return <RolePermissionsView key={`${activeRole.id}:${selected ? 'edit' : 'view'}`} role={activeRole} user={user}
+    return <><RolePermissionsView key={`${activeRole.id}:${selected ? 'edit' : 'view'}`} role={activeRole} user={user}
       staffCount={staffByRole[String(activeRole.name).trim().toLowerCase().replace(/[\s-]+/g, '_')] || 0}
-      onClose={() => { setSelected(null); setViewed(null); }} onSave={selected ? save : undefined} />;
+      onClose={() => { setSelected(null); setViewed(null); }} onSave={selected ? save : undefined} />
+      {notification&&<div className="role-save-toast" role="status" aria-live="polite"><span aria-hidden="true">✓</span>{notification}</div>}
+    </>;
   }
   return <div style={s.main}>
     <Topbar user={user} title="Roles & Permissions" subtitle="Manage approved role types and configure permissions for your clinic" />

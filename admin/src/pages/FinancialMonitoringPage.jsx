@@ -2,7 +2,7 @@ import useOwnerMonitoring from '../utils/useOwnerMonitoring';
 import { financialData, money } from '../utils/ownerMonitoring';
 import { useState } from 'react';
 import './summaryStats.css';
-import { jsPDF } from 'jspdf';
+import { createFinancialMonitoringPdf } from '../utils/financialMonitoringPdf';
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -58,10 +58,6 @@ export default function FinancialMonitoringPage({ user, onNavigate }) {
   const SERVICE_DATA = financial.services;
   const TRANSACTIONS = financial.transactions;
   const reportFileName = `financial-monitoring-${period.toLowerCase()}`;
-  const pdfPesoFormatter = value => `PHP ${Number(value).toLocaleString('en-PH', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
 
   const exportCsv = () => {
     const rows = [
@@ -90,150 +86,7 @@ export default function FinancialMonitoringPage({ user, onNavigate }) {
   };
 
   const exportPdf = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 18;
-    const contentWidth = pageWidth - margin * 2;
-    let y = 18;
-
-    const drawHeader = () => {
-      doc.setFillColor(15, 17, 23);
-      doc.rect(0, 0, pageWidth, 39, 'F');
-      doc.setFillColor(59, 130, 246);
-      doc.rect(0, 35, pageWidth, 4, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(19);
-      doc.text('VetIntel', margin, 17);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(203, 213, 225);
-      doc.text('ADMINISTRATION & INSIGHTS', margin, 25);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(13);
-      doc.setTextColor(255, 255, 255);
-      doc.text('Financial Monitoring Report', pageWidth - margin, 18, { align: 'right' });
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(203, 213, 225);
-      doc.text(`${period} overview`, pageWidth - margin, 26, { align: 'right' });
-    };
-
-    const ensureSpace = (height) => {
-      if (y + height > pageHeight - 18) {
-        doc.addPage();
-        drawHeader();
-        y = 50;
-      }
-    };
-
-    const sectionTitle = (title) => {
-      ensureSpace(18);
-      doc.setTextColor(15, 17, 23);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.text(title, margin, y);
-      doc.setDrawColor(226, 232, 240);
-      doc.line(margin, y + 4, pageWidth - margin, y + 4);
-      y += 13;
-    };
-
-    const drawTable = (headers, rows, widths) => {
-      const rowHeight = 8;
-      ensureSpace(rowHeight * (rows.length + 1) + 8);
-      doc.setFillColor(239, 246, 255);
-      doc.rect(margin, y - 5, contentWidth, rowHeight, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.setTextColor(30, 64, 175);
-      let x = margin + 3;
-      headers.forEach((header, index) => {
-        doc.text(header, x, y);
-        x += widths[index];
-      });
-      y += rowHeight;
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(71, 85, 105);
-      rows.forEach((row, rowIndex) => {
-        if (rowIndex % 2 === 1) {
-          doc.setFillColor(248, 250, 252);
-          doc.rect(margin, y - 5, contentWidth, rowHeight, 'F');
-        }
-        x = margin + 3;
-        row.forEach((value, index) => {
-          const text = String(value);
-          doc.text(text.length > 30 ? `${text.slice(0, 27)}...` : text, x, y);
-          x += widths[index];
-        });
-        y += rowHeight;
-      });
-      y += 5;
-    };
-
-    drawHeader();
-    y = 52;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Generated ${formatDateText(new Date(), 'en-PH')}`, pageWidth - margin, y, { align: 'right' });
-    y += 12;
-
-    sectionTitle('Financial Summary');
-    const summary = [
-      ['Today\'s Income', pdfPesoFormatter(financial.today), 'Monthly Income', pdfPesoFormatter(financial.monthly)],
-      ['Yearly Income', pdfPesoFormatter(financial.yearly), 'Outstanding', pdfPesoFormatter(financial.outstanding)],
-    ];
-    summary.forEach((row) => {
-      ensureSpace(16);
-      const boxWidth = (contentWidth - 8) / 2;
-      [0, 2].forEach((index, boxIndex) => {
-        const x = margin + boxIndex * (boxWidth + 8);
-        doc.setFillColor(248, 250, 252);
-        doc.setDrawColor(226, 232, 240);
-        doc.roundedRect(x, y - 5, boxWidth, 14, 2, 2, 'FD');
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(100, 116, 139);
-        doc.text(row[index], x + 4, y + 1);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.setTextColor(15, 17, 23);
-        doc.text(row[index + 1], x + boxWidth - 4, y + 1, { align: 'right' });
-      });
-      y += 18;
-    });
-
-    sectionTitle('Recorded Payment Trend');
-    drawTable(
-      ['Period', 'Revenue'],
-      TREND_DATA.map(row => [row.month, pdfPesoFormatter(row.revenue)]),
-      [88, 88],
-    );
-    sectionTitle('Revenue by Service Type');
-    drawTable(
-      ['Service', 'Revenue'],
-      SERVICE_DATA.map(row => [row.service, pdfPesoFormatter(row.revenue)]),
-      [110, 113],
-    );
-    sectionTitle('Recent Transactions');
-    drawTable(
-      ['Transaction ID', 'Date', 'Service', 'Amount', 'Status'],
-      TRANSACTIONS.map(row => [row.id, row.date, row.service, pdfPesoFormatter(row.amount), row.status]),
-      [34, 29, 61, 35, 34],
-    );
-
-    const totalPages = doc.getNumberOfPages();
-    for (let page = 1; page <= totalPages; page += 1) {
-      doc.setPage(page);
-      doc.setDrawColor(226, 232, 240);
-      doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139);
-      doc.text('VetIntel Admin', margin, pageHeight - 6);
-      doc.text(`Page ${page} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
-    }
+    const doc = createFinancialMonitoringPdf({ user, data, financial, period });
     doc.save(`${reportFileName}.pdf`);
   };
 

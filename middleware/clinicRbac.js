@@ -109,7 +109,10 @@ exports.guard=async(req,res,next)=>{
      }
    }
    const needed=requirements(req);
-   if(needed&&!needed.every(options=>options.some(item=>has(req.user,item))))return res.status(403).json({error:'Your clinic role does not permit this action.'});
+   if(needed&&!needed.every(options=>options.some(item=>has(req.user,item)))){
+     try{await require('../utils/audit').logAudit({user_id:req.user?.id,role:req.user?.role,action:'unauthorized_access_attempt',table_name:'security_events',new_data:{clinic_id:req.user?.clinic_id||null,result:'Failed',source:'Clinic Web Dashboard',attempted_path:p,attempted_method:req.method},ip_address:req.ip||req.connection?.remoteAddress||null});}catch(error){console.error('Could not record denied access audit event:',error.message);}
+     return res.status(403).json({error:'Your clinic role does not permit this action.'});
+   }
    return next();
  }catch(error){return next(error);}
 };

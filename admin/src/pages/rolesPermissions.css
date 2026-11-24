@@ -218,6 +218,12 @@
 .role-screen-footer p { flex: 1; font-size: 12px; color: #40516a; margin: 0; }
 .role-screen-footer button { padding: 10px 23px; border: 1px solid #cdd8d1; border-radius: 8px; background: #fff; color: #14231a; font-size: 13px; cursor: pointer; }
 .role-screen-footer .role-screen-save { background: linear-gradient(110deg,#00713c,#005128); color: #fff; border-color: #00713c; }
+.role-screen-footer .role-screen-save:disabled { opacity: .72; cursor: default; }
+.role-screen-save-message { margin: 0; padding: 10px 13px; border-radius: 8px; font-size: 13px; }
+.role-screen-save-message.is-success { border: 1px solid #b8e2c8; background: #ecf8f0; color: #075b35; }
+.role-screen-save-message.is-error { border: 1px solid #efc3c3; background: #fff3f3; color: #9a2424; }
+.role-save-toast { position: fixed; z-index: 10000; top: 92px; right: 24px; display: flex; align-items: center; gap: 10px; max-width: min(440px,calc(100vw - 32px)); padding: 13px 18px; border: 1px solid #a7d9b8; border-radius: 10px; background: #effaf2; color: #075b35; box-shadow: 0 10px 30px #143d2926; font-size: 14px; font-weight: 650; }
+.role-save-toast span { display: grid; place-items: center; width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%; background: #087842; color: #fff; }
 .role-permissions-screen button:focus-visible { outline: 2px solid #07834e; outline-offset: 2px; }
 @media(max-width:800px) {
   .role-permissions-screen { padding: 14px; width: 100%; height: 100%; }

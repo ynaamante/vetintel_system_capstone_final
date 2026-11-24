@@ -10,34 +10,10 @@ import './summaryStats.css';
 import './auditTrailTable.css';
 import { formatDateTimeText } from '../utils/dateFormatting';
 
-const ACTION_META = {
-  'alert acknowledged': { color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
-  update: { color: '#013826', bg: '#e7f4ec', border: '#b7e4d7' },
-  'report generated': { color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff' },
-  create: { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
-  'data sync': { color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' },
-  login: { color: '#64748b', bg: '#f1f6ef', border: '#e8ecf0' },
-  logout: { color: '#64748b', bg: '#f1f6ef', border: '#e8ecf0' },
-  delete: { color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
-  'settings changed': { color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' },
-};
-
-const ACTION_ICONS = {
-  'alert acknowledged': '!',
-  update: 'edit',
-  'report generated': 'download',
-  create: 'plus',
-  'data sync': 'refresh',
-  login: 'arrowRight',
-  logout: 'logout',
-  delete: 'trash',
-  'settings changed': 'settings',
-};
-
 function downloadAuditCsv(logs) {
   const rows = [
-    ['Audit ID', 'Timestamp', 'User', 'Action', 'Description', 'Entity', 'IP Address'],
-    ...logs.map(log => [log.id, log.timestamp, log.user, log.action, log.description, log.entity, log.ip]),
+    ['Audit ID', 'Timestamp', 'User', 'Role', 'Activity', 'Pet / Patient', 'Module', 'Result', 'Entity', 'IP Address'],
+    ...logs.map(log => [log.id, log.timestamp, log.user, log.role, log.description, log.pet?.name, log.module, log.result, log.entity, log.ip]),
   ];
   const csv = rows
     .map(row => row.map(value => `"${String(value ?? '').replace(/^[=+@-]/, "'$&").replace(/"/g, '""')}"`).join(','))
@@ -56,13 +32,8 @@ function downloadAuditPdf(logs) {
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 12;
   const columns = [
-    ['Audit ID', 25],
-    ['Timestamp', 35],
-    ['User', 34],
-    ['Action', 31],
-    ['Description', 73],
-    ['Entity', 38],
-    ['IP Address', 31],
+    ['Audit ID', 22], ['Timestamp', 34], ['Staff', 30], ['Activity', 35],
+    ['Pet / Patient', 28], ['Module', 28], ['Result', 24], ['Entity', 32], ['IP Address', 28],
   ];
   let y = 16;
 
@@ -74,7 +45,7 @@ function downloadAuditPdf(logs) {
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(8);
     pdf.setTextColor(100, 116, 139);
-    pdf.text(`Generated: ${formatDateTimeText(new Date(), 'en-PH')} | ${logs.length} entries`, margin, y + 6);
+    pdf.text(`Generated: ${formatDateTimeText(new Date(), 'en-PH')} | ${logs.length} matching records`, margin, y + 6);
     y += 16;
     pdf.setFillColor(241, 245, 249);
     pdf.rect(margin, y - 4, pageWidth - margin * 2, 8, 'F');
@@ -93,8 +64,8 @@ function downloadAuditPdf(logs) {
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(6.8);
   logs.forEach(log => {
-    const values = [log.id, log.timestamp, log.user, log.action, log.description, log.entity, log.ip];
-    const lines = values.map((value, index) => pdf.splitTextToSize(String(value), columns[index][1] - 4));
+    const values = [log.id, log.timestamp, log.user, log.description, log.pet?.name || '—', log.module, log.result, log.entity, log.ip];
+    const lines = values.map((value, index) => pdf.splitTextToSize(String(value ?? '-'), columns[index][1] - 4));
     const rowHeight = Math.max(...lines.map(line => line.length)) * 3.5 + 4;
     if (y + rowHeight > pageHeight - margin) {
       pdf.addPage();
@@ -116,105 +87,104 @@ function downloadAuditPdf(logs) {
   pdf.save('vetintel-audit-trail-report.pdf');
 }
 
-const ActionBadge = ({ action }) => {
-  const m = ACTION_META[action] || ACTION_META.login;
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      padding: '3px 10px', borderRadius: 20,
-      background: m.bg, border: `1px solid ${m.border}`,
-      fontSize: '.72rem', fontWeight: 600, color: m.color,
-      whiteSpace: 'nowrap',
-    }}>
-      <span style={{ width: 12, height: 12, display: 'flex' }}>{Icons[ACTION_ICONS[action]] || Icons.info}</span>
-      {action}
-    </span>
-  );
-};
+function auditDescription(row) {
+  const candidate=row.description||row.details||'';
+  let data=null;
+  if(candidate&&typeof candidate==='object')data=candidate;
+  const raw=String(candidate||'').trim();
+  if(!data&&raw.startsWith('{')) {
+    try {
+      data=JSON.parse(raw);
+    } catch { /* Use the action label for older malformed audit payloads. */ }
+  }
+  if(data&&typeof data==='object') {
+    if(data.permissions&&data.role)return `Updated ${String(data.role).replace(/[_-]+/g,' ')} permissions`;
+    if(data.description||data.title)return String(data.description||data.title);
+  } else if(raw) return raw;
+  const action=String(row.action||'activity').replace(/[_-]+/g,' ').trim().toLowerCase();
+  const table=String(row.category||'').toLowerCase();
+  if(table.includes('role_permission')||action.includes('configure clinic role'))return 'Updated clinic role permissions';
+  const subject=table.includes('diagnos')?'a diagnosis':table.includes('appointment')?'an appointment':table.includes('lab')?'a laboratory report':table.includes('vaccin')?'a vaccination record':table.includes('invoice')||table.includes('payment')?'a billing record':table.includes('inventory')||table.includes('restock')?'an inventory record':table.includes('pet')?'a patient record':table.includes('user')||table.includes('role')?'staff permissions':'a clinic record';
+  const verb=action.includes('update')||action.includes('edit')||action.includes('configure')?'Updated':action.includes('create')?'Created':action.includes('upload')?'Uploaded':action.includes('archive')?'Archived':action.includes('delete')?'Deleted':action.includes('cancel')?'Cancelled':action.includes('complete')?'Completed':action.includes('confirm')?'Confirmed':action.includes('generate')?'Generated':action.charAt(0).toUpperCase()+action.slice(1);
+  return `${verb} ${subject}`;
+}
 
-/* ── VIEW DETAILS MODAL ── */
-function DetailModal({ log, onClose }) {
-  if (!log) return null;
-  const additionalDetails = [['Recorded action:', log.action], ['Record:', log.entity], ['Changed fields:', log.changedFields?.join(', ') || 'No field changes recorded']];
-  const actionMeta = ACTION_META[log.action] || ACTION_META.login;
-  return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 100 }} />
-      <div style={m.panel}>
-        <div style={m.header}>
-          <div>
-            <div style={m.titleRow}>
-              <span style={{ ...m.actionBadge, color: actionMeta.color, background: actionMeta.bg }}>
-                <span style={{ width: 13, height: 13, display: 'flex' }}>{Icons.info}</span>
-                {log.action}
-              </span>
-              <div style={m.headerTitle}>Audit Log Details</div>
-            </div>
-            <div style={m.headerSub}>{log.id}</div>
-          </div>
-          <button type="button" aria-label="Close audit log details" style={m.closeBtn} onClick={onClose}>
-            <span style={{ width: 18, height: 18, display: 'flex', color: '#64748b' }}>{Icons.close}</span>
-          </button>
-        </div>
-        <div style={m.body}>
-          <div style={m.metaGrid}>
-            <div style={m.field}>
-              <div style={m.fieldLabel}>Timestamp</div>
-              <div style={m.fieldValue}>{formatDateTimeText(log.timestamp)}</div>
-            </div>
-            <div style={m.field}>
-              <div style={m.fieldLabel}>User</div>
-              <div style={m.fieldValue}>{log.user}</div>
-            </div>
-            <div style={m.field}>
-              <div style={m.fieldLabel}>IP Address</div>
-              <div style={m.fieldValue}>{log.ip}</div>
-            </div>
-            <div style={m.field}>
-              <div style={m.fieldLabel}>Action Type</div>
-              <div style={m.fieldValue}>{log.action}</div>
-            </div>
-          </div>
-          <div style={m.stackedField}>
-            <div style={m.fieldLabel}>Description</div>
-            <div style={m.fieldValue}>{log.description}</div>
-          </div>
-          <div style={m.stackedField}>
-            <div style={m.fieldLabel}>Entity</div>
-            <div style={m.fieldValue}>{log.entity}</div>
-          </div>
-          <div style={m.stackedField}>
-            <div style={m.fieldLabel}>Role / Change</div>
-            <div style={m.fieldValue}>{log.role || '—'} · {log.previousValue || '—'} → {log.newValue || '—'}</div>
-          </div>
-          {log.reason && <div style={m.stackedField}>
-            <div style={m.fieldLabel}>Reason</div>
-            <div style={m.fieldValue}>{log.reason}</div>
-          </div>}
-          <div style={m.stackedField}>
-            <div style={m.fieldLabel}>Additional Details</div>
-            <div style={m.additionalDetails}>
-              {additionalDetails.map(([label, value]) => (
-                <div key={label} style={m.detailLine}>
-                  <span style={m.detailLabel}>{label}</span>
-                  <span>{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+function auditModule(row) {
+  if(row.module)return row.module;
+  const key=`${row.category||''} ${row.action||''}`.toLowerCase();
+  if(/login|logout|unauthorized|security|password|auth/.test(key))return 'Security';
+  if(/appointment|schedule|consultation/.test(key))return 'Appointments';
+  if(/lab|test_result/.test(key))return 'Laboratory';
+  if(/vaccin/.test(key))return 'Vaccination';
+  if(/prescription|medication|treatment_plan/.test(key))return 'Prescription';
+  if(/invoice|payment|billing|refund/.test(key))return 'Billing';
+  if(/inventory|restock|stock/.test(key))return 'Inventory';
+  if(/user|role|staff|permission/.test(key))return 'Staff Management';
+  if(/report|export|document|attachment|upload/.test(key))return 'Data Management';
+  if(/diagnos|medical|clinic_record|visit|patient/.test(key))return 'Medical Records';
+  if(/pet|client|owner/.test(key))return 'Patient Management';
+  return 'Other';
+}
+
+function safeAuditChanges(payload, fallbackCategory='') {
+  const source=Array.isArray(payload.changes)?payload.changes:null;
+  const oldData=payload.old_data||{},newData=payload.new_data||{};
+  const changes=source||[...new Set([...Object.keys(oldData),...Object.keys(newData)])]
+    .filter(field=>field!=='_audit'&&JSON.stringify(oldData[field])!==JSON.stringify(newData[field]))
+    .map(field=>({field,previous:oldData[field],updated:newData[field]}));
+  const medical=/diagnos|medical|treatment|consultation|laboratory|lab_result|lab_test|vaccin|prescription|inpatient|patient_record/i.test(String(payload.category||fallbackCategory));
+  const medicalFields=new Set(['diagnosis','case_classification','clinical_status','record_status','recorded_at','medication','dosage','frequency','duration','status','result','test_name','vaccine_name','vaccine_date','next_due_date']);
+  const sensitive=/password|token|secret|authorization|clinical_assessment|medical_history|notes|email|phone/i;
+  return changes.filter(change=>{
+    const field=String(change.field||'');
+    return !sensitive.test(field)&&!['clinic_id','user_id','pet_id','patient_id','client_id','veterinarian_id','recorded_by','permissions','source','device','attempted_path','attempted_method'].includes(field)&&(!medical||medicalFields.has(field));
+  }).slice(0,30).map(change=>({
+    field:String(change.field),
+    previous:change.previous==null||change.previous===''?'-':typeof change.previous==='object'?'[structured value updated]':String(change.previous).slice(0,180),
+    updated:change.updated==null||change.updated===''?'-':typeof change.updated==='object'?'[structured value updated]':String(change.updated).slice(0,180),
+  }));
+}
+
+function DetailDrawer({ log, token, onClose }) {
+  const [detail, setDetail] = useState(log);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    const apiUrl=(import.meta.env.VITE_API_URL||'http://localhost:3000/api').replace(/\/+$/,'');
+    const controller=new AbortController();
+    fetch(`${apiUrl}/audit-trail/${log.rawId}`,{headers:{Authorization:`Bearer ${token}`},signal:controller.signal,cache:'no-store'})
+      .then(async response=>{const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Unable to load activity details.');setDetail({...log,...payload,id:log.id,description:auditDescription(payload)||log.description,module:auditModule(payload)||log.module,role:payload.role||log.role,ip_address:payload.ip_address||log.ip,changes:safeAuditChanges(payload,log.entity)});})
+      .catch(failure=>{if(failure.name!=='AbortError')setError(failure.message);});
+    return()=>controller.abort();
+  },[log.rawId,token]);
+  useEffect(()=>{const close=event=>{if(event.key==='Escape')onClose();};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close);},[onClose]);
+  const result=detail.result||'Successful';
+  return createPortal(<>
+    <button type="button" className="audit-drawer-scrim" aria-label="Close activity details" onClick={onClose}/>
+    <aside className="audit-detail-drawer" role="dialog" aria-modal="true" aria-labelledby="audit-drawer-title">
+      <header><div><h2 id="audit-drawer-title">Activity Details</h2><p>{detail.id}</p></div><button type="button" aria-label="Close activity details" onClick={onClose}>{Icons.close}</button></header>
+      <div className="audit-drawer-content">
+        <span className={`audit-result-pill ${result==='Failed'?'is-failed':''}`}><i/>{result}</span>
+        <h3>{detail.description}</h3>
+        <p className="audit-drawer-date">{formatDateTimeText(detail.timestamp,'en-PH')}</p>
+        <section><h4>Staff Information</h4><strong>{detail.user||'System'}</strong><p>{String(detail.role||'Role not recorded').replace(/[_-]+/g,' ').replace(/\b\w/g,letter=>letter.toUpperCase())}</p></section>
+        <section><h4>Affected Patient</h4>{detail.pet?<><strong>{detail.pet.name}</strong><p>{[detail.pet.species,detail.pet.id?`Patient ID: ${detail.pet.id}`:null].filter(Boolean).join(' | ')}</p></>:<p>No patient linked to this activity.</p>}</section>
+        <section><h4>Change History</h4>{error&&<p role="alert" className="audit-drawer-error">{error}</p>}{!detail.changes&&!error&&<p>Loading changed fields...</p>}{detail.changes?.length?detail.changes.map((change,index)=><div className="audit-change-pair" key={`${change.field}-${index}`}><div><small>Previous Value | {change.field}</small><p>{change.previous}</p></div><div><small>Updated Value</small><p>{change.updated}</p></div></div>):detail.changes&&<p>No field changes recorded.</p>}</section>
+        <section><h4>Additional Information</h4><dl><dt>Module</dt><dd>{detail.module||'Other'}</dd><dt>Action Type</dt><dd>{detail.action||'-'}</dd><dt>Result</dt><dd>{result}</dd><dt>Source</dt><dd>{detail.source||'Not recorded'}</dd><dt>Device</dt><dd>{detail.device||'Not recorded'}</dd><dt>IP Address</dt><dd>{detail.ip_address||'Not recorded'}</dd><dt>Timestamp</dt><dd>{formatDateTimeText(detail.timestamp,'en-PH')}</dd><dt>Affected Record</dt><dd>{detail.category||'record'}{detail.record_id?` #${detail.record_id}`:''}</dd></dl></section>
       </div>
-    </>
-  );
+    </aside>
+  </>,document.body);
 }
 
 export default function AuditTrailPage({ user }) {
   const [logs, setLogs] = usePageState(user, "pages/AuditTrailPage.jsx:logs", []);
   const [loadError, setLoadError] = usePageState(user, "pages/AuditTrailPage.jsx:loadError", '');
   const [search, setSearch] = useState('');
-  const [actionFilter, setAction] = useState('All Actions');
-  const [userFilter, setUser] = useState('All Users');
+  const [actionFilter, setAction] = useState('All Activities');
+  const [userFilter, setUser] = useState('All Staff');
+  const [statusFilter, setStatus] = useState('All Statuses');
   const [dateFilter, setDate] = useState('Last 7 Days');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [modal, setModal] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -232,7 +202,11 @@ export default function AuditTrailPage({ user }) {
         let cursor = null;
         const rows = [];
         do {
-          const query = new URLSearchParams({ days: String(parseInt(dateFilter.match(/\d+/)?.[0] || '7', 10)), paged: 'true' });
+          const query = new URLSearchParams({ paged: 'true' });
+          if(dateFilter==='Today') {const today=new Date().toLocaleDateString('en-CA');query.set('from',today);query.set('to',today);}
+          else if(dateFilter==='Last 7 Days') query.set('days','7');
+          else if(dateFilter==='Last 30 Days') query.set('days','30');
+          else if(dateFilter==='Custom Range') { if(customFrom)query.set('from',customFrom); if(customTo)query.set('to',customTo); }
           if (cursor) query.set('before_id', cursor);
           const response = await fetch(`${apiUrl}/audit-trail/filter?${query}`, { headers: { Authorization: `Bearer ${user.token}` }, signal: controller.signal, cache: 'no-store' });
           const payload = await response.json();
@@ -243,24 +217,13 @@ export default function AuditTrailPage({ user }) {
         } while (cursor && active);
         if (!active) return;
         setLoadError('');
-        setLogs(rows.map(row => {
-          const oldData = row.old_data || {};
-          const newData = row.new_data || {};
-          return {
-            id: `AUD-${String(row.id).padStart(4, '0')}`,
-            timestamp: row.timestamp,
-            user: row.user || 'System',
-            action: String(row.action || '').toLowerCase(),
-            description: row.reason || (row.details && !row.details.startsWith('{') ? row.details : '') || `${row.action || 'Updated'} ${row.category || 'clinic record'}`,
-            entity: `${row.category || 'record'}${row.record_id ? ` #${row.record_id}` : ''}`,
-            ip: row.ip_address || 'Not recorded',
-            role: row.role,
-            changedFields: [...new Set([...Object.keys(oldData), ...Object.keys(newData)])].filter(key => key !== '_audit' && JSON.stringify(oldData[key]) !== JSON.stringify(newData[key])),
-            reason: row.reason,
-            previousValue: row.previousValue || oldData.status || oldData.value,
-            newValue: row.newValue || newData.status || newData.value,
-          };
-        }));
+        setLogs(rows.map(row => ({
+          rawId:row.id,id:`AUD-${String(row.id).padStart(4,'0')}`,timestamp:row.timestamp,
+          user:row.user||'System',role:row.role||(String(row.user_id)===String(user.id)?user.role:'')||'',action:String(row.action||'activity').toLowerCase(),
+          description:auditDescription(row),
+          entity:`${row.category||'record'}${row.record_id?` #${row.record_id}`:''}`,ip:row.ip_address||'Not recorded',
+          module:auditModule(row),result:row.result||(/fail|denied|unauthorized/.test(String(row.action||''))?'Failed':'Successful'),pet:row.pet||null,changedFields:row.changed_fields||[],
+        })));
       } catch (error) { if (active && error.name !== 'AbortError') setLoadError(error.message); }
       finally { if (active) setLoading(false); }
     };
@@ -269,8 +232,8 @@ export default function AuditTrailPage({ user }) {
     window.addEventListener('focus', reload);
     window.addEventListener('vetintel:appointment-updated', reload);
     return () => { active = false; controller.abort(); window.removeEventListener('focus', reload); window.removeEventListener('vetintel:appointment-updated', reload); };
-  }, [user.token, user.clinic_id, dateFilter, refresh]);
-  useEffect(() => setPage(1), [search, actionFilter, userFilter, dateFilter]);
+  }, [user.token, user.clinic_id, dateFilter, customFrom, customTo, refresh]);
+  useEffect(() => setPage(1), [search, actionFilter, userFilter, statusFilter, dateFilter, customFrom, customTo]);
 
   const canView = canViewFeature(user.permissions, user.role, 'Audit Trail');
 
@@ -288,12 +251,17 @@ export default function AuditTrailPage({ user }) {
   }
 
   const filtered = logs.filter(l => {
-    const matchSearch = !search || l.description.toLowerCase().includes(search.toLowerCase()) || l.id.toLowerCase().includes(search.toLowerCase());
-    const matchAction = actionFilter === 'All Actions' || l.action === actionFilter.toLowerCase();
-    const matchUser = userFilter === 'All Users' || l.user === userFilter;
+    const searchable=[l.description,l.user,l.pet?.name,l.module,l.id,String(l.rawId)].filter(Boolean).join(' ').toLowerCase();
+    const matchSearch = !search || searchable.includes(search.trim().toLowerCase());
+    const matchAction = actionFilter === 'All Activities' || l.module === actionFilter;
+    const role=String(l.role||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
+    const matchUser=userFilter==='All Staff'||(userFilter==='Veterinarians'&&['doctor','veterinarian'].includes(role))||(userFilter==='Assistants'&&role.includes('assistant'))||(userFilter==='Receptionists'&&role==='receptionist');
+    const matchStatus=statusFilter==='All Statuses'||l.result===statusFilter;
     const ageDays = (Date.now() - new Date(l.timestamp).getTime()) / 86400000;
-    const maxDays = dateFilter === 'Last 7 Days' ? 7 : dateFilter === 'Last 30 Days' ? 30 : 90;
-    return matchSearch && matchAction && matchUser && Number.isFinite(ageDays) && ageDays <= maxDays;
+    const localDate=new Date(l.timestamp).toLocaleDateString('en-CA');
+    const todayDate=new Date().toLocaleDateString('en-CA');
+    const matchDate=dateFilter==='Today'?localDate===todayDate:dateFilter==='Last 7 Days'?ageDays>=0&&ageDays<=7:dateFilter==='Last 30 Days'?ageDays>=0&&ageDays<=30:Boolean(customFrom&&customTo&&localDate>=customFrom&&localDate<=customTo);
+    return matchSearch&&matchAction&&matchUser&&matchStatus&&matchDate;
   });
   const pageCount = Math.max(1, Math.ceil(filtered.length / 10));
   const currentPage = Math.min(page, pageCount);
@@ -328,37 +296,22 @@ export default function AuditTrailPage({ user }) {
             <span>{filtered.length} {filtered.length === 1 ? 'entry' : 'entries'}</span>
           </header>
           {loadError && <div role="alert" style={{ color: '#b91c1c', marginBottom: 12 }}>{loadError}</div>}
-        <button type="button" disabled={loading} onClick={() => setRefresh(value => value + 1)}>{loading ? 'Loading…' : 'Refresh'}</button><div role="status" aria-live="polite">{loading ? 'Loading audit history…' : ''}</div><div className="audit-log-filters" style={s.filterBar}>
-          <div style={s.searchWrap}>
-            <span style={s.searchIcon}>{Icons.search}</span>
-            <input
-              style={s.searchInput}
-              placeholder="Search by description or ID..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          <select style={s.select} value={actionFilter} onChange={e => setAction(e.target.value)}>
-            {['All Actions', ...new Set(logs.map(log => log.action))].map(a => (
-              <option key={a}>{a}</option>
-            ))}
-          </select>
-          <select style={s.select} value={userFilter} onChange={e => setUser(e.target.value)}>
-            {['All Users', ...users].map(u => (
-              <option key={u}>{u}</option>
-            ))}
-          </select>
-          <select style={s.select} value={dateFilter} onChange={e => setDate(e.target.value)}>
-            {['Last 7 Days', 'Last 30 Days', 'Last 90 Days'].map(d => <option key={d}>{d}</option>)}
-          </select>
+        <div className="audit-filter-toolbar"><div role="status" aria-live="polite">{loading ? 'Loading audit history...' : `${filtered.length} matching ${filtered.length===1?'record':'records'}`}</div><button type="button" disabled={loading} onClick={() => setRefresh(value => value + 1)}>{loading ? 'Loading...' : 'Refresh'}</button></div><div className="audit-log-filters" style={s.filterBar}>
+          <div style={s.searchWrap}><span style={s.searchIcon}>{Icons.search}</span><input style={s.searchInput} placeholder="Search staff, pet, activity or audit ID..." value={search} onChange={e => setSearch(e.target.value)} /></div>
+          <select style={s.select} aria-label="Activity filter" value={actionFilter} onChange={e => setAction(e.target.value)}>{['All Activities','Patient Management','Medical Records','Appointments','Laboratory','Vaccination','Prescription','Billing','Inventory','Staff Management','Security','Data Management'].map(a => <option key={a}>{a}</option>)}</select>
+          <select style={s.select} aria-label="Staff filter" value={userFilter} onChange={e => setUser(e.target.value)}>{['All Staff','Veterinarians','Assistants','Receptionists'].map(u => <option key={u}>{u}</option>)}</select>
+          <select style={s.select} aria-label="Status filter" value={statusFilter} onChange={e => setStatus(e.target.value)}>{['All Statuses','Successful','Failed'].map(value => <option key={value}>{value}</option>)}</select>
+          <select style={s.select} aria-label="Date filter" value={dateFilter} onChange={e => setDate(e.target.value)}>{['Today','Last 7 Days','Last 30 Days','Custom Range'].map(d => <option key={d}>{d}</option>)}</select>
+          {dateFilter==='Custom Range'&&<div className="audit-custom-range"><label>From<input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)}/></label><label>To<input type="date" value={customTo} onChange={e=>setCustomTo(e.target.value)}/></label></div>}
+          {dateFilter==='Custom Range'&&(!customFrom||!customTo)&&<small className="audit-range-help">Choose both dates to apply the range.</small>}
           <div style={s.exportWrap}>
-          <button style={s.exportBtn} onClick={() => setShowExportMenu(current => !current)}>
+          <button type="button" style={s.exportBtn} disabled={!filtered.length} onClick={() => setShowExportMenu(current => !current)}>
             <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.download}</span>
-            Export
+            Export ({filtered.length})
           </button>
           {showExportMenu && (
             <div style={s.exportMenu}>
-              <div style={s.exportMenuLabel}>Export report as</div>
+              <div style={s.exportMenuLabel}>Export {filtered.length} matching records</div>
               <button type="button" style={s.exportOption} onClick={() => { downloadAuditCsv(filtered); setShowExportMenu(false); }}>
                 CSV
               </button>
@@ -371,34 +324,16 @@ export default function AuditTrailPage({ user }) {
         </div>
           <div className="audit-log-table-wrap">
             <table style={s.table}>
-              <thead>
-                <tr>
-                  {['Audit ID', 'Timestamp', 'User', 'Action', 'Description', 'Entity', 'IP Address', 'Actions'].map((h, index) => (
-                    <th key={h} style={{ ...s.th, width: ['8%', '17%', '11%', '12%', '23%', '10%', '12%', '7%'][index] }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
+              <thead><tr>{['Date & Time','Staff Member','Activity','Pet / Patient','Module','Status',''].map((h,index)=><th key={`${h}-${index}`} style={{...s.th,width:['15%','17%','25%','15%','15%','10%','3%'][index]}}>{h}</th>)}</tr></thead>
               <tbody>
-                {visibleLogs.map((log, i) => (
-                  <tr key={log.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
-                    <td style={{ ...s.td, fontFamily: 'monospace', color: '#64748b', fontSize: '.76rem' }}>{log.id}</td>
-                    <td style={{ ...s.td, color: '#64748b', whiteSpace: 'nowrap', fontSize: '.78rem' }}>{formatDateTimeText(log.timestamp)}</td>
-                    <td style={{ ...s.td, fontWeight: 500, color: '#0f1117', whiteSpace: 'nowrap' }}>{log.user}</td>
-                    <td style={s.td}><ActionBadge action={log.action} /></td>
-                    <td style={{ ...s.td, color: '#374151', maxWidth: 280 }}>{log.description}</td>
-                    <td style={{ ...s.td, fontFamily: 'monospace', color: '#64748b', fontSize: '.76rem', whiteSpace: 'nowrap' }}>{log.entity}</td>
-                    <td style={{ ...s.td, fontFamily: 'monospace', color: '#64748b', fontSize: '.76rem', whiteSpace: 'nowrap' }}>{log.ip}</td>
-                    <td style={s.td}>
-                      <button
-                        style={s.detailsBtn}
-                        onClick={() => setModal(log)}
-                      >
-                        View Details
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && <tr><td colSpan={8} className="audit-empty-cell" style={s.emptyCell}>No logs match your filters.</td></tr>}
+                {visibleLogs.map((log,i)=><tr key={log.id} className="audit-log-row" tabIndex={0} role="button" aria-label={`View details for ${log.description}`} onClick={()=>setModal(log)} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();setModal(log);}}} style={{background:i%2===0?'#fff':'#fafafa'}}>
+                  <td style={{...s.td,whiteSpace:'nowrap'}}>{formatDateTimeText(log.timestamp,'en-PH')}</td>
+                  <td style={s.td}><strong>{log.user}</strong><small className="audit-secondary-text">{String(log.role||'Staff role not recorded').replace(/[_-]+/g,' ').replace(/\b\w/g,letter=>letter.toUpperCase())}</small></td>
+                  <td style={{...s.td,color:'#263a34'}}><span className="audit-activity-text" title={log.description}>{log.description}</span></td>
+                  <td style={s.td}>{log.pet?<><strong>{log.pet.name}</strong><small className="audit-secondary-text">{log.pet.species||'Patient'}{log.pet.id?` | ID ${log.pet.id}`:''}</small></>:'-'}</td>
+                  <td style={s.td}>{log.module}</td><td style={s.td}><span className={`audit-result-pill ${log.result==='Failed'?'is-failed':''}`}><i/>{log.result}</span></td><td style={{...s.td,textAlign:'center',fontSize:20,color:'#344a42'}}>{Icons.chevronRight}</td>
+                </tr>)}
+                {filtered.length===0&&<tr><td colSpan={7} className="audit-empty-cell" style={s.emptyCell}>No logs match your filters.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -406,7 +341,7 @@ export default function AuditTrailPage({ user }) {
 
       </div>
 
-      {modal && createPortal(<DetailModal log={modal} onClose={() => setModal(null)} />, document.body)}
+      {modal && <DetailDrawer log={modal} token={user.token} onClose={() => setModal(null)} />}
     </div>
   );
 }
@@ -426,28 +361,8 @@ const s = {
   exportMenu: { position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 20, minWidth: 150, padding: 6, background: '#fff', border: '1px solid #dbe3ee', borderRadius: 8, boxShadow: '0 10px 24px rgba(15, 23, 42, .12)' },
   exportMenuLabel: { padding: '6px 8px 5px', fontSize: '.66rem', color: '#7185a2', fontWeight: 600 },
   exportOption: { display: 'block', width: '100%', padding: '8px', border: 0, borderRadius: 6, background: '#fff', color: '#334155', textAlign: 'left', fontSize: '.72rem', cursor: 'pointer' },
-  table: { width: '100%', borderCollapse: 'collapse', minWidth: 1050, tableLayout: 'fixed' },
+  table: { width: '100%', borderCollapse: 'collapse', minWidth: 950, tableLayout: 'fixed' },
   th: { textAlign: 'left', height: 40, padding: '0 11px', fontSize: '.72rem', fontWeight: 700, color: '#172b25', background: '#f6fafb', borderBottom: '1px solid #dce5ed', whiteSpace: 'nowrap' },
   td: { height: 52, padding: '8px 11px', fontSize: '.74rem', borderBottom: '1px solid #e1e8ef', verticalAlign: 'middle', color: '#334155', overflowWrap: 'anywhere' },
   emptyCell: { height: 80, padding: 14, textAlign: 'center', color: '#64748b', fontSize: '.84rem', borderBottom: 0 },
-  detailsBtn: { padding: '6px 11px', background: '#fff', border: '1px solid #dbe3ee', borderRadius: 7, fontSize: '.68rem', fontWeight: 600, color: '#334155', cursor: 'pointer', whiteSpace: 'nowrap' },
-};
-
-const m = {
-  panel: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: '#fff', borderRadius: 9, width: 600, maxWidth: 'calc(100vw - 32px)', zIndex: 101, boxShadow: '0 20px 60px rgba(0,0,0,.2)', overflow: 'hidden' },
-  header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 24px 0' },
-  titleRow: { display: 'flex', alignItems: 'center', gap: 13 },
-  actionBadge: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 7, fontSize: '.72rem', fontWeight: 500, whiteSpace: 'nowrap' },
-  headerTitle: { fontSize: '1.05rem', fontWeight: 700, color: '#172033' },
-  headerSub: { fontSize: '.74rem', color: '#718096', marginTop: 8 },
-  closeBtn: { background: 'none', border: '1px solid #b7bec8', cursor: 'pointer', padding: 3, borderRadius: 6, display: 'flex', width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
-  body: { padding: '18px 24px 24px' },
-  metaGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 40, rowGap: 18 },
-  field: { minWidth: 0 },
-  fieldLabel: { fontSize: '.73rem', fontWeight: 600, color: '#7185a2', marginBottom: 6 },
-  fieldValue: { fontSize: '.78rem', lineHeight: 1.4, color: '#172033', wordBreak: 'break-word' },
-  stackedField: { marginTop: 18 },
-  additionalDetails: { background: '#f5f7fa', borderRadius: 9, padding: '13px 12px', marginTop: 9 },
-  detailLine: { display: 'grid', gridTemplateColumns: '128px 1fr', fontSize: '.75rem', lineHeight: 1.8, color: '#263348' },
-  detailLabel: { fontWeight: 600, color: '#506480' },
 };

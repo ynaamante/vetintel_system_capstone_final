@@ -414,15 +414,18 @@ exports.login = async (req, res, next) => {
 
     const user = await userModel.getByEmail(normalizedEmail);
     if (!user || user.is_active === false) {
+      await recordSecurityAudit(req, user, 'login_failed', 'Failed');
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     const isValid = user.password_hash && await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
+      await recordSecurityAudit(req, user, 'login_failed', 'Failed');
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     if (user.email_verification_required && !user.email_verified_at) {
+      await recordSecurityAudit(req, user, 'login_blocked_unverified', 'Failed');
       return res.status(403).json({ error: 'Verify your email before signing in.', code: 'EMAIL_VERIFICATION_REQUIRED', email: user.email });
     }
 
@@ -445,6 +448,8 @@ exports.login = async (req, res, next) => {
       iat: Date.now(),
     });
 
+    await recordSecurityAudit(req, user, 'login_success', 'Successful');
+
     res.json({
       id: user.id,
       name: user.name,
@@ -458,6 +463,27 @@ exports.login = async (req, res, next) => {
   } catch (e) {
     next(e);
   }
+};
+
+async function recordSecurityAudit(req, user, action, result) {
+  try {
+    await audit.logAudit({
+      user_id: user?.id || null,
+      role: user?.role_name || user?.role || null,
+      action,
+      table_name: 'security_events',
+      record_id: user?.id || null,
+      new_data: { ...(user?.clinic_id ? { clinic_id: user.clinic_id } : {}), result, source: 'Clinic Web Dashboard', device: String(req.get('user-agent')||'').slice(0,240)||null },
+      ip_address: req.ip || req.connection?.remoteAddress || null,
+    });
+  } catch (error) {
+    console.error('Could not record login audit event:', error.message);
+  }
+}
+
+exports.logout = async (req, res) => {
+  await recordSecurityAudit(req, req.user, 'logout_success', 'Successful');
+  res.json({ success: true });
 };
 
 exports.changePassword = async (req, res, next) => {

@@ -22,6 +22,7 @@ router.use((req,res,next)=>clinicRbac.protectedPath(req.path)
 
 // Auth endpoints
 router.post('/login', users.login);
+router.post('/session/logout', auth.required, users.logout);
 router.post('/password/forgot', require('../controllers/ownerPasswordResetController').request);
 router.post('/password/verify', require('../controllers/ownerPasswordResetController').verify);
 router.post('/password/reset', require('../controllers/ownerPasswordResetController').reset);
@@ -223,7 +224,8 @@ router.get('/clinic-records/attachments/:id/content', auth.required, clinicRecor
 // Audit Trail endpoints
 router.get('/audit-trail', auth.required, audit.list);
 router.get('/audit-trail/filter', auth.required, audit.getByFilter);
-router.post('/audit-trail', auth.required, audit.create);
+router.get('/audit-trail/:id', auth.required, audit.getById);
+router.post('/audit-trail', auth.required, auth.superAdmin, audit.create);
 
 // Announcements endpoints
 router.get('/announcements', auth.optional, announcements.list);
@@ -248,6 +250,7 @@ router.get('/roles', auth.required, roles.list);
 router.get('/roles/:id', auth.required, roles.getById);
 router.post('/roles', auth.required, roles.create);
 router.put('/roles/:id', auth.required, roles.update);
+router.patch('/roles/:id/permissions', auth.required, roles.updatePermissions);
 router.delete('/roles/:id', auth.required, roles.delete);
 
 // Permissions endpoints

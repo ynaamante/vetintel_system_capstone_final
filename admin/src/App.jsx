@@ -292,7 +292,13 @@ export default function App() {
     }
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    if (user?.token) {
+      const apiUrl=(import.meta.env.VITE_API_URL||'http://localhost:3000/api').replace(/\/+$/,'');
+      const controller=new AbortController();
+      const timer=window.setTimeout(()=>controller.abort(),1500);
+      try { await fetch(`${apiUrl}/session/logout`,{method:'POST',headers:{Authorization:`Bearer ${user.token}`},signal:controller.signal}); } catch {} finally { window.clearTimeout(timer); }
+    }
     clearApiCache();
     clearPageState();
     setMonitoringFilters({});
