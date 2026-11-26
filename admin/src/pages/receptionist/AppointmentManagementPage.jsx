@@ -125,6 +125,7 @@ function AppointmentActionsModal({ appointment, user, onClose, onAction }) {
     recordPhotoAttachmentId={appointment.pet_photo_attachment_id}
     user={user}
     showPetAvatar
+    iconOnlyClose
     onClose={onClose}
     actions={appointmentActions(appointment).filter(action=>hasAction(user.permissions,user.role,({confirm:'Approve Appointment',checkin:'Manage Patient Queue',noshow:'Manage No-shows',reschedule:'Reschedule Appointment',cancel:'Cancel Appointment',queue:'View Patient Queue',follow_up:'Manage Follow-ups',rebook:'Create Appointment',history:'View Appointments',view:'View Appointments',visit:'View Appointments',request:'View Appointments'})[action])).map(action => ({
       label: actionDefinitions[action][0], description: actionDefinitions[action][1],
@@ -144,6 +145,7 @@ function NewAppointmentModal({ appointments, onClose, onSchedule }) {
   return (
     <div style={s.modalBackdrop} onClick={onClose}>
       <form
+        className="reception-new-appointment-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-appointment-title"
@@ -152,20 +154,20 @@ function NewAppointmentModal({ appointments, onClose, onSchedule }) {
           event.preventDefault();
           if (canSubmit) onSchedule(form);
         }}
-        style={s.newAppointmentDialog}
       >
-        <button type="button" aria-label="Close new appointment" onClick={onClose} style={s.newAppointmentClose}>{Icons.close}</button>
-        <h2 id="new-appointment-title" style={s.newAppointmentTitle}>New Appointment</h2>
-        <p style={s.newAppointmentSubtitle}>Schedule a new appointment.</p>
-        <div style={s.newAppointmentGrid}>
-          <label style={s.newAppointmentLabel}>Pet<span className="system-required-star">*</span><select required value={form.pet} onChange={(event) => setForm({ ...form, pet: event.target.value })} style={s.newAppointmentInput}><option value="">Select pet</option>{pets.map((pet) => <option key={pet}>{pet}</option>)}</select></label>
-          <label style={s.newAppointmentLabel}>Owner<span className="system-required-star">*</span><select required value={form.owner} onChange={(event) => setForm({ ...form, owner: event.target.value })} style={s.newAppointmentInput}><option value="">Select owner</option>{owners.map((owner) => <option key={owner}>{owner}</option>)}</select></label>
-          <label style={s.newAppointmentLabel}>Date<span className="system-required-star">*</span><LabDateTimePicker mode="date" required value={form.date} onChange={date => setForm(current => ({ ...current, date, time: getUnavailableAppointmentTimes(appointments, date).includes(current.time) ? '' : current.time }))} style={s.newAppointmentInput} /></label>
-          <label style={s.newAppointmentLabel}>Time<span className="system-required-star">*</span><LabDateTimePicker mode="time" required value={form.time} unavailableTimes={unavailableTimes} unavailableLabel="another appointment" onChange={time => setForm({ ...form, time })} style={s.newAppointmentInput} /></label>
-          <label style={{ ...s.newAppointmentLabel, gridColumn: '1 / -1' }}>Appointment Type<span className="system-required-star">*</span><select required value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })} style={s.newAppointmentInput}><option value="">Select type</option><option>General Checkup</option><option>Vaccination</option><option>Dental Cleaning</option><option>Follow-up</option><option>Surgery</option></select></label>
-          <label style={{ ...s.newAppointmentLabel, gridColumn: '1 / -1' }}>Notes<textarea placeholder="Additional information..." value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} style={s.newAppointmentNotes} /></label>
+        <header className="reception-new-appointment-header">
+          <div><h2 id="new-appointment-title">New Appointment</h2><p>Schedule a new appointment.</p></div>
+          <button type="button" className="reception-new-appointment-close" aria-label="Close new appointment" onClick={onClose}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
+        </header>
+        <div className="reception-new-appointment-grid">
+          <div className="reception-appointment-field"><span id="new-appointment-pet-label">Pet <span className="system-required-star">*</span></span><select aria-labelledby="new-appointment-pet-label" required value={form.pet} onChange={(event) => setForm({ ...form, pet: event.target.value })}><option value="">Select pet</option>{pets.map((pet) => <option key={pet}>{pet}</option>)}</select></div>
+          <div className="reception-appointment-field"><span id="new-appointment-owner-label">Owner <span className="system-required-star">*</span></span><select aria-labelledby="new-appointment-owner-label" required value={form.owner} onChange={(event) => setForm({ ...form, owner: event.target.value })}><option value="">Select owner</option>{owners.map((owner) => <option key={owner}>{owner}</option>)}</select></div>
+          <div className="reception-appointment-field"><span id="new-appointment-date-label">Date <span className="system-required-star">*</span></span><LabDateTimePicker label="Date" mode="date" alignToTrigger selectDateImmediately min={localDateValue()} popoverClassName="reception-appointment-calendar" required value={form.date} onChange={date => setForm(current => ({ ...current, date, time: getUnavailableAppointmentTimes(appointments, date).includes(current.time) ? '' : current.time }))} /></div>
+          <div className="reception-appointment-field"><span id="new-appointment-time-label">Time <span className="system-required-star">*</span></span><LabDateTimePicker label="Time" mode="time" alignToTrigger popoverClassName="reception-appointment-time-picker" required value={form.time} unavailableTimes={unavailableTimes} unavailableLabel="another appointment" onChange={time => setForm({ ...form, time })} /></div>
+          <div className="reception-appointment-field is-wide"><span id="new-appointment-type-label">Appointment Type <span className="system-required-star">*</span></span><select aria-labelledby="new-appointment-type-label" required value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}><option value="">Select Type</option><option>General Checkup</option><option>Vaccination</option><option>Dental Cleaning</option><option>Follow-up</option><option>Surgery</option></select></div>
+          <div className="reception-appointment-field is-wide"><span id="new-appointment-notes-label">Notes</span><textarea aria-labelledby="new-appointment-notes-label" placeholder="Additional information..." value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></div>
         </div>
-        <div style={s.newAppointmentFooter}><button type="button" style={s.modalCancel} onClick={onClose}>Cancel</button><button type="submit" style={{ ...s.scheduleButton, ...(canSubmit ? {} : s.scheduleButtonDisabled) }} disabled={!canSubmit}>Schedule Appointment</button></div>
+        <footer className="reception-new-appointment-footer"><button type="button" onClick={onClose}>Cancel</button><button type="submit" disabled={!canSubmit}>Schedule Appointment</button></footer>
       </form>
     </div>
   );
@@ -383,12 +385,10 @@ export default function AppointmentManagementPage({ user }) {
       />
       <div className="appointment-dashboard">
         <section className="appointment-stat-grid" aria-label="Appointment summary">
-          <div className="appointment-stat-card appointment-stat-green"><span className="appointment-stat-icon">{Icons.calendar}</span><span className="appointment-stat-copy"><span>Appointments</span><strong>{loading ? '—' : summaryAppointments.length}</strong></span></div>
-          <div className="appointment-stat-card appointment-stat-green"><span className="appointment-stat-icon">{Icons.users}</span><span className="appointment-stat-copy"><span>Checked In</span><strong>{loading ? '—' : checkedInCount}</strong></span></div>
-          <div className="appointment-stat-card appointment-stat-amber"><span className="appointment-stat-icon">{Icons.clock}</span><span className="appointment-stat-copy"><span>Awaiting Arrival</span><strong>{loading ? '—' : awaitingCount}</strong></span></div>
-          <button type="button" className="appointment-stat-card appointment-stat-red appointment-stat-action" onClick={() => { setTab('requests'); setStatusFilter('all'); setPage(1); }}>
-            <span className="appointment-stat-icon">{Icons.list}</span><span className="appointment-stat-copy"><span>Requests Requiring Action</span><strong>{loading ? '—' : requestCount}</strong></span><span className="appointment-stat-chevron">{Icons.chevronRight}</span>
-          </button>
+          <div className="appointment-stat-card"><span className="appointment-stat-copy"><span>Appointments</span><strong>{loading ? '—' : summaryAppointments.length}</strong><small>Scheduled in this period.</small></span></div>
+          <div className="appointment-stat-card"><span className="appointment-stat-copy"><span>Checked In</span><strong>{loading ? '—' : checkedInCount}</strong><small>Currently checked in.</small></span></div>
+          <div className="appointment-stat-card"><span className="appointment-stat-copy"><span>Awaiting Arrival</span><strong>{loading ? '—' : awaitingCount}</strong><small>Expected to arrive.</small></span></div>
+          <div className="appointment-stat-card"><span className="appointment-stat-copy"><span>Requests Requiring Action</span><strong>{loading ? '—' : requestCount}</strong><small>Requests awaiting review.</small></span></div>
         </section>
 
         <div className="appointment-view-toolbar">

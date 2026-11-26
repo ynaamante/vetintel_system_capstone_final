@@ -100,8 +100,13 @@ export default function LabDateTimePicker({
   displayFormat = 'long',
   unavailableTimes = [],
   unavailableLabel = 'another appointment',
+  alignToTrigger = false,
+  selectDateImmediately = false,
+  popoverClassName = '',
+  yearSelectorInPopover = false,
 }) {
   const [open, setOpen] = useState(false);
+  const [yearMenuOpen, setYearMenuOpen] = useState(false);
   const [draft, setDraft] = useState(null);
   const [timePickerTab, setTimePickerTab] = useState('slots');
   const [timePeriod, setTimePeriod] = useState('morning');
@@ -112,6 +117,7 @@ export default function LabDateTimePicker({
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
   const popoverRef = useRef(null);
+  const yearOptionsRef = useRef(null);
   const dialogHost = open ? triggerRef.current?.closest('dialog[open]') : null;
   const portalHost = dialogHost || document.body;
 
@@ -126,27 +132,87 @@ export default function LabDateTimePicker({
 
   const updatePosition = () => {
     if (mode === 'time') {
-      const width = Math.min(488, window.innerWidth - 24);
+      const width = Math.min(alignToTrigger ? triggerRef.current?.getBoundingClientRect().width || 488 : 488, window.innerWidth - 24);
+      if (!alignToTrigger) {
+        const height = popoverRef.current?.getBoundingClientRect().height || 440;
+        setPosition({
+          top: Math.max(12, (window.innerHeight - height) / 2),
+          left: Math.max(12, (window.innerWidth - width) / 2),
+          width,
+        });
+        return;
+      }
       const height = popoverRef.current?.getBoundingClientRect().height || 440;
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const bounds = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+      const left = Math.max(bounds.left + 8, Math.min(rect.left, bounds.right - width - 8));
+      const top = Math.max(bounds.top + 8, Math.min(rect.bottom + 2, bounds.bottom - 120));
+      const maxHeight = Math.max(100, bounds.bottom - top - 8);
       setPosition({
-        top: Math.max(12, (window.innerHeight - height) / 2),
-        left: Math.max(12, (window.innerWidth - width) / 2),
+        top,
+        left,
         width,
+        maxHeight: Math.min(height, maxHeight),
       });
       return;
     }
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
     const bounds = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight, width: window.innerWidth, height: window.innerHeight };
-    const width = Math.min(340, bounds.width - 16);
+    const width = alignToTrigger ? Math.min(rect.width, bounds.width - 16) : Math.min(340, bounds.width - 16);
     const height = popoverRef.current?.getBoundingClientRect().height || 380;
     const availableHeight = Math.max(100, bounds.height - 16);
+    if (alignToTrigger) {
+      const left = Math.max(bounds.left + 8, Math.min(rect.left, bounds.right - width - 8));
+      const top = Math.max(bounds.top + 8, Math.min(rect.bottom + 2, bounds.bottom - 120));
+      const maxHeight = Math.max(100, bounds.bottom - top - 8);
+      setPosition({
+        top,
+        left,
+        width,
+        maxHeight: Math.min(height, maxHeight),
+      });
+      return;
+    }
     const displayedHeight = Math.min(height, availableHeight);
     const left = Math.max(bounds.left + 8, Math.min(rect.left, bounds.right - width - 8));
     const preferredTop = rect.bottom + displayedHeight + 8 <= bounds.bottom ? rect.bottom + 6 : rect.top - displayedHeight - 6;
     const top = Math.max(bounds.top + 8, Math.min(preferredTop, bounds.bottom - displayedHeight - 8));
     setPosition({ top, left, width, maxHeight: availableHeight });
   };
+
+  useLayoutEffect(() => {
+    if (!open || !alignToTrigger) return undefined;
+    const frame = requestAnimationFrame(updatePosition);
+    return () => cancelAnimationFrame(frame);
+  }, [open, visibleMonth, alignToTrigger]);
+
+  useLayoutEffect(() => {
+    if (!yearMenuOpen || !yearOptionsRef.current) return;
+    const selected = yearOptionsRef.current.querySelector('[aria-selected="true"]');
+    if (selected) yearOptionsRef.current.scrollTop = selected.offsetTop - yearOptionsRef.current.offsetTop - 70;
+  }, [yearMenuOpen]);
+
+  useLayoutEffect(() => {
+    if (!open || !alignToTrigger || !position || !['date', 'time'].includes(mode)) return;
+    const triggerRect = triggerRef.current?.getBoundingClientRect();
+    const popoverRect = popoverRef.current?.getBoundingClientRect();
+    if (!triggerRect || !popoverRect) return;
+    const left = Math.max(8, Math.min(triggerRect.left, window.innerWidth - triggerRect.width - 8));
+    const top = triggerRect.bottom + 2;
+    const offsetX = left - popoverRect.left;
+    const offsetY = top - popoverRect.top;
+    const widthDelta = triggerRect.width - popoverRect.width;
+    if (Math.abs(offsetX) < 1 && Math.abs(offsetY) < 1 && Math.abs(widthDelta) < 1) return;
+    setPosition(current => current && ({
+      ...current,
+      left: current.left + offsetX,
+      top: current.top + offsetY,
+      width: current.width + widthDelta,
+      maxHeight: Math.max(100, window.innerHeight - top - 8),
+    }));
+  }, [open, alignToTrigger, mode, position]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -193,7 +259,8 @@ export default function LabDateTimePicker({
   const calendarStart = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1);
   const startOffset = calendarStart.getDay();
   const daysInMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0).getDate();
-  const calendarDays = Array.from({ length: Math.ceil((startOffset + daysInMonth) / 7) * 7 }, (_, index) => {
+  // Keep the calendar at six weeks high so changing months never shifts the popup.
+  const calendarDays = Array.from({ length: 42 }, (_, index) => {
     const day = index - startOffset + 1;
     return day > 0 && day <= daysInMonth ? new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), day) : null;
   });
@@ -257,14 +324,14 @@ export default function LabDateTimePicker({
         disabled={disabled}
         onClick={() => open ? setOpen(false) : openPicker()}
       >
-        {Icons.calendar}
+        {mode === 'time' ? Icons.clock : Icons.calendar}
         <span className={displayText ? '' : 'placeholder'}>{displayText || (mode === 'date' ? 'Select date' : mode === 'time' ? 'Select time' : 'Select date & time')}</span>
       </button>
       {name && <input type="hidden" name={name} value={currentValue || ''} />}
       {open && createPortal(<>
         <div className="lab-date-time-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />
         <div
-          className={`lab-date-time-popover${mode === 'time' ? ' time-only' : ''}`}
+          className={`lab-date-time-popover${mode === 'time' ? ' time-only' : ''}${popoverClassName ? ` ${popoverClassName}` : ''}`}
           role="dialog"
           aria-label={label}
           ref={popoverRef}
@@ -352,9 +419,14 @@ export default function LabDateTimePicker({
               <select aria-label="Choose month" value={visibleMonth.getMonth()} onChange={event => setVisibleMonth(new Date(visibleMonth.getFullYear(), Number(event.target.value), 1))}>
                 {monthNames.map((month, index) => <option key={month} value={index}>{month}</option>)}
               </select>
-              <select aria-label="Choose year" value={visibleMonth.getFullYear()} onChange={event => setVisibleMonth(new Date(Number(event.target.value), visibleMonth.getMonth(), 1))}>
+              {yearSelectorInPopover ? <div className="lab-date-time-year-picker">
+                <button type="button" aria-label="Choose year" aria-haspopup="listbox" aria-expanded={yearMenuOpen} onClick={() => setYearMenuOpen(current => !current)}>{visibleMonth.getFullYear()}<span aria-hidden="true">▾</span></button>
+                {yearMenuOpen && <div className="lab-date-time-year-options" ref={yearOptionsRef} role="listbox" aria-label="Choose year">
+                  {yearOptions.map(year => <button type="button" role="option" aria-selected={year === visibleMonth.getFullYear()} className={year === visibleMonth.getFullYear() ? 'selected' : ''} key={year} onClick={() => { setVisibleMonth(new Date(year, visibleMonth.getMonth(), 1)); setYearMenuOpen(false); }}>{year}</button>)}
+                </div>}
+              </div> : <select aria-label="Choose year" value={visibleMonth.getFullYear()} onChange={event => setVisibleMonth(new Date(Number(event.target.value), visibleMonth.getMonth(), 1))}>
                 {yearOptions.map(year => <option key={year} value={year}>{year}</option>)}
-              </select>
+              </select>}
             </div>
             <button type="button" aria-label="Next month" onClick={() => setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1))}>›</button>
           </div>
@@ -364,6 +436,14 @@ export default function LabDateTimePicker({
               if (!day) return <span className="empty-day" key={`empty-${index}`} role="gridcell" />;
               const isSelected = draft?.date && day.toDateString() === draft.date.toDateString();
               const isToday = day.toDateString() === new Date().toDateString();
+              const chooseDay = () => {
+                if (selectDateImmediately && mode === 'date') {
+                  commit(formatDate(day));
+                  setOpen(false);
+                  return;
+                }
+                setDraft(previous => ({ ...previous, date: day }));
+              };
               return <button
                 key={day.toISOString()}
                 type="button"
@@ -372,7 +452,7 @@ export default function LabDateTimePicker({
                 aria-pressed={Boolean(isSelected)}
                 className={`${isSelected ? 'selected' : ''}${isToday ? ' today' : ''}`}
                 disabled={!dateAllowed(day)}
-                onClick={() => setDraft(previous => ({ ...previous, date: day }))}
+                onClick={chooseDay}
               >{day.getDate()}</button>;
             })}
           </div>
@@ -401,7 +481,7 @@ export default function LabDateTimePicker({
         <div className="lab-date-time-actions">
           {mode !== 'time' && <button type="button" className="clear" onClick={() => { commit(''); setOpen(false); }}>Clear</button>}
           <button type="button" className="cancel" onClick={() => setOpen(false)}>Cancel</button>
-          <button type="button" className="apply" disabled={!selectedValue || selectedTimeUnavailable} onClick={() => { commit(selectedValue); setOpen(false); }}>Apply</button>
+          {!selectDateImmediately && <button type="button" className="apply" disabled={!selectedValue || selectedTimeUnavailable} onClick={() => { commit(selectedValue); setOpen(false); }}>Apply</button>}
         </div>
         </div>
       </>, portalHost)}

@@ -1,4 +1,99 @@
 .reception-workflow-dialog { width: min(720px, calc(100vw - 32px)); max-height: 90vh; padding: 0; border: 1px solid #dce5df; border-radius: 22px; color: #122a24; background: #fff; box-shadow: 0 24px 80px #10251b40; }
+.reception-new-appointment-dialog {
+  box-sizing: border-box;
+  width: min(575px, calc(100vw - 32px));
+  max-height: min(90dvh, 760px);
+  overflow: auto;
+  padding: 0;
+  border: 1px solid #dce9e5;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 22px 65px rgba(15, 45, 48, .24);
+  color: #111827;
+  font-family: 'DM Sans', sans-serif;
+}
+.reception-new-appointment-header {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 17px 22px 14px;
+  border-bottom: 1px solid #dce9e5;
+  background: linear-gradient(110deg, #f4faf8, #fff 72%);
+}
+.reception-new-appointment-header::after {
+  position: absolute;
+  z-index: -1;
+  top: -48px;
+  right: -25px;
+  width: 320px;
+  height: 92px;
+  border-radius: 0 0 0 60%;
+  background: #d8efe0;
+  content: '';
+  transform: rotate(-4deg);
+  pointer-events: none;
+}
+.reception-new-appointment-header > * { position: relative; z-index: 1; }
+.reception-new-appointment-header h2 { margin: 0; color: #064d35; font-size: 20px; font-weight: 700; line-height: 1.3; }
+.reception-new-appointment-header p { margin: 4px 0 0; color: #64748b; font-size: 12px; }
+.reception-new-appointment-header .reception-new-appointment-close {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border: 1px solid #d5e3dd;
+  border-radius: 8px;
+  background: #fff;
+  color: #086b50;
+  cursor: pointer;
+  overflow: hidden;
+  font-size: 0;
+}
+.reception-new-appointment-header .reception-new-appointment-close > svg { display: block; width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; }
+.reception-new-appointment-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px 16px; padding: 18px 22px 20px; }
+.reception-new-appointment-grid label { display: grid; min-width: 0; gap: 7px; color: #086b50; font-size: 12px; font-weight: 650; }
+.reception-new-appointment-grid .reception-appointment-field { display: grid; min-width: 0; gap: 7px; color: #086b50; font-size: 12px; font-weight: 650; }
+.reception-new-appointment-grid label.is-wide,
+.reception-new-appointment-grid .reception-appointment-field.is-wide { grid-column: 1 / -1; }
+.reception-new-appointment-grid .system-required-star { color: #b42318; }
+.reception-new-appointment-grid select,
+.reception-new-appointment-grid textarea,
+.reception-new-appointment-grid .lab-date-time-trigger {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid #cfdce9;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #172b25;
+  font: inherit;
+  font-size: 13px;
+  box-shadow: inset 0 1px 3px rgba(15, 45, 48, .09), 0 1px 2px rgba(15, 45, 48, .06);
+}
+.reception-new-appointment-grid select { min-height: 42px; padding: 0 12px; }
+.reception-new-appointment-grid .lab-date-time-trigger { min-height: 42px; padding: 0 12px; }
+.reception-new-appointment-grid .lab-date-time-trigger > svg { color: #17645b; }
+.reception-new-appointment-grid textarea { min-height: 82px; padding: 10px 12px; resize: vertical; }
+.reception-new-appointment-grid select:focus,
+.reception-new-appointment-grid textarea:focus,
+.reception-new-appointment-grid .lab-date-time-trigger:focus,
+.reception-new-appointment-grid .lab-date-time-trigger:focus-visible,
+.reception-new-appointment-grid .lab-date-time-trigger[aria-expanded="true"] {
+  border-color: #78b7a1 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.reception-new-appointment-footer { display: flex; justify-content: flex-end; gap: 9px; padding: 12px 22px; border-top: 1px solid #dce9e5; }
+.reception-new-appointment-footer button { min-height: 36px; padding: 7px 13px; border: 1px solid #b9d9ce; border-radius: 8px; background: #fff; color: #086b57; font: 600 12px 'DM Sans', sans-serif; cursor: pointer; }
+.reception-new-appointment-footer button[type="submit"] { border-color: #086b50; background: #086b50; color: #fff; }
+.reception-new-appointment-footer button[type="submit"]:disabled { border-color: #dbe5e1; background: #e7eeeb; color: #81918b; cursor: not-allowed; }
+.reception-new-appointment-footer button:hover:not(:disabled) { background: #eff8f4; }
+.reception-new-appointment-footer button[type="submit"]:hover:not(:disabled) { background: #075b45; }
 .reception-workflow-dialog::backdrop { background: #10251b66; }
 dialog.reception-workflow-dialog {
   position: fixed;
@@ -63,6 +158,87 @@ dialog.reception-workflow-dialog {
   font-size: .78rem;
 }
 .reception-workflow-dialog .clinic-record-details-header > button { flex-shrink: 0; }
+.reception-workflow-dialog.reception-schedule-dialog .clinic-record-details-header {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin-bottom: 10px;
+  border-bottom-color: #dcebe2;
+  background: linear-gradient(110deg, #f5fbf7, #fff 74%);
+}
+.reception-workflow-dialog.reception-schedule-dialog .clinic-record-details-header::after {
+  position: absolute;
+  z-index: -1;
+  top: -48px;
+  right: -25px;
+  width: 320px;
+  height: 92px;
+  border-radius: 0 0 0 60%;
+  background: #d8efe0;
+  content: '';
+  transform: rotate(-4deg);
+  pointer-events: none;
+}
+.reception-workflow-dialog.reception-schedule-dialog .clinic-record-details-header > * { position: relative; z-index: 1; }
+.reception-workflow-dialog.reception-schedule-dialog .clinic-record-details-header h2 { color: #075b43; }
+.reception-schedule-dialog .reception-schedule-fields label,
+.reception-schedule-dialog .reception-workflow-body > label:not(.reception-checkbox) {
+  color: #086b50;
+  font-weight: 650;
+}
+.reception-visit-detail-dialog {
+  box-sizing: border-box !important;
+  display: flex !important;
+  width: min(628px, calc(100vw - 32px)) !important;
+  height: min(540px, calc(100dvh - 32px)) !important;
+  max-height: calc(100dvh - 32px) !important;
+  flex-direction: column;
+  overflow: hidden !important;
+}
+.reception-visit-detail-dialog > form {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.reception-workflow-dialog.reception-visit-detail-dialog .clinic-record-details-header {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 0;
+  padding: 16px 20px 12px;
+  border-bottom-color: #dcebe2;
+  background: linear-gradient(110deg, #f5fbf7, #fff 74%);
+}
+.reception-workflow-dialog.reception-visit-detail-dialog .clinic-record-details-header::after {
+  position: absolute;
+  z-index: -1;
+  top: -48px;
+  right: -25px;
+  width: 320px;
+  height: 92px;
+  border-radius: 0 0 0 60%;
+  background: #d8efe0;
+  content: '';
+  transform: rotate(-4deg);
+  pointer-events: none;
+}
+.reception-workflow-dialog.reception-visit-detail-dialog .clinic-record-details-header h2,
+.reception-workflow-dialog.reception-visit-detail-dialog .clinic-record-details-header p { position: relative; z-index: 1; }
+.reception-workflow-dialog.reception-visit-detail-dialog .clinic-record-details-header h2 { color: #075b43; font-size: 20px; font-weight: 750; }
+.reception-workflow-dialog.reception-visit-detail-dialog .record-details-content {
+  min-height: 0;
+  max-height: none;
+  gap: 8px;
+  overflow: auto;
+  padding: 8px 20px 12px;
+}
+.reception-workflow-dialog.reception-visit-detail-dialog .record-details-content .reception-visit-profile { padding: 0 8px 6px !important; }
+.reception-workflow-dialog.reception-visit-detail-dialog .record-detail-section > h3 { padding: 7px 11px !important; }
+.reception-workflow-dialog.reception-visit-detail-dialog .record-detail-section-grid { padding: 3px 6px !important; }
+.reception-workflow-dialog.reception-visit-detail-dialog .record-detail-section-item { min-height: 46px !important; padding: 5px 8px !important; }
+.reception-workflow-dialog.reception-visit-detail-dialog footer { padding: 10px 20px !important; }
 .reception-workflow-dialog .record-details-content { padding: 0 24px 18px; font-size: 13px; }
 .reception-workflow-dialog .record-details-content dl { margin: 0; }
 .reception-workflow-dialog .record-details-content dl:has(> div) {
@@ -79,13 +255,261 @@ dialog.reception-workflow-dialog {
 .reception-workflow-dialog .record-details-content dt { margin: 0; color: #64748b; font-size: 11px; font-weight: 600; }
 .reception-workflow-dialog .record-details-content dd { color: #111827; margin: 5px 0 0; font-size: 13px; line-height: 1.5; }
 .reception-workflow-dialog .record-details-content h3 { color: #111827; font-size: 14px; margin: 0; }
+.reception-workflow-dialog .record-details-content .record-detail-section > h3 { color: #075b4d; background: #e8f4f1; font-weight: 750; }
+.reception-workflow-dialog.clinic-record-details-modal .record-details-content .reception-visit-profile { min-height: 0 !important; align-items: flex-start; padding: 0 8px 10px !important; }
 .reception-workflow-dialog.clinic-record-details-modal footer { border-top: 1px solid #dbe3ee; padding: 14px 24px; }
 .reception-workflow-dialog .reception-audit-list { margin: 0; padding-left: 22px; }
 .reception-workflow-dialog .reception-audit-list li { padding: 10px 12px; border: 1px solid #dbe3ee; border-radius: 9px; }
 .reception-workflow-dialog .reception-audit-list span { color: #64748b; font-size: 12px; }
+.reception-appointment-audit-panel { display: grid; align-content: start; gap: 8px; }
+.reception-appointment-audit-panel .reception-audit-created {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 1px solid #dce9e5;
+  border-radius: 8px;
+  background: #f4faf8;
+  color: #52627a;
+  font-size: 12px;
+}
+.reception-appointment-audit-panel .reception-audit-created span { color: #075b4d; font-weight: 700; }
+.reception-appointment-audit-panel .reception-audit-created time { text-align: right; }
+.reception-appointment-audit-panel .clinic-record-audit-timeline { min-width: 0; margin-top: 0; }
+.reception-appointment-audit-panel .clinic-record-audit-timeline > p { color: #64748b; font-size: 13px; }
+.clinic-record-details-modal.clinic-record-audit-modal.lab-audit-dialog .reception-appointment-audit-panel .clinic-record-audit-timeline ol::before { left: 136px !important; }
+.reception-appointment-audit-panel .audit-timeline-marker {
+  align-self: center;
+  justify-self: center;
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  box-shadow: 0 0 0 3px #fff;
+  font-size: 0;
+}
+dialog.reception-workflow-dialog.clinic-record-details-modal.reception-appointment-audit-dialog {
+  box-sizing: border-box !important;
+  display: flex !important;
+  width: min(560px, calc(100vw - 32px)) !important;
+  height: min(500px, calc(100dvh - 32px)) !important;
+  max-height: min(80dvh, 600px) !important;
+  flex-direction: column;
+  overflow: hidden !important;
+  padding: 0 18px 10px !important;
+  border-radius: 16px !important;
+}
+.reception-appointment-audit-dialog > form {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.reception-workflow-dialog.reception-appointment-audit-dialog .clinic-record-details-header {
+  margin: 0 -18px;
+  padding: 13px 36px 11px;
+  border: 0;
+  border-bottom: 1px solid #dcebe2;
+  border-radius: 15px 15px 0 0;
+  background: radial-gradient(ellipse 67% 94px at 91% -49px, #ccecdf 99%, transparent 100%), #fbfdfc;
+}
+.reception-workflow-dialog.reception-appointment-audit-dialog .clinic-record-details-header h2 { color: #075b43 !important; font-size: 22px !important; }
+.reception-workflow-dialog.reception-appointment-audit-dialog .clinic-record-details-header p { color: #43544d !important; font-size: 14px !important; }
+.reception-workflow-dialog.reception-appointment-audit-dialog .record-details-content {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  padding: 10px 0;
+}
+.reception-appointment-audit-dialog .reception-appointment-audit-panel,
+.reception-appointment-audit-dialog .reception-appointment-audit-panel .clinic-record-audit-timeline,
+.reception-appointment-audit-dialog .reception-appointment-audit-panel .clinic-record-audit-timeline ol { width: 100%; min-width: 0; box-sizing: border-box; }
+.reception-appointment-audit-dialog .reception-appointment-audit-panel .clinic-record-audit-timeline li.audit-timeline-entry > time {
+  align-self: center;
+  justify-self: center;
+  padding: 0;
+  text-align: center;
+}
+.reception-appointment-audit-dialog .reception-appointment-audit-panel .clinic-record-audit-timeline li.audit-timeline-entry > .audit-event-card { box-sizing: border-box; width: 100%; }
+.reception-appointment-audit-dialog .reception-appointment-audit-panel .reception-audit-created {
+  padding: 7px 10px;
+  font-size: 11px;
+}
+.reception-appointment-audit-dialog .reception-appointment-audit-panel .clinic-record-audit-timeline ol { gap: 8px; }
+.reception-appointment-audit-dialog .reception-appointment-audit-panel .clinic-record-audit-timeline li.audit-timeline-entry > .audit-event-card {
+  padding: 8px 10px;
+}
+.reception-appointment-audit-dialog .reception-appointment-audit-panel .clinic-record-audit-timeline li.audit-timeline-entry .audit-event-card strong { font-size: .76rem !important; }
+.reception-appointment-audit-dialog .reception-appointment-audit-panel .clinic-record-audit-timeline li.audit-timeline-entry .audit-event-card p { font-size: .72rem !important; }
+.reception-workflow-dialog.reception-appointment-audit-dialog footer { padding: 10px 18px; }
+@media (max-width: 640px) {
+  .clinic-record-details-modal.clinic-record-audit-modal.lab-audit-dialog .reception-appointment-audit-panel .clinic-record-audit-timeline ol::before { left: 10px !important; }
+}
 .reception-workflow-dialog .reception-schedule-fields label { font-size: 12px; font-weight: 600; }
 .reception-workflow-dialog .record-details-content textarea { border-color: #dbe3ee; background: #f8fafc; font-size: 13px; }
+.reception-schedule-dialog .reception-workflow-body {
+  gap: 16px !important;
+  padding: 4px 24px 22px !important;
+}
+.reception-schedule-dialog .reception-schedule-fields { gap: 16px; }
+.reception-schedule-dialog .reception-schedule-fields label,
+.reception-schedule-dialog .reception-workflow-body > label {
+  gap: 7px;
+  margin: 0;
+  color: #086b50;
+  font-size: 12px;
+  font-weight: 650;
+}
+.reception-schedule-dialog .lab-date-time-trigger {
+  min-height: 44px;
+  border-color: #cfdce9;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #173f3d;
+}
+.reception-schedule-dialog .reception-workflow-body textarea {
+  min-height: 96px;
+  border-color: #cfdce9;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #111827;
+  resize: vertical;
+}
+.reception-schedule-dialog .reception-workflow-body textarea:focus {
+  border-color: #83bcae;
+  outline: 2px solid #d8eee8;
+}
+.reception-schedule-dialog.clinic-record-details-modal footer {
+  gap: 10px;
+  padding: 12px 24px !important;
+}
+.reception-schedule-dialog footer .is-save { border-color: #086b50; background: #086b50; }
+.reception-schedule-dialog footer .is-save:hover:not(:disabled) { background: #075b45; }
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) {
+  width: min(340px, calc(100vw - 16px));
+  gap: 10px;
+  padding: 8px;
+  border-radius: 11px;
+}
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-calendar-header button {
+  width: 18px; height: 38px; padding: 0; border: 0; background: transparent; color: #17645b; box-shadow: none; font-size: 20px;
+}
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-month-year select:first-child {
+  width: 120px; min-width: 0; box-sizing: border-box; padding: 0 6px;
+}
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-month-year select:last-child {
+  width: 76px; min-width: 0; box-sizing: border-box; padding: 0 5px;
+}
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-calendar-header { gap: 4px; }
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-month-year { gap: 4px; }
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-month-year select {
+  min-height: 38px; border-color: #d5e3dd; border-radius: 8px; color: #344b43; font-size: 12px;
+}
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-calendar-grid > span { min-height: 32px; color: #56747c; }
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-calendar-grid > span.empty-day { min-height: 38px; }
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-calendar-grid > button {
+  min-height: 38px; padding: 0; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #365960; box-shadow: none;
+}
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-calendar-grid > button:hover:not(:disabled) { background: #eff7f4; }
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-calendar-grid > button.today { box-shadow: inset 0 0 0 1px #80b8a9; }
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-calendar-grid > button.selected { border-color: #7cb8aa; background: #fff; color: #365960; }
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-calendar-grid > button:disabled { color: #b3c0bc; text-decoration: none; }
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-actions { gap: 8px; padding-top: 2px; }
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-actions button { min-height: 40px; padding: 0 13px; border-radius: 8px; font-size: 12px; }
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-actions button.clear { margin-right: auto; }
+.reception-schedule-dialog .lab-date-time-popover:not(.time-only) .lab-date-time-actions button.apply { background: #086b50; }
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) {
+  width: min(340px, calc(100vw - 16px));
+  gap: 10px;
+  padding: 8px;
+  border-radius: 11px;
+}
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-calendar-header { gap: 4px; }
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-calendar-header button {
+  width: 18px; height: 38px; padding: 0; border: 0; background: transparent; color: #17645b; box-shadow: none; font-size: 20px;
+}
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-month-year { gap: 4px; }
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-month-year select {
+  min-height: 38px; border-color: #d5e3dd; border-radius: 8px; color: #344b43; font-size: 12px;
+}
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-month-year select:first-child {
+  width: 120px; min-width: 0; box-sizing: border-box; padding: 0 6px;
+}
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-month-year select:last-child {
+  width: 76px; min-width: 0; box-sizing: border-box; padding: 0 5px;
+}
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-calendar-grid > span { min-height: 32px; color: #56747c; }
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-calendar-grid > span.empty-day { min-height: 38px; }
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-calendar-grid > button {
+  min-height: 38px; padding: 0; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #365960; box-shadow: none;
+}
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-calendar-grid > button:hover:not(:disabled) { background: #eff7f4; }
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-calendar-grid > button.today { box-shadow: inset 0 0 0 1px #80b8a9; }
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-calendar-grid > button.selected { border-color: #7cb8aa; background: #fff; color: #365960; }
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-calendar-grid > button:disabled { color: #b3c0bc; opacity: .5; text-decoration: none; }
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-actions { gap: 8px; padding-top: 2px; }
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-actions button { min-height: 40px; padding: 0 13px; border-radius: 8px; font-size: 12px; }
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-actions button.clear { margin-right: auto; }
+.lab-date-time-popover.reception-appointment-calendar:not(.time-only) .lab-date-time-actions button.apply { background: #086b50; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) { width: min(488px, calc(100vw - 24px)); gap: 8px; padding: 10px; border-radius: 12px; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-time-header { color: #173f3d; font-size: 13px; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-time-header strong { color: #007b68; font-size: 16px; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-time-tabs { gap: 3px; padding: 3px; border-radius: 11px; background: #e8eeeb; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-time-tabs button { min-height: 38px; padding: 0 6px; border: 0; border-radius: 8px; background: transparent; color: #31545a; box-shadow: none; font-size: 11px; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-time-tabs button[aria-selected="true"] { background: #fff; color: #005b4e; box-shadow: 0 1px 4px rgba(20, 49, 43, .18); }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-period-tabs { border-bottom: 1px solid #d9e3df; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-period-tabs button { min-height: 34px; gap: 2px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: #24494e; box-shadow: none; font-size: 10px; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-period-tabs button span { font-size: 9px; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-period-tabs button[aria-selected="true"] { border-bottom-color: #007763; color: #007263; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-slot-grid button { min-height: 36px; padding: 2px; border: 1px solid #cbd9d4; border-radius: 8px; background: #fff; color: #31565b; box-shadow: none; font-size: 11px; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-slot-grid button:hover:not(:disabled) { border-color: #168873; background: #f1faf7; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-slot-grid button.selected { border-color: #007763; background: #e4f2ed; color: #005b4e; box-shadow: inset 0 0 0 1px #007763; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-custom { gap: 7px; padding: 0; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-custom-label { color: #56747c; font-size: 11px; font-weight: 650; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-custom-label small { color: #789097; font-size: 10px; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-period-toggle { gap: 3px; padding: 3px; border-radius: 8px; background: #e8eeeb; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-period-toggle button { min-width: 42px; min-height: 32px; padding: 0 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #31545a; box-shadow: none; font-size: 11px; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-period-toggle button[aria-pressed="true"] { border-color: #d5e3dd; background: #fff; color: #005b4e; box-shadow: 0 1px 3px rgba(20, 49, 43, .14); }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-custom-number-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-custom-number-grid button { min-height: 34px; padding: 0; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #365960; box-shadow: none; font-size: 11px; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-custom-number-grid button:hover:not(:disabled) { background: #eff7f4; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-custom-number-grid button.selected { border-color: #7cb8aa; background: #fff; color: #365960; box-shadow: none; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-custom-number-grid button:disabled { color: #b3c0bc; text-decoration: none; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-actions { gap: 6px; padding-top: 4px; border-top: 1px solid #dfe7e3; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-actions button { min-width: 72px; min-height: 36px; padding: 0 9px; border-radius: 8px; font-size: 11px; }
+:is(.reception-schedule-dialog .lab-date-time-popover.time-only, .lab-date-time-popover.reception-appointment-time-picker.time-only) .lab-date-time-actions button.apply { background: #087460; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) { gap: 5px; padding: 8px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-time-header { font-size: 12px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-time-header strong { font-size: 15px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-time-tabs { gap: 2px; padding: 2px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-time-tabs button { min-height: 32px; font-size: 10px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-custom { gap: 3px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-custom-row { min-height: 20px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-custom-label { font-size: 10px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-custom-label small { font-size: 9px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-period-toggle { gap: 2px; padding: 2px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-period-toggle button { min-width: 36px; min-height: 26px; padding: 0 6px; font-size: 10px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-custom-number-grid { gap: 2px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-custom-number-grid button { min-height: 25px; border-radius: 6px; font-size: 10px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-actions { gap: 5px; padding-top: 3px; }
+.lab-date-time-popover.reception-appointment-time-picker.time-only:has(.lab-date-time-custom) .lab-date-time-actions button { min-width: 64px; min-height: 30px; padding: 0 7px; font-size: 10px; }
+.reception-schedule-dialog .lab-date-time-popover .lab-date-time-actions button.apply,
+.lab-date-time-popover.reception-appointment-calendar .lab-date-time-actions button.apply,
+.lab-date-time-popover.reception-appointment-time-picker .lab-date-time-actions button.apply { border-color: #087460; background: #087460; }
+.reception-schedule-dialog .lab-date-time-popover .lab-date-time-actions button.apply:hover:not(:disabled),
+.lab-date-time-popover.reception-appointment-calendar .lab-date-time-actions button.apply:hover:not(:disabled),
+.lab-date-time-popover.reception-appointment-time-picker .lab-date-time-actions button.apply:hover:not(:disabled) { border-color: #075b45; background: #075b45; }
 @media (max-width: 520px) {
   .reception-workflow-dialog .record-details-content { padding: 0 16px 16px; }
   .reception-workflow-dialog .record-details-content dl:has(> div) { grid-template-columns: 1fr; }
+  .reception-schedule-dialog .reception-workflow-body { gap: 14px !important; padding: 2px 16px 18px !important; }
+  .reception-schedule-dialog.clinic-record-details-modal footer { padding: 12px 16px !important; }
+  .reception-new-appointment-grid { grid-template-columns: 1fr; gap: 13px; padding: 16px; }
+  .reception-new-appointment-grid label.is-wide { grid-column: auto; }
+  .reception-new-appointment-header { padding: 15px 16px 12px; }
+  .reception-new-appointment-footer { padding: 11px 16px; }
 }

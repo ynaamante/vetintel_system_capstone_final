@@ -23,7 +23,7 @@ function actionIcon(action) {
 
 const avatarStyle = { width: 40, height: 40, objectFit: 'cover', borderRadius: '50%', flexShrink: 0 };
 
-export default function RecordActionsModal({ title, recordLabel, recordName, recordMeta, status, recordPhoto, recordPhotoAttachmentId, recordInitials, user, showPetAvatar = false, hideRecordSubtitle = false, suspended = false, onClose, actions, error, footerNote }) {
+export default function RecordActionsModal({ title, recordLabel, recordName, recordMeta, status, recordPhoto, recordPhotoAttachmentId, recordInitials, user, showPetAvatar = false, hideRecordSubtitle = false, suspended = false, iconOnlyClose = false, onClose, actions, error, footerNote }) {
   const closeButton = useRef(null);
   useEffect(() => {
     const previous = document.activeElement;
@@ -44,7 +44,7 @@ export default function RecordActionsModal({ title, recordLabel, recordName, rec
       <div className="record-actions-dialog" role="dialog" aria-modal="true" aria-label={title} onClick={event => event.stopPropagation()}>
         <header>
           <div><h2>{title}</h2>{!hideRecordSubtitle && <p>{recordLabel} · {recordName}</p>}</div>
-          <button type="button" className="record-actions-close" ref={closeButton} onClick={onClose}><span aria-hidden="true">{Icons.close}</span>Close</button>
+          <button type="button" className={`record-actions-close${iconOnlyClose ? ' is-icon-only' : ''}`} aria-label="Close dialog" ref={closeButton} onClick={onClose}><span aria-hidden="true">{Icons.close}</span>{!iconOnlyClose && 'Close'}</button>
         </header>
         <div className="record-actions-summary">
           {recordInitials && <span className="record-actions-avatar" aria-hidden="true">{recordInitials}</span>}

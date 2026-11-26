@@ -5,6 +5,7 @@ import Topbar from '../../components/Topbar';
 import StatusIndicator from '../../components/StatusIndicator';
 import RecordActionsModal from '../../components/RecordActionsModal';
 import LabDateTimePicker from '../../components/LabDateTimePicker';
+import FilterSelect from '../../components/FilterSelect';
 import { Icons } from '../../icons';
 import { canViewFeature, hasAction } from '../../utils/permissionUtils';
 import AppointmentWorkflowDialog from './AppointmentWorkflowDialog';
@@ -55,15 +56,15 @@ function WalkInDialog({ user, onClose, onSaved }) {
     } catch (error) { setError(error.message); }
     finally { setSaving(false); }
   };
-  return <dialog ref={dialog} className="reception-workflow-dialog clinic-record-details-modal" onCancel={event => { event.preventDefault(); if (!saving) onClose(); }}>
+  return <dialog ref={dialog} className="reception-workflow-dialog clinic-record-details-modal patient-queue-walkin-dialog" onCancel={event => { event.preventDefault(); if (!saving) onClose(); }}>
     <form onSubmit={submit}><header className="clinic-record-details-header"><div><h2>Add Walk-in</h2><p>Check in a registered patient and notify the assigned veterinarian.</p></div><button type="button" disabled={saving} onClick={onClose}>Close</button></header>
       <section className="reception-workflow-body record-details-content">
-        {error && <p role="alert" className="reception-action-error">{error}</p>}
+        {error && <p role="alert" className="reception-action-error"><span className="patient-queue-walkin-alert-icon" aria-hidden="true">!</span>{error}</p>}
         {loading ? <p>Loading patients and veterinarians…</p> : <>
           <label>Patient<select required value={pet} onChange={event => setPet(event.target.value)}><option value="">Select registered patient</option>{pets.map(item => <option key={item.id} value={item.id}>{item.name} · {item.owner || item.owner_name || 'Owner not recorded'}</option>)}</select></label>
           <label>Veterinarian<select required value={doctor} onChange={event => setDoctor(event.target.value)}><option value="">Select veterinarian</option>{doctors.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <label>Visit type<input required maxLength={200} value={reason} onChange={event => setReason(event.target.value)} /></label>
-          <p>New patients must complete registration and approval before being added to the queue.</p>
+          <p className="patient-queue-walkin-note"><span aria-hidden="true">{Icons.info}</span>New patients must complete registration and approval before being added to the queue.</p>
         </>}
       </section><footer><button type="button" disabled={saving} onClick={onClose}>Cancel</button><button type="submit" className="is-save" disabled={loading || saving || !pet || !doctor || !reason.trim()}>{saving ? 'Adding…' : 'Add to Queue'}</button></footer>
     </form>
@@ -133,13 +134,13 @@ export default function PatientQueuePage({ user }) {
     <div className="patient-queue-content">
       {!canView ? <p role="alert">You do not have permission to view the patient queue.</p> : <>
         <section className="patient-queue-summary" aria-label="Queue summary">{[
-          ['Total in Queue', waiting.length + consulting.length, ''], ['Waiting', waiting.length, 'is-waiting'],
-          ['In Consultation', consulting.length, ''], [date === localDate() ? 'Walk-ins Today' : 'Walk-ins', records.filter(item => item.workflow_type === 'walk_in').length, ''],
-        ].map(([label,value,tone]) => <article className={`patient-queue-stat ${tone}`} key={label}><span>{label}</span><strong>{loading ? '—' : value}</strong></article>)}</section>
+          ['Total in Queue', waiting.length + consulting.length, 'Patients currently in the queue.'], ['Waiting', waiting.length, 'Waiting to see a veterinarian.'],
+          ['In Consultation', consulting.length, 'Currently being seen.'], [date === localDate() ? 'Walk-ins Today' : 'Walk-ins', records.filter(item => item.workflow_type === 'walk_in').length, 'Walk-in visits in this period.'],
+        ].map(([label,value,description]) => <article className="patient-queue-stat" key={label}><span>{label}</span><strong>{loading ? '—' : value}</strong><small>{description}</small></article>)}</section>
         <section className="patient-queue-card">
           <header className="patient-queue-card-heading"><h2>Current Queue</h2><div><span>{updated ? `Updated: ${updated.toLocaleDateString()} · ${time(updated)}` : 'Not yet updated'}</span><button type="button" className="patient-queue-refresh" aria-label="Refresh queue" onClick={refreshQueue}>{Icons.refresh || '↻'}</button></div></header>
           <div className="patient-queue-toolbar"><nav aria-label="Queue status">{[['all','All',records.length],['waiting','Waiting',waiting.length],['in_consultation','In Consultation',consulting.length],['completed','Completed',completed.length]].map(([id,label,count]) => <button type="button" key={id} aria-pressed={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label} ({count})</button>)}</nav><button type="button" className="patient-queue-add" disabled={!hasAction(user.permissions,user.role,'Manage Walk-ins')} onClick={() => setWalkIn(true)}>{Icons.plus} Add Walk-in</button></div>
-          <div className="patient-queue-filters"><label className="patient-queue-search">{Icons.search}<input aria-label="Search pet, owner, or queue number" placeholder="Search pet, owner, or queue number…" value={search} onChange={event => setSearch(event.target.value)} /></label><LabDateTimePicker mode="date" label="Queue date" value={date} onChange={value => { if (value) setDate(value); }} /><select aria-label="Filter queue by veterinarian" value={doctor} onChange={event => setDoctor(event.target.value)}><option value="">All Veterinarians</option>{doctors.map(([id,name]) => <option key={id} value={id}>{name || 'Unassigned'}</option>)}</select></div>
+          <div className="patient-queue-filters"><label className="patient-queue-search">{Icons.search}<input aria-label="Search pet, owner, or queue number" placeholder="Search pet, owner, or queue number…" value={search} onChange={event => setSearch(event.target.value)} /></label><LabDateTimePicker mode="date" label="Queue date" value={date} min={localDate()} selectDateImmediately popoverClassName="patient-registration-calendar" yearSelectorInPopover onChange={value => { if (value) setDate(value); }} /><FilterSelect className="patient-queue-veterinarian-filter" label="Filter queue by veterinarian" value={doctor} onChange={setDoctor} options={[{value:'',label:'All Veterinarians'},...doctors.map(([id,name])=>({value:String(id),label:name||'Unassigned'}))]} /></div>
           {error && <p className="reception-action-error" role="alert">{error}</p>}
           <div className="lab-results-table-wrap"><table className="lab-results-table patient-queue-table"><thead><tr>{['Queue #','Check-in Time','Pet','Owner','Visit Type','Veterinarian','Wait Time','Status',''].map(label => <th key={label} aria-label={label || 'Queue actions'}>{label}</th>)}</tr></thead><tbody>
             {loading ? <tr><td colSpan={9} className="lab-results-empty">Loading patient queue…</td></tr> : filtered.length ? filtered.map(item => <tr key={item.id} className="clinic-action-row" tabIndex={0} aria-haspopup="dialog" aria-label={`Queue actions for ${item.pet}`} onClick={() => setSelectedId(item.id)} onKeyDown={event => { if (event.currentTarget === event.target && ['Enter',' '].includes(event.key)) { event.preventDefault(); setSelectedId(item.id); } }}>

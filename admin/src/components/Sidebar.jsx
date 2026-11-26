@@ -158,8 +158,8 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
       <div style={s.actions}>
         <button type="button" className={`sidebar-action${active === 'settings' ? ' active' : ''}`} style={{ ...s.action, width: '100%', border: 0, background: active === 'settings' ? '#0a966b' : 'transparent', textAlign: 'left', ...(collapsed ? { justifyContent: 'center', padding: '10px 0' } : {}) }} onClick={() => navigate('settings')} aria-current={active === 'settings' ? 'page' : undefined} aria-label="Settings" title={collapsed ? 'Settings' : undefined}><span style={s.icon}>{Icons.settings}</span>{!collapsed && 'Settings'}</button>
         {collapsed && (
-          <button type="button" className="sidebar-action" style={s.action} onClick={onLogout} aria-label="Sign out" title="Sign out">
-            <span style={s.icon}>{Icons.logout}</span>
+          <button type="button" className="sidebar-action sidebar-action-logout" style={s.logoutButton} onClick={onLogout} aria-label="Sign out" title="Sign out">
+            {Icons.logout}
           </button>
         )}
       </div>
@@ -177,7 +177,7 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
             <div style={s.userName}>{user.name}</div>
             <div style={s.userRole}>{user.role}</div>
           </div>
-          <button type="button" className="sidebar-action" style={s.logoutButton} onClick={onLogout} aria-label="Sign out" title="Sign out">
+          <button type="button" className="sidebar-action sidebar-action-logout" style={s.logoutButton} onClick={onLogout} aria-label="Sign out" title="Sign out">
             {Icons.logout}
           </button>
         </div>
@@ -226,5 +226,5 @@ const s = {
   userRole:   { fontSize: 12, color: 'rgba(255,255,255,.8)', marginTop: 1, textTransform: 'lowercase' },
   actions:    { padding: '6px 0 8px', borderTop: '1px solid rgba(255,255,255,.12)' },
   action:     { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 11px', borderRadius: 8, color: '#edf9f5', fontSize: 14, cursor: 'pointer', transition: 'background .15s ease, color .15s ease' },
-  logoutButton: { width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#edf9f5', borderRadius: 8, border: '1px solid rgba(255,255,255,.12)', flexShrink: 0, background: 'rgba(255,255,255,.03)' },
+  logoutButton: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef3340', borderRadius: 11, border: '2px solid #ef3340', flexShrink: 0, background: 'transparent', padding: 0 },
 };

@@ -15,7 +15,7 @@ export default function RiskSignalExplorer({user,data,loading,error,filters,stat
   const stats=[['Open Signals',all.filter(row=>row.status!=='resolved').length,'Potential signals requiring review.'],['Needs Review',all.filter(row=>row.status==='new').length,'New signals for veterinarian review.'],['Under Review',all.filter(row=>row.status==='under_review').length,'Currently being evaluated.']];
   const dirty=['disease','area','days'].some(key=>draft[key]!==filters[key])||draft.status!==status;
   const apply=next=>{setDraft(next);setLimit(10);onApply(next);};
-  const field=(key,label,options)=><div className="risk-field"><span>{label}</span><FilterSelect label={label} value={draft[key]} onChange={value=>setDraft(current=>({...current,[key]:value}))} options={options}/></div>;
+  const field=(key,label,options)=><div className="risk-field"><span>{label}</span><FilterSelect className="risk-filter-select" label={label} value={draft[key]} onChange={value=>setDraft(current=>({...current,[key]:value}))} options={options}/></div>;
   return <main className="dm-page risk-page">
     <Topbar className="dm-topbar" user={user} title="Risk Monitoring" subtitle="Review potential disease signals across participating veterinary clinics." actions={<label className="dm-search">{Icons.search}<input aria-label="Search disease signals" placeholder="Search diseases or reporting barangays…" value={search} onChange={event=>onSearch(event.target.value)}/></label>}/>
     <div className="dm-body">

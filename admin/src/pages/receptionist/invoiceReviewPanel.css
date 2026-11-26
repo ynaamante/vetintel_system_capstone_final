@@ -173,3 +173,84 @@
 @keyframes invoice-panel-enter { from { transform: translateX(100%); } to { transform: translateX(0); } }
 @media (prefers-reduced-motion: reduce) { .invoice-review-panel { animation: none; } }
 @media (max-width: 480px) { .invoice-review-header { padding-left: 16px; } .invoice-review-body { padding: 12px 10px 16px; } .invoice-review-context { grid-template-columns: repeat(2, 1fr); row-gap: 15px; } .invoice-review-context > div:nth-child(2) { border: 0; } .invoice-review-summary > div, .invoice-review-communications > div { padding: 9px 7px; } .invoice-review-summary strong { font-size: 1.05rem; } .invoice-doctor-details > div { padding: 8px 6px; } .invoice-doctor-summary > div { grid-template-columns: 78px minmax(0, 1fr); } .invoice-doctor-sent { align-items: flex-start !important; flex-direction: column; } }
+
+/* Billing detail content follows the clinic's soft sage card treatment. */
+.invoice-review-body {
+  background: linear-gradient(145deg, #f3f9f6 0%, #f8fbf9 48%, #eef7f2 100%);
+}
+.invoice-review-body section.invoice-doctor-section,
+.invoice-review-body section.invoice-review-owner-communication,
+.invoice-review-body section.invoice-review-activity {
+  border-color: #d7e8df;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #fff 0%, #fbfefc 100%);
+  box-shadow: 0 2px 8px rgba(8, 55, 39, .045);
+}
+.invoice-review-body .invoice-doctor-section h3,
+.invoice-review-body .invoice-review-owner-communication h3,
+.invoice-review-body .invoice-review-activity h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #075b43;
+}
+.invoice-review-body .invoice-doctor-section h3::before,
+.invoice-review-body .invoice-review-owner-communication h3::before,
+.invoice-review-body .invoice-review-activity h3::before {
+  width: 5px;
+  height: 18px;
+  flex: 0 0 5px;
+  border-radius: 99px;
+  background: #0c9b70;
+  content: '';
+}
+.invoice-doctor-details > div {
+  border-color: #e3eee8;
+}
+.invoice-doctor-details > div:nth-child(2n) {
+  border-right: 1px solid #e3eee8;
+}
+.invoice-doctor-details > div:nth-child(3),
+.invoice-doctor-details > div:nth-child(5) {
+  border-right: 0;
+}
+.invoice-doctor-details small { color: #527368; }
+.invoice-doctor-details strong { color: #153b30; }
+.invoice-doctor-details span { color: #4d665d; }
+.invoice-doctor-pet-photo,
+.invoice-doctor-pet-fallback {
+  background: #e9f5ef;
+  color: #087a59;
+}
+.invoice-doctor-summary { border-color: #dcebe3; }
+.invoice-doctor-summary > div { border-color: #e4eee8; }
+.invoice-doctor-summary strong { background: #f0f7f3; color: #42665a; }
+.invoice-review-items.invoice-doctor-items th { background: #f0f7f3; color: #527368; }
+.invoice-review-items.invoice-doctor-items tfoot th { background: #e9f5ef; color: #164c3b; }
+.invoice-review-body section.invoice-doctor-balances {
+  border-color: #d7e8df;
+  background: linear-gradient(135deg, #f5faf7, #fff);
+}
+.invoice-review-body section.invoice-doctor-balances h3::before { background: #0c9b70; }
+.invoice-doctor-balances > div + div { border-color: #e3eee8; }
+.invoice-doctor-balances > div strong { color: #815d19; }
+.invoice-review-footer {
+  border-color: #d9e9e1;
+  background: linear-gradient(90deg, #f7fbf8, #fff);
+}
+.invoice-review-footer button.invoice-review-download {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border-color: #9dccb5;
+  background: #f2faf6;
+  color: #087a59;
+  font-weight: 700;
+}
+.invoice-review-footer button.invoice-review-download:hover:not(:disabled) {
+  border-color: #72b797;
+  background: #e8f6ee;
+}
+.invoice-review-download > span { display: flex; width: 17px; height: 17px; }
+.invoice-review-download svg { width: 100%; height: 100%; }
