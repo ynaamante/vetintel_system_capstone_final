@@ -125,13 +125,16 @@ body {
   display: flex;
   align-items: center;
   gap: 5px;
-  width: 100%;
-  min-height: 52px;
-  padding: 6px 26px;
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  min-height: 48px;
+  margin: 8px 16px;
+  padding: 4px;
   box-sizing: border-box;
   overflow-x: auto;
-  background: #fff;
-  border-bottom: 1px solid #e5eaf0;
+  border: 1px solid #d8e9df;
+  border-radius: 15px;
+  background: #eaf4ee;
   scrollbar-width: none;
 }
 .clinic-records-tabnav::-webkit-scrollbar { display: none; }
@@ -140,21 +143,21 @@ body {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 36px;
-  padding: 7px 12px;
-  border: 1px solid transparent;
+  min-height: 38px;
+  padding: 6px 13px;
+  border: 1px solid #dcebe2;
   border-radius: 9px;
   color: #26374d;
   background: transparent;
-  font-size: .76rem;
+  font-size: .78rem;
   font-weight: 500;
   white-space: nowrap;
   transition: background-color .15s ease, color .15s ease;
 }
 .clinic-records-tabnav-item > span { display: flex; width: 15px; height: 15px; color: currentColor; }
 .clinic-records-tabnav-item > span svg { width: 100%; height: 100%; }
-.clinic-records-tabnav-item:hover { background: #fafbf8; color: #013826; }
-.clinic-records-tabnav-item.active { color: #006554; background: #e5f4f0; font-weight: 700; }
+.clinic-records-tabnav-item:hover { background: #e1eee6; color: #013826; }
+.clinic-records-tabnav-item.active { color: #fff; background: #08744f; font-weight: 700; box-shadow: 0 2px 5px rgba(8, 107, 80, .18); }
 .clinic-dashboard-topbar { position: relative !important; min-height: 84px; padding: 12px 18px !important; box-sizing: border-box; }
 .clinic-dashboard-topbar h2 { margin: 0; color: #101d36 !important; font-size: 1.45rem !important; font-weight: 750 !important; letter-spacing: -.025em !important; }
 .clinic-dashboard-topbar p { margin: 2px 0 0 !important; color: #526782 !important; font-size: .82rem !important; }
@@ -171,17 +174,110 @@ body {
 .clinic-dashboard-export-row { display: flex; justify-content: flex-end; margin: 0 0 10px; }
 .clinic-dashboard-export:hover { background: #086b50; }
 .clinic-dashboard-export svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.clinic-export-report-dialog { width: min(1100px, calc(100vw - 32px)) !important; padding: 0 !important; border: 1px solid #dce4e8; border-radius: 16px !important; background: #fbfcfd !important; }
+.clinic-export-report-dialog > button:first-child { top: 8px !important; right: 14px !important; z-index: 3; display: grid !important; width: 28px !important; height: 28px !important; place-items: center; border: 0 !important; border-radius: 6px !important; background: transparent !important; color: #334155 !important; }
+.clinic-export-report-dialog > button:first-child svg { width: 16px; height: 16px; }
+.clinic-report-breadcrumb { display: flex; align-items: center; justify-content: space-between; min-height: 42px; padding: 0 52px 0 24px; border-bottom: 1px solid #e1e6ea; color: #17212c; font-size: 11px; }
+.clinic-report-breadcrumb > div { display: flex; align-items: center; gap: 9px; }
+.clinic-report-breadcrumb > div b { color: #526175; font-size: 16px; font-weight: 400; }
+.clinic-report-user { display: grid; gap: 1px; color: #17212c; font-size: 11px; font-weight: 700; text-align: right; }
+.clinic-report-user small { color: #526175; font-size: 10px; font-weight: 400; }
+.clinic-report-page-heading { padding: 10px 28px 16px; }
+.clinic-report-page-heading h2 { margin: 0; color: #075b3d; font-size: 24px; font-weight: 800; line-height: 1.2; }
+.clinic-report-page-heading p { margin: 3px 0 0; color: #334155; font-size: 12px; }
+.clinic-report-main { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 12px; padding: 0 14px 12px; }
+.clinic-report-builder-form { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.clinic-report-step-card { min-width: 0; padding: 10px 12px; border: 1px solid #e0e6eb; border-radius: 10px; background: #fff; }
+.clinic-report-step-heading { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 8px; }
+.clinic-report-step-heading > span { display: grid; width: 24px; height: 24px; flex: 0 0 24px; place-items: center; border-radius: 50%; background: #086b50; color: #fff; font-size: 12px; font-weight: 800; }
+.clinic-report-step-heading h3 { margin: 0; color: #17212c; font-size: 14px; font-weight: 750; line-height: 1.25; }
+.clinic-report-step-heading p { margin: 2px 0 0; color: #526175; font-size: 10px; line-height: 1.35; }
+.clinic-report-name-input { width: 100%; height: 34px; box-sizing: border-box; padding: 0 10px; border: 1px solid #d8e0e6; border-radius: 7px; background: #fff; color: #263548; font: inherit; font-size: 11px; }
+.clinic-report-type-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.clinic-report-type-option { position: relative; display: flex; min-width: 0; min-height: 96px; flex-direction: column; align-items: center; gap: 4px; padding: 8px 5px; border: 1px solid #d8e0e8; border-radius: 8px; background: #f7f8fa; color: #263548; text-align: center; cursor: pointer; }
+.clinic-report-type-option.is-selected { border-color: #b7e4d7; background: #e7f4ec; color: #173a2d; }
+.clinic-report-type-option input { position: absolute; top: 5px; right: 5px; width: 14px; height: 14px; margin: 0; accent-color: #086b50; }
+.clinic-report-type-icon { display: grid; width: 24px; height: 24px; place-items: center; color: #334155; }
+.clinic-report-type-icon svg { width: 19px; height: 19px; }
+.clinic-report-type-option > strong { font-size: 9px; line-height: 1.2; }
+.clinic-report-type-option > small { color: #526175; font-size: 8px; line-height: 1.25; }
+.clinic-report-type-count { display: none; }
+.clinic-report-fields-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 10px; }
+.clinic-report-fields-grid label { display: flex; align-items: center; gap: 6px; min-width: 0; color: #263548; font-size: 10px; }
+.clinic-report-fields-grid input { width: 14px; height: 14px; margin: 0; accent-color: #086b50; }
+.clinic-report-date-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.clinic-report-date-grid > * { min-width: 0; }
+.clinic-report-date-grid > label { display: grid; gap: 5px; color: #526175; font-size: 9px; font-weight: 600; }
+.clinic-report-preview { display: grid; align-content: start; gap: 11px; min-width: 0; min-height: 490px; padding: 12px; border: 1px solid #e0e6eb; border-radius: 10px; background: #fff; }
+.clinic-report-preview-heading { display: flex; align-items: flex-start; gap: 9px; }
+.clinic-report-preview-heading > span { color: #087247; font-size: 20px; line-height: 1; }
+.clinic-report-preview-heading h3 { margin: 0; color: #17212c; font-size: 16px; font-weight: 750; }
+.clinic-report-preview-heading p { margin: 2px 0 0; color: #526175; font-size: 10px; line-height: 1.35; }
+.clinic-report-preview-title { display: grid; gap: 4px; padding: 10px 12px; border-radius: 9px; background: #edf5f0; color: #173a2d; }
+.clinic-report-preview-title > strong { font-size: 14px; }
+.clinic-report-preview-title > small { color: #526175; font-size: 10px; }
+.clinic-report-preview-title > small span { padding: 0 5px; }
+.clinic-report-preview-table-wrap { overflow-x: auto; border: 1px solid #e0e6eb; border-radius: 8px; }
+.clinic-report-preview-table { width: 100%; border-collapse: collapse; text-align: left; }
+.clinic-report-preview-table th { padding: 8px 7px; background: #e7f1e9; color: #173a2d; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.clinic-report-preview-table td { padding: 8px 7px; border-bottom: 1px solid #e5ece7; color: #334155; font-size: 10px; }
+.clinic-report-preview-table tr:last-child td { border-bottom: 0; }
+.clinic-report-preview-table td:first-child { white-space: nowrap; }
+.clinic-report-preview-empty { height: 82px; color: #64748b !important; text-align: center; }
+.clinic-report-preview-summary { display: flex; align-items: stretch; justify-content: space-around; gap: 8px; padding: 10px; border-radius: 9px; background: #e7f4ec; }
+.clinic-report-preview-summary > strong { align-self: center; color: #17212c; font-size: 12px; }
+.clinic-report-preview-summary > div { display: grid; justify-items: center; min-width: 46px; padding-left: 8px; border-left: 1px solid #c5d8cb; color: #2b4438; }
+.clinic-report-preview-summary > div b { color: #075b3d; font-size: 15px; }
+.clinic-report-preview-summary > div span { font-size: 9px; }
+.clinic-report-summary-footer { display: flex; align-items: center; min-height: 54px; margin: 0 14px 14px; padding: 8px 12px; border-radius: 10px; background: #e7f4ec; }
+.clinic-report-footer-actions { display: flex; align-items: center; width: 100%; gap: 9px; }
+.clinic-report-footer-spacer { flex: 1; }
+.clinic-report-footer-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 0 13px; border: 1px solid #d1dbe1; border-radius: 8px; background: #fff; color: #263548; font: inherit; font-size: 11px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+.clinic-report-footer-actions > button:not(.clinic-report-save-template):hover,
+.clinic-report-footer-actions > button:not(.clinic-report-save-template):active,
+.clinic-report-footer-actions > button:not(.clinic-report-save-template):focus-visible { border-color: #b7e4d7; background: #e7f4ec; color: #075b3d; }
+.clinic-report-footer-actions > button:not(.clinic-report-save-template):focus-visible { outline: 2px solid #7ec6a4; outline-offset: 2px; }
+.clinic-report-footer-actions .clinic-report-save-template { margin-right: auto; }
+.clinic-report-save-template svg { width: 15px; height: 15px; }
+.clinic-report-export-wrap { position: relative; display: flex; }
+.clinic-report-export-wrap > button { border-color: #064b36; background: #064b36; color: #fff; }
+.clinic-report-export-wrap > button:first-child { border-radius: 8px 0 0 8px; }
+.clinic-report-export-wrap > button:nth-child(2) { padding: 0 9px; border-left-color: rgba(255,255,255,.25); border-radius: 0 8px 8px 0; }
+.clinic-report-export-wrap > button:disabled { opacity: .5; cursor: not-allowed; }
+.clinic-report-export-wrap > button > span { font-size: 16px; }
+.clinic-report-format-menu { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 8; display: grid; min-width: 120px; padding: 4px; border: 1px solid #d8e0e6; border-radius: 8px; background: #fff; box-shadow: 0 8px 20px #173f4b20; }
+.clinic-report-format-menu button { width: 100%; min-height: 32px; border: 0; border-radius: 5px; background: #fff; color: #263548; text-align: left; cursor: pointer; }
+.clinic-report-format-menu button:hover { background: #edf5f0; }
+@media (max-width: 850px) {
+  .clinic-report-main { grid-template-columns: 1fr; }
+  .clinic-report-preview { min-height: 0; }
+}
+@media (max-width: 560px) {
+  .clinic-report-breadcrumb { padding: 0 46px 0 14px; }
+  .clinic-report-user { display: none; }
+  .clinic-report-page-heading { padding: 10px 14px 14px; }
+  .clinic-report-main { padding: 0 10px 10px; }
+  .clinic-report-type-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .clinic-report-type-option { min-height: 86px; }
+  .clinic-report-summary-footer { margin: 0 10px 10px; }
+  .clinic-report-footer-actions { flex-wrap: wrap; }
+  .clinic-report-footer-spacer { display: none; }
+  .clinic-report-footer-actions .clinic-report-save-template { margin-right: auto; }
+}
 
 @media (min-width: 721px) and (max-width: 1280px) {
   .clinic-records-tabnav {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: flex-start;
-    overflow: visible;
-    min-height: 0;
-    height: auto;
-    padding: 6px 14px;
+    overflow-x: auto;
+    min-height: 48px;
+    height: 48px;
+    padding: 4px;
+    width: fit-content;
+    max-width: calc(100% - 28px);
+    margin: 7px 14px;
   }
-  .clinic-records-tabnav-item { flex: 0 0 auto; min-height: 32px; padding: 5px 8px; gap: 5px; font-size: .7rem; }
+  .clinic-records-tabnav-item { flex: 0 0 auto; min-height: 38px; padding: 6px 11px; gap: 6px; font-size: .76rem; }
   .clinic-records-tabnav-item > span { width: 13px; height: 13px; }
   .clinic-dashboard-tabs-toolbar { flex-wrap: wrap; gap: 4px 10px; padding: 4px 14px 8px; }
   .clinic-dashboard-tabs-toolbar .clinic-records-tabnav { flex: 0 0 100%; width: 100%; padding: 2px 0; }
@@ -195,7 +291,7 @@ body {
   align-items: stretch;
 }
 .clinic-dashboard-columns > .dashboard-alerts-card { grid-column: 1 / 8; grid-row: 1; }
-.clinic-dashboard-columns > .dashboard-community-card { grid-column: 8 / 13; grid-row: 1; }
+.clinic-dashboard-columns > .dashboard-community-card { grid-column: 8 / 13; grid-row: 1; align-self: start; }
 .clinic-dashboard-columns > .dashboard-upcoming-card { grid-column: 1 / 6; grid-row: 2; }
 .clinic-dashboard-columns > .dashboard-risk-card { grid-column: 6 / 10; grid-row: 2; }
 .clinic-dashboard-columns > .dashboard-info-cards { grid-column: 10 / 13; grid-row: 2; height: 100%; min-height: 0; display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 10px; align-content: stretch; }
@@ -213,13 +309,12 @@ body {
 }
 
 @media (min-width: 721px) and (max-width: 1100px) {
-  .dashboard-alert-row { grid-template-columns: 24px 44px minmax(0, 1fr) 68px 84px !important; gap: 10px !important; padding: 10px 0 !important; }
+  .dashboard-alert-row { grid-template-columns: 24px 44px minmax(0, 1fr) 68px !important; gap: 10px !important; padding: 10px 0 !important; }
   .dashboard-alert-row > span:nth-child(3) > b { font-size: .82rem !important; }
   .dashboard-alert-row > span:nth-child(3) > b > small { font-size: .76rem !important; }
   .dashboard-alert-row > span:nth-child(3) > span { font-size: .7rem !important; }
   .dashboard-alert-row > span:nth-child(3) > small { font-size: .78rem !important; line-height: 1.4 !important; }
   .dashboard-alert-row > time { font-size: .72rem !important; }
-  .dashboard-alert-row > button { padding: 8px 9px !important; font-size: .72rem !important; }
   .dashboard-appointment-row { grid-template-columns: 58px minmax(125px, 1.35fr) minmax(74px, .8fr) minmax(86px, 1fr) max-content !important; gap: 8px !important; min-height: 54px !important; padding: 8px 0 !important; font-size: .78rem !important; }
   .dashboard-appointment-row > time { font-size: .74rem !important; }
   .dashboard-appointment-row .dashboard-appointment-owner,
@@ -229,7 +324,7 @@ body {
 }
 
 @media (max-width: 720px) {
-  .clinic-records-tabnav { padding: 5px 10px; }
+  .clinic-records-tabnav { padding: 4px; }
   .clinic-dashboard-topbar { align-items: flex-start !important; padding: 12px 14px !important; flex-wrap: wrap; }
   .clinic-dashboard-topbar .right { flex-shrink: 0; gap: 6px !important; }
   .clinic-dashboard-topbar .pill { padding: 5px; }
@@ -3909,7 +4004,7 @@ html body .lab-intake-wizard .lab-wizard-test-options > button[aria-selected="tr
   transition: background-color .16s ease, box-shadow .16s ease;
 }
 
-.schedule-list-item:hover {
+.schedule-list-item:not(.schedule-calendar-day):hover {
   background-color: #f1f5f9 !important;
   box-shadow: inset 3px 0 0 #013826;
 }
@@ -5717,16 +5812,6 @@ html body .lab-intake-wizard .lab-wizard-test-options > button[aria-selected="tr
   .lab-result-entry .lab-measurement-entry-table {
     min-width: 600px;
   }
-}
-
-.schedule-calendar-day:hover {
-  background-color: #f1f5f9 !important;
-  box-shadow: inset 0 0 0 1px #b7e4d7;
-}
-
-.schedule-calendar-day-selected:hover {
-  background-color: #086b50 !important;
-  box-shadow: inset 0 0 0 1px #86d7b4;
 }
 
 @media (pointer: coarse), (min-width: 461px) and (max-width: 1024px) {
@@ -7815,6 +7900,40 @@ html body .lab-intake-wizard .lab-wizard-test-options > button[aria-selected="tr
   .appointment-list-filters > input {
     grid-column: 1 / -1;
   }
+}
+
+/* Keep the clinic creation dialogs at a readable, consistent desktop size. */
+.clinic-add-form-dialog {
+  width: min(600px, calc(100vw - 40px)) !important;
+  max-width: calc(100vw - 40px) !important;
+  max-height: 86dvh !important;
+  box-sizing: border-box !important;
+}
+
+.clinic-add-form-dialog.lab-wizard-dialog {
+  width: min(760px, calc(100vw - 40px)) !important;
+}
+
+.clinic-add-form-dialog.clinic-pet-add-dialog {
+  padding: 18px 20px 16px !important;
+}
+
+.clinic-add-form-dialog.clinic-pet-add-dialog form > div {
+  gap: 10px !important;
+}
+
+.clinic-add-form-dialog.clinic-pet-add-dialog form > label {
+  margin-top: 9px;
+}
+
+@media (max-width: 640px) {
+  .clinic-add-form-dialog,
+  .clinic-add-form-dialog.lab-wizard-dialog {
+    width: calc(100vw - 28px) !important;
+    max-width: calc(100vw - 28px) !important;
+    max-height: 92dvh !important;
+  }
+
 }
 
 .lab-result-editor.lab-result-entry {
@@ -11860,13 +11979,12 @@ html body .lab-intake-wizard .lab-wizard-test-options > button[aria-selected="tr
 }
 
 @media (pointer: coarse), (max-width: 1100px) {
-  .dashboard-alert-row { grid-template-columns: 26px 48px minmax(0, 1fr) 76px 94px !important; gap: 11px !important; min-height: 64px; padding: 12px 0 !important; }
+  .dashboard-alert-row { grid-template-columns: 26px 48px minmax(0, 1fr) 76px !important; gap: 11px !important; min-height: 64px; padding: 12px 0 !important; }
   .dashboard-alert-row > span:nth-child(3) > b { font-size: 16px !important; }
   .dashboard-alert-row > span:nth-child(3) > b > small { font-size: 14px !important; }
   .dashboard-alert-row > span:nth-child(3) > span { font-size: 13px !important; padding: 4px 8px !important; }
   .dashboard-alert-row > span:nth-child(3) > small { font-size: 15px !important; line-height: 1.45 !important; }
   .dashboard-alert-row > time { font-size: 13px !important; }
-  .dashboard-alert-row > button { padding: 9px 10px !important; font-size: 13px !important; }
   .dashboard-appointment-row { grid-template-columns: 64px minmax(145px, 1.35fr) minmax(82px, .8fr) minmax(100px, 1fr) max-content !important; gap: 9px !important; min-height: 62px !important; padding: 10px 0 !important; font-size: 15px !important; }
   .dashboard-appointment-row > time { font-size: 13px !important; }
   .dashboard-appointment-row .appointmentPatientText > span { font-size: 15px !important; }
@@ -17667,7 +17785,7 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
 }
 .admin-sidebar { background: #013826 !important; }
 .sidebar-nav-item.active, .sidebar-nav-item.active:hover { background: #0a966b !important; color: #fff !important; }
-.clinic-records-tabnav-item.active { background: #e7f4ec; color: #086b50; }
+.clinic-records-tabnav-item.active { background: #064e3b; border-color: #064e3b; color: #fff; font-weight: 700; }
 
 .patient-registration-content {
   padding: 18px 20px 24px !important;
@@ -20093,4 +20211,261 @@ select.global-native-select {
 }
 select.global-native-select:focus-visible { outline: 2px solid #0b7650; outline-offset: 1px; }
 
+/* Shared VetIntel styling for clinic record creation dialogs. */
+.clinic-add-form-dialog {
+  --clinic-form-ink: #193a32;
+  --clinic-form-muted: #60766e;
+  --clinic-form-border: #c6e2d4;
+  position: relative !important;
+  isolation: isolate;
+  border: 1px solid #d5e8dd !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: 0 22px 60px rgba(13, 48, 36, .24) !important;
+  color: var(--clinic-form-ink) !important;
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+.clinic-add-form-dialog::before {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  right: 0;
+  width: min(44%, 300px);
+  height: 58px;
+  border-radius: 0 15px 0 100%;
+  background: #e7f3eb;
+  content: '';
+  pointer-events: none;
+}
+
+.clinic-add-form-dialog h2,
+.clinic-add-form-dialog .vi-modal__title {
+  color: #064b39 !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 1.2rem !important;
+  font-weight: 750 !important;
+  letter-spacing: -.02em;
+  line-height: 1.3;
+}
+
+.clinic-add-form-dialog > p,
+.clinic-add-form-dialog .vi-modal__description,
+.clinic-add-form-dialog .lab-wizard-header p {
+  color: var(--clinic-form-muted) !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: .82rem !important;
+  line-height: 1.5;
+}
+
+.clinic-add-form-dialog h2 + p,
+.clinic-add-form-dialog h2 + div,
+.clinic-add-form-dialog .vi-modal__title + .vi-modal__description {
+  margin-bottom: 15px !important;
+  padding-bottom: 13px;
+  border-bottom: 1px solid #dcebe3;
+}
+
+.clinic-add-form-dialog label,
+.clinic-add-form-dialog legend {
+  color: #465e55 !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: .78rem !important;
+  font-weight: 650 !important;
+}
+
+.clinic-add-form-dialog h3 {
+  color: #075b43;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  font-weight: 750;
+  letter-spacing: .035em;
+  line-height: 1.35;
+}
+
+.clinic-add-form-dialog form > label,
+.clinic-add-form-dialog form > div > label,
+.clinic-add-form-dialog .clinic-inpatient-admit-fields > label {
+  row-gap: 7px;
+}
+
+.clinic-add-form-dialog input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+.clinic-add-form-dialog select,
+.clinic-add-form-dialog textarea,
+.clinic-add-form-dialog .lab-date-time-trigger,
+.clinic-add-form-dialog .filter-select-trigger {
+  box-sizing: border-box !important;
+  border: 1px solid var(--clinic-form-border) !important;
+  border-radius: 9px !important;
+  background-color: #fff !important;
+  color: #263d35 !important;
+  font-family: 'DM Sans', sans-serif !important;
+  box-shadow: 0 1px 2px rgba(13, 48, 36, .04);
+}
+
+.clinic-add-form-dialog input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+.clinic-add-form-dialog select,
+.clinic-add-form-dialog .lab-date-time-trigger,
+.clinic-add-form-dialog .filter-select-trigger {
+  min-height: 44px;
+  padding-top: 9px !important;
+  padding-bottom: 9px !important;
+  font-size: .86rem !important;
+}
+
+.clinic-add-form-dialog textarea {
+  min-height: 76px;
+  padding: 10px 12px !important;
+  font-size: .86rem !important;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.clinic-add-form-dialog input::placeholder,
+.clinic-add-form-dialog textarea::placeholder {
+  color: #8a9c94 !important;
+  opacity: 1;
+}
+
+.clinic-add-form-dialog input:focus,
+.clinic-add-form-dialog select:focus,
+.clinic-add-form-dialog textarea:focus,
+.clinic-add-form-dialog .lab-date-time-trigger:focus-visible,
+.clinic-add-form-dialog .filter-select-trigger:focus-visible {
+  border-color: #61a98b !important;
+  outline: 2px solid rgba(10, 150, 107, .16) !important;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px rgba(10, 150, 107, .08);
+}
+
+.clinic-add-form-dialog input[type="checkbox"],
+.clinic-add-form-dialog input[type="radio"] {
+  accent-color: #087454;
+}
+
+.clinic-add-form-dialog .clinic-add-form-footer,
+.clinic-add-form-dialog .lab-wizard-footer,
+.clinic-add-form-dialog .appointment-create-footer {
+  position: sticky;
+  z-index: 2;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 14px 0 max(2px, env(safe-area-inset-bottom)) !important;
+  border-top: 1px solid #dcebe3 !important;
+  background: #f0f7f2 !important;
+}
+
+.clinic-add-form-dialog .clinic-add-form-footer > button,
+.clinic-add-form-dialog .lab-wizard-footer > button,
+.clinic-add-form-dialog .lab-wizard-footer > div > button,
+.clinic-add-form-dialog .appointment-create-footer > button {
+  min-height: 44px !important;
+  border-radius: 9px !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: .84rem !important;
+  font-weight: 700 !important;
+}
+
+.clinic-add-form-dialog .clinic-add-form-footer > button[type="button"],
+.clinic-add-form-dialog .lab-wizard-footer > button:not(.lab-wizard-next),
+.clinic-add-form-dialog .appointment-create-footer > button[type="button"] {
+  border: 0 !important;
+  background: transparent !important;
+  color: #086b50 !important;
+}
+
+.clinic-add-form-dialog .clinic-add-form-footer > button[type="submit"],
+.clinic-add-form-dialog .lab-wizard-footer .lab-wizard-next,
+.clinic-add-form-dialog .appointment-create-footer > button[type="submit"] {
+  border: 1px solid #086b50 !important;
+  background: #086b50 !important;
+  color: #fff !important;
+  box-shadow: 0 2px 4px rgba(8, 107, 80, .16);
+}
+
+.clinic-add-form-dialog .clinic-add-form-footer > button[type="submit"]:hover:not(:disabled),
+.clinic-add-form-dialog .lab-wizard-footer .lab-wizard-next:hover:not(:disabled),
+.clinic-add-form-dialog .appointment-create-footer > button[type="submit"]:hover:not(:disabled) {
+  border-color: #05583f !important;
+  background: #05583f !important;
+}
+
+.clinic-add-form-dialog .clinic-add-form-footer > button:disabled,
+.clinic-add-form-dialog .lab-wizard-footer button:disabled,
+.clinic-add-form-dialog .appointment-create-footer > button:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+.clinic-add-form-dialog .clinic-inpatient-admit-footer {
+  background: #f0f7f2 !important;
+}
+
+.clinic-add-form-dialog .clinic-inpatient-admit-back,
+.clinic-add-form-dialog .clinic-inpatient-admit-next,
+.clinic-add-form-dialog .clinic-inpatient-admit-footer-nav > button:last-child {
+  min-height: 44px !important;
+  height: 44px !important;
+  border-radius: 9px !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: .84rem !important;
+  font-weight: 700 !important;
+}
+
+.clinic-add-form-dialog .clinic-inpatient-admit-back {
+  border: 0 !important;
+  background: transparent !important;
+  color: #086b50 !important;
+}
+
+.clinic-add-form-dialog .clinic-inpatient-admit-next,
+.clinic-add-form-dialog .clinic-inpatient-admit-footer-nav > button:last-child {
+  border: 1px solid #086b50 !important;
+  background: #086b50 !important;
+  color: #fff !important;
+}
+
+.clinic-add-form-dialog .lab-wizard-steps li.active > span,
+.clinic-add-form-dialog .lab-wizard-steps li.complete > span {
+  background: #087454;
+}
+
+.clinic-add-form-dialog .clinic-inpatient-admit-tabs button.is-active {
+  border-color: #c6e2d4;
+  background: #e7f4ec;
+  color: #075b43;
+}
+
+@media (max-width: 640px) {
+  .clinic-add-form-dialog {
+    max-width: calc(100vw - 20px) !important;
+    border-radius: 13px !important;
+  }
+
+  .clinic-add-form-dialog::before {
+    height: 58px;
+  }
+
+  .clinic-owner-add-dialog form > div,
+  .clinic-pet-add-dialog form > div {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .clinic-add-form-dialog .clinic-add-form-footer,
+  .clinic-add-form-dialog .lab-wizard-footer,
+  .clinic-add-form-dialog .appointment-create-footer {
+    gap: 8px;
+  }
+
+  .clinic-add-form-dialog .clinic-add-form-footer > button,
+  .clinic-add-form-dialog .lab-wizard-footer > button,
+  .clinic-add-form-dialog .appointment-create-footer > button {
+    min-width: 0;
+    padding-right: 12px !important;
+    padding-left: 12px !important;
+  }
+}
 

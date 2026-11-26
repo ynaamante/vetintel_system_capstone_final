@@ -1,6 +1,7 @@
 import { usePageState } from '../utils/usePageState.js';
 import { apiFetch as fetch } from '../utils/apiFetch.js';
 import '../components/patientOverview.css';
+import './summaryStats.css';
 import PatientIntakeSummary from '../components/PatientIntakeSummary';
 import PatientDiagnosisPanel from '../components/PatientDiagnosisPanel';
 import { dateFilterValue } from '../utils/dateFilters';
@@ -116,17 +117,10 @@ const styles = `
   .patient-records-page .records-content { padding: 12px 13px 10px; }
   .patient-records-page .records-add { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 0 14px; border: 0; border-radius: 7px; background: #086b50; color: #fff; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 5px #075F4F22; }
   .patient-records-page .records-add svg { width: 13px; height: 13px; }
-  .patient-records-page .records-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin-bottom: 10px; }
-  .patient-records-page .records-stat { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 64px; padding: 8px 10px; border: 1px solid #e2edf1; border-radius: 9px; background: #fff; box-shadow: 0 2px 7px #173f4b06; }
-  .patient-records-page .records-stat-icon { display: grid; flex: 0 0 30px; width: 30px; height: 30px; place-items: center; border-radius: 8px; color: #013826; }
-  .patient-records-page .records-stat-icon svg { width: 16px; height: 16px; }
-  .patient-records-page .stat-blue { background: #e7f4ec; }
-  .patient-records-page .stat-green { background: #d9efea; }
-  .patient-records-page .stat-amber { background: #cce8e1; }
-  .patient-records-page .stat-purple { background: #bde0d7; }
-  .patient-records-page .records-stat-label { overflow: hidden; color: #202a30; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-  .patient-records-page .records-stat-value { margin-top: 1px; color: #064b50; font-size: 19px; font-weight: 750; line-height: 1.2; }
-  .patient-records-page .records-stat-note { margin-top: 2px; color: #3f4b52; font-size: 11px; white-space: nowrap; }
+  .patient-records-page .records-stats.overview-stats-band { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0; margin-bottom: 10px; }
+  .patient-records-page .records-stat.overview-stats-cell { min-height: 88px; padding: 0 18px; }
+  .patient-records-page .records-stat + .records-stat { border-left: 1px solid #c5d8cb; }
+  .patient-records-page .records-stat .overview-stats-value { color: #071c10; }
   .patient-records-page .records-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; margin-bottom: 13px; padding: 5px; border: 1px solid #e2edf1; border-radius: 9px; background: #fff; box-shadow: 0 2px 7px #173f4b06; }
   .patient-records-page .records-search { display: flex; align-items: center; gap: 8px; height: 36px; min-width: min(280px, 100%); flex: 2 1 320px; padding: 0 12px; border: 1px solid #e3edf1; border-radius: 7px; color: #536571; }
   .patient-records-page .records-search svg { flex: 0 0 16px; width: 16px; height: 16px; }
@@ -134,11 +128,12 @@ const styles = `
   .patient-records-page .records-search input::placeholder { color: #3f4b52; opacity: 1; }
   .patient-records-page .records-select { width: 148px; min-width: 0; flex: 0 1 148px; }
   .patient-records-page .records-sort { width: 180px; flex-basis: 180px; }
-  .patient-records-page .patient-archive-tabs { display: flex; gap: 20px; margin: 0 0 11px; border-bottom: 1px solid #e2edf1; }
-  .patient-records-page .patient-archive-tabs button { display: inline-flex; align-items: center; gap: 7px; min-height: 39px; padding: 0 2px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #526571; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .patient-records-page .patient-archive-tabs button.active { border-bottom-color: #078673; color: #076b5b; }
-  .patient-records-page .patient-archive-tabs button span { padding: 2px 7px; border-radius: 999px; background: #edf3f1; color: #526762; font-size: 11px; }
-  .patient-records-page .patient-archive-tabs button.active span { background: #e0f3ec; color: #076b5b; }
+  .patient-records-page .patient-archive-tabs { display: flex; align-items: center; gap: 20px; margin: 0 0 11px; border-bottom: 1px solid #e2edf1; }
+  .patient-records-page .patient-archive-tabs > button { display: inline-flex; align-items: center; gap: 7px; min-height: 39px; padding: 0 2px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #526571; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .patient-records-page .patient-archive-tabs > button.active { border-bottom-color: #078673; color: #076b5b; }
+  .patient-records-page .patient-archive-tabs > button span { padding: 2px 7px; border-radius: 999px; background: #edf3f1; color: #526762; font-size: 11px; }
+  .patient-records-page .patient-archive-tabs > button.active span { background: #e0f3ec; color: #076b5b; }
+  .patient-records-page .patient-records-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
   .patient-records-page .records-view-toggle { display: flex; flex: 0 0 auto; gap: 3px; margin-left: auto; padding: 2px; border: 1px solid #e4edf0; border-radius: 6px; }
   .patient-records-page .records-view-toggle button { display: grid; width: 20px; height: 20px; place-items: center; padding: 0; border: 0; border-radius: 4px; background: #fff; color: #91a7b4; cursor: pointer; }
   .patient-records-page .records-view-toggle button[aria-pressed="true"] { background: #086b50; color: #fff; }
@@ -636,6 +631,34 @@ const styles = `
   .patient-records-page .patient-edit-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 18px; border-top: 1px solid #e6eef1; }
   .patient-records-page .patient-edit-footer button { min-height: 34px; padding: 0 14px; border: 1px solid #d2e0e5; border-radius: 6px; background: #fff; color: #365663; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
   .patient-records-page .patient-edit-footer button[type="submit"] { border-color: #013826; background: #086b50; color: #fff; }
+  .patient-records-page .patient-edit-pet-dialog { width: min(670px,100%); max-height: min(87dvh,830px); border: 0; border-radius: 16px; color: #172b22; }
+  .patient-records-page .patient-edit-pet-header { position: relative; isolation: isolate; min-height: 84px; align-items: center; overflow: hidden; padding: 15px 24px; border: 0; background: linear-gradient(110deg,#064e3b,#003b2a); }
+  .patient-records-page .patient-edit-pet-header::after { position: absolute; z-index: -1; top: -120px; right: 4%; width: 45%; height: 215px; border-radius: 0 0 50% 50%; background: #087553; content: ''; transform: rotate(9deg); opacity: .55; }
+  .patient-records-page .patient-edit-pet-header h2 { color: #fff; font-size: 26px; line-height: 1.15; font-weight: 800; }
+  .patient-records-page .patient-edit-pet-header p { margin-top: 5px; color: #e5f4ed; font-size: 15px; line-height: 1.4; }
+  .patient-records-page .patient-edit-pet-header .patient-edit-close { width: 42px; height: 42px; border-radius: 10px; background: #fff; color: #10241b; }
+  .patient-records-page .patient-edit-pet-header .patient-edit-close svg { width: 20px; height: 20px; }
+  .patient-records-page .patient-edit-pet-body { display: grid; grid-auto-rows: max-content; flex: 1 1 auto; min-height: 0; align-content: start; gap: 12px; overflow-y: auto; padding: 17px 22px 18px; }
+  .patient-records-page .patient-edit-pet-body > * { min-height: max-content; }
+  .patient-records-page .patient-edit-pet-summary { display: flex; align-items: center; gap: 16px; min-height: 96px; margin: 0; padding: 11px 15px; border: 1px solid #dce9e1; border-radius: 13px; background: linear-gradient(110deg,#eff7f2,#e5f1eb); }
+  .patient-records-page .patient-edit-pet-photo, .patient-records-page .patient-edit-pet-placeholder { display: grid; width: 78px; height: 78px; flex: 0 0 78px; place-items: center; overflow: hidden; border-radius: 13px; object-fit: cover; background: #cfe7d8; color: #07563c; font-size: 28px; font-weight: 800; }
+  .patient-records-page .patient-edit-pet-summary .patient-edit-summary-name { color: #07563c; font-size: 27px; font-weight: 800; }
+  .patient-records-page .patient-edit-pet-summary .patient-edit-summary-meta { margin-top: 5px; color: #40574d; font-size: 15px; }
+  .patient-records-page .patient-edit-section { min-height: max-content; overflow: hidden; border: 1px solid #d7e2dc; border-radius: 15px; background: linear-gradient(180deg,#fff,#fcfdfc); }
+  .patient-records-page .patient-edit-section > h3 { margin: 0; padding: 10px 16px; background: linear-gradient(100deg,#edf6f0,#e4f0e9); color: #07563c; font-size: 19px; font-weight: 800; }
+  .patient-records-page .patient-edit-section > .patient-edit-grid { padding: 11px 15px 14px; gap: 9px 16px; }
+  .patient-records-page .patient-edit-pet-dialog .patient-edit-field { gap: 5px; color: #172b22; font-size: 14px; font-weight: 750; }
+  .patient-records-page .patient-edit-pet-dialog .patient-edit-field input, .patient-records-page .patient-edit-pet-dialog .patient-edit-field select, .patient-records-page .patient-edit-pet-dialog .patient-edit-field textarea { min-height: 44px; padding: 9px 12px; border-color: #cbd4dd; border-radius: 8px; color: #273548; font-size: 15px; }
+  .patient-records-page .patient-edit-pet-dialog .patient-edit-field textarea { min-height: 90px; }
+  .patient-records-page .patient-edit-pet-dialog .patient-edit-field input:disabled { background: #eef2f3; color: #718096; }
+  .patient-records-page .patient-edit-status-control { position: relative; display: block; }
+  .patient-records-page .patient-edit-status-control select { color: transparent !important; }
+  .patient-records-page .patient-edit-status-control select option { color: #273548; }
+  .patient-records-page .patient-edit-status-pill { position: absolute; z-index: 1; top: 50%; left: 12px; padding: 4px 11px; transform: translateY(-50%); border-radius: 999px; background: #eef1f0; color: #55635d; font-size: 13px; font-weight: 750; line-height: 1.2; pointer-events: none; }
+  .patient-records-page .patient-edit-status-pill.is-active { background: #d9f1df; color: #075b38; }
+  .patient-records-page .patient-edit-pet-dialog .patient-edit-footer { gap: 10px; padding: 14px 26px; border-color: #e1e9e5; }
+  .patient-records-page .patient-edit-pet-dialog .patient-edit-footer button { min-height: 44px; padding: 0 20px; border-color: #cddbd4; border-radius: 9px; color: #173d37; font-size: 14px; }
+  .patient-records-page .patient-edit-pet-dialog .patient-edit-footer button[type="submit"] { border-color: #075a39; background: linear-gradient(110deg,#07623e,#004b30); color: #fff; }
   .patient-records-page .owner-edit-dialog { width: min(680px,100%); }
   .patient-records-page .owner-edit-header h2 { font-size: 22px; }
   .patient-records-page .owner-edit-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px 18px; }
@@ -680,6 +703,36 @@ const styles = `
   .patient-records-page .owner-profile-pet > div span { color: #647980; font-size: 12px; }
   .patient-records-page .owner-profile-footer { padding: 12px 18px; }
   .patient-records-page .owner-profile-footer button:last-child { border-color: #013826; background: #086b50; color: #fff; }
+  .patient-records-page .import-supporting-document-dialog { width: min(700px,100%); max-height: min(90dvh,900px); border: 0; border-radius: 16px; }
+  .patient-records-page .import-document-header { position: relative; isolation: isolate; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; overflow: hidden; padding: 18px 24px 16px; border: 0; background: linear-gradient(110deg,#064e3b,#003b2a); }
+  .patient-records-page .import-document-header::after { position: absolute; z-index: -1; top: -125px; right: 3%; width: 46%; height: 230px; border-radius: 0 0 50% 50%; background: #087553; content: ''; transform: rotate(9deg); opacity: .55; }
+  .patient-records-page .import-document-header h2 { margin: 0; color: #fff; font-size: 26px; line-height: 1.15; font-weight: 800; }
+  .patient-records-page .import-document-header p { max-width: 560px; margin: 6px 0 0; color: #e5f4ed; font-size: 14px; line-height: 1.45; }
+  .patient-records-page .import-document-close { display: grid; width: 40px; height: 40px; flex: 0 0 40px; place-items: center; border: 0; border-radius: 10px; background: #fff; color: #10241b; cursor: pointer; }
+  .patient-records-page .import-document-close span, .patient-records-page .import-document-close svg { display: grid; width: 22px; height: 22px; place-items: center; }
+  .patient-records-page .import-document-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 24px 18px; }
+  .patient-records-page .import-document-dropzone { display: grid; min-height: 205px; align-content: center; justify-items: center; gap: 8px; padding: 16px; border: 2px dashed #79a995; border-radius: 14px; background: linear-gradient(120deg,#f4faf6,#edf6f0); text-align: center; }
+  .patient-records-page .import-document-dropzone > svg { width: 36px; height: 36px; color: #07563c; }
+  .patient-records-page .import-document-dropzone > strong { max-width: 100%; margin-top: 2px; overflow: hidden; color: #11251b; font-size: 18px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+  .patient-records-page .import-document-dropzone > span { color: #53665e; font-size: 13px; }
+  .patient-records-page .import-document-dropzone > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 11px; margin-top: 9px; }
+  .patient-records-page .import-document-primary, .patient-records-page .import-document-secondary { min-height: 46px; padding: 0 18px; border: 1px solid #075a39; border-radius: 10px; background: linear-gradient(110deg,#07623e,#004b30); color: #fff; font: inherit; font-size: 14px; font-weight: 750; cursor: pointer; }
+  .patient-records-page .import-document-secondary { border-color: #14543b; background: #fff; color: #12432f; }
+  .patient-records-page .import-image-fields > label, .patient-records-page .import-document-description { display: grid; align-content: start; gap: 7px; min-width: 0; color: #172b22; font-size: 14px; font-weight: 750; }
+  .patient-records-page .import-image-fields select { width: 100%; min-width: 0; height: 46px; padding: 0 13px; border: 1px solid #c9d5df; border-radius: 9px; background: #fff; color: #273548; font: inherit; font-size: 14px; }
+  .patient-records-page .import-image-fields small { color: #53665e; font-size: 12px; line-height: 1.45; }
+  .patient-records-page .import-document-required { color: #c92d2d; }
+  .patient-records-page .import-document-description { margin-top: 16px; }
+  .patient-records-page .import-document-description textarea { width: 100%; min-height: 100px; box-sizing: border-box; padding: 12px 14px; border: 1px solid #c9d5df; border-radius: 10px; color: #273548; font: inherit; font-size: 14px; line-height: 1.45; resize: vertical; }
+  .patient-records-page .import-document-share { display: flex; align-items: center; gap: 12px; margin-top: 13px; padding: 12px 15px; border: 1px solid #dce9e1; border-radius: 10px; background: #edf6f0; color: #172b22; cursor: pointer; }
+  .patient-records-page .import-document-share > input { width: 24px; height: 24px; flex: 0 0 24px; accent-color: #075b38; }
+  .patient-records-page .import-document-share > span { display: grid; gap: 4px; }
+  .patient-records-page .import-document-share strong { font-size: 14px; font-weight: 750; }
+  .patient-records-page .import-document-share small { color: #53665e; font-size: 12px; }
+  .patient-records-page .import-document-error { margin-top: 14px; color: #b42318; font-size: 14px; }
+  .patient-records-page .import-document-footer { display: flex; flex: 0 0 auto; justify-content: flex-end; gap: 10px; padding: 13px 24px; border-top: 1px solid #e0e8e6; background: #fff; }
+  .patient-records-page .import-document-footer button { min-height: 44px; padding: 0 18px; border: 1px solid #cddbd4; border-radius: 10px; background: #fff; color: #173d37; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .patient-records-page .import-document-footer .import-document-primary { border-color: #075a39; background: linear-gradient(110deg,#07623e,#004b30); color: #fff; }
   .patient-records-page .import-image-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 18px; }
   .patient-records-page .export-report-dialog { width: min(760px, 100%); max-height: calc(100vh - 24px); border-radius: 16px; }
   .patient-records-page .export-report-body { display: grid; gap: 14px; overflow-y: auto; padding: 16px 20px; }
@@ -774,7 +827,39 @@ const styles = `
     .patient-records-page .patient-edit-backdrop { padding: 10px; }
     .patient-records-page .patient-edit-grid { grid-template-columns: 1fr; }
     .patient-records-page .patient-edit-field.wide { grid-column: auto; }
-    .patient-records-page .import-image-fields { grid-template-columns: 1fr; gap: 12px; }
+    .patient-records-page .patient-edit-pet-dialog { max-height: calc(100dvh - 20px); border-radius: 14px; }
+    .patient-records-page .patient-edit-pet-header { min-height: 78px; gap: 10px; padding: 14px 16px; }
+    .patient-records-page .patient-edit-pet-header h2 { font-size: 22px; }
+    .patient-records-page .patient-edit-pet-header p { font-size: 12px; }
+    .patient-records-page .patient-edit-pet-body { gap: 11px; padding: 13px; }
+    .patient-records-page .patient-edit-pet-summary { min-height: 82px; gap: 12px; padding: 10px 12px; }
+    .patient-records-page .patient-edit-pet-photo, .patient-records-page .patient-edit-pet-placeholder { width: 62px; height: 62px; flex-basis: 62px; border-radius: 10px; }
+    .patient-records-page .patient-edit-pet-summary .patient-edit-summary-name { font-size: 20px; }
+    .patient-records-page .patient-edit-pet-summary .patient-edit-summary-meta { font-size: 12px; }
+    .patient-records-page .patient-edit-section > h3 { padding: 8px 12px; font-size: 15px; }
+    .patient-records-page .patient-edit-section > .patient-edit-grid { padding: 11px 12px 13px; gap: 10px; }
+    .patient-records-page .patient-edit-pet-dialog .patient-edit-footer { padding: 11px 13px; }
+    .patient-records-page .import-supporting-document-dialog { width: 100%; max-height: calc(100dvh - 12px); border-radius: 14px; }
+    .patient-records-page .import-document-header { padding: 17px 16px 15px; }
+    .patient-records-page .import-document-header h2 { font-size: 23px; }
+    .patient-records-page .import-document-header p { font-size: 13px; }
+    .patient-records-page .import-document-close { width: 38px; height: 38px; flex-basis: 38px; }
+    .patient-records-page .import-document-body { padding: 16px; }
+    .patient-records-page .import-document-dropzone { min-height: 220px; padding: 18px 12px; }
+    .patient-records-page .import-document-dropzone > strong { font-size: 19px; }
+    .patient-records-page .import-document-dropzone > span { font-size: 14px; }
+    .patient-records-page .import-document-dropzone > div { gap: 9px; margin-top: 8px; }
+    .patient-records-page .import-document-primary, .patient-records-page .import-document-secondary { min-height: 46px; padding: 0 16px; font-size: 14px; }
+    .patient-records-page .import-image-fields { grid-template-columns: 1fr; gap: 12px; margin-top: 18px; }
+    .patient-records-page .import-image-fields > label, .patient-records-page .import-document-description { font-size: 14px; }
+    .patient-records-page .import-image-fields select { height: 48px; font-size: 14px; }
+    .patient-records-page .import-document-description { margin-top: 18px; }
+    .patient-records-page .import-document-description textarea { min-height: 100px; font-size: 14px; }
+    .patient-records-page .import-document-share { gap: 11px; padding: 13px; }
+    .patient-records-page .import-document-share strong { font-size: 14px; }
+    .patient-records-page .import-document-share small { font-size: 12px; }
+    .patient-records-page .import-document-footer { padding: 12px 16px; }
+    .patient-records-page .import-document-footer button { min-height: 44px; padding: 0 15px; font-size: 14px; }
     .patient-records-page .export-report-check-grid, .patient-records-page .export-report-options-grid { grid-template-columns: 1fr; }
     .patient-records-page .export-report-body { padding: 12px; }
     .patient-records-page .export-report-footer { padding: 10px 12px; }
@@ -803,6 +888,8 @@ const styles = `
   @media (max-width: 760px) {
     .patient-records-page .records-content { padding: 12px 9px; }
     .patient-records-page .records-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .patient-records-page .patient-archive-tabs { flex-wrap: wrap; gap: 8px 16px; }
+    .patient-records-page .patient-records-actions { width: 100%; justify-content: flex-end; margin-left: 0; padding-bottom: 7px; }
     .patient-records-page .records-search { flex-basis: 100%; }
     .patient-records-page .records-select { flex: 1 1 118px; width: auto; }
     .patient-records-page .records-sort { min-width: 94px; }
@@ -872,7 +959,7 @@ const styles = `
     border-right: 1.5px solid currentColor;
     border-bottom: 1.5px solid currentColor;
   }
-  .patient-records-page .patient-archive-tabs button.active {
+  .patient-records-page .patient-archive-tabs > button.active {
     min-height: 34px;
     align-self: center;
     padding: 0 12px;
@@ -1344,30 +1431,21 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
         title="Patient Records"
         subtitle="Manage patient records and owner information"
         className="records-topbar"
-        actions={(
-          <><PetHistoryQr user={user} /><button type="button" className="records-add" onClick={() => onNavigate ? onNavigate('patient-registration') : notifySuccess('Add patient', 'Open patient registration to add a new patient.')}>
-            {Icons.plus} Add Patient
-          </button></>
-        )}
       />
       <main className="records-content">
-        <section className="records-stats" aria-label="Patient record summary">
-          <div className="records-stat">
-            <span className="records-stat-icon stat-blue">{Icons.users}</span>
-            <div><div className="records-stat-label">Total Patients</div><div className="records-stat-value">{patientRecords.length}</div><div className="records-stat-note">Registered in this clinic</div></div>
-          </div>
-          <div className="records-stat">
-            <span className="records-stat-icon stat-green">{Icons.check}</span>
-            <div><div className="records-stat-label">Active Patients</div><div className="records-stat-value">{activePatientCount}</div><div className="records-stat-note">Currently active</div></div>
-          </div>
-          <div className="records-stat">
-            <span className="records-stat-icon stat-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M10.3 3.9 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4m0 3h.01" /></svg></span>
-            <div><div className="records-stat-label">With Alerts</div><div className="records-stat-value">{alertPatientCount}</div><div className="records-stat-note">Require attention</div></div>
-          </div>
-          <div className="records-stat">
-            <span className="records-stat-icon stat-purple">{Icons.calendar}</span>
-            <div><div className="records-stat-label">Upcoming Appointments</div><div className="records-stat-value">{upcomingAppointmentsNext7Days}</div><div className="records-stat-note">Within next 7 days</div></div>
-          </div>
+        <section className="records-stats overview-stats-band" aria-label="Patient record summary">
+          <article className="records-stat overview-stats-cell">
+            <div className="overview-stats-label">Total Patients</div><strong className="overview-stats-value">{patientRecords.length}</strong><small className="overview-stats-note">Registered in this clinic</small>
+          </article>
+          <article className="records-stat overview-stats-cell">
+            <div className="overview-stats-label">Active Patients</div><strong className="overview-stats-value">{activePatientCount}</strong><small className="overview-stats-note">Currently active</small>
+          </article>
+          <article className="records-stat overview-stats-cell">
+            <div className="overview-stats-label">With Alerts</div><strong className="overview-stats-value">{alertPatientCount}</strong><small className="overview-stats-note">Require attention</small>
+          </article>
+          <article className="records-stat overview-stats-cell">
+            <div className="overview-stats-label">Upcoming Appointments</div><strong className="overview-stats-value">{upcomingAppointmentsNext7Days}</strong><small className="overview-stats-note">Within next 7 days</small>
+          </article>
         </section>
 
         <nav className="patient-archive-tabs" aria-label="Patient record archive">
@@ -1377,6 +1455,7 @@ export default function PatientRecordsPage({ user, onNavigate, initialPatient })
           <button type="button" className={archiveView === 'archived' ? 'active' : ''} aria-pressed={archiveView === 'archived'} onClick={() => { setArchiveView('archived'); setStatusFilter('All'); }}>
             Archived Patients <span>{archivedPatientCount}</span>
           </button>
+          <div className="patient-records-actions"><PetHistoryQr user={user} /></div>
         </nav>
         <section className="records-toolbar" aria-label="Search and filter patients">
           <label className="records-search">
@@ -2904,7 +2983,7 @@ function PatientRecordDetail({ record, user: currentUser, activeTab, setActiveTa
             {label:'Next appointment',value:record.nextAppointment === 'None scheduled' ? 'None scheduled' : `${record.nextAppointment} · ${record.appointmentType || 'Appointment'}`,note:record.nextAppointment === 'None scheduled' ? 'No upcoming appointment' : record.nextAppointmentPractitioner || record.veterinarian || 'Clinic team',icon:Icons.calendarPlus},
             {label:`Weight (target ${record.weightTarget || 'not set'})`,value:record.weight,note:'Weight on file',icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="4" width="16" height="17" rx="3"/><path d="M7 9a6 6 0 0 1 10 0M12 7v5m-3 5 3-5 3 5"/></svg>},
             {label:'Vaccination',value:record.vaccination || 'Not recorded',note:record.vaccinationDue ? `Next ${record.vaccinationDue}` : 'Review vaccination record',icon:Icons.syringe},
-          ].map(metric=><div className="detail-summary-card" key={metric.label}><span className="detail-summary-icon" aria-hidden="true">{metric.icon}</span><div className="detail-summary-text"><div className="detail-summary-label">{metric.label}</div><div className="detail-summary-value">{metric.value}</div><div className="detail-summary-note">{metric.note}</div></div></div>)}
+          ].map(metric=><div className="detail-summary-card" key={metric.label}><span className="detail-summary-icon" aria-hidden="true">{metric.icon}</span><div className="detail-summary-text"><div className="detail-summary-label">{metric.label}</div><div className={`detail-summary-value${/^\d+(\.\d+)?$/.test(String(metric.value).trim()) ? '' : ' is-text'}`}>{metric.value}</div><div className="detail-summary-note">{metric.note}</div></div></div>)}
         </section>
 
         <nav className="detail-tabs" aria-label="Patient record sections">
@@ -3519,70 +3598,69 @@ function PatientRecordDetail({ record, user: currentUser, activeTab, setActiveTa
         {importImageOpen && (
           <div className="patient-edit-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setImportImageOpen(false); }}>
             <form
-              className="patient-edit-dialog"
+              className="patient-edit-dialog import-supporting-document-dialog"
               role="dialog"
               aria-modal="true"
               aria-labelledby="import-image-title"
               onSubmit={saveImportedFile}
-              style={{ width: 'min(680px, 100%)', maxHeight: 'calc(100vh - 24px)', borderRadius: 16 }}
             >
-              <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 18, padding: '20px 22px 15px', borderBottom: '1px solid #e0e8e6' }}>
+              <header className="import-document-header">
                 <div>
-                  <h2 id="import-image-title" style={{ margin: 0, color: '#173d37', fontSize: 21, lineHeight: 1.25 }}>Add supporting document</h2>
-                  <p style={{ margin: '5px 0 0', color: '#607873', fontSize: 14, lineHeight: 1.4 }}>Add an external clinic record, referral, consent form, discharge document, certificate, insurance file, or other supporting attachment for {record.name}.</p>
+                  <h2 id="import-image-title">Add Supporting Document</h2>
+                  <p>Add an external clinic record, referral, consent form, discharge document, certificate, insurance file, or other supporting attachment for {record.name}.</p>
                 </div>
-                <button type="button" aria-label="Close import image" onClick={() => setImportImageOpen(false)} style={{ display: 'grid', flex: '0 0 40px', width: 40, height: 40, placeItems: 'center', border: 0, borderRadius: 10, background: '#f0f5f3', color: '#173d37', cursor: 'pointer' }}>
-                  <span style={{ display: 'grid', width: 18, height: 18, placeItems: 'center' }}>{Icons.close}</span>
+                <button type="button" className="import-document-close" aria-label="Close import image" onClick={() => setImportImageOpen(false)}>
+                  <span>{Icons.close}</span>
                 </button>
               </header>
-              <div style={{ overflowY: 'auto', padding: '20px 22px' }}>
+              <div className="import-document-body">
                 <input ref={filePickerRef} type="file" accept="image/jpeg,image/png,application/pdf" onChange={selectImportFile} style={{ display: 'none' }} />
                 <input ref={cameraPickerRef} type="file" accept="image/*" capture="environment" onChange={selectImportFile} style={{ display: 'none' }} />
-                <div style={{ display: 'grid', justifyItems: 'center', gap: 7, minHeight: 188, alignContent: 'center', padding: '18px 14px', border: '2px dashed #b9d4ce', borderRadius: 14, background: '#fafbf8', textAlign: 'center' }}>
-                  <svg aria-hidden="true" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#013826" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4m-5 5 5-5 5 5M3 20h18" /></svg>
-                  <strong style={{ marginTop: 4, color: '#173d37', fontSize: 15 }}>{importFile ? importFile.name : 'No file selected'}</strong>
-                  <span style={{ color: '#607873', fontSize: 13 }}>{importFile ? `${(importFile.size / (1024 * 1024)).toFixed(2)} MB · Ready to import` : 'JPG, PNG or PDF up to 10 MB'}</span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginTop: 8 }}>
-                    <button type="button" onClick={() => cameraPickerRef.current?.click()} style={{ minHeight: 48, padding: '0 19px', border: '1px solid #013826', borderRadius: 12, background: '#086b50', color: '#fff', font: 'inherit', fontSize: 15, fontWeight: 650, cursor: 'pointer' }}>Take photo</button>
-                    <button type="button" onClick={() => filePickerRef.current?.click()} style={{ minHeight: 48, padding: '0 19px', border: '1px solid #d8e4e0', borderRadius: 12, background: '#fff', color: '#173d37', font: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Choose file</button>
+                <div className="import-document-dropzone">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4m-5 5 5-5 5 5M3 20h18" /></svg>
+                  <strong>{importFile ? importFile.name : 'Upload Document'}</strong>
+                  <span>{importFile ? `${(importFile.size / (1024 * 1024)).toFixed(2)} MB · Ready to import` : 'JPG, PNG or PDF (up to 10 MB)'}</span>
+                  <div>
+                    <button type="button" className="import-document-primary" onClick={() => cameraPickerRef.current?.click()}>Take Photo</button>
+                    <button type="button" className="import-document-secondary" onClick={() => filePickerRef.current?.click()}>Choose File</button>
                   </div>
                 </div>
                 <div className="import-image-fields">
-                  <label style={{ display: 'grid', gap: 8, color: '#173d37', fontSize: 14, fontWeight: 600 }}>
-                    Document type
+                  <label>
+                    Document Type <span className="import-document-required">*</span>
                     <select value={importType} onChange={event => {
                       const type = event.target.value;
                       setImportType(type);
                       if (type === 'Lab report attachment' || type === 'Diagnostic image') setImportLink('Lab Results');
                       if (type === 'Discharge document') setImportLink('Admission History');
-                    }} style={{ width: '100%', minWidth: 0, height: 48, padding: '0 13px', border: '1px solid #ccdcd7', borderRadius: 11, background: '#fff', color: '#173d37', font: 'inherit', fontSize: 15 }}>
+                    }}>
                       {['External veterinary clinic record', 'Referral letter', 'Owner consent form', 'Discharge document', 'Medical certificate', 'General clinical attachment', 'Insurance document', 'Lab report attachment', 'Diagnostic image', 'Other supporting document'].map(type => <option key={type}>{type}</option>)}
                     </select>
-                    <small style={{ color: '#607873', fontSize: 12, lineHeight: 1.4 }}>Lab reports and diagnostic images should be linked to their Lab Results record; the file is stored once and can be surfaced here.</small>
+                    <small>Lab reports and diagnostic images should be linked to their Lab Results record; the file is stored once and can be surfaced here.</small>
                   </label>
-                  <label style={{ display: 'grid', gap: 8, color: '#173d37', fontSize: 14, fontWeight: 600 }}>
-                    Link to
-                    <select value={importLink} onChange={event => setImportLink(event.target.value)} style={{ width: '100%', minWidth: 0, height: 48, padding: '0 13px', border: '1px solid #ccdcd7', borderRadius: 11, background: '#fff', color: '#173d37', font: 'inherit', fontSize: 15 }}>
+                  <label>
+                    Link To <span className="import-document-required">*</span>
+                    <select value={importLink} onChange={event => setImportLink(event.target.value)}>
                       {['Patient record', 'Visits & Check-ups', 'Vaccinations', 'Admission History', 'Lab Results', 'Medications', 'Medical History', 'Treatment Records'].map(target => <option key={target}>{target}</option>)}
                     </select>
                   </label>
                 </div>
-                <label style={{ display: 'grid', gap: 8, marginTop: 17, color: '#173d37', fontSize: 14, fontWeight: 600 }}>
-                  Description (optional)
-                  <textarea value={importDescription} onChange={event => setImportDescription(event.target.value)} placeholder="e.g. Annual vaccination card" rows={3} style={{ width: '100%', minHeight: 90, resize: 'vertical', padding: '12px 13px', border: '1px solid #ccdcd7', borderRadius: 11, color: '#173d37', font: 'inherit', fontSize: 15, lineHeight: 1.45, outlineColor: '#013826' }} />
+                <label className="import-document-description">
+                  Description (Optional)
+                  <textarea value={importDescription} onChange={event => setImportDescription(event.target.value)} placeholder="e.g. Annual vaccination card" rows={3} />
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 13, marginTop: 15, padding: '12px 14px', border: '1px solid #dce7e3', borderRadius: 12, color: '#173d37', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={shareImportedFile} onChange={event => setShareImportedFile(event.target.checked)} style={{ width: 23, height: 23, flex: '0 0 23px', accentColor: '#013826' }} />
-                  <span style={{ display: 'grid', gap: 3 }}>
-                    <strong style={{ fontSize: 14, fontWeight: 500 }}>Share with owner after staff review</strong>
-                    <small style={{ color: '#607873', fontSize: 13 }}>Stays internal until you approve it</small>
+                <label className="import-document-share">
+                  <input type="checkbox" checked={shareImportedFile} onChange={event => setShareImportedFile(event.target.checked)} />
+                  <span>
+                    <strong>Share with owner after staff review</strong>
+                    <small>Stays internal until you approve it.</small>
                   </span>
                 </label>
-                {importError && <div role="alert" style={{ marginTop: 12, color: '#b42318', fontSize: 14 }}>{importError}</div>}
+                {importError && <div className="import-document-error" role="alert">{importError}</div>}
               </div>
-              <footer style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 22px', borderTop: '1px solid #e0e8e6', background: '#fff' }}>
-                <button type="button" onClick={() => setImportImageOpen(false)} style={{ minHeight: 48, padding: '0 17px', border: '1px solid #d8e4e0', borderRadius: 12, background: '#fff', color: '#173d37', font: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" style={{ minHeight: 48, padding: '0 18px', border: '1px solid #013826', borderRadius: 12, background: '#086b50', color: '#fff', font: 'inherit', fontSize: 15, fontWeight: 650, cursor: 'pointer' }}>Import</button>
+              <footer className="import-document-footer">
+                <button type="button" onClick={() => setImportImageOpen(false)}>Cancel</button>
+                <button type="submit" className="import-document-primary">Import</button>
               </footer>
             </form>
           </div>
@@ -3664,32 +3742,36 @@ function PatientRecordDetail({ record, user: currentUser, activeTab, setActiveTa
         )}
         {editOpen && editForm && (
           <div className="patient-edit-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setEditOpen(false); }}>
-            <form className="patient-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="patient-edit-title" onSubmit={savePatientEdit}>
-              <header className="patient-edit-header">
-                <div><h2 id="patient-edit-title">Edit patient</h2><p>Update {record.name}'s details. Changes are saved to the clinic record.</p></div>
+            <form className="patient-edit-dialog patient-edit-pet-dialog" role="dialog" aria-modal="true" aria-labelledby="patient-edit-title" onSubmit={savePatientEdit}>
+              <header className="patient-edit-header patient-edit-pet-header">
+                <div><h2 id="patient-edit-title">Edit Patient</h2><p>Update {record.name}'s details. Changes are saved to the clinic record.</p></div>
                 <button type="button" className="patient-edit-close" aria-label="Close edit patient" onClick={() => setEditOpen(false)}>{Icons.close}</button>
               </header>
-              <div className="patient-edit-body">
-                <div className="patient-edit-summary">
-                  <img src="/healthy-pets.png" alt="" />
+              <div className="patient-edit-body patient-edit-pet-body">
+                <div className="patient-edit-summary patient-edit-pet-summary">
+                  <ClinicAttachmentImage className="patient-edit-pet-photo" src={record.photo_url} attachmentId={record.photo_attachment_id} user={currentUser} alt={`${record.name} profile`} fallback={<span className="patient-edit-pet-placeholder">{(editForm.name || record.name || 'P').slice(0, 1).toUpperCase()}</span>} />
                   <div><div className="patient-edit-summary-name">{editForm.name || record.name}</div><div className="patient-edit-summary-meta">{editForm.breed || record.breed}<span>·</span>{editForm.gender || 'Gender not recorded'}<span>·</span>{editForm.birthDate ? calculateAge(editForm.birthDate) : record.age}</div></div>
                 </div>
-                <div className="patient-edit-grid">
-                  <label className="patient-edit-field"><span>Pet name <span className="patient-edit-required">*</span></span><input required value={editForm.name} onChange={event => setEditForm({ ...editForm, name: event.target.value })} /></label>
-                  <label className="patient-edit-field">Status<select value={editForm.status} onChange={event => setEditForm({ ...editForm, status: event.target.value })}><option>Active</option><option>Archived</option></select></label>
+                <section className="patient-edit-section"><h3>Basic Information</h3><div className="patient-edit-grid">
+                  <label className="patient-edit-field"><span>Pet Name <span className="patient-edit-required">*</span></span><input required value={editForm.name} onChange={event => setEditForm({ ...editForm, name: event.target.value })} /></label>
+                  <label className="patient-edit-field">Status<span className="patient-edit-status-control"><span className={`patient-edit-status-pill${editForm.status === 'Active' ? ' is-active' : ''}`}>{editForm.status}</span><select aria-label="Patient status" value={editForm.status} onChange={event => setEditForm({ ...editForm, status: event.target.value })}><option>Active</option><option>Archived</option></select></span></label>
                   <label className="patient-edit-field">Species<select required value={editForm.species} onChange={event => setEditForm({ ...editForm, species: event.target.value })}><option>Dog</option><option>Cat</option><option>Rabbit</option><option>Bird</option><option>Other</option></select></label>
                   <label className="patient-edit-field"><span>Breed <span className="patient-edit-required">*</span></span><input required value={editForm.breed} onChange={event => setEditForm({ ...editForm, breed: event.target.value })} /></label>
                   <label className="patient-edit-field">Color<input value={editForm.colorName} onChange={event => setEditForm({ ...editForm, colorName: event.target.value })} /></label>
                   <label className="patient-edit-field">Gender<select value={editForm.gender} onChange={event => setEditForm({ ...editForm, gender: event.target.value })}><option value="">Not recorded</option><option>Female</option><option>Male</option></select></label>
-                  <label className="patient-edit-field"><span>Date of birth <span className="patient-edit-required">*</span></span><LabDateTimePicker mode="date" required value={editForm.birthDate} onChange={birthDate => setEditForm({ ...editForm, birthDate })} /></label>
-                  <label className="patient-edit-field">Spayed / neutered<select value={editForm.reproductiveStatus} onChange={event => setEditForm({ ...editForm, reproductiveStatus: event.target.value })}><option>Not recorded</option><option>Spayed</option><option>Neutered</option><option>Intact</option></select></label>
+                </div></section>
+                <section className="patient-edit-section"><h3>Additional Details</h3><div className="patient-edit-grid">
+                  <label className="patient-edit-field"><span>Date of Birth <span className="patient-edit-required">*</span></span><LabDateTimePicker mode="date" required value={editForm.birthDate} onChange={birthDate => setEditForm({ ...editForm, birthDate })} /></label>
+                  <label className="patient-edit-field">Spayed / Neutered<select value={editForm.reproductiveStatus} onChange={event => setEditForm({ ...editForm, reproductiveStatus: event.target.value })}><option>Not recorded</option><option>Spayed</option><option>Neutered</option><option>Intact</option></select></label>
                   <label className="patient-edit-field"><span>Weight (kg) <span className="patient-edit-required">*</span></span><input type="number" min="0" step="0.1" required value={editForm.weight} onChange={event => setEditForm({ ...editForm, weight: event.target.value })} /></label>
-                  <label className="patient-edit-field">Target weight (kg)<input type="number" min="0" step="0.1" value={editForm.weightTarget} onChange={event => setEditForm({ ...editForm, weightTarget: event.target.value })} /></label>
-                  <label className="patient-edit-field">Microchip ID<input value={editForm.microchip} onChange={event => setEditForm({ ...editForm, microchip: event.target.value })} /></label>
+                  <label className="patient-edit-field">Target Weight (kg)<input type="number" min="0" step="0.1" placeholder="e.g. 4.0" value={editForm.weightTarget} onChange={event => setEditForm({ ...editForm, weightTarget: event.target.value })} /></label>
+                </div></section>
+                <section className="patient-edit-section"><h3>Identification &amp; Health</h3><div className="patient-edit-grid">
+                  <label className="patient-edit-field">Microchip ID<input placeholder="e.g. 985141000123456" value={editForm.microchip} onChange={event => setEditForm({ ...editForm, microchip: event.target.value })} /></label>
                   <label className="patient-edit-field">Patient ID<input value={record.id} disabled /></label>
-                  <label className="patient-edit-field wide">Known allergies<textarea placeholder="Separate allergies with commas." value={editForm.allergies} onChange={event => setEditForm({ ...editForm, allergies: event.target.value })} /></label>
+                  <label className="patient-edit-field wide">Known Allergies<textarea placeholder="Separate allergies with commas." value={editForm.allergies} onChange={event => setEditForm({ ...editForm, allergies: event.target.value })} /></label>
                   {editError && <div className="patient-edit-error" role="alert">{editError}</div>}
-                </div>
+                </div></section>
               </div>
               <footer className="patient-edit-footer">
                 <button type="button" onClick={() => setEditOpen(false)}>Cancel</button>

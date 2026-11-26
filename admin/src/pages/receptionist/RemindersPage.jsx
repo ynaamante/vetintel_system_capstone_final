@@ -189,9 +189,8 @@ export default function RemindersPage({ user, onNavigate }) {
 
   return (
     <div className="reminders-page">
-      <Topbar user={user} title="Due Dates & Reminders" />
+      <Topbar user={user} title="Due Dates & Reminders" subtitle="Monitor and manage vaccination, medication, and follow-up reminders." />
       <main className="reminders-content">
-        <p className="reminders-intro">Monitor and manage vaccination, medication, and follow-up reminders.</p>
         <div className="reminders-toolbar">
           <div className="reminders-view-tabs" role="tablist" aria-label="Reminder views">
             {[

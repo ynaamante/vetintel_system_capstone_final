@@ -1,4 +1,5 @@
 import { usePageState } from '../../utils/usePageState.js';
+import '../summaryStats.css';
 import { apiFetch as fetch } from '../../utils/apiFetch.js';
 import LabVisitOverview from '../../components/LabVisitOverview';
 import LabResultEditor from '../../components/LabResultEditor';
@@ -1324,7 +1325,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
       />
       </div>
       {newRequestOpen && <div style={modalStyles.backdrop} onClick={() => { if (!isSavingLabTest) closeNewRequest(); }}>
-        <form className="lab-add-test-dialog lab-wizard-dialog lab-intake-wizard" role="dialog" aria-modal="true" aria-labelledby="new-lab-request-title" onSubmit={submitNewRequest} onClick={event => event.stopPropagation()} style={{ ...modalStyles.dialog, width: 'min(1000px, calc(100vw - 32px))', height: selectedPatient ? 'min(740px, calc(100dvh - 32px))' : 'min(510px, calc(100dvh - 32px))', maxHeight: 'calc(100dvh - 32px)', overflow: 'hidden', padding: 'clamp(16px, 3vw, 26px)' }}>
+        <form className="clinic-add-form-dialog lab-add-test-dialog lab-wizard-dialog lab-intake-wizard" role="dialog" aria-modal="true" aria-labelledby="new-lab-request-title" onSubmit={submitNewRequest} onClick={event => event.stopPropagation()} style={{ ...modalStyles.dialog, width: 'min(1000px, calc(100vw - 32px))', height: selectedPatient ? 'min(740px, calc(100dvh - 32px))' : 'min(510px, calc(100dvh - 32px))', maxHeight: 'calc(100dvh - 32px)', overflow: 'hidden', padding: 'clamp(16px, 3vw, 26px)' }}>
           <button type="button" className="lab-add-test-close" onClick={closeNewRequest} disabled={isSavingLabTest}>Close</button>
           <header className="lab-wizard-header">
             <div>
@@ -1680,7 +1681,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
             <div><strong>Lab test saved</strong><small>{savedLabTest.id} was added to {savedLabTest.pet}'s clinic record.</small></div>
           </div>}
           {requestError && <div role="alert" className="lab-wizard-error">{requestError}</div>}
-          <footer className={`lab-wizard-footer${requestStep === 3 ? ' lab-wizard-review-footer' : ''}`}>
+          <footer className={`clinic-add-form-footer lab-wizard-footer${requestStep === 3 ? ' lab-wizard-review-footer' : ''}`}>
             {savedLabTest
               ? <button type="button" className="lab-wizard-cancel" onClick={closeNewRequest} disabled={isSavingLabTest}>Close</button>
               : requestStep === 3
@@ -1915,7 +1916,7 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
               ? `${labTestConfirmation.result.id} for ${labTestConfirmation.result.pet} will be ${labTestConfirmation.result.archived ? 'restored to' : 'moved to'} the ${labTestConfirmation.result.archived ? 'active' : 'archived'} lab tests.`
               : `${labTestConfirmation.result.id} for ${labTestConfirmation.result.pet} will be marked as cancelled.`}
           </p>
-          <div style={{ ...modalStyles.footer, marginTop: 20 }}>
+          <div className="clinic-add-form-footer" style={{ ...modalStyles.footer, marginTop: 20 }}>
             <button type="button" style={modalStyles.cancel} onClick={() => backToLabTestActions(() => setLabTestConfirmation(null))}>{labActionReturn ? 'Back to actions' : 'Keep test'}</button>
             <button type="button" style={{ ...T.primaryBtn, padding: '9px 14px', fontSize: '.76rem', background: labTestConfirmation.action === 'archive' && !labTestConfirmation.result.archived ? '#a33b2e' : '#013826' }} onClick={confirmLabTestAction}>
               {labTestConfirmation.action === 'archive' ? (labTestConfirmation.result.archived ? 'Restore test' : 'Archive test') : 'Cancel test'}
@@ -2467,7 +2468,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
         </div>
       </section>
       {admitOpen && <div style={modalStyles.backdrop} onClick={closeAdmit}>
-        <ModalDialog as="form" size="large" role="dialog" aria-modal="true" aria-labelledby="admit-patient-title" onSubmit={submitAdmission} onClick={event => event.stopPropagation()} className="clinic-inpatient-admit-dialog" style={modalStyles.dialog}>
+        <ModalDialog as="form" size="large" role="dialog" aria-modal="true" aria-labelledby="admit-patient-title" onSubmit={submitAdmission} onClick={event => event.stopPropagation()} className="clinic-add-form-dialog clinic-inpatient-admit-dialog" style={modalStyles.dialog}>
           <button type="button" aria-label="Close admit patient" onClick={closeAdmit} style={modalStyles.close}>{Icons.close}</button>
           <ModalHeader style={{ paddingRight: 24, marginBottom: 0 }}>
             <ModalTitle id="admit-patient-title" style={{ margin: 0, color: '#171717', fontSize: '1.05rem', fontWeight: 700 }}>Admit Patient</ModalTitle>
@@ -2668,7 +2669,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
           </aside>}
           </div>
           {admitError && <div role="alert" style={{ marginTop: 12, color: '#b42318', fontSize: '.72rem' }}>{admitError}</div>}
-          <ModalFooter className="clinic-inpatient-admit-footer" style={{ ...modalStyles.footer, marginTop: 16 }}>
+          <ModalFooter className="clinic-add-form-footer clinic-inpatient-admit-footer" style={{ ...modalStyles.footer, marginTop: 16 }}>
             <button type="button" style={modalStyles.cancel} onClick={closeAdmit}>Cancel</button>
             <div className="clinic-inpatient-admit-footer-nav">
               {activeAdmissionTab > 0 && <button type="button" className="clinic-inpatient-admit-back" onClick={retreatAdmissionTab}>Back</button>}
@@ -2985,7 +2986,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
         </ModalDialog>
       </div>, document.body)}
       {selectedRecord && addPlanMedicationOpen && createPortal(<div style={{ ...modalStyles.backdrop, zIndex: 1450 }} onClick={() => !savingPlanMedication && setAddPlanMedicationOpen(false)}>
-        <ModalDialog as="form" size="standard" role="dialog" aria-modal="true" aria-labelledby="inpatient-add-medication-title" onClick={event => event.stopPropagation()} onSubmit={saveInpatientPlanMedication} style={{ ...modalStyles.dialog, position: 'relative', width: 'min(500px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', padding: '25px 28px 22px' }}>
+        <ModalDialog as="form" size="standard" role="dialog" aria-modal="true" aria-labelledby="inpatient-add-medication-title" onClick={event => event.stopPropagation()} onSubmit={saveInpatientPlanMedication} className="clinic-add-form-dialog" style={{ ...modalStyles.dialog, position: 'relative', width: 'min(500px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', padding: '25px 28px 22px' }}>
           <button type="button" disabled={savingPlanMedication} onClick={() => setAddPlanMedicationOpen(false)} style={{ position: 'absolute', top: 20, right: 24, border: 0, background: 'transparent', color: '#475569', padding: 4, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer' }}>Close</button>
           <h2 id="inpatient-add-medication-title" style={{ margin: 0, color: '#1f2937', fontSize: '1.15rem' }}>Add Medication</h2>
           <div style={{ marginTop: 6, paddingBottom: 14, borderBottom: '1px solid #e5eeea', color: '#64748b', fontSize: '.78rem' }}>Add a prescribed medication to {selectedRecord.pet}&apos;s treatment record.</div>
@@ -2997,7 +2998,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
             treatmentPlans={[]}
             prescriber={user?.name || selectedRecord.doctor}
           />
-          <div style={{ ...modalStyles.footer, marginTop: 20 }}><button type="button" disabled={savingPlanMedication} onClick={() => setAddPlanMedicationOpen(false)} style={modalStyles.cancel}>Cancel</button><button type="submit" disabled={savingPlanMedication} style={{ ...T.primaryBtn, padding: '10px 14px', fontSize: '.78rem' }}>{savingPlanMedication ? 'Saving…' : 'Save Medication'}</button></div>
+          <div className="clinic-add-form-footer" style={{ ...modalStyles.footer, marginTop: 20 }}><button type="button" disabled={savingPlanMedication} onClick={() => setAddPlanMedicationOpen(false)} style={modalStyles.cancel}>Cancel</button><button type="submit" disabled={savingPlanMedication} style={{ ...T.primaryBtn, padding: '10px 14px', fontSize: '.78rem' }}>{savingPlanMedication ? 'Saving…' : 'Save Medication'}</button></div>
         </ModalDialog>
       </div>, document.body)}
     </div>
@@ -3934,7 +3935,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
       </div>
       {clinicalRecordsError && <div role="alert" style={{ marginTop: 12, padding: '10px 12px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#b91c1c', fontSize: '.78rem' }}>{clinicalRecordsError}</div>}
       {createPlanOpen && createPortal(<div style={modalStyles.backdrop} onClick={closeCreatePlan}>
-        <ModalDialog as="form" size="large" role="dialog" aria-modal="true" aria-labelledby="create-plan-title" onSubmit={saveNewPlan} onClick={event => event.stopPropagation()} style={{ ...modalStyles.dialog, minHeight: 0, width: 'min(720px, calc(100vw - 24px))', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', padding: '26px 28px 22px', fontSize: '1rem' }}>
+        <ModalDialog as="form" size="large" role="dialog" aria-modal="true" aria-labelledby="create-plan-title" onSubmit={saveNewPlan} onClick={event => event.stopPropagation()} className="clinic-add-form-dialog clinic-create-plan-dialog" style={{ ...modalStyles.dialog, minHeight: 0, width: 'min(720px, calc(100vw - 24px))', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', padding: '26px 28px 22px', fontSize: '1rem' }}>
           <button type="button" aria-label="Close create treatment plan" onClick={closeCreatePlan} style={modalStyles.close}>{Icons.close}</button>
           <div style={{ paddingRight: 25 }}>
             <h2 id="create-plan-title" style={{ margin: 0, color: '#193a32', fontSize: '1.4rem', fontWeight: 700 }}>Create Treatment Plan</h2>
@@ -4171,7 +4172,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
         </div>
       </div>}
       {addMedicationOpen && selectedPlan && createPortal(<div style={{ ...modalStyles.backdrop, zIndex: 1400 }} onClick={() => setAddMedicationOpen(false)}>
-        <ModalDialog as="form" size="standard" role="dialog" aria-modal="true" aria-labelledby="add-medication-title" onClick={event => event.stopPropagation()} onSubmit={savePlanMedication} style={{ ...modalStyles.dialog, width: 'min(500px, calc(100vw - 32px))', padding: '25px 28px 22px' }}>
+        <ModalDialog as="form" size="standard" role="dialog" aria-modal="true" aria-labelledby="add-medication-title" onClick={event => event.stopPropagation()} onSubmit={savePlanMedication} className="clinic-add-form-dialog" style={{ ...modalStyles.dialog, width: 'min(500px, calc(100vw - 32px))', padding: '25px 28px 22px' }}>
           <button type="button" aria-label="Close add medication" onClick={() => setAddMedicationOpen(false)} style={modalStyles.close}>{Icons.close}</button>
           <h2 id="add-medication-title" style={{ margin: 0, color: '#1f2937', fontSize: '1.15rem' }}>Add Medication</h2>
           <div style={{ marginTop: 6, paddingBottom: 14, borderBottom: '1px solid #e5eeea', color: '#64748b', fontSize: '.78rem' }}>Add a prescribed medication to {selectedPlan.pet}&apos;s treatment record.</div>
@@ -4182,7 +4183,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
             treatmentPlans={savedPlans.filter(plan => String(plan.pet_id) === String(selectedPlan.pet_id))}
             prescriber={user?.name || selectedPlan.doctor}
           />
-          <div style={{ ...modalStyles.footer, marginTop: 20 }}><button type="button" disabled={savingMedication} onClick={() => setAddMedicationOpen(false)} style={modalStyles.cancel}>Cancel</button><button type="submit" disabled={savingMedication} style={{ ...T.primaryBtn, padding: '10px 14px', fontSize: '.78rem' }}>{savingMedication ? 'Saving…' : 'Save Medication'}</button></div>
+          <div className="clinic-add-form-footer" style={{ ...modalStyles.footer, marginTop: 20 }}><button type="button" disabled={savingMedication} onClick={() => setAddMedicationOpen(false)} style={modalStyles.cancel}>Cancel</button><button type="submit" disabled={savingMedication} style={{ ...T.primaryBtn, padding: '10px 14px', fontSize: '.78rem' }}>{savingMedication ? 'Saving…' : 'Save Medication'}</button></div>
         </ModalDialog>
       </div>, document.body)}
       {editPlanOpen && selectedPlan && createPortal(<div onClick={() => setEditPlanOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1300, display: 'flex', alignItems: 'center', justifyContent: 'center', overflowY: 'auto', padding: 20, boxSizing: 'border-box', background: 'rgba(25, 43, 38, .52)' }}>
@@ -4349,7 +4350,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
                       </div>
                     </header>
                     {monitoringFormOpen && createPortal(<div onClick={() => !savingMonitoring && setMonitoringFormOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1350, display: 'flex', alignItems: 'center', justifyContent: 'center', overflowY: 'auto', padding: 16, boxSizing: 'border-box', background: 'rgba(15, 23, 42, .48)' }}>
-                      <form role="dialog" aria-modal="true" aria-labelledby="add-observation-title" onClick={event => event.stopPropagation()} onSubmit={saveMonitoring} style={{ width: 'min(680px, 100%)', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', padding: '22px 24px', border: '1px solid #dcece5', borderRadius: 13, background: '#fff', boxShadow: '0 18px 50px rgba(15,23,42,.24)', color: '#1f2937' }}>
+                      <form className="clinic-add-form-dialog clinic-add-observation-dialog" role="dialog" aria-modal="true" aria-labelledby="add-observation-title" onClick={event => event.stopPropagation()} onSubmit={saveMonitoring} style={{ width: 'min(680px, 100%)', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', padding: '22px 24px', border: '1px solid #dcece5', borderRadius: 13, background: '#fff', boxShadow: '0 18px 50px rgba(15,23,42,.24)', color: '#1f2937' }}>
                         <header style={{ paddingBottom: 12, borderBottom: '1px solid #e5eeea' }}>
                                       <h2 id="add-observation-title" style={{ margin: 0, fontSize: '1.25rem' }}>Add Clinical Observation</h2>
                                       <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: '.95rem' }}>Record the pet&apos;s current condition.</p>
@@ -4379,7 +4380,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
                             {radioGroup('followUpAction', 'Follow-up action', ['Continue routine monitoring', 'Reassessment required', 'Immediate veterinary review'])}
                             <p style={{ gridColumn: '1 / -1', margin: 0, color: '#64748b', fontSize: '.85rem', lineHeight: 1.5 }}>The attending veterinarian should assess findings and determine the appropriate action. Leave a measurement blank if it was not taken.</p>
                             {monitoringError && <div role="alert" style={{ gridColumn: '1 / -1', padding: '9px 10px', border: '1px solid #fecaca', borderRadius: 7, background: '#fff7f7', color: '#b42318', fontSize: '.76rem' }}>{monitoringError}</div>}
-                            <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 9, paddingTop: 10, borderTop: '1px solid #e5eeea' }}>
+                            <div className="clinic-add-form-footer" style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 9, paddingTop: 10, borderTop: '1px solid #e5eeea' }}>
                               <button type="button" disabled={savingMonitoring} onClick={() => setMonitoringFormOpen(false)} style={{ ...modalStyles.cancel, minHeight: 48, padding: '11px 16px', fontSize: '.95rem' }}>Cancel</button>
                               <button type="submit" disabled={savingMonitoring} style={{ ...T.primaryBtn, minHeight: 48, padding: '11px 16px', fontSize: '.95rem' }}>{savingMonitoring ? 'Saving…' : 'Save observation'}</button>
                             </div>
@@ -4970,37 +4971,93 @@ const consultationStyles = {
 
 // ── DASHBOARD TAB ──────────────────────────────────────────────────────
 function ExportReportsModal({ user, reports, onClose }) {
-  const [selected, setSelected] = useState(['owners', 'pets']);
-  const [format, setFormat] = useState('csv');
+  const templateKey = `vetintel-clinic-report-template:${user?.clinic_id || user?.id || 'default'}`;
+  const [savedTemplate] = useState(() => {
+    try { return JSON.parse(window.localStorage.getItem(templateKey) || 'null'); } catch { return null; }
+  });
+  const [reportName, setReportName] = useState(savedTemplate?.reportName || 'My Monthly Patient Summary');
+  const [selected, setSelected] = useState(savedTemplate?.selected || ['owners', 'pets']);
+  const [includeFields, setIncludeFields] = useState(savedTemplate?.includeFields || {
+    date: true, pet: true, owner: true, reason: true, status: true, treatment: true, species: false, remarks: false,
+  });
+  const [startDate, setStartDate] = useState(savedTemplate?.startDate || '');
+  const [endDate, setEndDate] = useState(savedTemplate?.endDate || '');
+  const [format, setFormat] = useState(savedTemplate?.format || 'csv');
+  const [showFormatMenu, setShowFormatMenu] = useState(false);
   const toggleReport = report => setSelected(current => current.includes(report) ? current.filter(value => value !== report) : [...current, report]);
+  const toggleField = field => setIncludeFields(current => ({ ...current, [field]: Object.values(current).filter(Boolean).length === 1 && current[field] ? current[field] : !current[field] }));
   const reportNames = Object.keys(reports);
-  const allSelected = selected.length === reportNames.length;
-  const exportReport = async () => {
-    const rows = [['Report', 'ID', 'Name / Pet', 'Owner', 'Status', 'Date']];
-    selected.forEach(report => {
-      reports[report].forEach(item => rows.push([
-        report,
-        item.id || '—',
-        item.name || item.pet || item.pet_name || item.type || item.diagnosis || '—',
-        item.owner || item.owner_name || '—',
-        item.status || '—',
-        item.date || item.dateGiven || item.date_given || item.start_time || '—',
-      ]));
-    });
-    if (format === 'csv') {
+  const activeSelected = selected.filter(report => reportNames.includes(report));
+  const getRecordDate = item => item.date || item.dateGiven || item.date_given || item.start_time || item.appointment_date || '';
+  const dateKey = value => {
+    if (!value) return '';
+    const raw = String(value).slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? '' : `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+  };
+  const formatReportDate = value => {
+    if (!value) return '—';
+    const dateText = String(value);
+    const parsed = new Date(/^\d{4}-\d{2}-\d{2}$/.test(dateText) ? `${dateText}T00:00:00` : value);
+    return Number.isNaN(parsed.getTime()) ? dateText : parsed.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+  };
+  const selectedRecords = activeSelected.flatMap(report => (reports[report] || []).map(item => ({ report, item }))).filter(({ item }) => {
+    const value = dateKey(getRecordDate(item));
+    return (!startDate || (value && value >= startDate)) && (!endDate || (value && value <= endDate));
+  });
+  const previewRows = selectedRecords.slice(0, 4);
+  const fieldOptions = [
+    ['date', 'Appointment Date'], ['reason', 'Reason for Visit'],
+    ['pet', 'Pet Name'], ['status', 'Appointment Status'],
+    ['owner', 'Owner Name'], ['treatment', 'Treatment Given'],
+    ['species', 'Species / Breed'], ['remarks', 'Remarks'],
+  ];
+  const reportIcons = { owners: Icons.users, pets: Icons.file, appointments: Icons.calendar, vaccinations: Icons.syringe, treatments: Icons.stethoscope };
+  const getFieldValue = (item, field) => ({
+    date: formatReportDate(getRecordDate(item)),
+    pet: item.pet || item.pet_name || item.name || '—',
+    owner: item.owner || item.owner_name || '—',
+    reason: item.reason || item.reasonForVisit || item.reason_for_visit || item.type || item.diagnosis || '—',
+    status: item.status || '—',
+    treatment: item.treatment || item.treatment_name || item.diagnosis || item.type || '—',
+    species: [item.species, item.breed].filter(Boolean).join(' / ') || '—',
+    remarks: item.remarks || item.notes || '—',
+  })[field];
+  const activeFields = fieldOptions.filter(([field]) => includeFields[field]);
+  const saveTemplate = () => {
+    try {
+      window.localStorage.setItem(templateKey, JSON.stringify({ reportName, selected: activeSelected, includeFields, startDate, endDate, format }));
+      notifySuccess('Report template saved', 'Your report setup will be ready next time.');
+    } catch { notifySuccess('Unable to save template', 'Browser storage is unavailable.'); }
+  };
+  const reportDescriptions = {
+    owners: 'Owner contact and account records',
+    pets: 'Patient profiles and pet records',
+    appointments: 'Consultations and schedules',
+    vaccinations: 'Vaccination records for patients',
+    treatments: 'Procedures and medical care',
+  };
+  const exportReport = async (outputFormat = format) => {
+    if (!activeSelected.length || !activeFields.length) return;
+    const rows = [activeFields.map(([, label]) => label)];
+    selectedRecords.forEach(({ item }) => rows.push(activeFields.map(([field]) => getFieldValue(item, field))));
+    const fileBase = reportName.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'clinic-report';
+    if (outputFormat === 'csv') {
       const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
       const link = document.createElement('a');
       link.href = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }));
-      link.download = 'clinic-report.csv';
+      link.download = `${fileBase}.csv`;
       link.click();
       URL.revokeObjectURL(link.href);
     } else {
       const pdf = new jsPDF({ orientation: 'landscape' });
       pdf.setFontSize(16);
-      pdf.text('Clinic Report', 14, 16);
+      pdf.text(reportName.trim() || 'Clinic Report', 14, 16);
       pdf.setFontSize(8);
-      rows.slice(1).forEach((row, index) => pdf.text(row.map(value => String(value)).join(' | ').slice(0, 150), 14, 26 + index * 6));
-      pdf.save('clinic-report.pdf');
+      pdf.text(activeFields.map(([, label]) => label).join(' | ').slice(0, 150), 14, 22);
+      rows.slice(1).forEach((row, index) => pdf.text(row.map(value => String(value)).join(' | ').slice(0, 150), 14, 29 + index * 6));
+      pdf.save(`${fileBase}.pdf`);
     }
     try {
       const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
@@ -5011,31 +5068,54 @@ function ExportReportsModal({ user, reports, onClose }) {
           user_id: user.id,
           action: 'report generated',
           table_name: 'clinic_reports',
-          new_data: { clinic_id: user.clinic_id, reports: selected, format, record_count: rows.length - 1 },
+          new_data: { clinic_id: user.clinic_id, report_name: reportName, reports: activeSelected, fields: activeFields.map(([field]) => field), date_range: { start: startDate, end: endDate }, format: outputFormat, record_count: rows.length - 1 },
         }),
       });
     } catch (error) {
       console.error('Unable to record report export in audit trail', error);
     }
-    notifySuccess('Clinic report exported successfully!', `${selected.length} report types · ${format.toUpperCase()}`);
+    notifySuccess('Clinic report exported successfully!', `${activeSelected.length} report types · ${outputFormat.toUpperCase()}`);
     onClose();
   };
-  return <OwnerModal onClose={onClose} width={520}>
-    <div style={{ color: '#374151' }}>
-      <h2 style={modalStyles.title}>Export Clinic Reports</h2>
-      <p style={modalStyles.subtitle}>Choose the records and file format for your clinic report.</p>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, marginTop: 18, color: '#374151', fontSize: '.72rem' }}>
-        <button type="button" onClick={() => setSelected(allSelected ? [] : reportNames)} style={{ border: 0, background: 'none', color: '#374151', cursor: 'pointer', padding: 0 }}>{allSelected ? 'Deselect All' : 'Select All'}</button>
+  return <OwnerModal onClose={onClose} width={1100} className="clinic-export-report-dialog" labelledBy="clinic-export-report-title">
+    <div className="clinic-report-dialog-content">
+      <div className="clinic-report-breadcrumb"><div><span>Reports</span><b>›</b><span>Custom Report</span></div><span className="clinic-report-user">{user?.name || 'Doctor'}<small>{user?.role || 'Veterinarian'}</small></span></div>
+      <div className="clinic-report-page-heading"><h2 id="clinic-export-report-title">Custom Report</h2><p>Create a personalized report for your veterinary activities and patients.</p></div>
+      <div className="clinic-report-main">
+        <section className="clinic-report-builder-form">
+          <section className="clinic-report-step-card"><div className="clinic-report-step-heading"><span>1</span><div><h3>Report Name</h3></div></div><input className="clinic-report-name-input" value={reportName} onChange={event => setReportName(event.target.value)} aria-label="Report name" /></section>
+          <section className="clinic-report-step-card"><div className="clinic-report-step-heading"><span>2</span><div><h3>Report Type</h3><p>Choose what report you want to generate.</p></div></div>
+            <div className="clinic-report-type-grid">{reportNames.map(report => {
+              const checked = activeSelected.includes(report);
+              return <label key={report} className={`clinic-report-type-option${checked ? ' is-selected' : ''}`}>
+                <input type="checkbox" checked={checked} onChange={() => toggleReport(report)} />
+                <span className="clinic-report-type-icon" aria-hidden="true">{reportIcons[report] || Icons.file}</span>
+                <strong>{report[0].toUpperCase() + report.slice(1)}</strong>
+                <small>{reportDescriptions[report] || 'Clinic records and details'}</small>
+                <span className="clinic-report-type-count">{reports[report].length}</span>
+              </label>;
+            })}</div>
+          </section>
+          <section className="clinic-report-step-card"><div className="clinic-report-step-heading"><span>3</span><div><h3>Include in Report</h3><p>Select the details you want to see in your report.</p></div></div>
+            <div className="clinic-report-fields-grid">{fieldOptions.map(([field, label]) => <label key={field}><input type="checkbox" checked={Boolean(includeFields[field])} onChange={() => toggleField(field)} />{label}</label>)}</div>
+          </section>
+          <section className="clinic-report-step-card"><div className="clinic-report-step-heading"><span>4</span><div><h3>Date Range</h3><p>Choose the period for your report.</p></div></div>
+            <div className="clinic-report-date-grid"><label><span>Start Date</span><LabDateTimePicker mode="date" value={startDate} onChange={setStartDate} aria-label="Start date" style={{ ...modalStyles.input, height: 38, border: '1px solid #d8e0e6', borderRadius: 8, background: '#fff', color: '#334155' }} /></label><label><span>End Date</span><LabDateTimePicker mode="date" value={endDate} onChange={setEndDate} aria-label="End date" style={{ ...modalStyles.input, height: 38, border: '1px solid #d8e0e6', borderRadius: 8, background: '#fff', color: '#334155' }} /></label></div>
+          </section>
+        </section>
+        <section className="clinic-report-preview">
+          <div className="clinic-report-preview-heading"><span aria-hidden="true">▥</span><div><h3>Report Preview</h3><p>Here’s a sample of your report based on the selected options.</p></div></div>
+          <div className="clinic-report-preview-title"><strong>{reportName.trim() || 'Untitled Report'}</strong><small>{user?.name || 'Doctor'} <span>│</span> Period: {startDate ? formatReportDate(startDate) : 'All dates'}{endDate ? ' – ' + formatReportDate(endDate) : ''}</small></div>
+          <div className="clinic-report-preview-table-wrap"><table className="clinic-report-preview-table"><thead><tr>{activeFields.map(([field, label]) => <th key={field}>{label}</th>)}</tr></thead><tbody>
+            {previewRows.map(({ item, report }, index) => <tr key={`${report}-${item.id || index}`}>{activeFields.map(([field]) => <td key={field}>{getFieldValue(item, field)}</td>)}</tr>)}
+            {!previewRows.length && <tr><td colSpan={Math.max(activeFields.length, 1)} className="clinic-report-preview-empty">No records match the selected report options.</td></tr>}
+          </tbody></table></div>
+          <div className="clinic-report-preview-summary"><strong>Summary</strong>{activeSelected.map(report => <div key={report}><b>{selectedRecords.filter(record => record.report === report).length}</b><span>{report[0].toUpperCase() + report.slice(1)}</span></div>)}</div>
+        </section>
       </div>
-      <div style={{ display: 'grid', gap: 8, margin: '8px 0 18px' }}>
-        {reportNames.map(report => <label key={report} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8, color: '#374151', fontSize: '.8rem', cursor: 'pointer' }}><input type="checkbox" checked={selected.includes(report)} onChange={() => toggleReport(report)} />{report[0].toUpperCase() + report.slice(1)} ({reports[report].length})</label>)}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <label style={{ ...modalStyles.label, color: '#374151' }}>Start Date<LabDateTimePicker mode="date" style={{ ...modalStyles.input, color: '#374151' }} /></label>
-        <label style={{ ...modalStyles.label, color: '#374151' }}>End Date<LabDateTimePicker mode="date" style={{ ...modalStyles.input, color: '#374151' }} /></label>
-      </div>
-      <label style={{ ...modalStyles.label, color: '#374151' }}>File format<select value={format} onChange={event => setFormat(event.target.value)} style={{ ...modalStyles.input, color: '#374151' }}><option value="csv">CSV</option><option value="pdf">PDF</option></select></label>
-      <div style={modalStyles.footer}><button type="button" onClick={onClose} style={modalStyles.cancel}>Cancel</button><button type="button" onClick={exportReport} disabled={!selected.length} style={{ ...T.primaryBtn, opacity: selected.length ? 1 : .5 }}>Export Report</button></div>
+      <footer className="clinic-report-summary-footer">
+        <div className="clinic-report-footer-actions"><button type="button" className="clinic-report-save-template" onClick={saveTemplate}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 3.8h12a1 1 0 0 1 1 1v16l-7-4-7 4v-16a1 1 0 0 1 1-1Z"/></svg>Save as Template</button><span className="clinic-report-footer-spacer" /><button type="button" onClick={onClose}>Cancel</button><div className="clinic-report-export-wrap"><button type="button" onClick={() => exportReport()} disabled={!activeSelected.length || !activeFields.length}><span aria-hidden="true">↓</span>Export Report</button><button type="button" aria-label="Choose export format" aria-expanded={showFormatMenu} onClick={() => setShowFormatMenu(value => !value)}>⌄</button>{showFormatMenu && <div className="clinic-report-format-menu" role="menu"><button type="button" role="menuitem" onClick={() => { setFormat('csv'); setShowFormatMenu(false); }}>CSV</button><button type="button" role="menuitem" onClick={() => { setFormat('pdf'); setShowFormatMenu(false); }}>PDF</button></div>}</div></div>
+      </footer>
     </div>
   </OwnerModal>;
 }
@@ -5046,13 +5126,12 @@ const dashboardStyles = {
   dashboardTableRow: { display: 'grid', gridTemplateColumns: '70px 1.1fr 1fr 80px', gap: 9, alignItems: 'center', padding: '11px 0', color: '#668096', fontSize: '.7rem', borderBottom: '1px solid #f0f4f6' },
   dashboardMuted: { display: 'block', marginTop: 3, color: '#111827', fontSize: '.72rem' },
   dashboardCount: { marginLeft: 5, padding: '3px 6px', borderRadius: 9, background: '#ef4444', color: '#fff', fontSize: '.65rem' },
-  alertRow: { display: 'grid', gridTemplateColumns: '22px 40px minmax(0, 1fr) 62px 76px', gap: 9, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #e7edf1', color: '#111827', fontSize: '.8rem' },
+  alertRow: { display: 'grid', gridTemplateColumns: '22px 40px minmax(0, 1fr) 62px', gap: 9, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #e7edf1', color: '#111827', fontSize: '.8rem' },
   alertDot: { width: 19, height: 19, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', color: '#fff', fontWeight: 700 },
   alertAvatar: { width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', background: '#e8f3f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#013826', fontWeight: 700 },
   alertSpecies: { color: '#111827', fontWeight: 500, fontSize: '.68rem' },
   alertTag: { display: 'inline-block', marginLeft: 7, padding: '3px 7px', borderRadius: 10, background: '#fff1f2', color: '#111827', fontSize: '.58rem', fontWeight: 600, verticalAlign: 'middle' },
   alertDetail: { display: 'block', marginTop: 3, color: '#111827', fontSize: '.64rem', lineHeight: 1.25 },
-  alertViewButton: { justifySelf: 'end', padding: '6px 10px', border: '1px solid #79b8aa', borderRadius: 6, color: '#013826', background: '#fff', fontSize: '.64rem', fontWeight: 600, whiteSpace: 'nowrap' },
   upcomingRow: { display: 'grid', gridTemplateColumns: '48px minmax(0, 1.15fr) minmax(0, 78px) minmax(0, .85fr) 64px', gap: 7, alignItems: 'center', minHeight: 48, padding: '6px 0', borderBottom: '1px solid #edf2f5', color: '#111827', fontSize: '.68rem' },
   appointmentAvatar: { width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', background: '#e8f3f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#013826', fontWeight: 700, flexShrink: 0 },
   appointmentPatient: { display: 'flex', minWidth: 0, alignItems: 'center', gap: 7 },
@@ -5084,36 +5163,40 @@ const dashboardStyles = {
 function DashboardTab({ summary, user, onViewAppointments, onViewPets, onViewDiseaseIntelligence, onExportReports }) {
   const appointmentRows = summary?.appointments || [];
   const alerts = summary?.alerts || [];
+  const visibleAlerts = alerts.slice(0, 5);
   const pendingVaccinations = summary?.pendingVaccinations || 0;
   const pendingLabResults = summary?.pendingLabResults || 0;
   const formatAppointmentTime = value => value
     ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '—';
   const summaryCards = [
-    { label: 'Waiting Patients', value: 3, sub: 'In clinic right now', icon: Icons.users, color: '#f59e0b', bg: '#e7f4ec' },
-    { label: 'Vaccinations Due', value: pendingVaccinations, sub: 'Overdue', icon: Icons.syringe, color: '#ef4444', bg: '#d9efea' },
-    { label: 'Lab Results Pending', value: pendingLabResults, sub: 'Awaiting lab results', icon: Icons.file, color: '#d97706', bg: '#cce8e1' },
-    { label: 'Patient Alerts', value: alerts.length, sub: 'Require attention', icon: Icons.info, color: '#dc2626', bg: '#bde0d7' },
+    { label: 'Waiting Patients', value: 3, sub: 'In clinic right now' },
+    { label: 'Vaccinations Due', value: pendingVaccinations, sub: 'Overdue' },
+    { label: 'Lab Results Pending', value: pendingLabResults, sub: 'Awaiting lab results' },
+    { label: 'Patient Alerts', value: alerts.length, sub: 'Require attention' },
   ];
   const panel = { background: '#fff', border: '1px solid #e4edf3', borderRadius: 10, padding: 14 };
   const sectionTitle = { fontSize: '1rem', fontWeight: 700, color: '#004f43' };
   return (
     <div className="clinic-dashboard">
-      <div className="clinic-dashboard-summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14, marginBottom: 18 }}>
-        {summaryCards.map(card => <div key={card.label} style={{ ...panel, padding: 12, display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#013826', background: '#e7f4ec', borderRadius: 10, flexShrink: 0 }}><span style={{ width: 20, height: 20, display: 'flex', color: '#013826' }}>{card.icon}</span></div><div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: '.72rem', color: '#334155' }}>{card.label}</div><strong style={{ display: 'block', color: '#004f43', fontSize: '1.3rem', lineHeight: 1.25 }}>{card.value}</strong><small style={{ color: card.color, fontSize: '.66rem' }}>{card.sub}</small></div><span aria-hidden="true" style={{ color: '#123047', fontSize: '1.25rem' }}>›</span></div>)}
+      <div className="clinic-dashboard-summary overview-stats-band" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 0, marginBottom: 18 }} aria-label="Clinic activity summary">
+        {summaryCards.map((card, index) => <article className="overview-stats-cell" key={card.label} style={index ? { borderLeft: '1px solid #c5d8cb' } : undefined}>
+          <div className="overview-stats-label">{card.label}</div>
+          <strong className="overview-stats-value">{card.value}</strong>
+          <small className="overview-stats-note">{card.sub}</small>
+        </article>)}
       </div>
       <div className="clinic-dashboard-export-row"><button type="button" className="clinic-dashboard-export" onClick={onExportReports}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V10M10 19V5M16 19v-7M22 19V3M2 21h21" /></svg>Export Reports</button></div>
       <div className="clinic-dashboard-columns">
         <section className="dashboard-alerts-card" style={panel}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ ...sectionTitle, fontSize: '1rem', color: '#111827' }}>Patient Alerts <b style={dashboardStyles.dashboardCount}>{alerts.length}</b></span><button type="button" onClick={onViewPets} style={dashboardStyles.dashboardLink}>View All →</button></div>
-          {alerts.map(alert => {
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ ...sectionTitle, fontSize: '1rem', color: '#111827' }}>Patient Alerts <b style={dashboardStyles.dashboardCount}>{alerts.length}</b></span>{alerts.length > 5 && <button type="button" onClick={onViewPets} style={dashboardStyles.dashboardLink}>View All →</button>}</div>
+          {visibleAlerts.map(alert => {
             const color = alert.severity === 'high' ? '#ef4444' : alert.severity === 'medium' ? '#f59e0b' : '#013826';
             return <div key={alert.id} className="dashboard-alert-row" style={dashboardStyles.alertRow}>
               <span style={{ ...dashboardStyles.alertDot, background: color }}>!</span>
               <ClinicAttachmentImage attachmentId={alert.pet_photo_attachment_id} user={user} alt="" style={dashboardStyles.alertAvatar} fallback={<span style={dashboardStyles.alertAvatar}>{String(alert.pet).slice(0, 1).toUpperCase()}</span>} />
               <span style={{ minWidth: 0 }}><b style={{ fontSize: '.72rem', color: '#111827' }}>{alert.pet} <small style={dashboardStyles.alertSpecies}>({alert.species})</small></b><span style={{ ...dashboardStyles.alertTag, background: color === '#ef4444' ? '#fff1f2' : color === '#f59e0b' ? '#fff7e6' : '#edf3f8' }}>{alert.tag}</span><small style={dashboardStyles.alertDetail}>{alert.detail}</small></span>
               <time style={{ color: '#111827', fontSize: '.62rem', fontWeight: 500, whiteSpace: 'nowrap' }}>{alert.created_at ? new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</time>
-              <button type="button" onClick={onViewPets} style={dashboardStyles.alertViewButton}>View Patient</button>
             </div>;
           })}
           {!alerts.length && <p style={{ color: '#64748b', fontSize: '.75rem', padding: '12px 0' }}>No patient alerts require attention.</p>}
@@ -5514,7 +5597,7 @@ function AddOwnerModal({ onClose, onAdd, owner = null }) {
   const selectedRegion = OWNER_ADDRESS_OPTIONS[0];
   const selectedProvince = selectedRegion?.provinces.find(item => item.name === form.province);
   const selectedMunicipality = selectedProvince?.municipalities.find(item => item.name === form.city);
-  return <OwnerModal onClose={onClose} width={600} className="clinic-owner-add-dialog">
+  return <OwnerModal onClose={onClose} width={600} className="clinic-add-form-dialog clinic-owner-add-dialog">
     <h2 style={modalStyles.title}>{owner ? 'Edit Owner' : 'Add New Owner'}</h2>
     <p style={modalStyles.subtitle}>{owner ? 'Update the owner profile and contact details.' : 'Enter the details of the new pet owner.'}</p>
     <form onSubmit={submit}>
@@ -5533,7 +5616,7 @@ function AddOwnerModal({ onClose, onAdd, owner = null }) {
       </div>
       </>}
       {error && <div style={modalStyles.error}>{error}</div>}
-      <div style={modalStyles.footer}><button type="button" onClick={onClose} style={modalStyles.cancel} disabled={saving}>Cancel</button><button type="submit" style={T.primaryBtn} disabled={saving}>{saving ? 'Saving...' : owner ? 'Save Changes' : 'Add Owner'}</button></div>
+      <div className="clinic-add-form-footer" style={modalStyles.footer}><button type="button" onClick={onClose} style={modalStyles.cancel} disabled={saving}>Cancel</button><button type="submit" style={T.primaryBtn} disabled={saving}>{saving ? 'Saving...' : owner ? 'Save Changes' : 'Add Owner'}</button></div>
     </form>
   </OwnerModal>;
 }
@@ -5927,7 +6010,7 @@ function AddPetModal({ owners, onClose, onAdd }) {
     catch (submitError) { setError(submitError.message); }
     finally { setSaving(false); }
   };
-  return <OwnerModal onClose={onClose} width={720} className="clinic-pet-add-dialog">
+  return <OwnerModal onClose={onClose} width={720} className="clinic-add-form-dialog clinic-pet-add-dialog">
     <h2 style={modalStyles.title}>Add New Pet</h2><p style={modalStyles.subtitle}>Enter the details of the new pet.</p>
     <form onSubmit={submit}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -5944,7 +6027,7 @@ function AddPetModal({ owners, onClose, onAdd }) {
       <label style={modalStyles.label}>Known allergies<textarea value={form.allergies} onChange={e => update('allergies', e.target.value)} placeholder="Enter allergies, or leave blank if none reported" style={{ ...modalStyles.input, minHeight: 54, resize: 'vertical' }} /></label>
       <label style={modalStyles.label}>Medical Notes<textarea value={form.notes} onChange={e => update('notes', e.target.value)} placeholder="Any relevant medical history..." style={{ ...modalStyles.input, minHeight: 64, resize: 'vertical' }} /></label>
       {error && <div style={modalStyles.error}>{error}</div>}
-      <div style={modalStyles.footer}><button type="button" onClick={onClose} style={modalStyles.cancel}>Cancel</button><button type="submit" style={T.primaryBtn} disabled={saving}>{saving ? 'Saving...' : 'Add Pet'}</button></div>
+      <div className="clinic-add-form-footer" style={modalStyles.footer}><button type="button" onClick={onClose} style={modalStyles.cancel}>Cancel</button><button type="submit" style={T.primaryBtn} disabled={saving}>{saving ? 'Saving...' : 'Add Pet'}</button></div>
     </form>
   </OwnerModal>;
 }
@@ -6793,7 +6876,7 @@ function AppointmentLabTestWizard({ pet, owner, user, testType: initialTestType,
   };
 
   return <div style={modalStyles.backdrop} onClick={event => { if (event.target === event.currentTarget && !saving) onBack(); }}>
-    <ModalDialog as="form" size="large" className="lab-add-test-dialog lab-wizard-dialog lab-intake-wizard" role="dialog" aria-modal="true" aria-labelledby="appointment-lab-wizard-title" onSubmit={step === 3 ? save : advance} style={{ ...modalStyles.dialog, width: 'min(1000px, calc(100vw - 32px))', maxWidth: 'calc(100vw - 24px)', height: 'min(740px, calc(100dvh - 32px))', maxHeight: 'calc(100dvh - 32px)', overflow: 'hidden', padding: 'clamp(16px, 3vw, 26px)' }}>
+    <ModalDialog as="form" size="large" className="clinic-add-form-dialog lab-add-test-dialog lab-wizard-dialog lab-intake-wizard" role="dialog" aria-modal="true" aria-labelledby="appointment-lab-wizard-title" onSubmit={step === 3 ? save : advance} style={{ ...modalStyles.dialog, width: 'min(1000px, calc(100vw - 32px))', maxWidth: 'calc(100vw - 24px)', height: 'min(740px, calc(100dvh - 32px))', maxHeight: 'calc(100dvh - 32px)', overflow: 'hidden', padding: 'clamp(16px, 3vw, 26px)' }}>
       <button type="button" className="lab-add-test-close" onClick={onClose} disabled={saving}>Close</button>
       <header className="lab-wizard-header">
         <div><h2 id="appointment-lab-wizard-title">Add Lab Test</h2><p>Step {step} of 3 · {['Patient', 'Test Details', 'Review & Save'][step - 1]}</p></div>
@@ -6853,7 +6936,7 @@ function AppointmentLabTestWizard({ pet, owner, user, testType: initialTestType,
         </section>}
         {error && <div className="lab-wizard-error" role="alert">{error}</div>}
       </div>
-      <footer className={`lab-wizard-footer${step === 3 ? ' lab-wizard-review-footer' : ''}`}>
+      <footer className={`clinic-add-form-footer lab-wizard-footer${step === 3 ? ' lab-wizard-review-footer' : ''}`}>
         <button type="button" className="lab-wizard-back" onClick={() => step === 1 ? onBack() : setStep(current => current - 1)} disabled={saving}>{step === 1 ? 'Back' : 'Back'}</button>
         {step < 3 ? <button type="submit" className="lab-wizard-next">Next</button> : <button type="submit" className="lab-wizard-next" disabled={saving}>{saving ? 'Saving...' : 'Add Lab Test'}</button>}
       </footer>
@@ -7132,7 +7215,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
   return (
     <div style={modalStyles.backdrop} onClick={onClose}>
       <ModalDialog as="form" size="standard"
-        className={`appointment-create-dialog${isWorkflowDetailsStep ? ' appointment-create-dialog--details' : ' appointment-create-dialog--new'}${isWorkflowDetailsStep ? ` appointment-create-dialog--${appointmentCategory.toLowerCase().replace(/[^a-z]+/g, '-')}` : ''}${isWorkflowDetailsStep && ['Dental', 'General'].includes(appointmentCategory) ? ' vi-modal--appt' : ''}${isWorkflowDetailsStep && appointmentCategory === 'Surgery' ? ' appointment-create-dialog--surgery' : ''}${isWorkflowDetailsStep && appointmentCategory === 'Vaccination' ? ' appointment-create-dialog--vaccination' : ''}${isWorkflowDetailsStep && appointmentCategory === 'Confinement' && confinementStep === 1 ? ' appointment-create-dialog--confinement-assessment' : ''}`}
+        className={`clinic-add-form-dialog appointment-create-dialog${isWorkflowDetailsStep ? ' appointment-create-dialog--details' : ' appointment-create-dialog--new'}${isWorkflowDetailsStep ? ` appointment-create-dialog--${appointmentCategory.toLowerCase().replace(/[^a-z]+/g, '-')}` : ''}${isWorkflowDetailsStep && ['Dental', 'General'].includes(appointmentCategory) ? ' vi-modal--appt' : ''}${isWorkflowDetailsStep && appointmentCategory === 'Surgery' ? ' appointment-create-dialog--surgery' : ''}${isWorkflowDetailsStep && appointmentCategory === 'Vaccination' ? ' appointment-create-dialog--vaccination' : ''}${isWorkflowDetailsStep && appointmentCategory === 'Confinement' && confinementStep === 1 ? ' appointment-create-dialog--confinement-assessment' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="doctor-new-appointment-title"
@@ -7483,7 +7566,7 @@ function DoctorNewAppointmentModal({ pets, owners, appointments = [], vaccinatio
           </label>}
         </div>
         {error && <div role="alert" style={modalStyles.error}>{error}</div>}
-        <div className={`appointment-create-footer${isWorkflowDetailsStep && appointmentCategory === 'Surgery' ? ' surgery-appointment-footer' : ''}`} style={isWorkflowDetailsStep && appointmentCategory === 'Surgery' ? { ...modalStyles.addVaccinationFooter, justifyContent: 'flex-end', marginTop: 0 } : isWorkflowDetailsStep ? modalStyles.addVaccinationFooter : modalStyles.doctorAppointmentFooter}>
+        <div className={`clinic-add-form-footer appointment-create-footer${isWorkflowDetailsStep && appointmentCategory === 'Surgery' ? ' surgery-appointment-footer' : ''}`} style={isWorkflowDetailsStep && appointmentCategory === 'Surgery' ? { ...modalStyles.addVaccinationFooter, justifyContent: 'flex-end', marginTop: 0 } : isWorkflowDetailsStep ? modalStyles.addVaccinationFooter : modalStyles.doctorAppointmentFooter}>
           {isWorkflowDetailsStep && appointmentCategory === 'Surgery' && !ready && !saving && <span className="surgery-form-hint">{!form.service_name.trim() ? 'Add a surgical procedure to continue.' : !serviceDetail('diagnosis').trim() ? 'Add a diagnosis or indication to continue.' : 'Complete the required surgery details to continue.'}</span>}
           {isWorkflowDetailsStep && appointmentCategory === 'Dental' && !ready && !saving && <span className="dental-form-hint">Choose a dental service to continue</span>}
           {isWorkflowDetailsStep && appointmentCategory === 'General' && !ready && !saving && <span className="general-form-hint">Choose a service to continue</span>}
@@ -7981,7 +8064,7 @@ function VaccinationsTab({ onVisitEnded, onAppointmentRequestHandled, openAppoin
         }}
       />}
       {addVaccination && <div style={modalStyles.backdrop} onClick={closeAddVaccination}>
-        <ModalDialog as="form" size="standard" className="clinic-vaccination-add-dialog" role="dialog" aria-modal="true" aria-labelledby="add-vaccination-title" onClick={event => event.stopPropagation()} onSubmit={submitVaccination} style={modalStyles.addVaccinationDialog}>
+        <ModalDialog as="form" size="standard" className="clinic-add-form-dialog clinic-vaccination-add-dialog" role="dialog" aria-modal="true" aria-labelledby="add-vaccination-title" onClick={event => event.stopPropagation()} onSubmit={submitVaccination} style={modalStyles.addVaccinationDialog}>
           <button type="button" aria-label="Close add vaccination" onClick={closeAddVaccination} style={modalStyles.close}>{Icons.close}</button>
           <h2 id="add-vaccination-title" style={modalStyles.addVaccinationTitle}>Add Vaccination Record</h2>
           <p style={modalStyles.addVaccinationIntro}>Enter the vaccination details. You can attach a photo of the physical sticker during verification.</p>
@@ -7997,7 +8080,7 @@ function VaccinationsTab({ onVisitEnded, onAppointmentRequestHandled, openAppoin
             <label style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Next Due Date</span><LabDateTimePicker name="nextDue" mode="date" style={modalStyles.addVaccinationInput} /></label>
             <label style={modalStyles.addVaccinationLabel}><span style={modalStyles.addVaccinationLabelText}>Administered By<span style={modalStyles.required}>*</span></span><input name="attendingDoctor" required placeholder="Dr. Smith" style={modalStyles.addVaccinationInput} /></label>
           </div>
-          <div style={modalStyles.addVaccinationFooter}><button type="button" style={modalStyles.cancel} onClick={closeAddVaccination}>Cancel</button><button type="submit" style={{ ...T.primaryBtn, padding: '8px 12px', fontSize: '.68rem', borderRadius: 7 }}>Add Record</button></div>
+          <div className="clinic-add-form-footer" style={modalStyles.addVaccinationFooter}><button type="button" style={modalStyles.cancel} onClick={closeAddVaccination}>Cancel</button><button type="submit" style={{ ...T.primaryBtn, padding: '8px 12px', fontSize: '.68rem', borderRadius: 7 }}>Add Record</button></div>
         </ModalDialog>
       </div>}
       {actionVaccination && <RecordActionsModal
@@ -8350,7 +8433,7 @@ export function TreatmentsTab({ treatments, user, pets = [] }) {
         </tbody>
       </table>
       {addTreatment && <div style={modalStyles.backdrop} onClick={() => setAddTreatment(false)}>
-        <ModalDialog as="form" size="standard" role="dialog" aria-modal="true" aria-labelledby="add-treatment-title" onClick={event => event.stopPropagation()} onSubmit={submitTreatment} style={{ ...modalStyles.doctorAppointmentDialog, width: 'min(600px, 100%)', padding: '22px 24px 20px' }}>
+        <ModalDialog as="form" size="standard" role="dialog" aria-modal="true" aria-labelledby="add-treatment-title" onClick={event => event.stopPropagation()} onSubmit={submitTreatment} className="clinic-add-form-dialog clinic-add-treatment-dialog" style={{ ...modalStyles.doctorAppointmentDialog, width: 'min(600px, 100%)', padding: '22px 24px 20px' }}>
           <button type="button" aria-label="Close add treatment" onClick={() => setAddTreatment(false)} style={modalStyles.close}>{Icons.close}</button>
           <h2 id="add-treatment-title" style={{ ...modalStyles.doctorAppointmentTitle, fontSize: '1.1rem' }}>Add Treatment Record</h2>
           <p style={modalStyles.doctorAppointmentIntro}>Enter the treatment details.</p>
@@ -8363,7 +8446,7 @@ export function TreatmentsTab({ treatments, user, pets = [] }) {
             <label style={modalStyles.doctorAppointmentLabel}><span>Medication</span><input name="medication" placeholder="Amoxicillin" style={modalStyles.doctorAppointmentInput} /></label>
             <label style={modalStyles.doctorAppointmentLabel}><span>Cost<span style={modalStyles.required}>*</span></span><input name="cost" required inputMode="decimal" placeholder="50.00" style={modalStyles.doctorAppointmentInput} /></label>
           </div>
-          <div style={modalStyles.doctorAppointmentFooter}><button type="button" style={modalStyles.cancel} onClick={() => setAddTreatment(false)}>Cancel</button><button type="submit" style={{ ...T.primaryBtn, padding: '8px 13px', fontSize: '.7rem', borderRadius: 7 }}>Add Treatment</button></div>
+          <div className="clinic-add-form-footer" style={modalStyles.doctorAppointmentFooter}><button type="button" style={modalStyles.cancel} onClick={() => setAddTreatment(false)}>Cancel</button><button type="submit" style={{ ...T.primaryBtn, padding: '8px 13px', fontSize: '.7rem', borderRadius: 7 }}>Add Treatment</button></div>
         </ModalDialog>
       </div>}
       {actionTreatment && <RecordActionsModal
@@ -8499,7 +8582,8 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
   const canReadClients = hasAction(user.permissions, user.role, 'View Owners');
   const canReadVaccinations = hasAction(user.permissions, user.role, 'View Vaccinations');
   const tabFeatures={dashboard:'Clinic Dashboard',owners:'Clinic Record Owners',pets:'Pet Profiles',appointments:'Clinic Record Appointments',visits:'Visit & Check-up',vaccinations:'Vaccinations',plans:'Treatment Plans','lab-results':'Laboratory',inpatient:'Inpatient Care',consultation:'Clinic Record Billing',inventory:'Inventory Management'};
-  const availableTabs=TABS.filter(item=>canViewFeature(user.permissions,user.role,tabFeatures[item.id]));
+  const doctorRole=['doctor','assistant_doctor','veterinarian'].includes(String(user.role || '').trim().toLowerCase().replace(/[\s-]+/g,'_'));
+  const availableTabs=TABS.filter(item=>(!doctorRole || item.id!=='inventory')&&canViewFeature(user.permissions,user.role,tabFeatures[item.id]));
   const canViewTab=availableTabs.some(item=>item.id===tab);
   const firstAvailableTab=availableTabs[0]?.id;
   useEffect(()=>{if(!canViewTab&&firstAvailableTab)setTab(firstAvailableTab);},[canViewTab,firstAvailableTab]);
