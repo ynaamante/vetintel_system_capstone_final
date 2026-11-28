@@ -34,7 +34,7 @@ export function AuditTrail() {
       workbook.created = new Date();
 
       const worksheet = workbook.addWorksheet('Audit Trail', {
-        properties: { tabColor: { argb: 'FF086B50' } },
+        properties: { tabColor: { argb: 'FF16837D' } },
         views: [{ state: 'frozen', ySplit: 1 }],
       });
       worksheet.columns = [
@@ -53,22 +53,22 @@ export function AuditTrail() {
         row.eachCell(cell => {
           cell.alignment = { vertical: 'middle', wrapText: true };
           cell.border = {
-            top: { style: 'thin', color: { argb: 'FFD4E3D7' } },
-            right: { style: 'thin', color: { argb: 'FFD4E3D7' } },
-            bottom: { style: 'thin', color: { argb: 'FFD4E3D7' } },
-            left: { style: 'thin', color: { argb: 'FFD4E3D7' } },
+            top: { style: 'thin', color: { argb: 'FFC6E5E1' } },
+            right: { style: 'thin', color: { argb: 'FFC6E5E1' } },
+            bottom: { style: 'thin', color: { argb: 'FFC6E5E1' } },
+            left: { style: 'thin', color: { argb: 'FFC6E5E1' } },
           };
 
           if (rowNumber === 1) {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF086B50' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF16837D' } };
             cell.font = { name: 'Aptos', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
           } else {
             cell.fill = {
               type: 'pattern',
               pattern: 'solid',
-              fgColor: { argb: rowNumber % 2 === 0 ? 'FFF2F8F4' : 'FFFFFFFF' },
+              fgColor: { argb: rowNumber % 2 === 0 ? 'FFF1FAF8' : 'FFFFFFFF' },
             };
-            cell.font = { name: 'Aptos', size: 11, color: { argb: 'FF172B24' } };
+            cell.font = { name: 'Aptos', size: 11, color: { argb: 'FF173F40' } };
           }
         });
       });
@@ -89,35 +89,35 @@ export function AuditTrail() {
   };
 
   return (
-    <div className="min-h-full bg-[#fafbf8] p-5 text-[#172b24]">
-      <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white p-4">
+    <div className="min-h-full bg-[#f7fbfa] p-5 text-[#173f40]">
+      <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white p-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="relative min-w-[220px] max-w-[600px] flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#087a59]" />
-            <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search actions..." className="w-full rounded-full border border-[#d4e3d7] bg-white py-2.5 pl-10 pr-3 text-sm text-[#172b24] outline-none transition focus:border-[#087a59] focus:ring-2 focus:ring-[#087a59]/20" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#16837d]" />
+            <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search actions..." className="w-full rounded-full border border-[#c6e5e1] bg-white py-2.5 pl-10 pr-3 text-sm text-[#173f40] outline-none transition focus:border-[#16837d] focus:ring-0" />
           </div>
-          <button onClick={exportLogs} className="rounded-full bg-[#087a59] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#065c44]"><Download className="mr-1 inline h-4 w-4" />Export</button>
+          <button onClick={exportLogs} className="rounded-full bg-[#16837d] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#105f5a]"><Download className="mr-1 inline h-4 w-4" />Export</button>
         </div>
         {exportError && <p className="mb-3 text-xs text-[#b42318]" role="alert">{exportError}</p>}
-        <div className="overflow-x-auto rounded-xl border border-[#d4e3d7]">
+        <div className="overflow-x-auto rounded-xl border border-[#c6e5e1]">
           <table className="w-full min-w-[1000px] text-left">
-            <thead className="bg-gradient-to-r from-[#013826] to-[#087a59] text-white">
-              <tr>{['Date & Time', 'Super Admin', 'Action', 'Clinic', 'Target', 'Description'].map(heading => <th className="px-4 py-3 text-xs font-semibold" key={heading}>{heading}</th>)}</tr>
+            <thead className="bg-gradient-to-r from-[#105f5a] to-[#16837d] text-white">
+              <tr>{['Date & Time', 'Super Admin', 'Action', 'Clinic', 'Target', 'Description'].map(heading => <th className="px-4 py-3 text-sm font-semibold" key={heading}>{heading}</th>)}</tr>
             </thead>
             <tbody>
               {filtered.map(entry => (
-                <tr className="h-[50px] border-t border-[#e6eee9] transition-colors hover:bg-[#f7fbf8]" key={`${entry.date}-${entry.action}`}>
-                  <td className="whitespace-nowrap px-4 py-3 text-xs text-[#526B62]">{entry.date}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-[#172b24]">Super Admin</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-xs"><span className="rounded-full bg-[#e7f4ec] px-2 py-1 text-[#086b50]">{entry.action}</span></td>
-                  <td className="px-4 py-3 text-xs text-[#526B62]">{entry.clinic}</td>
-                  <td className="px-4 py-3 text-xs text-[#526B62]">{entry.target}</td>
-                  <td className="px-4 py-3 text-xs text-[#526B62]">{entry.description}</td>
+                <tr className="h-[50px] border-t border-[#e1efed] transition-colors hover:bg-[#f1faf8]" key={`${entry.date}-${entry.action}`}>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-[#527b79]">{entry.date}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-[#173f40]">Super Admin</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm"><span className="rounded-full bg-[#e5f4f1] px-2 py-1 text-[#105f5a]">{entry.action}</span></td>
+                  <td className="px-4 py-3 text-sm text-[#527b79]">{entry.clinic}</td>
+                  <td className="px-4 py-3 text-sm text-[#527b79]">{entry.target}</td>
+                  <td className="px-4 py-3 text-sm text-[#527b79]">{entry.description}</td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-[#789087]">No audit entries match your search.</td>
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-[#829e9b]">No audit entries match your search.</td>
                 </tr>
               )}
             </tbody>

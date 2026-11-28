@@ -44,8 +44,8 @@ function validateProfile(name, avatar, res) {
     res.status(400).json({ error: 'Enter a name between 1 and 120 characters.' });
     return false;
   }
-  if (avatar !== null && avatar !== undefined && avatar !== '' && (typeof avatar !== 'string' || avatar.length > 2_200_000 || !avatar.startsWith('data:image/'))) {
-    res.status(400).json({ error: 'Choose an image smaller than 1.5 MB.' });
+  if (avatar !== null && avatar !== undefined && avatar !== '' && (typeof avatar !== 'string' || !avatar.startsWith('data:image/'))) {
+    res.status(400).json({ error: 'Choose a valid image file.' });
     return false;
   }
   return true;

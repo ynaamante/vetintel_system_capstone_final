@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
+import { format } from 'date-fns';
+import { Calendar } from '../ui/calendar';
 import {
   ArrowLeft,
   CalendarDays,
@@ -21,6 +23,7 @@ import {
   UserPlus,
   Users,
   Video,
+  X,
 } from 'lucide-react';
 
 const shell = 'p-5 space-y-4 bg-[#fafbf8] min-h-full';
@@ -80,10 +83,10 @@ export function ActiveClinics() {
             name: clinic.name,
             owner: clinic.owner || 'Unknown',
             staff: String(clinic.metadata?.application?.staffCount ?? clinic.total_users ?? 0),
-            plan: clinicPlan || '—',
+            plan: clinicPlan || 'Not provided',
             monthlyPrice: subscribedPlan?.price ? String(subscribedPlan.price) : '',
             status: clinic.status === 'active' ? 'Active' : clinic.status === 'pending' ? 'Pending Activation' : 'Suspended',
-            date: clinic.created_at ? new Date(clinic.created_at).toLocaleDateString() : '—',
+            date: clinic.created_at ? new Date(clinic.created_at).toLocaleDateString() : 'Not provided',
             email: clinic.email || '',
             phone: clinic.phone || '',
             address: clinic.address || '',
@@ -131,21 +134,21 @@ export function ActiveClinics() {
   });
   const formattedPlanPrice = (price: string) => {
     if (!price) return 'Not set';
-    return /^[₱$€£]/.test(price.trim()) ? price : `₱${price}`;
+    return /^[\u20B1$€£]/.test(price.trim()) ? price : `\u20B1${price}`;
   };
 
   return (
-    <div className={shell}>
+    <div className="p-5 space-y-4 bg-[#f7fbfa] min-h-full">
       {notice && (
         <div className={`fixed right-6 top-16 z-50 flex items-center gap-3 rounded-xl border px-5 py-3 text-sm shadow-lg ${
           notice.kind === 'success' ? 'border-[#7ce3af] bg-[#f0fff6] text-[#172b24]' : 'border-[#ff8a8a] bg-[#fff8f8] text-[#172b24]'
         }`}>
-          <span className={`text-lg ${notice.kind === 'success' ? 'text-[#079669]' : 'text-[#ef3030]'}`}>{notice.kind === 'success' ? '✓' : 'ⓘ'}</span>
+          <span className={`text-lg ${notice.kind === 'success' ? 'text-[#16837d]' : 'text-[#c43636]'}`}>{notice.kind === 'success' ? 'OK' : '!'}</span>
           {notice.message}
         </div>
       )}
 
-      <div className="overflow-visible rounded-xl border border-[#d4e3d7] bg-gradient-to-br from-white via-[#f7fbf8] to-[#eff8f2]">
+      <div className="overflow-visible rounded-xl border border-[#c6e5e1] bg-gradient-to-br from-white via-[#f5fbfa] to-[#e2f4f1]">
         <div className="relative z-10 flex items-center gap-2 overflow-x-auto px-3 py-2">
           {statusTabs.map(tab => {
             const count = tab === 'All' ? clinics.length : clinics.filter(clinic => clinic.status === tab).length;
@@ -154,35 +157,35 @@ export function ActiveClinics() {
               <button
                 key={tab}
                 onClick={() => setStatusFilter(tab)}
-                className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-[#086b50] bg-[#086b50] text-white' : 'border-[#dce9e1] bg-white/80 text-[#344c43] hover:bg-[#eff8f2]'}`}
+                className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-[#16837d] bg-[#16837d] text-white' : 'border-[#c6e5e1] bg-white/80 text-[#315f5e] hover:bg-[#e8f6f3]'}`}
               >
-                {tab}<span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${active ? 'bg-white/20 text-white' : 'bg-[#e7f4ec] text-[#526B62]'}`}>{count}</span>
+              {tab}<span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${active ? 'bg-white/20 text-white' : 'bg-[#e5f4f1] text-[#527b79]'}`}>{count}</span>
               </button>
             );
           })}
         </div>
-        <div aria-hidden="true" className="mx-3 h-px bg-[#dcebe2]" />
+        <div aria-hidden="true" className="mx-3 h-px bg-[#c6e5e1]" />
         <div className="relative z-10 flex flex-wrap items-center gap-3 px-3 py-2">
           <div className="relative min-w-[220px] max-w-[600px] flex-1">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#6faf91]" />
-            <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search clinics..." className="w-full rounded-full border border-[#d4e3d7] bg-white/90 py-2 pl-9 pr-3 text-xs text-[#172b24] placeholder:text-[#789087] outline-none focus:border-[#086b50] focus:ring-2 focus:ring-[#086b50]/20" />
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#58a49b]" />
+            <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search clinics..." className="w-full rounded-full border border-[#c6e5e1] bg-white/90 py-2 pl-9 pr-3 text-xs text-[#173f40] placeholder:text-[#829e9b] outline-none focus:border-[#16837d] focus:ring-0" />
           </div>
         </div>
       </div>
 
-      <div className={`${card} overflow-hidden`}>
-        <div className="flex items-center justify-between border-b border-[#d4e3d7] bg-gradient-to-r from-[#013826] to-[#086b50] px-4 py-3">
+      <div className="overflow-hidden rounded-lg border border-[#c6e5e1] bg-white">
+        <div className="flex items-center justify-between border-b border-[#16837d] bg-[#16837d] px-4 py-3">
           <h2 className="text-sm font-semibold text-white">All Clinics</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-[#e7f4ec]">
-              <tr>{['Clinic Name', 'Owner Name', 'Staff Req.', 'Plan', 'Status', 'Submitted', ''].map((heading, index) => <th className="px-4 py-2.5 text-left text-xs font-semibold text-[#244b3e]" key={heading || `action-${index}`}>{heading}</th>)}</tr>
+            <thead className="bg-[#e5f4f1]">
+              <tr>{['Clinic Name', 'Owner Name', 'Staff Req.', 'Plan', 'Status', 'Submitted', ''].map((heading, index) => <th className="px-4 py-2.5 text-left text-xs font-semibold text-[#315f5e]" key={heading || `action-${index}`}>{heading}</th>)}</tr>
             </thead>
             <tbody>
               {filteredClinics.map((clinic) => (
                 <tr
-                  className="cursor-pointer border-t border-[#e6eee9] transition-colors hover:bg-[#f0f8f3] focus-within:bg-[#f0f8f3]"
+                  className="cursor-pointer border-t border-[#e1efed] transition-colors hover:bg-[#f4faf9] focus-within:bg-[#f4faf9]"
                   key={clinic.id}
                   tabIndex={0}
                   aria-label={`Open details for ${clinic.name}`}
@@ -194,13 +197,13 @@ export function ActiveClinics() {
                     }
                   }}
                 >
-                  <td className="px-4 py-3 text-sm font-medium text-[#172b24]"><button type="button" onClick={() => setSelectedClinic(clinic)} className="block w-full text-left">{clinic.name}{clinic.expiry === 'Expired' && <span className="ml-2 rounded bg-[#fff1c9] px-1.5 py-1 text-[10px] text-[#c98200]">Expired</span>}{clinic.name === 'Metro Pet Care Center' && <span className="ml-2 rounded bg-[#fff1c9] px-1.5 py-1 text-[10px] text-[#c98200]">Exp. 12d</span>}</button></td>
+                  <td className="px-4 py-3 text-sm font-medium text-[#173f40]"><button type="button" onClick={() => setSelectedClinic(clinic)} className="block w-full text-left">{clinic.name}{clinic.expiry === 'Expired' && <span className="ml-2 rounded bg-[#fff1c9] px-1.5 py-1 text-[10px] text-[#c98200]">Expired</span>}{clinic.name === 'Metro Pet Care Center' && <span className="ml-2 rounded bg-[#fff1c9] px-1.5 py-1 text-[10px] text-[#c98200]">Exp. 12d</span>}</button></td>
                   <td className="px-4 py-3 text-sm text-[#526B62]"><button type="button" onClick={() => setSelectedClinic(clinic)} className="block w-full text-left">{clinic.owner}</button></td>
                   <td className="px-4 py-3 text-sm text-[#526B62]"><button type="button" onClick={() => setSelectedClinic(clinic)} className="block w-full text-left">{clinic.staff}</button></td>
                   <td className="px-4 py-3 text-sm text-[#526B62]"><button type="button" onClick={() => setSelectedClinic(clinic)} className="block w-full text-left">{clinic.plan}</button></td>
                   <td className="px-4 py-3 text-sm"><button type="button" onClick={() => setSelectedClinic(clinic)} className="block w-full text-left"><span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${clinic.status === 'Active' ? 'bg-[#d8f7e9] text-[#078c63]' : clinic.status === 'Suspended' ? 'bg-[#ffe0e0] text-[#c43636]' : 'bg-[#fff1c9] text-[#c98200]'}`}>{clinic.status}</span></button></td>
                   <td className="px-4 py-3 text-sm text-[#526B62]"><button type="button" onClick={() => setSelectedClinic(clinic)} className="block w-full text-left">{clinic.date}</button></td>
-                  <td className="px-4 py-3 text-center"><button type="button" onClick={event => { event.stopPropagation(); setSelectedClinic(clinic); }} aria-label={`View ${clinic.name}`} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#086b50] transition hover:bg-[#e7f4ec]"><ChevronRight className="h-4 w-4" /></button></td>
+                  <td className="px-4 py-3 text-center"><button type="button" onClick={event => { event.stopPropagation(); setSelectedClinic(clinic); }} aria-label={`View ${clinic.name}`} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#16837d] transition hover:bg-[#e5f4f1]"><ChevronRight className="h-4 w-4" /></button></td>
                 </tr>
               ))}
             </tbody>
@@ -209,24 +212,24 @@ export function ActiveClinics() {
       </div>
 
       {selectedClinic && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#173f40]/60 p-4">
           <div className="flex h-[min(560px,calc(100vh-2rem))] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
-            <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#013826] to-[#087a59] px-5 py-3 text-white">
-              <h2 className="text-sm font-semibold">{selectedClinic.name} Details</h2>
-              <button onClick={() => setSelectedClinic(null)} className="text-xl leading-none transition hover:text-[#d4e9df]" aria-label="Close clinic details">×</button>
+            <div className="flex shrink-0 items-center justify-between bg-[#16837d] px-5 py-3 text-white">
+              <h2 className="text-[19px] font-bold">{selectedClinic.name} Details</h2>
+              <button onClick={() => setSelectedClinic(null)} className="rounded-full p-1 leading-none transition hover:bg-white/15 hover:text-[#c9ebe5]" aria-label="Close clinic details"><X className="h-5 w-5" /></button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-[#fbfdfb] p-4 sm:p-5">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7fbfa] p-4 sm:p-5">
               {selectedClinic.name === 'Metro Pet Care Center' && (
-                <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-[#e7c985] bg-[#fffaf0] px-4 py-3 text-sm text-[#a45b00]">
+                <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-[#e7c985] bg-[#fffaf0] px-4 py-3 text-xs text-[#a45b00]">
                   <span>Plan expiring in 12 days (Sep 15, 2026).</span>
-                  <button onClick={() => showNotice(`Expiry notification sent to ${selectedClinic.name}.`, 'success')} className="shrink-0 rounded-full bg-[#df7a00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#c96d00]">Notify Clinic</button>
+                  <button onClick={() => showNotice(`Expiry notification sent to ${selectedClinic.name}.`, 'success')} className="shrink-0 rounded-full bg-[#df7a00] px-4 py-2 text-[11px] font-semibold text-white transition hover:bg-[#c96d00]">Notify Clinic</button>
                 </div>
               )}
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
-                    <h3 className="border-b border-[#d4e3d7] bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2.5 text-sm font-bold text-[#07543d]">Clinic Information</h3>
-                    <div className="space-y-2 p-4 text-sm text-[#172b24]">
+                  <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white">
+                    <h3 className="border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-bold text-[#174b4c]">Clinic Information</h3>
+                    <div className="space-y-2 p-4 text-[15px] text-[#173f40]">
                       <p>Clinic Name: <span className="text-[#526B62]">{selectedClinic.name}</span></p>
                       <p>Address: <span className="text-[#526B62]">{selectedClinic.address}</span></p>
                       <p>Email: <span className="text-[#526B62]">{selectedClinic.email}</span></p>
@@ -234,9 +237,9 @@ export function ActiveClinics() {
                       <p>Registered: <span className="text-[#526B62]">{selectedClinic.date}</span></p>
                     </div>
                   </section>
-                  <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
-                    <h3 className="border-b border-[#d4e3d7] bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2.5 text-sm font-bold text-[#07543d]">Subscription</h3>
-                    <div className="space-y-2 p-4 text-sm text-[#172b24]">
+                  <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white">
+                    <h3 className="border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-bold text-[#174b4c]">Subscription</h3>
+                    <div className="space-y-2 p-4 text-[15px] text-[#173f40]">
                       <p>Plan: <span className="text-[#526B62]">{selectedClinic.plan}</span></p>
                       <p>Price: <span className="text-[#526B62]">{formattedPlanPrice(selectedClinic.monthlyPrice)}{selectedClinic.monthlyPrice ? '/mo' : ''}</span></p>
                       <p>Plan Status: <span className="text-[#526B62]">{selectedClinic.status}</span></p>
@@ -245,28 +248,28 @@ export function ActiveClinics() {
                     </div>
                   </section>
                 </div>
-                <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
-                  <div className="flex justify-between border-b border-[#d4e3d7] bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2.5 text-sm font-bold text-[#07543d]">
+                <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white">
+                  <div className="flex justify-between border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-bold text-[#174b4c]">
                     <span>Requested Staff Structure</span>
-                    <span className="font-normal text-[#526B62]">{selectedClinic.staff} staff slots</span>
+                    <span className="font-normal text-[#527b79]">{selectedClinic.staff} staff slots</span>
                   </div>
                   {selectedClinic.requestedRoles.length === 0 ? (
-                    <p className="px-4 py-3 text-sm text-[#526B62]">No requested staff roles were submitted.</p>
+                    <p className="px-4 py-3 text-xs text-[#527b79]">No requested staff roles were submitted.</p>
                   ) : (
                     selectedClinic.requestedRoles.map(staff => (
-                      <div className="grid grid-cols-3 border-b border-[#e2eee7] px-4 py-3 text-sm last:border-0" key={staff.role}>
-                        <span className="text-[#172b24]">{staff.role}</span>
-                        <span className="text-[#526B62]">{staff.count} {staff.count === 1 ? 'slot' : 'slots'}</span>
-                        <span className="text-[#078c63]">Requested</span>
+                    <div className="grid grid-cols-3 border-b border-[#e1efed] px-4 py-3 text-[15px] last:border-0" key={staff.role}>
+                        <span className="text-[#173f40]">{staff.role}</span>
+                        <span className="text-[#527b79]">{staff.count} {staff.count === 1 ? 'slot' : 'slots'}</span>
+                        <span className="text-[#16837d]">Requested</span>
                       </div>
                     ))
                   )}
                 </section>
-                <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
-                  <h3 className="border-b border-[#d4e3d7] bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2.5 text-sm font-bold text-[#07543d]">Change Status</h3>
+                <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white">
+                  <h3 className="border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-bold text-[#174b4c]">Change Status</h3>
                   <div className="flex gap-2 p-4">
-                    <button onClick={() => updateStatus('Suspended', `${selectedClinic.name} has been suspended.`)} className="rounded-full bg-[#df7a00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#c96d00]">Suspend</button>
-                    <button onClick={() => updateStatus('Suspended', `${selectedClinic.name} has been archived.`)} className="rounded-full bg-[#526b62] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#344c43]">Archive</button>
+                    <button onClick={() => updateStatus('Suspended', `${selectedClinic.name} has been suspended.`)} className="rounded-full bg-[#df7a00] px-4 py-2 text-[15px] font-semibold text-white transition hover:bg-[#c96d00]">Suspend</button>
+                    <button onClick={() => updateStatus('Suspended', `${selectedClinic.name} has been archived.`)} className="rounded-full bg-[#16837d] px-4 py-2 text-[15px] font-semibold text-white transition hover:bg-[#105f5a]">Archive</button>
                   </div>
                 </section>
               </div>
@@ -306,6 +309,11 @@ export function RoleRequests() {
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [draftDateFrom, setDraftDateFrom] = useState('');
+  const [draftDateTo, setDraftDateTo] = useState('');
+  const [calendarOpenFor, setCalendarOpenFor] = useState<'from' | 'to' | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [calendarMenu, setCalendarMenu] = useState<'month' | 'year' | null>(null);
 
   const showNotice = (message: string, kind: 'success' | 'error' | 'info') => {
     setNotice({ message, kind });
@@ -318,9 +326,9 @@ export function RoleRequests() {
       return response.json();
     }).then(data => setRequests(data.map((item: any) => ({
       id: item.id, clinic: item.clinic || item.clinic_name || 'Unknown clinic',
-      owner: item.owner || '—',
-      role: item.role || item.requested_role || '—', users: String(item.users || item.requested_users || 1),
-      date: item.created_at ? new Date(item.created_at).toLocaleDateString() : '—',
+      owner: item.owner || 'Not provided',
+      role: item.role || item.requested_role || 'Not provided', users: String(item.users || item.requested_users || 1),
+      date: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Not provided',
       submittedAt: item.created_at || '',
       status: String(item.status || 'Pending').toLowerCase() === 'approved' ? 'Approved'
         : String(item.status || '').toLowerCase() === 'assigned' ? 'Assigned'
@@ -369,9 +377,9 @@ export function RoleRequests() {
         ...current,
         clinic: detail.resolved_clinic_name || detail.clinic_name || current.clinic,
         owner: detail.owner || current.owner,
-        ownerEmail: detail.owner_email || '—',
-        ownerPhone: detail.owner_phone || '—',
-        clinicAddress: detail.clinic_address || '—',
+        ownerEmail: detail.owner_email || 'Not provided',
+        ownerPhone: detail.owner_phone || 'Not provided',
+        clinicAddress: detail.clinic_address || 'Not provided',
         reviewerName: detail.reviewer_name || '',
         reviewerEmail: detail.reviewer_email || '',
         reviewedAt: detail.reviewed_at || '',
@@ -383,24 +391,24 @@ export function RoleRequests() {
   };
 
   const formattedDate = (value?: string) => {
-    if (!value) return '—';
+    if (!value) return 'Not provided';
     const parsedDate = new Date(value);
-    return Number.isNaN(parsedDate.getTime()) ? '—' : parsedDate.toLocaleDateString();
+    return Number.isNaN(parsedDate.getTime()) ? 'Not provided' : parsedDate.toLocaleDateString();
   };
 
   const statusClass = (status: RoleRequest['status']) => status === 'Approved' ? 'text-[#078c63]' : status === 'Rejected' ? 'text-[#c43636]' : 'text-[#c98200]';
 
   return (
-    <div className={`${shell} space-y-5`}>
+    <div className="p-5 space-y-5 bg-[#f7fbfa] min-h-full">
       {notice && (
         <div className={`fixed right-6 top-6 z-[100] flex items-center gap-3 rounded-xl border px-5 py-3 text-sm shadow-lg ${
           notice.kind === 'success' ? 'border-[#7ce3af] bg-[#f0fff6]' : notice.kind === 'error' ? 'border-[#ff8a8a] bg-[#fff8f8]' : 'border-[#82b5ff] bg-[#f0f7ff]'
         }`}>
-          <span className={`text-lg ${notice.kind === 'success' ? 'text-[#079669]' : notice.kind === 'error' ? 'text-[#ef3030]' : 'text-[#086b50]'}`}>{notice.kind === 'success' ? '✓' : notice.kind === 'error' ? 'ⓘ' : 'ⓘ'}</span>
+          <span className={`text-lg ${notice.kind === 'success' ? 'text-[#16837d]' : 'text-[#c43636]'}`}>{notice.kind === 'success' ? 'OK' : '!'}</span>
           {notice.message}
         </div>
       )}
-      <div className="mb-3 overflow-visible rounded-xl border border-[#d4e3d7] bg-gradient-to-br from-white via-[#f7fbf8] to-[#eff8f2]">
+      <div className="mb-3 overflow-visible rounded-xl border border-[#c6e5e1] bg-gradient-to-br from-white via-[#f5fbfa] to-[#e2f4f1]">
         <div className="relative z-10 flex items-center gap-2 overflow-x-auto px-3 py-2">
           {statusTabs.map(tab => {
             const count = tab === 'All' ? requests.length : requests.filter(request => request.status === tab).length;
@@ -409,43 +417,142 @@ export function RoleRequests() {
               <button
                 key={tab}
                 onClick={() => setStatusFilter(tab)}
-                className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-[#086b50] bg-[#086b50] text-white' : 'border-[#dce9e1] bg-white/80 text-[#344c43] hover:bg-[#eff8f2]'}`}
+                className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${active ? 'border-[#16837d] bg-[#16837d] text-white' : 'border-[#c6e5e1] bg-white/80 text-[#315f5e] hover:bg-[#e8f6f3]'}`}
               >
-                {tab}<span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${active ? 'bg-white/20 text-white' : 'bg-[#e7f4ec] text-[#526B62]'}`}>{count}</span>
+                {tab}<span className={`rounded-full px-1.5 py-0.5 ${active ? 'bg-white/20 text-white' : 'bg-[#e5f4f1] text-[#527b79]'}`}>{count}</span>
               </button>
             );
           })}
         </div>
-        <div aria-hidden="true" className="mx-3 h-px bg-[#dcebe2]" />
+        <div aria-hidden="true" className="mx-3 h-px bg-[#c6e5e1]" />
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-3 py-2">
           <div className="relative min-w-[220px] max-w-[600px] flex-1">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#6faf91]" />
-            <input value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="Search requests..." className="w-full rounded-full border border-[#d4e3d7] bg-white/90 py-2 pl-9 pr-3 text-xs text-[#172b24] placeholder:text-[#789087] outline-none focus:border-[#086b50] focus:ring-2 focus:ring-[#086b50]/20" />
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#58a49b]" />
+            <input value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="Search requests..." className="w-full rounded-full border border-[#c6e5e1] bg-white/90 py-2 pl-9 pr-3 text-sm text-[#173f40] placeholder:text-[#829e9b] outline-none focus:border-[#16837d] focus:ring-0" />
           </div>
           <div className="relative">
-            <button onClick={() => setDateRangeOpen(open => !open)} className="inline-flex items-center gap-2 rounded-full border border-[#d4e3d7] bg-white/90 px-3 py-2 text-xs font-medium text-[#40594f] transition hover:bg-[#f7fbf8]">
-              <CalendarDays className="h-4 w-4 text-[#078c63]" />
-              {dateFrom || dateTo ? `${dateFrom || 'Start'} – ${dateTo || 'End'}` : 'Select Date Range'}
+            <button onClick={() => {
+              if (!dateRangeOpen) {
+                setDraftDateFrom(dateFrom);
+                setDraftDateTo(dateTo);
+              }
+              setCalendarOpenFor(null);
+              setDateRangeOpen(open => !open);
+            }} className={`inline-flex items-center gap-2 rounded-full border bg-white px-3 py-2 text-sm font-medium text-[#315f5e] transition hover:border-[#16837d] focus-visible:border-[#105f5a] focus-visible:outline-none focus-visible:ring-0 ${dateRangeOpen ? 'border-[#105f5a]' : 'border-[#8ebfb4]'}`}>
+              <CalendarDays className="h-4 w-4 text-[#16837d]" />
+              {dateFrom || dateTo ? `${dateFrom ? format(new Date(`${dateFrom}T00:00:00`), "MMM d, yyyy") : "Start"} – ${dateTo ? format(new Date(`${dateTo}T00:00:00`), "MMM d, yyyy") : "End"}` : "Select Date Range"}
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${dateRangeOpen ? 'rotate-180' : ''}`} />
             </button>
             {dateRangeOpen && (
-              <div className="absolute right-0 top-full z-30 mt-2 grid w-64 gap-3 rounded-xl border border-[#d4e3d7] bg-white p-3 shadow-lg">
-                <label className="grid gap-1 text-[11px] text-[#526B62]">From<input type="date" value={dateFrom} onChange={event => setDateFrom(event.target.value)} className="rounded-lg border border-[#d4e3d7] px-2 py-1.5 text-xs text-[#172b24] focus:border-[#086b50] focus:outline-none" /></label>
-                <label className="grid gap-1 text-[11px] text-[#526B62]">To<input type="date" value={dateTo} onChange={event => setDateTo(event.target.value)} className="rounded-lg border border-[#d4e3d7] px-2 py-1.5 text-xs text-[#172b24] focus:border-[#086b50] focus:outline-none" /></label>
-                <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="justify-self-end text-xs font-medium text-[#086b50] hover:underline">Clear dates</button>
+              <div className="absolute right-0 top-full z-40 mt-2 w-[340px] rounded-xl border border-[#c6e5e1] bg-white p-3 shadow-lg">
+                <div className="relative grid gap-3">
+                  {(['from', 'to'] as const).map(field => {
+                    const value = field === 'from' ? draftDateFrom : draftDateTo;
+                    const label = field === 'from' ? 'From' : 'To';
+                    return (
+                      <div key={field} className="grid gap-1 text-sm font-medium text-[#527b79]">
+                        {label}
+                        <span className="flex h-10 items-center rounded-lg border border-[#c6e5e1] bg-white pl-3 pr-1 text-sm font-normal text-[#315f5e]">
+                          <span className="flex-1">{value ? format(new Date(`${value}T00:00:00`), 'MMM d, yyyy') : 'Select date'}</span>
+                          <button type="button" onClick={() => {
+                            if (calendarOpenFor !== field) {
+                              const date = value ? new Date(`${value}T00:00:00`) : new Date();
+                              setCalendarMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+                              setCalendarMenu(null);
+                            }
+                            setCalendarOpenFor(calendarOpenFor === field ? null : field);
+                          }} aria-label={`Choose ${label.toLowerCase()} date`} className="rounded-md p-2 text-[#16837d] hover:bg-[#e5f4f1]"><CalendarDays className="h-4 w-4" /></button>
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {calendarOpenFor && (
+                    <div className="absolute left-1/2 top-full z-[60] mt-2 w-[340px] -translate-x-1/2 rounded-2xl border border-[#c6e5e1] bg-white px-3 py-2 shadow-xl">
+                      <div className="relative z-10 mx-auto flex h-10 items-center justify-center gap-2">
+                        <div className="relative">
+                          <button type="button" onClick={() => setCalendarMenu(calendarMenu === 'month' ? null : 'month')} className="flex h-9 w-[148px] items-center justify-between rounded-lg border border-[#c6e5e1] bg-white px-2.5 text-sm font-medium text-[#315f5e] hover:bg-[#f1faf8]">
+                            {format(calendarMonth, 'MMMM')}<ChevronDown className={`h-4 w-4 transition-transform ${calendarMenu === 'month' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {calendarMenu === 'month' && <div className="absolute left-0 top-full mt-1 max-h-52 w-full overflow-y-auto rounded-lg border border-[#c6e5e1] bg-white p-1 shadow-lg">
+                            {Array.from({ length: 12 }, (_, month) => <button key={month} type="button" onClick={() => { setCalendarMonth(new Date(calendarMonth.getFullYear(), month, 1)); setCalendarMenu(null); }} className={`block w-full rounded-md px-2.5 py-1.5 text-left text-sm ${calendarMonth.getMonth() === month ? 'bg-[#16837d] font-medium text-white' : 'text-[#315f5e] hover:bg-[#e5f4f1]'}`}>{format(new Date(2020, month, 1), 'MMMM')}</button>)}
+                          </div>}
+                        </div>
+                        <div className="relative">
+                          <button type="button" onClick={() => setCalendarMenu(calendarMenu === 'year' ? null : 'year')} className="flex h-9 w-[82px] items-center justify-between rounded-lg border border-[#c6e5e1] bg-white px-2.5 text-sm font-medium text-[#315f5e] hover:bg-[#f1faf8]">
+                            {format(calendarMonth, 'yyyy')}<ChevronDown className={`h-4 w-4 transition-transform ${calendarMenu === 'year' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {calendarMenu === 'year' && <div className="absolute right-0 top-full mt-1 max-h-52 w-[82px] overflow-y-auto rounded-lg border border-[#c6e5e1] bg-white p-1 shadow-lg">
+                            {Array.from({ length: 101 }, (_, index) => new Date().getFullYear() - 50 + index).map(year => <button key={year} type="button" onClick={() => { setCalendarMonth(new Date(year, calendarMonth.getMonth(), 1)); setCalendarMenu(null); }} className={`block w-full rounded-md px-2 py-1.5 text-left text-sm ${calendarMonth.getFullYear() === year ? 'bg-[#16837d] font-medium text-white' : 'text-[#315f5e] hover:bg-[#e5f4f1]'}`}>{year}</button>)}
+                          </div>}
+                        </div>
+                      </div>
+                      <Calendar
+                        mode="single"
+                        month={calendarMonth}
+                        onMonthChange={setCalendarMonth}
+                        selected={(calendarOpenFor === 'from' ? draftDateFrom : draftDateTo) ? new Date(`${calendarOpenFor === 'from' ? draftDateFrom : draftDateTo}T00:00:00`) : undefined}
+                        onSelect={date => {
+                          const value = date ? format(date, 'yyyy-MM-dd') : '';
+                          if (calendarOpenFor === 'from') setDraftDateFrom(value);
+                          else setDraftDateTo(value);
+                          setCalendarOpenFor(null);
+                        }}
+                        className="mx-auto p-2 text-[#315f5e]"
+                        classNames={{
+                          month: 'flex flex-col gap-0',
+                          month_caption: 'hidden',
+                          caption_label: 'hidden',
+                          dropdowns: 'hidden',
+                          nav: 'hidden',
+                          dropdown: 'hidden',
+                          button_previous: 'hidden',
+                          button_next: 'hidden',
+                          chevron: 'h-4 w-4 fill-none text-[#16837d]',
+                          months_dropdown: 'w-[148px]',
+                          years_dropdown: 'w-[82px]',
+                          month_grid: 'w-full border-collapse',
+                          weekdays: 'text-center',
+                          weekday: 'h-7 text-center text-sm font-normal text-[#527b79]',
+                          week: 'h-9',
+                          day: 'h-9 p-0 text-center',
+                          day_button: 'mx-auto flex h-8 w-10 items-center justify-center rounded-lg text-sm text-[#315f5e] hover:bg-[#e5f4f1]',
+                          selected: 'bg-transparent text-[#315f5e] [&>button]:border [&>button]:border-[#8ebfb4] [&>button]:bg-[#e1f3ed]',
+                          today: 'bg-transparent text-[#315f5e] [&>button]:border [&>button]:border-[#8ebfb4]',
+                          outside: 'text-[#a5bfbb]',
+                        }}
+                      />
+                      <div className="flex justify-between border-t border-[#e1efed] px-2 pt-2">
+                        <button onClick={() => {
+                          if (calendarOpenFor === 'from') setDraftDateFrom('');
+                          else setDraftDateTo('');
+                        }} className="rounded-md px-3 py-1.5 text-sm font-medium text-[#16837d] hover:bg-[#e5f4f1]">Clear</button>
+                        <div className="flex gap-2">
+                          <button onClick={() => setCalendarOpenFor(null)} className="rounded-md border border-[#c6e5e1] px-3 py-1.5 text-sm font-medium text-[#315f5e] hover:bg-[#f1faf8]">Cancel</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 flex justify-between border-t border-[#e1efed] pt-2">
+                  <button onClick={() => { setDraftDateFrom(''); setDraftDateTo(''); setDateFrom(''); setDateTo(''); }} className="rounded-md px-3 py-1.5 text-sm font-medium text-[#16837d] hover:bg-[#e5f4f1]">Clear range</button>
+                  <div className="flex gap-2">
+                  <button onClick={() => { setDraftDateFrom(dateFrom); setDraftDateTo(dateTo); setDateRangeOpen(false); setCalendarOpenFor(null); }} className="rounded-md border border-[#c6e5e1] px-3 py-1.5 text-sm font-medium text-[#315f5e] hover:bg-[#f1faf8]">Cancel</button>
+                  <button onClick={() => { setDateFrom(draftDateFrom); setDateTo(draftDateTo); setDateRangeOpen(false); setCalendarOpenFor(null); }} className="rounded-md bg-[#16837d] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#105f5a]">Apply range</button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      <div className={`${card} overflow-hidden`}>
+      <div className="overflow-hidden rounded-lg border border-[#c6e5e1] bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[850px] text-left">
-            <thead className="bg-gradient-to-r from-[#013826] to-[#086b50]">
+          <table className="w-full min-w-[850px] text-left text-sm">
+            <thead className="bg-[#16837d]">
               <tr>
                 {['Requested Role', 'Owner', 'Requested Users', 'Request Date', 'Status', ''].map((heading, index) => (
-                  <th key={heading || `action-${index}`} className="px-4 py-3 text-xs font-semibold text-white">{heading}</th>
+                  <th key={heading || `action-${index}`} className="px-4 py-3 text-sm font-semibold text-white">{heading}</th>
                 ))}
               </tr>
             </thead>
@@ -462,17 +569,17 @@ export function RoleRequests() {
                       openRequestDetails(request);
                     }
                   }}
-                  className="cursor-pointer border-t border-[#e6eee9] transition-colors hover:bg-[#f0f8f3] focus-visible:bg-[#f0f8f3] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#078c63]"
+                  className="cursor-pointer border-t border-[#e1efed] transition-colors hover:bg-[#f4faf9] focus-visible:bg-[#f4faf9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#16837d]"
                 >
                   <td className="px-4 py-3">
-                    <p className="text-sm font-semibold text-[#172b24]">{request.clinic}</p>
-                    <p className="mt-0.5 text-xs text-[#078c63]">{request.role}</p>
+                    <p className="text-sm font-semibold text-[#173f40]">{request.clinic}</p>
+                    <p className="mt-0.5 text-sm text-[#16837d]">{request.role}</p>
                   </td>
                   <td className="px-4 py-3 text-sm text-[#40594f]">{request.owner}</td>
                   <td className="px-4 py-3 text-sm text-[#40594f]">{request.users}</td>
                   <td className="px-4 py-3 text-sm text-[#40594f]">{request.date}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${
+                    <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-sm font-medium ${
                       request.status === 'Approved' ? 'bg-[#d8f7e9] text-[#078c63]' :
                       request.status === 'Rejected' ? 'bg-[#ffe0e0] text-[#c43636]' :
                       request.status === 'Under Review' ? 'bg-[#e7f4ec] text-[#086b50]' :
@@ -480,7 +587,7 @@ export function RoleRequests() {
                     }`}>{request.status}</span>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button type="button" onClick={event => { event.stopPropagation(); openRequestDetails(request); }} aria-label={`View ${request.clinic} ${request.role} request`} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#087a59] transition hover:bg-[#d8f7e9]">
+                    <button type="button" onClick={event => { event.stopPropagation(); openRequestDetails(request); }} aria-label={`View ${request.clinic} ${request.role} request`} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#16837d] transition hover:bg-[#e5f4f1]">
                       <ChevronRight className="h-4 w-4" />
                     </button>
                   </td>
@@ -496,72 +603,72 @@ export function RoleRequests() {
       {selectedRequest && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
           <div role="dialog" aria-modal="true" aria-labelledby="role-request-details-title" className="flex h-[min(560px,calc(100vh-2rem))] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
-            <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#013826] to-[#087a59] px-4 py-3 text-white">
-              <h2 id="role-request-details-title" className="text-sm font-semibold">Role Request Details</h2>
-              <button onClick={() => setSelectedRequest(null)} aria-label="Close role request details" className="text-2xl leading-none text-white/90 transition hover:text-white">×</button>
+            <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#105f5a] to-[#16837d] px-4 py-3 text-white">
+              <h2 id="role-request-details-title" className="text-[19px] font-semibold">Role Request Details</h2>
+              <button onClick={() => setSelectedRequest(null)} aria-label="Close role request details" className="rounded-md p-1 text-white/90 transition hover:bg-white/15 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-[#fbfdfb] p-4 sm:p-5">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7fbfa] p-4 sm:p-5">
               <div className="grid gap-3 md:grid-cols-2">
-              <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
-                <h3 className="border-b border-[#d4e3d7] bg-[#e7f4ec] px-4 py-2.5 text-sm font-semibold text-[#07543d]">Request Information</h3>
-                <dl className="grid grid-cols-[minmax(130px,0.8fr)_1.2fr] gap-x-3 gap-y-2 p-4 text-xs sm:text-sm">
-                  <dt className="font-medium text-[#526B62]">Request ID</dt><dd className="text-[#172b24]">#{selectedRequest.id}</dd>
-                  <dt className="font-medium text-[#526B62]">Clinic Name</dt><dd className="text-[#172b24]">{selectedRequest.clinic}</dd>
-                  <dt className="font-medium text-[#526B62]">Requested Role</dt><dd className="text-[#172b24]">{selectedRequest.role}</dd>
-                  <dt className="font-medium text-[#526B62]">Number of Users</dt><dd className="text-[#172b24]">{selectedRequest.users}</dd>
-                  <dt className="font-medium text-[#526B62]">Date Submitted</dt><dd className="text-[#172b24]">{selectedRequest.date}</dd>
-                  <dt className="font-medium text-[#526B62]">Current Status</dt>
-                  <dd><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                    selectedRequest.status === 'Approved' || selectedRequest.status === 'Assigned' ? 'bg-[#d8f7e9] text-[#078c63]' :
+              <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white">
+                <h3 className="border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-semibold text-[#105f5a]">Request Information</h3>
+                <dl className="grid grid-cols-[minmax(130px,0.8fr)_1.2fr] gap-x-3 gap-y-2 p-4 text-[15px]">
+                  <dt className="font-medium text-[#527b79]">Request ID</dt><dd className="text-[#173f40]">#{selectedRequest.id}</dd>
+                  <dt className="font-medium text-[#527b79]">Clinic Name</dt><dd className="text-[#173f40]">{selectedRequest.clinic}</dd>
+                  <dt className="font-medium text-[#527b79]">Requested Role</dt><dd className="text-[#173f40]">{selectedRequest.role}</dd>
+                  <dt className="font-medium text-[#527b79]">Number of Users</dt><dd className="text-[#173f40]">{selectedRequest.users}</dd>
+                  <dt className="font-medium text-[#527b79]">Date Submitted</dt><dd className="text-[#173f40]">{selectedRequest.date}</dd>
+                  <dt className="font-medium text-[#527b79]">Current Status</dt>
+                  <dd><span className={`inline-flex rounded-full px-2.5 py-1 text-[13px] font-medium ${
+                    selectedRequest.status === 'Approved' || selectedRequest.status === 'Assigned' ? 'bg-[#e1f3ed] text-[#105f5a]' :
                     selectedRequest.status === 'Rejected' ? 'bg-[#ffe0e0] text-[#c43636]' :
-                    selectedRequest.status === 'Under Review' ? 'bg-[#e7f4ec] text-[#086b50]' :
+                    selectedRequest.status === 'Under Review' ? 'bg-[#e5f4f1] text-[#105f5a]' :
                     'bg-[#fff1c9] text-[#c98200]'
                   }`}>{selectedRequest.status}</span></dd>
                 </dl>
               </section>
-              <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
-                <h3 className="border-b border-[#d4e3d7] bg-[#e7f4ec] px-4 py-2.5 text-sm font-semibold text-[#07543d]">Clinic Information</h3>
-                <dl className="grid grid-cols-[minmax(130px,0.8fr)_1.2fr] gap-x-3 gap-y-2 p-4 text-xs sm:text-sm">
-                  <dt className="font-medium text-[#526B62]">Clinic Owner</dt><dd className="text-[#172b24]">{selectedRequest.owner}</dd>
-                  <dt className="font-medium text-[#526B62]">Owner's Email</dt><dd className="break-all text-[#172b24]">{selectedRequest.ownerEmail || '—'}</dd>
-                  <dt className="font-medium text-[#526B62]">Contact Number</dt><dd className="text-[#172b24]">{selectedRequest.ownerPhone || '—'}</dd>
-                  <dt className="font-medium text-[#526B62]">Clinic Address</dt><dd className="text-[#172b24]">{selectedRequest.clinicAddress || '—'}</dd>
+              <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white">
+                <h3 className="border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-semibold text-[#105f5a]">Clinic Information</h3>
+                <dl className="grid grid-cols-[minmax(130px,0.8fr)_1.2fr] gap-x-3 gap-y-2 p-4 text-[15px]">
+                  <dt className="font-medium text-[#527b79]">Clinic Owner</dt><dd className="text-[#173f40]">{selectedRequest.owner}</dd>
+                  <dt className="font-medium text-[#527b79]">Owner's Email</dt><dd className="break-all text-[#173f40]">{selectedRequest.ownerEmail || 'Not provided'}</dd>
+                  <dt className="font-medium text-[#527b79]">Contact Number</dt><dd className="text-[#173f40]">{selectedRequest.ownerPhone || 'Not provided'}</dd>
+                  <dt className="font-medium text-[#527b79]">Clinic Address</dt><dd className="text-[#173f40]">{selectedRequest.clinicAddress || 'Not provided'}</dd>
                 </dl>
               </section>
-              <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
-                <h3 className="border-b border-[#d4e3d7] bg-[#e7f4ec] px-4 py-2.5 text-sm font-semibold text-[#07543d]">Requested User Information</h3>
+              <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white">
+                <h3 className="border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-semibold text-[#105f5a]">Requested User Information</h3>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs sm:text-sm">
-                    <thead className="bg-[#f2f8f4] text-[#40594f]"><tr><th className="px-3 py-2 font-semibold">Full Name</th><th className="px-3 py-2 font-semibold">Email Address</th><th className="px-3 py-2 font-semibold">Requested Role</th></tr></thead>
-                    <tbody><tr className="border-t border-[#e6eee9]"><td className="px-3 py-2.5 text-[#172b24]">Not provided</td><td className="px-3 py-2.5 text-[#526B62]">Not provided</td><td className="px-3 py-2.5 text-[#172b24]">{selectedRequest.role}</td></tr></tbody>
+                  <table className="w-full text-left text-[15px]">
+                    <thead className="bg-[#f1faf8] text-[13px] text-[#315f5e]"><tr><th className="px-3 py-2 font-semibold">Full Name</th><th className="px-3 py-2 font-semibold">Email Address</th><th className="px-3 py-2 font-semibold">Requested Role</th></tr></thead>
+                    <tbody><tr className="border-t border-[#e1efed]"><td className="px-3 py-2.5 text-[#173f40]">Not provided</td><td className="px-3 py-2.5 text-[#527b79]">Not provided</td><td className="px-3 py-2.5 text-[#173f40]">{selectedRequest.role}</td></tr></tbody>
                   </table>
                 </div>
-                <p className="px-3 pb-3 text-[11px] text-[#789087]">The request contains a user count, but individual user names and email addresses were not provided.</p>
+                <p className="px-3 pb-3 text-[13px] text-[#829e9b]">The request contains a user count, but individual user names and email addresses were not provided.</p>
               </section>
-              <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white">
-                <h3 className="border-b border-[#d4e3d7] bg-[#e7f4ec] px-4 py-2.5 text-sm font-semibold text-[#07543d]">Request Justification</h3>
-                <dl className="grid grid-cols-[minmax(125px,0.8fr)_1.2fr] gap-x-3 gap-y-3 p-4 text-xs sm:text-sm">
-                  <dt className="font-medium text-[#526B62]">Reason for Request</dt><dd className="text-[#172b24]">{selectedRequest.reason || '—'}</dd>
-                  <dt className="font-medium text-[#526B62]">Additional Remarks</dt><dd className="text-[#172b24]">No additional remarks recorded.</dd>
+              <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white">
+                <h3 className="border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-semibold text-[#105f5a]">Request Justification</h3>
+                <dl className="grid grid-cols-[minmax(125px,0.8fr)_1.2fr] gap-x-3 gap-y-3 p-4 text-[15px]">
+                  <dt className="font-medium text-[#527b79]">Reason for Request</dt><dd className="text-[#173f40]">{selectedRequest.reason || 'Not provided'}</dd>
+                  <dt className="font-medium text-[#527b79]">Additional Remarks</dt><dd className="text-[#173f40]">No additional remarks recorded.</dd>
                 </dl>
               </section>
-              <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white md:col-span-2">
-                <h3 className="border-b border-[#d4e3d7] bg-[#e7f4ec] px-4 py-2.5 text-sm font-semibold text-[#07543d]">Review History</h3>
+              <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white md:col-span-2">
+                <h3 className="border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-semibold text-[#105f5a]">Review History</h3>
                 {selectedRequest.reviewedAt ? (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs sm:text-sm">
-                      <thead className="bg-[#f2f8f4] text-[#40594f]"><tr><th className="px-3 py-2 font-semibold">Reviewed By</th><th className="px-3 py-2 font-semibold">Date Reviewed</th><th className="px-3 py-2 font-semibold">Admin Remarks</th><th className="px-3 py-2 font-semibold">Previous Status</th></tr></thead>
-                      <tbody><tr className="border-t border-[#e6eee9]"><td className="px-3 py-2.5 text-[#172b24]">{selectedRequest.reviewerName || selectedRequest.reviewerEmail || 'Admin'}</td><td className="px-3 py-2.5 text-[#526B62]">{formattedDate(selectedRequest.reviewedAt)}</td><td className="px-3 py-2.5 text-[#526B62]">—</td><td className="px-3 py-2.5 text-[#526B62]">—</td></tr></tbody>
+                    <table className="w-full text-left text-[15px]">
+                      <thead className="bg-[#f1faf8] text-[13px] text-[#315f5e]"><tr><th className="px-3 py-2 font-semibold">Reviewed By</th><th className="px-3 py-2 font-semibold">Date Reviewed</th><th className="px-3 py-2 font-semibold">Admin Remarks</th><th className="px-3 py-2 font-semibold">Previous Status</th></tr></thead>
+                      <tbody><tr className="border-t border-[#e1efed]"><td className="px-3 py-2.5 text-[#173f40]">{selectedRequest.reviewerName || selectedRequest.reviewerEmail || 'Admin'}</td><td className="px-3 py-2.5 text-[#527b79]">{formattedDate(selectedRequest.reviewedAt)}</td><td className="px-3 py-2.5 text-[#527b79]">Not provided</td><td className="px-3 py-2.5 text-[#527b79]">Not provided</td></tr></tbody>
                     </table>
                   </div>
-                ) : <p className="px-4 py-3 text-sm text-[#789087]">No review history recorded.</p>}
+                ) : <p className="px-4 py-3 text-[13px] text-[#829e9b]">No review history recorded.</p>}
               </section>
               {(selectedRequest.status === 'Pending' || selectedRequest.status === 'Under Review') && (
-                <section className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white md:col-span-2">
-                  <h3 className="border-b border-[#d4e3d7] bg-[#e7f4ec] px-4 py-2.5 text-sm font-semibold text-[#07543d]">Review Actions</h3>
+                <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white md:col-span-2">
+                  <h3 className="border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-semibold text-[#105f5a]">Review Actions</h3>
                   <div className="flex flex-wrap gap-2 p-4">
-                    <button onClick={() => updateRequest('Approved', `Role request approved for ${selectedRequest.clinic}.`, 'success')} className="rounded-full bg-[#087a59] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#065c44]">Approve Request</button>
-                    <button onClick={() => updateRequest('Rejected', `Role request rejected for ${selectedRequest.clinic}.`, 'error')} className="rounded-full border border-[#c43636] bg-white px-4 py-2 text-xs font-semibold text-[#c43636] transition hover:bg-[#fff1f1]">Reject Request</button>
+                    <button onClick={() => updateRequest('Approved', `Role request approved for ${selectedRequest.clinic}.`, 'success')} className="rounded-full bg-[#16837d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#105f5a]">Approve Request</button>
+                    <button onClick={() => updateRequest('Rejected', `Role request rejected for ${selectedRequest.clinic}.`, 'error')} className="rounded-full border border-[#c43636] bg-white px-4 py-2 text-[13px] font-semibold text-[#c43636] transition hover:bg-[#fff1f1]">Reject Request</button>
                   </div>
                 </section>
               )}
@@ -571,6 +678,32 @@ export function RoleRequests() {
         </div>,
         document.body
       )}
+    </div>
+  );
+}
+
+function BillingCycleDropdown({ compact = false }: { compact?: boolean }) {
+  const [value, setValue] = useState('Monthly');
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Node && !dropdownRef.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
+  }, [open]);
+
+  return (
+    <div className="relative mt-1" ref={dropdownRef}>
+      <button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(current => !current)} className={`flex w-full items-center justify-between rounded-lg border border-[#c6e5e1] bg-white px-3 text-left text-[#173f40] transition hover:border-[#8ebfb4] focus:border-[#16837d] focus:outline-none ${compact ? 'py-2 text-sm' : 'py-2.5 text-base'}`}>
+        <span>{value}</span><ChevronDown className="h-4 w-4 text-[#527b79]" />
+      </button>
+      {open && <div role="listbox" aria-label="Billing Cycle" className="absolute left-0 right-0 top-[calc(100%+6px)] z-[70] rounded-xl border border-[#c6e5e1] bg-white p-1 shadow-lg">
+        {['Monthly', 'Yearly'].map(option => <button key={option} type="button" role="option" aria-selected={value === option} onClick={() => { setValue(option); setOpen(false); }} className={`flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm transition ${value === option ? 'bg-[#16837d] font-semibold text-white' : 'text-[#315f5e] hover:bg-[#e5f4f1] hover:text-[#105f5a]'}`}>{option}</button>)}
+      </div>}
     </div>
   );
 }
@@ -677,7 +810,7 @@ export function SubscriptionPlans() {
 
   const formatPrice = (price: string) => {
     if (!price) return 'Not set';
-    return /^[₱$€£]/.test(price.trim()) ? price : `₱${price}`;
+    return /^[\u20B1$€£]/.test(price.trim()) ? price : `\u20B1${price}`;
   };
 
   const openPlanDetails = async (plan: Plan) => {
@@ -704,8 +837,8 @@ export function SubscriptionPlans() {
           return String(clinicPlan).trim().toLowerCase() === plan.name.trim().toLowerCase();
         })
         .map((clinic: any) => {
-          const rawExpiry = clinic.metadata?.subscriptionExpiry || clinic.metadata?.subscription_expiry || '';
-          const expiry = rawExpiry ? new Date(rawExpiry) : null;
+          const rawExpiry = String(clinic.metadata?.subscriptionExpiry || clinic.metadata?.subscription_expiry || '').trim();
+          const expiry = rawExpiry && !/[^\x00-\x7F]/.test(rawExpiry) ? new Date(rawExpiry) : null;
           const clinicStatus = String(clinic.status || clinic.metadata?.status || 'Active');
           const status = expiry && !Number.isNaN(expiry.getTime()) && expiry.getTime() < Date.now()
             ? 'Expired'
@@ -713,12 +846,12 @@ export function SubscriptionPlans() {
           return {
             id: Number(clinic.id),
             name: clinic.name || 'Unnamed clinic',
-            owner: clinic.metadata?.application?.ownerName || clinic.owner || '—',
-            email: clinic.metadata?.application?.ownerEmail || clinic.email || '—',
-            phone: clinic.metadata?.application?.ownerPhone || clinic.phone || '—',
-            address: clinic.address || '—',
-            subscriptionDate: clinic.created_at ? new Date(clinic.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' }) : '—',
-            expirationDate: expiry && !Number.isNaN(expiry.getTime()) ? expiry.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' }) : '—',
+            owner: clinic.metadata?.application?.ownerName || clinic.owner || 'Not provided',
+            email: clinic.metadata?.application?.ownerEmail || clinic.email || 'Not provided',
+            phone: clinic.metadata?.application?.ownerPhone || 'Not provided',
+            address: clinic.address || 'Not provided',
+            subscriptionDate: clinic.created_at ? new Date(clinic.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' }) : 'Not provided',
+            expirationDate: expiry && !Number.isNaN(expiry.getTime()) ? expiry.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' }) : 'Not provided',
             status,
           };
         });
@@ -740,7 +873,7 @@ export function SubscriptionPlans() {
   const currentPlanClinicPage = Math.min(planClinicPage, planClinicPageCount);
   const pagePlanClinics = visiblePlanClinics.slice((currentPlanClinicPage - 1) * planClinicPageSize, currentPlanClinicPage * planClinicPageSize);
   const planClinicStatusStyle = (status: string) => status.toLowerCase() === 'active'
-    ? 'bg-[#dff8ed] text-[#087a59]'
+    ? 'bg-[#e1f3ed] text-[#105f5a]'
     : status.toLowerCase() === 'expired' || status.toLowerCase() === 'rejected' || status.toLowerCase() === 'suspended'
       ? 'bg-[#fff1c9] text-[#b77900]'
       : 'bg-[#eaf2f8] text-[#536b80]';
@@ -791,19 +924,19 @@ export function SubscriptionPlans() {
   };
 
   return (
-    <div className={`${shell} text-sm`}>
+    <div className="min-h-full space-y-4 bg-[#f7fbfa] p-5 text-sm">
       <div className="flex items-center justify-between">
-        <button onClick={openCreatePlan} className="rounded-full bg-[#086b50] px-4 py-2 text-sm font-semibold text-white"><Plus className="mr-1 inline h-4 w-4" />Create Plan</button>
+        <button onClick={openCreatePlan} className="rounded-full bg-[#16837d] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#105f5a]"><Plus className="mr-1 inline h-4 w-4" />Create Plan</button>
       </div>
       {notice && (
         <div className={`fixed right-6 top-6 z-[100] flex items-center gap-3 rounded-xl border px-5 py-3 text-sm shadow-lg ${
           notice.kind === 'success' ? 'border-[#7ce3af] bg-[#f0fff6]' : 'border-[#82b5ff] bg-[#f0f7ff]'
         }`}>
-          <span className={`text-lg ${notice.kind === 'success' ? 'text-[#079669]' : 'text-[#086b50]'}`}>{notice.kind === 'success' ? '✓' : 'ⓘ'}</span>
+          <span className={`text-lg ${notice.kind === 'success' ? 'text-[#16837d]' : 'text-[#c43636]'}`}>{notice.kind === 'success' ? 'OK' : '!'}</span>
           {notice.message}
         </div>
       )}
-      <div className={`${card} overflow-hidden`}>
+      <div className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1050px] table-fixed border-collapse text-left">
             <colgroup>
@@ -814,10 +947,10 @@ export function SubscriptionPlans() {
               <col className="w-[12.5%]" />
               <col className="w-[12.5%]" />
             </colgroup>
-            <thead className="bg-gradient-to-r from-[#013826] to-[#086b50] text-white">
+            <thead className="bg-gradient-to-r from-[#105f5a] to-[#16837d] text-white">
               <tr>
                 {['Plan Name', 'Price', 'Billing Cycle', 'Subscribed Clinics', 'Status', ''].map(heading => (
-                  <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold" key={heading}>{heading}</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-sm font-semibold" key={heading}>{heading}</th>
                 ))}
               </tr>
             </thead>
@@ -825,36 +958,36 @@ export function SubscriptionPlans() {
               {plans.map(plan => {
                 return (
                   <Fragment key={plan.id || plan.name}>
-                    <tr className="border-b border-[#e2eee7] bg-white transition-colors hover:bg-[#fbfdfb]">
+                    <tr className="border-b border-[#e1efed] bg-white transition-colors hover:bg-[#f7fbfa]">
                       <td className="px-4 py-3">
                         <div className="min-w-[220px]">
-                          <h2 className="truncate text-sm font-semibold text-[#172b24]">{plan.name}</h2>
-                          <p className="mt-1 truncate text-xs text-[#526B62]">{plan.description}</p>
+                          <h2 className="truncate text-sm font-semibold text-[#173f40]">{plan.name}</h2>
+                          <p className="mt-1 truncate text-xs text-[#527b79]">{plan.description}</p>
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
-                        <p className="text-sm font-semibold text-[#172b24]">{formatPrice(plan.price)} <span className="font-normal">/ month</span></p>
-                        <p className="mt-1 text-sm text-[#526B62]">{formatPrice(plan.annualPrice)} <span>/ year</span></p>
+                        <p className="text-sm font-semibold text-[#173f40]">{formatPrice(plan.price)} <span className="font-normal">/ month</span></p>
+                        <p className="mt-1 text-sm text-[#527b79]">{formatPrice(plan.annualPrice)} <span>/ year</span></p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="whitespace-nowrap text-sm text-[#172b24]">{plan.staffLimit.toLowerCase() === 'unlimited' || plan.staffLimit === '0' ? 'Unlimited staff' : plan.staffLimit ? `Up to ${plan.staffLimit} staff` : 'Staff limit not set'}</p>
+                        <p className="whitespace-nowrap text-sm text-[#173f40]">{plan.staffLimit.toLowerCase() === 'unlimited' || plan.staffLimit === '0' ? 'Unlimited staff' : plan.staffLimit ? `Up to ${plan.staffLimit} staff` : 'Staff limit not set'}</p>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
-                        <p className="text-sm font-semibold text-[#172b24]">{plan.subscribedClinics}</p>
-                        <p className="mt-1 text-xs text-[#526B62]">Subscribed Clinics</p>
+                        <p className="text-sm font-semibold text-[#173f40]">{plan.subscribedClinics}</p>
+                        <p className="mt-1 text-xs text-[#527b79]">Subscribed Clinics</p>
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={() => togglePlan(plan)} title={`Click to ${plan.active ? 'deactivate' : 'activate'} ${plan.name}`} className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold ${plan.active ? 'bg-[#dff8ed] text-[#087a59]' : 'bg-[#eef2f6] text-[#536b80]'}`}>
-                          <span className={`h-2.5 w-2.5 rounded-full ${plan.active ? 'bg-[#0db966]' : 'bg-[#8da2b5]'}`} />
+                        <button onClick={() => togglePlan(plan)} title={`Click to ${plan.active ? 'deactivate' : 'activate'} ${plan.name}`} className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold ${plan.active ? 'bg-[#e1f3ed] text-[#105f5a]' : 'bg-[#eef5f4] text-[#527b79]'}`}>
+                          <span className={`h-2.5 w-2.5 rounded-full ${plan.active ? 'bg-[#16837d]' : 'bg-[#8ba9a5]'}`} />
                           {plan.active ? 'Active' : 'Inactive'}
                         </button>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => openPlanDetails(plan)} aria-label={`View ${plan.name} plan`} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#086b50] transition-colors hover:bg-[#e7f4ec] hover:text-[#013826] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#078c63]">
+                          <button onClick={() => openPlanDetails(plan)} aria-label={`View ${plan.name} plan`} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#16837d] transition-colors hover:bg-[#e5f4f1] hover:text-[#105f5a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16837d]">
                             <ChevronRight className="h-4 w-4" />
                           </button>
-                          <button onClick={() => openEditPlan(plan)} aria-label={`Edit ${plan.name} plan`} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#087a59] transition-colors hover:bg-[#e7f4ec] hover:text-[#013826] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#078c63]">
+                          <button onClick={() => openEditPlan(plan)} aria-label={`Edit ${plan.name} plan`} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#16837d] transition-colors hover:bg-[#e5f4f1] hover:text-[#105f5a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16837d]">
                             <Pencil className="h-4 w-4" />
                           </button>
                         </div>
@@ -863,58 +996,58 @@ export function SubscriptionPlans() {
                   </Fragment>
                 );
               })}
-              {plans.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-[#789087]">No subscription plans found.</td></tr>}
+              {plans.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-[#829e9b]">No subscription plans found.</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
       {viewingPlan && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#152744]/60 p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(16, 95, 90, 0.42)' }}>
           <div className="flex h-[min(560px,calc(100vh-2rem))] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between bg-gradient-to-r from-[#013826] to-[#087a59] px-4 py-3 text-white">
-              <h2 className="text-sm font-semibold">
+            <div className="flex items-center justify-between bg-gradient-to-r from-[#105f5a] to-[#16837d] px-4 py-3 text-white">
+              <h2 className="text-[18px] font-semibold">
                 {planModalPage === 'details' ? 'View Plan Details' : planModalPage === 'subscribers' ? `${viewingPlan.name} Plan Subscribers` : `${selectedPlanClinic?.name || 'Clinic'} Details`}
               </h2>
-              <button onClick={() => { setViewingPlan(null); setSelectedPlanClinic(null); setPlanModalPage('details'); }} aria-label="Close plan details" className="text-xl leading-none">×</button>
+              <button onClick={() => { setViewingPlan(null); setSelectedPlanClinic(null); setPlanModalPage('details'); }} aria-label="Close plan details" className="rounded-md p-1 text-white/90 transition hover:bg-white/15 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
             {planModalPage === 'details' && (
             <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div><h3 className="text-base font-semibold text-[#172b24]">{viewingPlan.name}</h3><p className="mt-0.5 text-xs text-[#526B62]">{viewingPlan.description}</p></div>
+                  <div><h3 className="text-[15px] font-semibold text-[#173f40]">{viewingPlan.name}</h3><p className="mt-0.5 text-[15px] text-[#527b79]">{viewingPlan.description}</p></div>
                 </div>
-                <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${viewingPlan.active ? 'bg-[#dff8ed] text-[#087a59]' : 'bg-[#eef2f6] text-[#536b80]'}`}>
-                  <span className={`h-2 w-2 rounded-full ${viewingPlan.active ? 'bg-[#0db966]' : 'bg-[#8da2b5]'}`} />
+                <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] font-semibold ${viewingPlan.active ? 'bg-[#e1f3ed] text-[#105f5a]' : 'bg-[#eef5f4] text-[#527b79]'}`}>
+                  <span className={`h-2 w-2 rounded-full ${viewingPlan.active ? 'bg-[#16837d]' : 'bg-[#8ba9a5]'}`} />
                   {viewingPlan.active ? 'Active' : 'Inactive'}
                 </span>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 border-y border-[#e2eee7] py-3 sm:grid-cols-4">
-                <div className="border-r border-[#e2eee7] px-2 py-1">
-                  <p className="text-[11px] font-semibold text-[#172b24]">Pricing</p>
-                  <p className="mt-1 text-[11px] text-[#526B62]">{formatPrice(viewingPlan.price)} / month</p>
-                  <p className="text-[11px] text-[#526B62]">{formatPrice(viewingPlan.annualPrice)} / year</p>
+              <div className="mt-4 grid grid-cols-2 border-y border-[#e1efed] py-3 sm:grid-cols-4">
+                <div className="border-r border-[#e1efed] px-2 py-1">
+                  <p className="text-[13px] font-semibold text-[#173f40]">Pricing</p>
+                  <p className="mt-1 text-[15px] text-[#527b79]">{formatPrice(viewingPlan.price)} / month</p>
+                  <p className="text-[15px] text-[#527b79]">{formatPrice(viewingPlan.annualPrice)} / year</p>
                 </div>
-                <div className="border-r border-[#e2eee7] px-2 py-1 sm:px-4">
-                  <p className="text-[11px] font-semibold text-[#172b24]">Billing Cycle</p>
-                  <p className="mt-1 text-[11px] text-[#526B62]">Monthly</p>
+                <div className="border-r border-[#e1efed] px-2 py-1 sm:px-4">
+                  <p className="text-[13px] font-semibold text-[#173f40]">Billing Cycle</p>
+                  <p className="mt-1 text-[15px] text-[#527b79]">Monthly</p>
                 </div>
-                <div className="border-r border-[#e2eee7] px-2 py-1 sm:px-4">
-                  <p className="text-[11px] font-semibold text-[#172b24]">Staff Limit</p>
-                  <p className="mt-1 text-[11px] text-[#526B62]">{viewingPlan.staffLimit === 'Unlimited' || viewingPlan.staffLimit === '0' ? 'Unlimited staff' : `Up to ${viewingPlan.staffLimit} staff`}</p>
+                <div className="border-r border-[#e1efed] px-2 py-1 sm:px-4">
+                  <p className="text-[13px] font-semibold text-[#173f40]">Staff Limit</p>
+                  <p className="mt-1 text-[15px] text-[#527b79]">{viewingPlan.staffLimit === 'Unlimited' || viewingPlan.staffLimit === '0' ? 'Unlimited staff' : `Up to ${viewingPlan.staffLimit} staff`}</p>
                 </div>
                 <div className="px-2 py-1 sm:px-4">
-                  <p className="text-[11px] font-semibold text-[#172b24]">User Limit</p>
-                  <p className="mt-1 text-[11px] text-[#526B62]">Not set</p>
+                  <p className="text-[13px] font-semibold text-[#173f40]">User Limit</p>
+                  <p className="mt-1 text-[15px] text-[#527b79]">Not set</p>
                 </div>
               </div>
 
-              <div className="mt-3 flex border-b border-[#d4e9df]">
+              <div className="mt-3 flex border-b border-[#c6e5e1]">
                 {([
                   ['overview', 'Overview'],
                   ['clinics', `Subscribed Clinics (${loadingPlanDetails ? viewingPlan.subscribedClinics : planClinics.length})`],
                 ] as const).map(([tab, label]) => (
-                  <button key={tab} onClick={() => setPlanDetailTab(tab)} className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-[11px] font-medium transition ${planDetailTab === tab ? 'border-[#087a59] text-[#087a59]' : 'border-transparent text-[#647b71] hover:text-[#087a59]'}`}>
+                  <button key={tab} onClick={() => setPlanDetailTab(tab)} className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-medium transition ${planDetailTab === tab ? 'border-[#16837d] text-[#105f5a]' : 'border-transparent text-[#527b79] hover:text-[#105f5a]'}`}>
                     {label}
                   </button>
                 ))}
@@ -922,15 +1055,15 @@ export function SubscriptionPlans() {
 
               {planDetailTab === 'overview' && (
                 <div className="space-y-4 py-4">
-                  <div className="rounded-lg border border-[#e2eee7] bg-[#f7fbf8] p-4">
-                    <h4 className="text-xs font-semibold text-[#172b24]">Plan Overview</h4>
-                    <p className="mt-2 text-xs leading-5 text-[#526B62]">{viewingPlan.description || 'No plan description provided.'}</p>
+                  <div className="rounded-lg border border-[#c6e5e1] bg-[#f7fbfa] p-4">
+                    <h4 className="text-[13px] font-semibold text-[#173f40]">Plan Overview</h4>
+                    <p className="mt-2 text-[15px] leading-5 text-[#527b79]">{viewingPlan.description || 'No plan description provided.'}</p>
                   </div>
-                  <div className="rounded-lg border border-[#e2eee7] p-4">
-                    <h4 className="text-xs font-semibold text-[#172b24]">Included Features</h4>
+                  <div className="rounded-lg border border-[#c6e5e1] p-4">
+                    <h4 className="text-[13px] font-semibold text-[#173f40]">Included Features</h4>
                     {viewingPlan.features.length
-                      ? <ul className="mt-3 grid gap-2 sm:grid-cols-2">{viewingPlan.features.map((feature, index) => <li className="text-xs text-[#526B62]" key={`${planFeatureName(feature)}-${index}`}><Check className="mr-2 inline h-3.5 w-3.5 text-[#078c63]" />{planFeatureName(feature)}</li>)}</ul>
-                      : <p className="mt-2 text-xs text-[#789087]">No features listed.</p>}
+                      ? <ul className="mt-3 grid gap-2 sm:grid-cols-2">{viewingPlan.features.map((feature, index) => <li className="text-[15px] text-[#527b79]" key={`${planFeatureName(feature)}-${index}`}><Check className="mr-2 inline h-3.5 w-3.5 text-[#16837d]" />{planFeatureName(feature)}</li>)}</ul>
+                      : <p className="mt-2 text-[15px] text-[#829e9b]">No features listed.</p>}
                   </div>
                 </div>
               )}
@@ -939,62 +1072,62 @@ export function SubscriptionPlans() {
                 <div className="py-3">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <div className="relative w-full max-w-sm">
-                      <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#789087]" />
-                      <input value={clinicSearch} onChange={event => setClinicSearch(event.target.value)} className="w-full rounded-full border border-[#d4e3d7] bg-[#fbfdfb] py-2 pl-9 pr-3 text-xs text-[#172b24] placeholder:text-[#789087] outline-none transition focus:border-[#087a59] focus:outline-none focus:ring-0 focus:shadow-[0_0_0_3px_rgba(8,122,89,0.16)]" placeholder="Search clinics..." />
+                      <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#829e9b]" />
+                      <input value={clinicSearch} onChange={event => setClinicSearch(event.target.value)} className="w-full rounded-full border border-[#c6e5e1] bg-[#f7fbfa] py-2 pl-9 pr-3 text-[13px] text-[#173f40] placeholder:text-[#829e9b] outline-none transition focus:border-[#16837d] focus:outline-none focus:ring-0" placeholder="Search clinics..." />
                     </div>
                     <button onClick={() => {
                       setPlanClinicStatusFilter('All');
                       setClinicSearch('');
                       setPlanClinicPage(1);
                       setPlanModalPage('subscribers');
-                    }} className="inline-flex items-center gap-1.5 rounded-full border border-[#087a59] px-3 py-2 text-xs font-semibold text-[#087a59] hover:bg-[#f2f8f4]"><ChevronRight className="h-3.5 w-3.5" />View All</button>
+                    }} className="inline-flex items-center gap-1.5 rounded-full border border-[#16837d] px-3 py-2 text-[13px] font-semibold text-[#105f5a] hover:bg-[#e5f4f1]"><ChevronRight className="h-3.5 w-3.5" />View All</button>
                   </div>
                   <div className="overflow-x-auto rounded-lg border border-[#e2eee7]">
-                    <table className="w-full min-w-[560px] text-left text-xs">
-                      <thead className="bg-gradient-to-r from-[#013826] to-[#087a59] text-white"><tr>{['Clinic Name', 'Owner', 'Subscription Date', 'Status'].map(label => <th className="px-3 py-2 font-semibold" key={label}>{label}</th>)}</tr></thead>
+                    <table className="w-full min-w-[560px] text-left text-[13px]">
+                      <thead className="bg-gradient-to-r from-[#105f5a] to-[#16837d] text-white"><tr>{['Clinic Name', 'Owner', 'Subscription Date', 'Status'].map(label => <th className="px-3 py-2 font-semibold" key={label}>{label}</th>)}</tr></thead>
                       <tbody>
-                        {loadingPlanDetails && <tr><td colSpan={4} className="px-3 py-6 text-center text-[#789087]">Loading subscribed clinics...</td></tr>}
+                        {loadingPlanDetails && <tr><td colSpan={4} className="px-3 py-6 text-center text-[#829e9b]">Loading subscribed clinics...</td></tr>}
                         {!loadingPlanDetails && visiblePlanClinics.map(clinic => (
-                          <tr className="border-t border-[#e2eee7]" key={clinic.id}>
-                            <td className="px-3 py-2.5 font-medium text-[#172b24]">{clinic.name}</td>
-                            <td className="px-3 py-2.5 text-[#526B62]">{clinic.owner}</td>
-                            <td className="px-3 py-2.5 text-[#526B62]">{clinic.subscriptionDate}</td>
-                            <td className="px-3 py-2.5"><span className="inline-flex items-center gap-1.5 rounded-full bg-[#dff8ed] px-2.5 py-1 font-medium text-[#087a59]"><span className="h-1.5 w-1.5 rounded-full bg-[#0db966]" />{clinic.status}</span></td>
+                          <tr className="border-t border-[#e1efed]" key={clinic.id}>
+                            <td className="px-3 py-2.5 font-medium text-[#173f40]">{clinic.name}</td>
+                            <td className="px-3 py-2.5 text-[#527b79]">{clinic.owner}</td>
+                            <td className="px-3 py-2.5 text-[#527b79]">{clinic.subscriptionDate}</td>
+                            <td className="px-3 py-2.5"><span className="inline-flex items-center gap-1.5 rounded-full bg-[#e1f3ed] px-2.5 py-1 text-[13px] font-medium text-[#105f5a]"><span className="h-1.5 w-1.5 rounded-full bg-[#16837d]" />{clinic.status}</span></td>
                           </tr>
                         ))}
-                        {!loadingPlanDetails && visiblePlanClinics.length === 0 && <tr><td colSpan={4} className="px-3 py-6 text-center text-[#789087]">{clinicSearch ? 'No clinics match your search.' : 'No clinics are assigned to this plan.'}</td></tr>}
+                        {!loadingPlanDetails && visiblePlanClinics.length === 0 && <tr><td colSpan={4} className="px-3 py-6 text-center text-[#829e9b]">{clinicSearch ? 'No clinics match your search.' : 'No clinics are assigned to this plan.'}</td></tr>}
                       </tbody>
                     </table>
                   </div>
                 </div>
               )}
 
-              <div className="flex justify-end border-t border-[#e2eee7] pt-3">
-                <button onClick={() => setViewingPlan(null)} className="rounded-full border border-[#b7dcca] bg-white px-4 py-2 text-xs font-semibold text-[#086b50]">Close</button>
+              <div className="flex justify-end border-t border-[#e1efed] pt-3">
+                <button onClick={() => setViewingPlan(null)} className="rounded-full border border-[#c6e5e1] bg-white px-4 py-2 text-[13px] font-semibold text-[#105f5a] hover:bg-[#f1faf8]">Close</button>
               </div>
             </div>
             )}
             {planModalPage === 'subscribers' && (
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3">
-                <button onClick={() => setPlanModalPage('details')} className="mb-3 inline-flex items-center gap-2 text-xs font-semibold text-[#087a59] transition hover:text-[#013826]">
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#f7fbfa] p-3">
+                <button onClick={() => setPlanModalPage('details')} className="mb-3 inline-flex items-center gap-2 text-xs font-semibold text-[#16837d] transition hover:text-[#105f5a]">
                   <ArrowLeft className="h-4 w-4" />Back to Plan Details
                 </button>
-                <section className={`${card} flex min-h-0 flex-1 flex-col overflow-hidden p-2`}>
+                <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[#c6e5e1] bg-white p-2">
                   <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-2">
                     <div className="relative w-full max-w-sm">
-                      <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#789087]" />
-                      <input value={clinicSearch} onChange={event => { setClinicSearch(event.target.value); setPlanClinicPage(1); }} className="w-full rounded-full border border-[#d4e3d7] bg-[#fbfdfb] py-2 pl-9 pr-3 text-xs text-[#172b24] placeholder:text-[#789087] outline-none transition focus:border-[#087a59] focus:outline-none focus:ring-0 focus:shadow-[0_0_0_3px_rgba(8,122,89,0.16)]" placeholder="Search clinics..." />
+                      <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#829e9b]" />
+                      <input value={clinicSearch} onChange={event => { setClinicSearch(event.target.value); setPlanClinicPage(1); }} className="w-full rounded-full border border-[#c6e5e1] bg-[#f7fbfa] py-2 pl-9 pr-3 text-xs text-[#173f40] placeholder:text-[#829e9b] outline-none transition focus:border-[#16837d] focus:outline-none focus:ring-0" placeholder="Search clinics..." />
                     </div>
                     <div className="relative" ref={planClinicStatusRef}>
-                      <button type="button" aria-haspopup="listbox" aria-expanded={planClinicStatusOpen} onClick={() => setPlanClinicStatusOpen(open => !open)} onKeyDown={event => { if (event.key === 'Escape') setPlanClinicStatusOpen(false); }} className="inline-flex items-center gap-2 rounded-full border border-[#d4e3d7] bg-white px-3 py-2 text-xs text-[#40594f] transition hover:border-[#b7dcca] hover:bg-[#f7fbf8] focus:outline-none focus:ring-0 focus:shadow-[0_0_0_3px_rgba(8,122,89,0.16)]">
-                        <span className="font-medium text-[#526B62]">Status:</span>
-                        <span className="font-semibold text-[#172b24]">{planClinicStatusFilter}</span>
-                        <ChevronDown className={`h-3.5 w-3.5 text-[#789087] transition-transform ${planClinicStatusOpen ? 'rotate-180' : ''}`} />
+                      <button type="button" aria-haspopup="listbox" aria-expanded={planClinicStatusOpen} onClick={() => setPlanClinicStatusOpen(open => !open)} onKeyDown={event => { if (event.key === 'Escape') setPlanClinicStatusOpen(false); }} className={`inline-flex items-center gap-2 rounded-full border bg-white px-3 py-2 text-xs text-[#315f5e] transition hover:border-[#8ebfb4] hover:bg-[#f1faf8] focus:border-[#16837d] focus:outline-none focus:ring-0 ${planClinicStatusOpen ? 'border-[#16837d]' : 'border-[#c6e5e1]'}`}>
+                        <span className="font-medium text-[#527b79]">Status:</span>
+                        <span className="font-semibold text-[#173f40]">{planClinicStatusFilter}</span>
+                        <ChevronDown className={`h-3.5 w-3.5 text-[#829e9b] transition-transform ${planClinicStatusOpen ? 'rotate-180' : ''}`} />
                       </button>
                       {planClinicStatusOpen && (
-                        <div role="listbox" aria-label="Filter clinics by status" className="absolute right-0 top-full z-30 mt-2 min-w-full overflow-hidden rounded-xl border border-[#d4e3d7] bg-white p-1 shadow-lg">
+                        <div role="listbox" aria-label="Filter clinics by status" className="absolute right-0 top-full z-30 mt-2 min-w-full overflow-hidden rounded-xl border border-[#c6e5e1] bg-white p-1 shadow-lg">
                           {planClinicStatuses.map(status => (
-                            <button key={status} type="button" role="option" aria-selected={planClinicStatusFilter === status} onClick={() => { setPlanClinicStatusFilter(status); setPlanClinicPage(1); setPlanClinicStatusOpen(false); }} className={`block w-full rounded-lg px-3 py-2 text-left text-xs transition ${planClinicStatusFilter === status ? 'bg-[#e7f4ec] font-semibold text-[#07543d]' : 'text-[#40594f] hover:bg-[#f2f8f4]'}`}>
+                            <button key={status} type="button" role="option" aria-selected={planClinicStatusFilter === status} onClick={() => { setPlanClinicStatusFilter(status); setPlanClinicPage(1); setPlanClinicStatusOpen(false); }} className={`block w-full rounded-lg px-3 py-2 text-left text-xs transition ${planClinicStatusFilter === status ? 'bg-[#e5f4f1] font-semibold text-[#105f5a]' : 'text-[#315f5e] hover:bg-[#f1faf8]'}`}>
                               {status}
                             </button>
                           ))}
@@ -1002,36 +1135,36 @@ export function SubscriptionPlans() {
                       )}
                     </div>
                   </div>
-                  <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-[#d4e9df]">
+                  <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-[#c6e5e1]">
                     <table className="w-full min-w-[720px] table-fixed text-left text-xs">
-                      <thead className="bg-gradient-to-r from-[#013826] to-[#087a59] text-white">
+                      <thead className="bg-gradient-to-r from-[#105f5a] to-[#16837d] text-white">
                         <tr>{['Clinic Name', 'Owner', 'Email', 'Subscription Date', 'Expiration Date', 'Status', ''].map((column, index) => <th className="px-2 py-2.5 font-semibold" key={column || `subscriber-action-${index}`}>{column}</th>)}</tr>
                       </thead>
                       <tbody>
-                        {loadingPlanDetails && <tr><td colSpan={7} className="px-3 py-6 text-center text-[#789087]">Loading subscribed clinics...</td></tr>}
+                        {loadingPlanDetails && <tr><td colSpan={7} className="px-3 py-6 text-center text-[#829e9b]">Loading subscribed clinics...</td></tr>}
                         {!loadingPlanDetails && pagePlanClinics.map(clinic => (
-                          <tr className="h-12 border-t border-[#e2eee7] hover:bg-[#f7fbf8]" key={clinic.id}>
-                            <td className="truncate px-3 py-2.5 font-medium text-[#172b24]" title={clinic.name}>{clinic.name}</td>
-                            <td className="truncate px-3 py-2.5 text-[#526B62]" title={clinic.owner}>{clinic.owner}</td>
-                            <td className="truncate px-3 py-2.5 text-[#526B62]" title={clinic.email}>{clinic.email}</td>
-                            <td className="truncate px-3 py-2.5 text-[#526B62]">{clinic.subscriptionDate}</td>
-                            <td className="truncate px-3 py-2.5 text-[#526B62]">{clinic.expirationDate}</td>
+                          <tr className="h-12 border-t border-[#e1efed] hover:bg-[#f7fbfa]" key={clinic.id}>
+                            <td className="truncate px-3 py-2.5 font-medium text-[#173f40]" title={clinic.name}>{clinic.name}</td>
+                            <td className="truncate px-3 py-2.5 text-[#527b79]" title={clinic.owner}>{clinic.owner}</td>
+                            <td className="truncate px-3 py-2.5 text-[#527b79]" title={clinic.email}>{clinic.email}</td>
+                            <td className="truncate px-3 py-2.5 text-[#527b79]">{clinic.subscriptionDate}</td>
+                            <td className="truncate px-3 py-2.5 text-[#527b79]">{clinic.expirationDate}</td>
                             <td className="px-3 py-2.5"><span className={`inline-flex rounded-full px-2.5 py-1 font-medium ${planClinicStatusStyle(clinic.status)}`}>{clinic.status}</span></td>
-                            <td className="px-3 py-2"><button onClick={() => { setSelectedPlanClinic(clinic); setPlanModalPage('clinic-details'); }} aria-label={`View ${clinic.name} details`} title="View details" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#087a59] transition-colors hover:bg-[#e7f4ec] hover:text-[#013826] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#078c63]"><ChevronRight className="h-4 w-4" /></button></td>
+                            <td className="px-3 py-2"><button onClick={() => { setSelectedPlanClinic(clinic); setPlanModalPage('clinic-details'); }} aria-label={`View ${clinic.name} details`} title="View details" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#16837d] transition-colors hover:bg-[#e5f4f1] hover:text-[#105f5a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16837d]"><ChevronRight className="h-4 w-4" /></button></td>
                           </tr>
                         ))}
-                        {!loadingPlanDetails && pagePlanClinics.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center text-[#789087]">{clinicSearch || planClinicStatusFilter !== 'All' ? 'No clinics match these filters.' : 'No clinics are assigned to this plan.'}</td></tr>}
+                        {!loadingPlanDetails && pagePlanClinics.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center text-[#829e9b]">{clinicSearch || planClinicStatusFilter !== 'All' ? 'No clinics match these filters.' : 'No clinics are assigned to this plan.'}</td></tr>}
                       </tbody>
                     </table>
                   </div>
-                  <div className="mt-3 flex shrink-0 flex-wrap items-center justify-between gap-2 text-[11px] text-[#40594f]">
-                    <p>Showing {visiblePlanClinics.length ? (currentPlanClinicPage - 1) * planClinicPageSize + 1 : 0}–{Math.min(currentPlanClinicPage * planClinicPageSize, visiblePlanClinics.length)} of {visiblePlanClinics.length} clinics</p>
+                  <div className="mt-3 flex shrink-0 flex-wrap items-center justify-between gap-2 text-[11px] text-[#315f5e]">
+                    <p>Showing {visiblePlanClinics.length ? (currentPlanClinicPage - 1) * planClinicPageSize + 1 : 0}&ndash;{Math.min(currentPlanClinicPage * planClinicPageSize, visiblePlanClinics.length)} of {visiblePlanClinics.length} clinics</p>
                     <div className="flex items-center gap-1">
-                      <button disabled={currentPlanClinicPage === 1} onClick={() => setPlanClinicPage(currentPlanClinicPage - 1)} className="rounded-md border border-[#d4e3d7] px-2 py-1 disabled:opacity-40">‹</button>
+                      <button disabled={currentPlanClinicPage === 1} onClick={() => setPlanClinicPage(currentPlanClinicPage - 1)} aria-label="Previous page" className="rounded-md border border-[#c6e5e1] px-2 py-1 text-[#315f5e] disabled:opacity-40">&lsaquo;</button>
                       {Array.from({ length: planClinicPageCount }, (_, index) => index + 1).map(pageNumber => (
-                        <button key={pageNumber} onClick={() => setPlanClinicPage(pageNumber)} className={`min-w-7 rounded-md border px-2 py-1 ${currentPlanClinicPage === pageNumber ? 'border-[#087a59] bg-[#087a59] text-white' : 'border-[#d4e3d7] bg-white text-[#40594f]'}`}>{pageNumber}</button>
+                        <button key={pageNumber} onClick={() => setPlanClinicPage(pageNumber)} className={`min-w-7 rounded-md border px-2 py-1 ${currentPlanClinicPage === pageNumber ? 'border-[#16837d] bg-[#16837d] text-white' : 'border-[#c6e5e1] bg-white text-[#315f5e] hover:bg-[#f1faf8]'}`}>{pageNumber}</button>
                       ))}
-                      <button disabled={currentPlanClinicPage === planClinicPageCount} onClick={() => setPlanClinicPage(currentPlanClinicPage + 1)} className="rounded-md border border-[#d4e3d7] px-2 py-1 disabled:opacity-40">›</button>
+                      <button disabled={currentPlanClinicPage === planClinicPageCount} onClick={() => setPlanClinicPage(currentPlanClinicPage + 1)} aria-label="Next page" className="rounded-md border border-[#c6e5e1] px-2 py-1 text-[#315f5e] disabled:opacity-40">&rsaquo;</button>
                     </div>
                   </div>
                 </section>
@@ -1090,84 +1223,85 @@ export function SubscriptionPlans() {
         </div>,
         document.body
       )}
-      {creatingPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#152744]/60 p-4">
+      {creatingPlan && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-[512px] rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#d4e3d7] px-6 py-5">
-              <h2 className="text-lg font-bold">Create New Plan</h2>
-              <button onClick={() => setCreatingPlan(false)} className="text-2xl text-[#4870ba]">×</button>
+            <div className="flex items-center justify-between border-b border-[#c6e5e1] px-6 py-5">
+              <h2 className="text-lg font-bold text-[#173f40]">Create New Plan</h2>
+              <button onClick={() => setCreatingPlan(false)} aria-label="Close create plan" className="rounded-md p-1 text-[#16837d] transition hover:bg-[#e5f4f1] hover:text-[#105f5a]"><X className="h-5 w-5" /></button>
             </div>
-            <div className="space-y-4 px-6 py-5">
-              <label className="block text-sm text-[#086b50]">Plan Name
-                <input value={createForm.name} onChange={event => setCreateForm({ ...createForm, name: event.target.value })} className="mt-1 w-full rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-base text-[#172b24] outline-none focus:ring-2 focus:ring-[#8eb5ff]" />
+            <div className="space-y-4 bg-[#f7fbfa] px-6 py-5">
+              <label className="block text-sm font-medium text-[#315f5e]">Plan Name
+                <input value={createForm.name} onChange={event => setCreateForm({ ...createForm, name: event.target.value })} className="mt-1 w-full rounded-lg border border-[#c6e5e1] bg-white px-3 py-2.5 text-base text-[#173f40] outline-none focus:border-[#16837d] focus:outline-none focus:ring-0" />
               </label>
-              <label className="block text-sm text-[#086b50]">Description
-                <input value={createForm.description} onChange={event => setCreateForm({ ...createForm, description: event.target.value })} className="mt-1 w-full rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-base text-[#172b24] outline-none focus:ring-2 focus:ring-[#8eb5ff]" />
+              <label className="block text-sm font-medium text-[#315f5e]">Description
+                <input value={createForm.description} onChange={event => setCreateForm({ ...createForm, description: event.target.value })} className="mt-1 w-full rounded-lg border border-[#c6e5e1] bg-white px-3 py-2.5 text-base text-[#173f40] outline-none focus:border-[#16837d] focus:outline-none focus:ring-0" />
               </label>
-              <label className="block text-sm text-[#086b50]">Price
-                <input value={createForm.price} onChange={event => setCreateForm({ ...createForm, price: event.target.value })} placeholder="Monthly price" className="mt-1 w-full rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-base text-[#172b24] outline-none focus:ring-2 focus:ring-[#8eb5ff]" />
+              <label className="block text-sm font-medium text-[#315f5e]">Price
+                <input value={createForm.price} onChange={event => setCreateForm({ ...createForm, price: event.target.value })} placeholder="Monthly price" className="mt-1 w-full rounded-lg border border-[#c6e5e1] bg-white px-3 py-2.5 text-base text-[#173f40] outline-none focus:border-[#16837d] focus:outline-none focus:ring-0" />
               </label>
-              <label className="block text-sm text-[#086b50]">Annual Price
-                <input value={createForm.annualPrice} onChange={event => setCreateForm({ ...createForm, annualPrice: event.target.value })} placeholder="Annual price" className="mt-1 w-full rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-base text-[#172b24] outline-none focus:ring-2 focus:ring-[#8eb5ff]" />
+              <label className="block text-sm font-medium text-[#315f5e]">Annual Price
+                <input value={createForm.annualPrice} onChange={event => setCreateForm({ ...createForm, annualPrice: event.target.value })} placeholder="Annual price" className="mt-1 w-full rounded-lg border border-[#c6e5e1] bg-white px-3 py-2.5 text-base text-[#173f40] outline-none focus:border-[#16837d] focus:outline-none focus:ring-0" />
               </label>
               <div className="grid grid-cols-2 gap-4">
-                <label className="text-sm text-[#086b50]">Billing Cycle
-                  <select className="mt-1 w-full rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-base text-[#172b24]"><option>Monthly</option><option>Yearly</option></select>
+                <label className="text-sm font-medium text-[#315f5e]">Billing Cycle
+                  <BillingCycleDropdown />
                 </label>
-                <label className="text-sm text-[#086b50]">Staff Limit
-                  <input value={createForm.staffLimit} onChange={event => setCreateForm({ ...createForm, staffLimit: event.target.value })} className="mt-1 w-full rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-base text-[#172b24]" />
+                <label className="text-sm font-medium text-[#315f5e]">Staff Limit
+                  <input value={createForm.staffLimit} onChange={event => setCreateForm({ ...createForm, staffLimit: event.target.value })} className="mt-1 w-full rounded-lg border border-[#c6e5e1] bg-white px-3 py-2.5 text-base text-[#173f40] outline-none focus:border-[#16837d] focus:outline-none focus:ring-0" />
                 </label>
               </div>
-              <label className="block text-sm text-[#086b50]">Features
+              <label className="block text-sm font-medium text-[#315f5e]">Features
                 <div className="mt-1 flex gap-2">
-                  <input value={newFeature} onChange={event => setNewFeature(event.target.value)} placeholder="Add a feature..." className="min-w-0 flex-1 rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-base text-[#172b24]" />
-                  <button onClick={() => { if (newFeature.trim()) { setCreateForm({ ...createForm, features: [...createForm.features, newFeature.trim()] }); setNewFeature(''); } }} className="rounded-lg bg-[#086b50] px-4 text-sm font-semibold text-white">Add</button>
+                  <input value={newFeature} onChange={event => setNewFeature(event.target.value)} placeholder="Add a feature..." className="min-w-0 flex-1 rounded-lg border border-[#c6e5e1] bg-white px-3 py-2.5 text-base text-[#173f40] outline-none focus:border-[#16837d] focus:outline-none focus:ring-0" />
+                  <button onClick={() => { if (newFeature.trim()) { setCreateForm({ ...createForm, features: [...createForm.features, newFeature.trim()] }); setNewFeature(''); } }} className="rounded-lg bg-[#16837d] px-4 text-sm font-semibold text-white transition hover:bg-[#105f5a]">Add</button>
                 </div>
               </label>
               {createForm.features.length > 0 && (
-                <ul className="space-y-1.5">{createForm.features.map((feature, index) => <li className="flex items-center justify-between rounded-lg bg-[#eef4ff] px-3 py-2 text-sm text-[#526B62]" key={`${planFeatureName(feature)}-${index}`}>{planFeatureName(feature)}<button onClick={() => setCreateForm({ ...createForm, features: createForm.features.filter((_, itemIndex) => itemIndex !== index) })} className="text-sm text-[#e52d2d]">Remove</button></li>)}</ul>
+                <ul className="space-y-1.5">{createForm.features.map((feature, index) => <li className="flex items-center justify-between rounded-lg bg-[#e5f4f1] px-3 py-2 text-sm text-[#315f5e]" key={`${planFeatureName(feature)}-${index}`}>{planFeatureName(feature)}<button onClick={() => setCreateForm({ ...createForm, features: createForm.features.filter((_, itemIndex) => itemIndex !== index) })} className="text-sm text-[#c43636]">Remove</button></li>)}</ul>
               )}
             </div>
-            <div className="flex gap-2 px-6 pb-6">
-              <button onClick={saveNewPlan} className="rounded-lg bg-[#086b50] px-4 py-3 text-sm font-semibold text-white">Save Plan</button>
-              <button onClick={() => setCreatingPlan(false)} className="rounded-lg bg-[#e7f4ec] px-4 py-3 text-sm text-[#086b50]">Cancel</button>
+            <div className="flex gap-2 bg-[#f7fbfa] px-6 pb-6">
+              <button onClick={saveNewPlan} className="rounded-lg bg-[#16837d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#105f5a]">Save Plan</button>
+              <button onClick={() => setCreatingPlan(false)} className="rounded-lg border border-[#c6e5e1] bg-white px-4 py-3 text-sm text-[#105f5a] transition hover:bg-[#e5f4f1]">Cancel</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
       {editingPlan && editForm && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
           <div className="flex h-[min(560px,calc(100vh-2rem))] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
-            <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#013826] to-[#087a59] px-6 py-4 text-white">
-              <h2 className="text-base font-semibold">Edit — {editingPlan.name}</h2>
-              <button onClick={() => { setEditingPlan(null); setEditForm(null); }} aria-label="Close edit plan" className="text-2xl leading-none text-white transition hover:text-[#d4e9df]">×</button>
+            <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#105f5a] to-[#16837d] px-6 py-4 text-white">
+              <h2 className="text-base font-semibold">Edit Plan: {editingPlan.name}</h2>
+              <button onClick={() => { setEditingPlan(null); setEditForm(null); }} aria-label="Close edit plan" className="rounded-md p-1 text-white/90 transition hover:bg-white/15 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-white px-5 py-4 sm:px-6">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-[#f7fbfa] px-5 py-4 sm:px-6">
               {addingEditFeature ? (
                 <>
-                  <button onClick={() => { setNewFeature(''); setNewFeatureDescription(''); setAddingEditFeature(false); }} className="inline-flex items-center gap-2 py-1 text-sm font-semibold text-[#087a59] transition hover:text-[#013826]">
+                  <button onClick={() => { setNewFeature(''); setNewFeatureDescription(''); setAddingEditFeature(false); }} className="inline-flex items-center gap-2 py-1 text-sm font-semibold text-[#16837d] transition hover:text-[#105f5a]">
                     <ArrowLeft className="h-4 w-4" />Back
                   </button>
-                  <section className="overflow-hidden rounded-xl border border-[#d4e9df]">
-                    <h3 className="bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-3 text-lg font-bold text-[#07543d]">Add Feature</h3>
+                  <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white">
+                    <h3 className="bg-[#e5f4f1] px-4 py-3 text-lg font-bold text-[#105f5a]">Add Feature</h3>
                     <div className="space-y-4 p-4 sm:p-5">
-                      <label className="block text-sm font-semibold text-[#173c2e]">Feature Name <span className="text-red-600">*</span>
-                        <input autoFocus required value={newFeature} onChange={event => setNewFeature(event.target.value)} placeholder="Enter feature name..." className="mt-1 w-full rounded-xl border border-[#d4e3d7] bg-white px-4 py-3 text-sm text-[#172b24] outline-none transition placeholder:text-[#789087] focus:border-[#087a59] focus:ring-0 focus:shadow-[0_0_0_3px_rgba(8,122,89,0.18)]" />
+                      <label className="block text-sm font-semibold text-[#315f5e]">Feature Name <span className="text-red-600">*</span>
+                        <input autoFocus required value={newFeature} onChange={event => setNewFeature(event.target.value)} placeholder="Enter feature name..." className="mt-1 w-full rounded-xl border border-[#c6e5e1] bg-white px-4 py-3 text-sm text-[#173f40] outline-none transition placeholder:text-[#829e9b] focus:border-[#16837d] focus:ring-0" />
                       </label>
-                      <label className="block text-sm font-semibold text-[#173c2e]">Description <span className="font-normal text-[#526B62]">(Optional)</span>
-                        <textarea value={newFeatureDescription} onChange={event => setNewFeatureDescription(event.target.value)} placeholder="Enter feature description..." rows={3} className="mt-1 w-full resize-y rounded-xl border border-[#d4e3d7] bg-white px-4 py-3 text-sm text-[#172b24] outline-none transition placeholder:text-[#789087] focus:border-[#087a59] focus:ring-0 focus:shadow-[0_0_0_3px_rgba(8,122,89,0.18)]" />
+                      <label className="block text-sm font-semibold text-[#315f5e]">Description <span className="font-normal text-[#527b79]">(Optional)</span>
+                        <textarea value={newFeatureDescription} onChange={event => setNewFeatureDescription(event.target.value)} placeholder="Enter feature description..." rows={3} className="mt-1 w-full resize-y rounded-xl border border-[#c6e5e1] bg-white px-4 py-3 text-sm text-[#173f40] outline-none transition placeholder:text-[#829e9b] focus:border-[#16837d] focus:ring-0" />
                       </label>
                       <fieldset>
-                        <legend className="mb-2 text-sm font-semibold text-[#173c2e]">Feature Type</legend>
+                        <legend className="mb-2 text-sm font-semibold text-[#315f5e]">Feature Type</legend>
                         <div className="grid gap-2 sm:grid-cols-2">
                           {([
                             ['included', 'Included Feature'],
                             ['addon', 'Add-on Feature'],
                           ] as const).map(([type, label]) => (
-                            <label key={type} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold transition ${newFeatureType === type ? 'border-[#b7dcca] bg-[#e7f4ec] text-[#07543d]' : 'border-[#d4e3d7] bg-white text-[#40594f] hover:bg-[#f7fbf8]'}`}>
+                            <label key={type} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold transition ${newFeatureType === type ? 'border-[#8ebfb4] bg-[#e5f4f1] text-[#105f5a]' : 'border-[#c6e5e1] bg-white text-[#315f5e] hover:bg-[#f7fbfa]'}`}>
                               <input type="radio" name="plan-feature-type" value={type} checked={newFeatureType === type} onChange={() => setNewFeatureType(type)} className="peer sr-only" />
-                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#aabbb2] bg-white transition peer-focus-visible:ring-2 peer-focus-visible:ring-[#087a59]/30">
-                                {newFeatureType === type && <span className="h-2.5 w-2.5 rounded-full bg-[#087a59]" />}
+                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#8ebfb4] bg-white transition peer-focus-visible:ring-2 peer-focus-visible:ring-[#16837d]/30">
+                                {newFeatureType === type && <span className="h-2.5 w-2.5 rounded-full bg-[#16837d]" />}
                               </span>
                               {label}
                             </label>
@@ -1179,8 +1313,8 @@ export function SubscriptionPlans() {
                 </>
               ) : (
                 <>
-              <section className="overflow-hidden rounded-xl border border-[#d4e9df]">
-                <h3 className="bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2 text-sm font-semibold text-[#07543d]">Plan Details</h3>
+              <section className="relative z-10 overflow-visible rounded-xl border border-[#c6e5e1] bg-white">
+                <h3 className="rounded-t-xl bg-[#e5f4f1] px-4 py-2 text-sm font-semibold text-[#105f5a]">Plan Details</h3>
                 <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
                   {[
                     ['Plan Name', 'name'],
@@ -1188,40 +1322,40 @@ export function SubscriptionPlans() {
                     ['Monthly Price', 'price'],
                     ['Annual Price', 'annualPrice'],
                   ].map(([label, key]) => (
-                    <label className="block text-xs font-medium text-[#173c2e]" key={key}>{label}
-                      <input value={editForm[key as keyof Plan] as string} onChange={event => setEditForm({ ...editForm, [key]: event.target.value })} className="mt-1 w-full rounded-lg border border-[#d4e3d7] bg-white px-3 py-2 text-sm text-[#172b24] outline-none transition focus:border-[#087a59] focus:ring-2 focus:ring-[#087a59]/15" />
+                    <label className="block text-xs font-medium text-[#315f5e]" key={key}>{label}
+                      <input value={editForm[key as keyof Plan] as string} onChange={event => setEditForm({ ...editForm, [key]: event.target.value })} className="mt-1 w-full rounded-lg border border-[#c6e5e1] bg-white px-3 py-2 text-sm text-[#173f40] outline-none transition focus:border-[#16837d] focus:outline-none focus:ring-0 focus:shadow-none" />
                     </label>
                   ))}
-                  <label className="block text-xs font-medium text-[#173c2e]">Billing Cycle
-                    <select className="mt-1 w-full rounded-lg border border-[#d4e3d7] bg-white px-3 py-2 text-sm text-[#172b24] outline-none focus:border-[#087a59] focus:ring-2 focus:ring-[#087a59]/15"><option>Monthly</option><option>Yearly</option></select>
+                  <label className="relative z-20 block text-xs font-medium text-[#315f5e]">Billing Cycle
+                    <BillingCycleDropdown compact />
                   </label>
-                  <label className="block text-xs font-medium text-[#173c2e]">Staff Limit
-                    <input value={editForm.staffLimit} onChange={event => setEditForm({ ...editForm, staffLimit: event.target.value })} className="mt-1 w-full rounded-lg border border-[#d4e3d7] bg-white px-3 py-2 text-sm text-[#172b24] outline-none transition focus:border-[#087a59] focus:ring-2 focus:ring-[#087a59]/15" />
+                  <label className="block text-xs font-medium text-[#315f5e]">Staff Limit
+                    <input value={editForm.staffLimit} onChange={event => setEditForm({ ...editForm, staffLimit: event.target.value })} className="mt-1 w-full rounded-lg border border-[#c6e5e1] bg-white px-3 py-2 text-sm text-[#173f40] outline-none transition focus:border-[#16837d] focus:outline-none focus:ring-0 focus:shadow-none" />
                   </label>
                 </div>
               </section>
-              <section className="overflow-hidden rounded-xl border border-[#d4e9df]">
-                <h3 className="bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2 text-sm font-semibold text-[#07543d]">Plan Features</h3>
+              <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white">
+                <h3 className="bg-[#e5f4f1] px-4 py-2 text-sm font-semibold text-[#105f5a]">Plan Features</h3>
                 <div className="space-y-2 p-4">
                   <ul className="space-y-1.5">{editForm.features.map((feature, index) => (
-                    <li className="flex items-center justify-between gap-3 rounded-lg bg-gradient-to-r from-[#f0f8f3] to-[#e9f4ed] px-3 py-2 text-sm text-[#40594f]" key={`${planFeatureName(feature)}-${index}`}>
+                    <li className="flex items-center justify-between gap-3 rounded-lg bg-[#f1faf8] px-3 py-2 text-sm text-[#315f5e]" key={`${planFeatureName(feature)}-${index}`}>
                       <div className="min-w-0">
                         <p>{planFeatureName(feature)}</p>
-                        {typeof feature !== 'string' && feature.description && <p className="mt-0.5 text-xs text-[#789087]">{feature.description}</p>}
+                        {typeof feature !== 'string' && feature.description && <p className="mt-0.5 text-xs text-[#829e9b]">{feature.description}</p>}
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
-                        {typeof feature !== 'string' && <span className="rounded-full bg-white/80 px-2 py-1 text-[10px] font-medium text-[#087a59]">{feature.type === 'addon' ? 'Add-on' : 'Included'}</span>}
+                        {typeof feature !== 'string' && <span className="rounded-full bg-white/80 px-2 py-1 text-[10px] font-medium text-[#105f5a]">{feature.type === 'addon' ? 'Add-on' : 'Included'}</span>}
                         <button onClick={() => setEditForm({ ...editForm, features: editForm.features.filter((_, itemIndex) => itemIndex !== index) })} className="rounded-full bg-[#fde8e7] px-3 py-1 text-xs font-medium text-[#c43636] transition hover:bg-[#fbd6d4]">Remove</button>
                       </div>
                     </li>
                   ))}</ul>
-                  <button onClick={() => { setNewFeature(''); setNewFeatureDescription(''); setNewFeatureType(''); setAddingEditFeature(true); }} className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#087a59] bg-white px-4 py-2 text-sm font-semibold text-[#087a59] transition hover:bg-[#eff9f3]"><Plus className="h-4 w-4" />Add Feature</button>
+                  <button onClick={() => { setNewFeature(''); setNewFeatureDescription(''); setNewFeatureType(''); setAddingEditFeature(true); }} className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#16837d] bg-white px-4 py-2 text-sm font-semibold text-[#105f5a] transition hover:bg-[#f1faf8]"><Plus className="h-4 w-4" />Add Feature</button>
                 </div>
               </section>
                 </>
               )}
             </div>
-            <div className="flex shrink-0 justify-end gap-2 border-t border-[#e2eee7] bg-white px-5 py-3 sm:px-6">
+            <div className="flex shrink-0 justify-end gap-2 border-t border-[#e1efed] bg-white px-5 py-3 sm:px-6">
               {addingEditFeature ? (
                 <>
                   <button onClick={() => { setNewFeature(''); setNewFeatureDescription(''); setAddingEditFeature(false); }} className="rounded-full border border-[#087a59] bg-white px-4 py-2 text-sm font-semibold text-[#087a59] transition hover:bg-[#eff9f3]">Cancel</button>
@@ -1247,12 +1381,12 @@ export function SubscriptionPlans() {
                     setNewFeatureDescription('');
                     setNewFeatureType('');
                     setAddingEditFeature(false);
-                  }} className="rounded-full bg-[#086b50] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#013826]">Add Feature</button>
+                  }} className="rounded-full bg-[#16837d] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#105f5a]">Add Feature</button>
                 </>
               ) : (
                 <>
-                  <button onClick={() => { setEditingPlan(null); setEditForm(null); }} className="rounded-full border border-[#087a59] bg-white px-4 py-2 text-sm font-semibold text-[#087a59] transition hover:bg-[#eff9f3]">Cancel</button>
-                  <button onClick={savePlan} className="rounded-full bg-[#086b50] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#013826]">Save Changes</button>
+                  <button onClick={() => { setEditingPlan(null); setEditForm(null); }} className="rounded-full border border-[#16837d] bg-white px-4 py-2 text-sm font-semibold text-[#105f5a] transition hover:bg-[#f1faf8]">Cancel</button>
+                  <button onClick={savePlan} className="rounded-full bg-[#16837d] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#105f5a]">Save Changes</button>
                 </>
               )}
             </div>
@@ -1324,7 +1458,7 @@ export function PlanSubscribers() {
         })
         .map((clinic: any) => {
           const rawExpiry = clinic.metadata?.subscriptionExpiry || clinic.metadata?.subscription_expiry || '';
-          const expiry = rawExpiry ? new Date(rawExpiry) : null;
+          const expiry = rawExpiry && !/[^\x00-\x7F]/.test(rawExpiry) ? new Date(rawExpiry) : null;
           const clinicStatus = String(clinic.status || clinic.metadata?.status || 'Active');
           const status = expiry && !Number.isNaN(expiry.getTime()) && expiry.getTime() < Date.now()
             ? 'Expired'
@@ -1332,12 +1466,12 @@ export function PlanSubscribers() {
           return {
             id: Number(clinic.id),
             name: clinic.name || 'Unnamed clinic',
-            owner: clinic.metadata?.application?.ownerName || clinic.owner || '—',
-            email: clinic.metadata?.application?.ownerEmail || clinic.email || '—',
-            phone: clinic.metadata?.application?.ownerPhone || clinic.phone || '—',
-            address: clinic.address || '—',
-            subscriptionDate: clinic.created_at ? new Date(clinic.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' }) : '—',
-            expirationDate: expiry && !Number.isNaN(expiry.getTime()) ? expiry.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' }) : '—',
+            owner: clinic.metadata?.application?.ownerName || clinic.owner || 'Not provided',
+            email: clinic.metadata?.application?.ownerEmail || clinic.email || 'Not provided',
+            phone: clinic.metadata?.application?.ownerPhone || clinic.phone || 'Not provided',
+            address: clinic.address || 'Not provided',
+            subscriptionDate: clinic.created_at ? new Date(clinic.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' }) : 'Not provided',
+            expirationDate: expiry && !Number.isNaN(expiry.getTime()) ? expiry.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' }) : 'Not provided',
             status,
           };
         });
@@ -1434,13 +1568,13 @@ export function PlanSubscribers() {
             </div>
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-[#40594f]">
-              <p>Showing {filteredSubscribers.length ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, filteredSubscribers.length)} of {filteredSubscribers.length} clinics</p>
+              <p>Showing {filteredSubscribers.length ? (currentPage - 1) * pageSize + 1 : 0}&ndash;{Math.min(currentPage * pageSize, filteredSubscribers.length)} of {filteredSubscribers.length} clinics</p>
               <div className="flex items-center gap-1">
-                <button disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="rounded-md border border-[#d4e3d7] px-2.5 py-1.5 disabled:opacity-40">‹</button>
+                <button disabled={currentPage === 1} onClick={() =>&lsaquo;</button>
                 {Array.from({ length: pageCount }, (_, index) => index + 1).map(pageNumber => (
                   <button key={pageNumber} onClick={() => setPage(pageNumber)} className={`min-w-8 rounded-md border px-2.5 py-1.5 ${currentPage === pageNumber ? 'border-[#087a59] bg-[#087a59] text-white' : 'border-[#d4e3d7] bg-white text-[#40594f]'}`}>{pageNumber}</button>
                 ))}
-                <button disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)} className="rounded-md border border-[#d4e3d7] px-2.5 py-1.5 disabled:opacity-40">›</button>
+                <button disabled={currentPage === pageCount} onClick={() =>&rsaquo;</button>
               </div>
             </div>
           </section>
@@ -1449,7 +1583,7 @@ export function PlanSubscribers() {
       </main>
       {selectedSubscriber && plan && (
         createPortal(
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#152744]/60 p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(1, 56, 38, 0.42)' }}>
             <section role="dialog" aria-modal="true" aria-labelledby="clinic-subscription-details-title" className="flex h-[min(560px,calc(100vh-2rem))] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
               <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#013826] to-[#087a59] px-5 py-4 text-white">
                 <div>
@@ -1460,7 +1594,7 @@ export function PlanSubscribers() {
                   <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${statusStyle(selectedSubscriber.status)}`}>
                     <span className="h-2 w-2 rounded-full bg-current" />{selectedSubscriber.status}
                   </span>
-                  <button onClick={() => setSelectedSubscriber(null)} aria-label="Close clinic subscription details" className="text-xl leading-none transition hover:text-[#d4e9df]">×</button>
+                  <button onClick={() =>&times;</button>
                 </div>
               </div>
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4 sm:px-6">
@@ -1515,7 +1649,7 @@ export function PlanSubscribers() {
 
 function formatSubscriberPrice(price: string) {
   if (!price) return 'Not set';
-  return /^[₱$€£]/.test(price.trim()) ? price : `₱${price}`;
+  return /^[\u20B1$€£]/.test(price.trim()) ? price : `\u20B1${price}`;
 }
 
 export function DemoRequests() {
@@ -1549,11 +1683,11 @@ export function DemoRequests() {
       if (!response.ok) throw new Error('Failed to load demo requests');
       return response.json();
     }).then(data => setRequests(data.map((item: any) => ({
-      id: item.id, clinic: item.clinic || item.clinic_name || '—', contact: item.contact || item.contact_person || '—',
-      phone: item.phone || '—', email: item.email || '—', staff: String(item.staff || item.staff_count || '—'),
-      preferredDate: item.preferred_date || '—', preferredTime: item.preferred_time || '—',
-      submitted: item.created_at ? new Date(item.created_at).toLocaleDateString() : '—',
-      status: item.status || 'New', address: item.address || '—', notes: item.notes || '',
+      id: item.id, clinic: item.clinic || item.clinic_name || 'Not provided', contact: item.contact || item.contact_person || 'Not provided',
+      phone: item.phone || 'Not provided', email: item.email || 'Not provided', staff: String(item.staff || item.staff_count || 'Not provided'),
+      preferredDate: item.preferred_date ? (() => { const date = new Date(item.preferred_date); return Number.isNaN(date.getTime()) ? 'Not provided' : date.toLocaleDateString(); })() : 'Not provided', preferredTime: item.preferred_time || 'Not provided',
+      submitted: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Not provided',
+      status: item.status || 'New', address: item.address || 'Not provided', notes: item.notes || '',
     })))).catch(error => showNotice(error instanceof Error ? error.message : 'Failed to load demo requests', 'error'));
   }, []);
   const openRequest = (request: DemoRequest) => { setSelected(request); setMode('view'); setEditingStatus(false); setStatusDraft(request.status); };
@@ -1582,7 +1716,7 @@ export function DemoRequests() {
   };
   const statusLabel = (status: DemoStatus) => statusGroup(status);
   const statusClass = (status: DemoStatus) => statusGroup(status) === 'Approved'
-    ? 'bg-[#dff5eb] text-[#078c63]'
+    ? 'bg-[#e1f3ed] text-[#105f5a]'
     : statusGroup(status) === 'Declined'
       ? 'bg-[#e9eef2] text-[#526579]'
       : 'bg-[#fff3d4] text-[#c98200]';
@@ -1600,30 +1734,30 @@ export function DemoRequests() {
   const pageRequests = filteredRequests.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div className={`${shell} space-y-4`}>
+    <div className="min-h-full space-y-4 bg-[#f7fbfa] p-5">
       <main className="min-w-0 space-y-4">
-      {notice && <div className={`fixed right-6 top-6 z-[100] flex items-center gap-3 rounded-xl border px-5 py-3 text-sm shadow-lg ${notice.kind === 'success' ? 'border-[#7ce3af] bg-[#f0fff6]' : 'border-[#ff8a8a] bg-[#fff8f8]'}`}><span className={`text-lg ${notice.kind === 'success' ? 'text-[#079669]' : 'text-[#ef3030]'}`}>{notice.kind === 'success' ? '✓' : 'ⓘ'}</span>{notice.message}</div>}
-      <section className="relative isolate grid grid-cols-1 overflow-hidden rounded-xl border border-[#d4e3d7] bg-gradient-to-br from-white via-[#f7fbf8] to-[#e9f6ed] sm:grid-cols-2 xl:grid-cols-4">
-        <div aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 z-0 h-[70%] w-[22%] rounded-tl-[100%] bg-[#d4efdc]" />
+      {notice && <div className={`fixed right-6 top-6 z-[100] flex items-center gap-3 rounded-xl border px-5 py-3 text-sm shadow-lg ${notice.kind === 'success' ? 'border-[#8ebfb4] bg-[#f1faf8] text-[#105f5a]' : 'border-[#efb4b4] bg-[#fff8f8] text-[#9f3030]'}`}><span className="text-lg" aria-hidden="true">{notice.kind === 'success' ? 'OK' : '!' }</span>{notice.message}</div>}
+      <section className="relative isolate grid grid-cols-1 overflow-hidden rounded-xl border border-[#c6e5e1] bg-gradient-to-br from-white via-[#f5fbfa] to-[#e2f4f1] sm:grid-cols-2 xl:grid-cols-4">
+        <div aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 z-0 h-[70%] w-[22%] rounded-tl-[100%] bg-[#c9ebe5]" />
         {[
           { label: 'Total Requests', value: requests.length, detail: 'All demo requests' },
           { label: 'Pending', value: totalPending, detail: 'New, contacted, or under review' },
           { label: 'Approved', value: totalApproved, detail: 'Scheduled or completed' },
           { label: 'Declined', value: totalDeclined, detail: 'Cancelled or declined' },
         ].map(({ label, value, detail }, index) => (
-          <div key={label} className="relative z-10 min-w-0 border-b border-[#cfe2d7] px-4 py-4 last:border-b-0 sm:px-5 xl:border-b-0">
-            <p className="truncate text-sm text-[#526B62]">{label}</p>
-            <p className="mt-1 text-3xl font-semibold leading-tight text-[#172b24]">{value}</p>
-            <p className="mt-1 text-xs text-[#086b50]">{detail}</p>
-            {index < 3 && <span aria-hidden="true" className="absolute bottom-6 right-0 top-6 hidden w-px bg-[#cfe2d7] xl:block" />}
+          <div key={label} className="relative z-10 min-w-0 border-b border-[#c6e5e1] px-4 py-4 last:border-b-0 sm:px-5 xl:border-b-0">
+            <p className="truncate text-sm text-[#527b79]">{label}</p>
+            <p className="mt-1 text-3xl font-semibold leading-tight text-[#173f40]">{value}</p>
+            <p className="mt-1 text-xs text-[#16837d]">{detail}</p>
+            {index < 3 && <span aria-hidden="true" className="absolute bottom-6 right-0 top-6 hidden w-px bg-[#c6e5e1] xl:block" />}
           </div>
         ))}
       </section>
-      <section className={`${card} overflow-hidden p-4`}>
+      <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white p-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="relative min-w-[220px] max-w-[600px] flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#087a59]" />
-            <input value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} className="w-full rounded-full border border-[#d4e3d7] bg-white py-2.5 pl-10 pr-3 text-sm text-[#172b24] outline-none transition focus:border-[#087a59] focus:ring-2 focus:ring-[#087a59]/20" placeholder="Search by clinic name or contact..." />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#16837d]" />
+            <input value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} className="w-full rounded-full border border-[#c6e5e1] bg-white py-2.5 pl-10 pr-3 text-sm text-[#173f40] outline-none transition focus:border-[#16837d] focus:ring-0" placeholder="Search by clinic name or contact..." />
           </div>
           <div className="relative">
             <button
@@ -1631,13 +1765,13 @@ export function DemoRequests() {
               aria-haspopup="listbox"
               aria-expanded={statusMenuOpen}
               onClick={() => setStatusMenuOpen(open => !open)}
-              className="inline-flex min-w-[150px] items-center justify-between gap-5 rounded-full border border-[#d4e3d7] bg-white py-2.5 pl-4 pr-3 text-sm text-[#40594f] outline-none transition hover:border-[#b7dcca] hover:bg-[#f7fbf8] focus:border-[#087a59] focus:ring-2 focus:ring-[#087a59]/20"
+              className={`inline-flex min-w-[150px] items-center justify-between gap-5 rounded-full border bg-white py-2.5 pl-4 pr-3 text-sm text-[#315f5e] outline-none transition hover:border-[#8ebfb4] hover:bg-[#f1faf8] focus:border-[#16837d] focus:ring-0 ${statusMenuOpen ? 'border-[#16837d]' : 'border-[#c6e5e1]'}`}
             >
               {statusFilter}
-              <ChevronDown className={`h-4 w-4 text-[#087a59] transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-4 w-4 text-[#16837d] transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`} />
             </button>
             {statusMenuOpen && (
-              <div role="listbox" aria-label="Filter by status" className="absolute right-0 top-full z-30 mt-1 min-w-full overflow-hidden rounded-xl border border-[#d4e3d7] bg-white p-1 shadow-lg">
+              <div role="listbox" aria-label="Filter by status" className="absolute right-0 top-full z-30 mt-1 min-w-full overflow-hidden rounded-xl border border-[#c6e5e1] bg-white p-1 shadow-lg">
                 {['All Statuses', 'Pending', 'Approved', 'Declined'].map(status => (
                   <button
                     type="button"
@@ -1651,8 +1785,8 @@ export function DemoRequests() {
                     }}
                     className={`block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                       statusFilter === status
-                        ? 'bg-[#e7f4ec] font-medium text-[#086b50]'
-                        : 'text-[#40594f] hover:bg-[#eff8f2] hover:text-[#086b50]'
+                        ? 'bg-[#e5f4f1] font-medium text-[#105f5a]'
+                        : 'text-[#315f5e] hover:bg-[#f1faf8] hover:text-[#105f5a]'
                     }`}
                   >
                     {status}
@@ -1662,15 +1796,15 @@ export function DemoRequests() {
             )}
           </div>
         </div>
-        <div className="overflow-x-auto rounded-xl border border-[#d4e3d7]">
-          <table className="w-full min-w-[760px] table-fixed text-left">
-            <thead className="bg-gradient-to-r from-[#013826] to-[#087a59] text-white">
-              <tr>{['Clinic Name', 'Contact Person', 'Email', 'Request Date', 'Status', ''].map(heading => <th className="px-4 py-3 text-xs font-semibold" key={heading}>{heading}</th>)}</tr>
+        <div className="overflow-x-auto rounded-xl border border-[#c6e5e1]">
+          <table className="w-full min-w-[760px] table-fixed text-left text-sm">
+            <thead className="bg-gradient-to-r from-[#105f5a] to-[#16837d] text-white">
+              <tr>{['Clinic Name', 'Contact Person', 'Email', 'Request Date', 'Status', ''].map(heading => <th className="px-4 py-3 text-sm font-semibold" key={heading}>{heading}</th>)}</tr>
             </thead>
             <tbody>
               {pageRequests.map(request => (
                 <tr
-                  className="h-[50px] cursor-pointer border-t border-[#e6eee9] hover:bg-[#f0f8f3] focus-visible:bg-[#f0f8f3] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#078c63]"
+                  className="h-[50px] cursor-pointer border-t border-[#e1efed] hover:bg-[#f1faf8] focus-visible:bg-[#f1faf8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#16837d]"
                   key={request.id}
                   tabIndex={0}
                   aria-label={`Open demo request for ${request.clinic}`}
@@ -1682,17 +1816,17 @@ export function DemoRequests() {
                     }
                   }}
                 >
-                  <td className="truncate px-4 py-3 text-sm font-semibold text-[#172b24]" title={request.clinic}>{request.clinic}</td>
-                  <td className="truncate px-4 py-3 text-sm text-[#40594f]" title={request.contact}>{request.contact}</td>
-                  <td className="truncate px-4 py-3 text-sm text-[#40594f]" title={request.email}>{request.email}</td>
-                  <td className="px-4 py-3 text-sm text-[#40594f]">{request.submitted}</td>
-                  <td className="px-4 py-3"><span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusClass(request.status)}`}>{statusLabel(request.status)}</span></td>
-                  <td className="px-4 py-3 text-right"><button type="button" onClick={event => { event.stopPropagation(); openRequest(request); }} aria-label={`View ${request.clinic} demo request`} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#087a59] transition-colors hover:bg-[#e7f4ec] hover:text-[#013826] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#078c63]"><ChevronRight className="h-4 w-4" /></button></td>
+                  <td className="truncate px-4 py-3 text-sm font-semibold text-[#173f40]" title={request.clinic}>{request.clinic}</td>
+                  <td className="truncate px-4 py-3 text-sm text-[#315f5e]" title={request.contact}>{request.contact}</td>
+                  <td className="truncate px-4 py-3 text-sm text-[#315f5e]" title={request.email}>{request.email}</td>
+                  <td className="px-4 py-3 text-sm text-[#315f5e]">{request.submitted}</td>
+                  <td className="px-4 py-3"><span className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${statusClass(request.status)}`}>{statusLabel(request.status)}</span></td>
+                  <td className="px-4 py-3 text-right"><button type="button" onClick={event => { event.stopPropagation(); openRequest(request); }} aria-label={`View ${request.clinic} demo request`} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#16837d] transition-colors hover:bg-[#e5f4f1] hover:text-[#105f5a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16837d]"><ChevronRight className="h-4 w-4" /></button></td>
                 </tr>
               ))}
               {Array.from({ length: pageSize - pageRequests.length }, (_, index) => (
-                <tr className="h-[50px] border-t border-[#e6eee9]" key={`empty-demo-row-${index}`}>
-                  <td colSpan={6} className="px-4 py-3 text-center text-sm text-[#789087]">
+                <tr className="h-[50px] border-t border-[#e1efed]" key={`empty-demo-row-${index}`}>
+                  <td colSpan={6} className="px-4 py-3 text-center text-sm text-[#829e9b]">
                     {pageRequests.length === 0 && index === 0 ? (requests.length === 0 ? 'No demo requests found.' : 'No requests match these filters.') : ''}
                   </td>
                 </tr>
@@ -1700,14 +1834,14 @@ export function DemoRequests() {
             </tbody>
           </table>
         </div>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#40594f]">
-          <p>Showing {filteredRequests.length ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, filteredRequests.length)} of {filteredRequests.length} requests</p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#315f5e]">
+          <p>Showing {filteredRequests.length ? (currentPage - 1) * pageSize + 1 : 0}&ndash;{Math.min(currentPage * pageSize, filteredRequests.length)} of {filteredRequests.length} requests</p>
           <div className="flex items-center gap-1">
-            <button disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} aria-label="Previous page" className="rounded-lg border border-[#d4e3d7] px-3 py-2 text-[#087a59] disabled:opacity-40">‹</button>
+            <button disabled={currentPage === 1} onClick={() =>&lsaquo;</button>
             {Array.from({ length: pageCount }, (_, index) => index + 1).map(pageNumber => (
-              <button key={pageNumber} onClick={() => setPage(pageNumber)} className={`min-w-9 rounded-lg border px-3 py-2 ${pageNumber === currentPage ? 'border-[#087a59] bg-[#087a59] text-white' : 'border-[#d4e3d7] bg-white text-[#40594f]'}`}>{pageNumber}</button>
+              <button key={pageNumber} onClick={() => setPage(pageNumber)} className={`min-w-9 rounded-lg border px-3 py-2 text-sm ${pageNumber === currentPage ? 'border-[#16837d] bg-[#16837d] text-white' : 'border-[#c6e5e1] bg-white text-[#315f5e] hover:bg-[#f1faf8]'}`}>{pageNumber}</button>
             ))}
-            <button disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)} aria-label="Next page" className="rounded-lg border border-[#d4e3d7] px-3 py-2 text-[#087a59] disabled:opacity-40">›</button>
+            <button disabled={currentPage === pageCount} onClick={() =>&rsaquo;</button>
           </div>
         </div>
       </section>
@@ -1720,79 +1854,79 @@ export function DemoRequests() {
             aria-labelledby="demo-request-details-title"
             className="flex h-[min(560px,calc(100vh-2rem))] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
           >
-            <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#013826] to-[#087a59] px-5 py-3 text-white">
-              <h2 id="demo-request-details-title" className="text-sm font-semibold">Demo Request Details</h2>
-              <button onClick={() => setSelected(null)} aria-label="Close demo request details" className="text-xl leading-none text-white transition hover:text-[#d4e9df]">×</button>
+            <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#105f5a] to-[#16837d] px-5 py-3 text-white">
+              <h2 id="demo-request-details-title" className="text-[19px] font-semibold">Demo Request Details</h2>
+              <button onClick={() => setSelected(null)} aria-label="Close demo request details" className="rounded-md p-1 text-white/90 transition hover:bg-white/15 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7fbfa] p-4 sm:p-5">
               <div className="grid gap-4 sm:grid-cols-2">
-              <section className="overflow-hidden rounded-xl border border-[#d4e9df] bg-white p-4">
-                <h3 className="-mx-4 -mt-4 mb-3 border-b border-[#d4e9df] bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2.5 text-sm font-bold text-[#07543d]">Clinic Information</h3>
-                <dl className="space-y-2.5 text-xs">
-                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#526B62]">Clinic Name</dt><dd className="font-medium text-[#172b24]">{selected.clinic}</dd></div>
-                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#526B62]">Contact Person</dt><dd className="font-medium text-[#172b24]">{selected.contact}</dd></div>
-                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#526B62]">Email</dt><dd className="break-all font-medium text-[#172b24]">{selected.email}</dd></div>
-                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#526B62]">Phone Number</dt><dd className="font-medium text-[#172b24]">{selected.phone}</dd></div>
-                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#526B62]">Address</dt><dd className="font-medium text-[#172b24]">{selected.address}</dd></div>
+              <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white p-4">
+                <h3 className="-mx-4 -mt-4 mb-3 border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-bold text-[#105f5a]">Clinic Information</h3>
+                <dl className="space-y-2.5 text-[15px]">
+                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#527b79]">Clinic Name</dt><dd className="font-medium text-[#173f40]">{selected.clinic}</dd></div>
+                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#527b79]">Contact Person</dt><dd className="font-medium text-[#173f40]">{selected.contact}</dd></div>
+                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#527b79]">Email</dt><dd className="break-all font-medium text-[#173f40]">{selected.email}</dd></div>
+                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#527b79]">Phone Number</dt><dd className="font-medium text-[#173f40]">{selected.phone}</dd></div>
+                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#527b79]">Address</dt><dd className="font-medium text-[#173f40]">{selected.address}</dd></div>
                 </dl>
               </section>
-              <section className="overflow-hidden rounded-xl border border-[#d4e9df] bg-white p-4">
-                <h3 className="-mx-4 -mt-4 mb-3 border-b border-[#d4e9df] bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2.5 text-sm font-bold text-[#07543d]">Demo Preferences</h3>
-                <dl className="space-y-2.5 text-xs">
-                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#526B62]">Preferred Date</dt><dd className="font-medium text-[#172b24]">{selected.preferredDate}</dd></div>
-                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#526B62]">Preferred Time</dt><dd className="font-medium text-[#172b24]">{selected.preferredTime}</dd></div>
-                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#526B62]">Number of Staff</dt><dd className="font-medium text-[#172b24]">{selected.staff}</dd></div>
-                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#526B62]">Request Type</dt><dd className="font-medium text-[#172b24]">Demo</dd></div>
+              <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white p-4">
+                <h3 className="-mx-4 -mt-4 mb-3 border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-bold text-[#105f5a]">Demo Preferences</h3>
+                <dl className="space-y-2.5 text-[15px]">
+                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#527b79]">Preferred Date</dt><dd className="font-medium text-[#173f40]">{selected.preferredDate}</dd></div>
+                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#527b79]">Preferred Time</dt><dd className="font-medium text-[#173f40]">{selected.preferredTime}</dd></div>
+                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#527b79]">Number of Staff</dt><dd className="font-medium text-[#173f40]">{selected.staff}</dd></div>
+                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#527b79]">Request Type</dt><dd className="font-medium text-[#173f40]">Demo</dd></div>
                 </dl>
               </section>
-              <section className="overflow-hidden rounded-xl border border-[#d4e9df] bg-white p-4 sm:col-span-2">
-                <h3 className="-mx-4 -mt-4 mb-3 border-b border-[#d4e9df] bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2.5 text-sm font-bold text-[#07543d]">Request Information</h3>
-                <dl className="space-y-2.5 text-xs">
-                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#526B62]">Submission Date</dt><dd className="font-medium text-[#172b24]">{selected.submitted}</dd></div>
-                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#526B62]">Message</dt><dd className="font-medium text-[#172b24]">{selected.notes || 'No message provided.'}</dd></div>
-                  <div className="grid grid-cols-[116px_1fr] items-center gap-3"><dt className="text-[#526B62]">Status</dt><dd><span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusClass(selected.status)}`}>{selected.status}</span></dd></div>
+              <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white p-4 sm:col-span-2">
+                <h3 className="-mx-4 -mt-4 mb-3 border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-bold text-[#105f5a]">Request Information</h3>
+                <dl className="space-y-2.5 text-[15px]">
+                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#527b79]">Submission Date</dt><dd className="font-medium text-[#173f40]">{selected.submitted}</dd></div>
+                  <div className="grid grid-cols-[116px_1fr] gap-3"><dt className="text-[#527b79]">Message</dt><dd className="font-medium text-[#173f40]">{selected.notes || 'No message provided.'}</dd></div>
+                  <div className="grid grid-cols-[116px_1fr] items-center gap-3"><dt className="text-[#527b79]">Status</dt><dd><span className={`inline-flex rounded-full px-3 py-1 text-[15px] font-semibold ${statusClass(selected.status)}`}>{selected.status}</span></dd></div>
                 </dl>
               </section>
-              <section className="overflow-hidden rounded-xl border border-[#d4e9df] bg-white p-4 sm:col-span-2">
-                <h3 className="-mx-4 -mt-4 mb-3 border-b border-[#d4e9df] bg-gradient-to-r from-[#e7f4ec] to-[#dff4e9] px-4 py-2.5 text-sm font-bold text-[#07543d]">Admin Actions</h3>
-              {mode === 'contact' && <div className="rounded-xl border border-[#b99aff] bg-[#faf7ff] p-4"><h3 className="mb-3 text-sm font-semibold text-[#7044b6]">Demo Process — Contact Record</h3><label className="block text-sm text-[#086b50]">Contact Method<select className="mt-1 w-full rounded-lg border border-[#bfd4fa] bg-white px-3 py-2.5 text-sm"><option>Phone</option><option>Email</option><option>Video Call</option></select></label><label className="mt-3 block text-sm text-[#086b50]">Follow-up Date<input type="date" className="mt-1 w-full rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-sm" /></label><label className="mt-3 block text-sm text-[#086b50]">Contact Notes<textarea value={contactNotes} onChange={event => setContactNotes(event.target.value)} placeholder="Details of the conversation..." className="mt-1 h-20 w-full rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-sm" /></label></div>}
-              {mode === 'schedule' && <div className="rounded-xl border border-[#82b5ff] bg-[#f0f7ff] p-4"><h3 className="mb-3 text-sm font-semibold text-[#086b50]">Schedule Demo Form</h3><div className="grid grid-cols-1 gap-3 md:grid-cols-2"><label className="text-sm text-[#086b50]">Demo Date<input type="date" value={scheduleForm.date} onChange={event => setScheduleForm({ ...scheduleForm, date: event.target.value })} className="mt-1 w-full rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-sm" /></label><label className="text-sm text-[#086b50]">Demo Time<input type="time" value={scheduleForm.time} onChange={event => setScheduleForm({ ...scheduleForm, time: event.target.value })} className="mt-1 w-full rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-sm" /></label><label className="text-sm text-[#086b50]">Assigned Representative<input value={scheduleForm.representative} onChange={event => setScheduleForm({ ...scheduleForm, representative: event.target.value })} placeholder="e.g. John Cruz" className="mt-1 w-full rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-sm" /></label><label className="text-sm text-[#086b50]">Meeting Link<input value={scheduleForm.link} onChange={event => setScheduleForm({ ...scheduleForm, link: event.target.value })} placeholder="https://meet.google.com/..." className="mt-1 w-full rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-sm" /></label></div><label className="mt-3 block text-sm text-[#086b50]">Additional Notes<textarea value={scheduleForm.notes} onChange={event => setScheduleForm({ ...scheduleForm, notes: event.target.value })} placeholder="Any notes for the demo..." className="mt-1 h-16 w-full rounded-lg border border-[#bfd4fa] px-3 py-2.5 text-sm" /></label></div>}
-              {mode === 'view' && <div className="flex flex-wrap gap-2">{selected.status === 'New' && <><button onClick={() => setMode('contact')} className="rounded-full border border-[#078c63] bg-white px-4 py-2 text-xs font-semibold text-[#087a59] transition hover:bg-[#eff9f3]">Record Contact</button><button onClick={() => setMode('schedule')} className="rounded-full bg-[#087a59] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#065c44]">Schedule Demo</button><button onClick={() => updateStatus('Cancelled', `${selected.clinic} demo request cancelled.`, 'error')} className="rounded-full border border-[#c43636] bg-white px-4 py-2 text-xs font-semibold text-[#c43636] transition hover:bg-[#fff1f1]">Cancel</button></>}{selected.status === 'Contacted' && <><button onClick={() => setMode('schedule')} className="rounded-full bg-[#087a59] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#065c44]">Schedule Demo</button><button onClick={() => updateStatus('Completed', `${selected.clinic} demo marked as Completed.`)} className="rounded-full border border-[#078c63] bg-white px-4 py-2 text-xs font-semibold text-[#087a59] transition hover:bg-[#eff9f3]">Mark Completed</button></>}{selected.status === 'Scheduled' && <button onClick={() => updateStatus('Completed', `${selected.clinic} demo marked as Completed.`)} className="rounded-full bg-[#087a59] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#065c44]">Mark Completed</button>}</div>}
+              <section className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white p-4 sm:col-span-2">
+                <h3 className="-mx-4 -mt-4 mb-3 border-b border-[#c6e5e1] bg-[#e5f4f1] px-4 py-2.5 text-[13px] font-bold text-[#105f5a]">Admin Actions</h3>
+              {mode === 'contact' && <div className="rounded-xl border border-[#c6e5e1] bg-[#f7fbfa] p-4"><h3 className="mb-3 text-[13px] font-semibold text-[#105f5a]">Demo Process: Contact Record</h3><label className="block text-[13px] text-[#315f5e]">Contact Method<select className="mt-1 w-full rounded-lg border border-[#c6e5e1] bg-white px-3 py-2.5 text-[13px]"><option>Phone</option><option>Email</option><option>Video Call</option></select></label><label className="mt-3 block text-[13px] text-[#315f5e]">Follow-up Date<input type="date" className="mt-1 w-full rounded-lg border border-[#c6e5e1] px-3 py-2.5 text-[13px]" /></label><label className="mt-3 block text-[13px] text-[#315f5e]">Contact Notes<textarea value={contactNotes} onChange={event => setContactNotes(event.target.value)} placeholder="Details of the conversation..." className="mt-1 h-20 w-full rounded-lg border border-[#c6e5e1] px-3 py-2.5 text-[13px]" /></label></div>}
+              {mode === 'schedule' && <div className="rounded-xl border border-[#82b5ff] bg-[#f0f7ff] p-4"><h3 className="mb-3 text-[13px] font-semibold text-[#086b50]">Schedule Demo Form</h3><div className="grid grid-cols-1 gap-3 md:grid-cols-2"><label className="text-[13px] text-[#086b50]">Demo Date<input type="date" value={scheduleForm.date} onChange={event => setScheduleForm({ ...scheduleForm, date: event.target.value })} className="mt-1 w-full rounded-lg border border-[#d4e3d7] px-3 py-2.5 text-[13px]" /></label><label className="text-[13px] text-[#086b50]">Demo Time<input type="time" value={scheduleForm.time} onChange={event => setScheduleForm({ ...scheduleForm, time: event.target.value })} className="mt-1 w-full rounded-lg border border-[#d4e3d7] px-3 py-2.5 text-[13px]" /></label><label className="text-[13px] text-[#086b50]">Assigned Representative<input value={scheduleForm.representative} onChange={event => setScheduleForm({ ...scheduleForm, representative: event.target.value })} placeholder="e.g. John Cruz" className="mt-1 w-full rounded-lg border border-[#d4e3d7] px-3 py-2.5 text-[13px]" /></label><label className="text-[13px] text-[#086b50]">Meeting Link<input value={scheduleForm.link} onChange={event => setScheduleForm({ ...scheduleForm, link: event.target.value })} placeholder="https://meet.google.com/..." className="mt-1 w-full rounded-lg border border-[#d4e3d7] px-3 py-2.5 text-[13px]" /></label></div><label className="mt-3 block text-[13px] text-[#086b50]">Additional Notes<textarea value={scheduleForm.notes} onChange={event => setScheduleForm({ ...scheduleForm, notes: event.target.value })} placeholder="Any notes for the demo..." className="mt-1 h-16 w-full rounded-lg border border-[#d4e3d7] px-3 py-2.5 text-[13px]" /></label></div>}
+              {mode === 'view' && <div className="flex flex-wrap gap-2">{selected.status === 'New' && <><button onClick={() => setMode('contact')} className="rounded-full border border-[#078c63] bg-white px-4 py-2 text-[15px] font-semibold text-[#087a59] transition hover:bg-[#eff9f3]">Record Contact</button><button onClick={() => setMode('schedule')} className="rounded-full bg-[#087a59] px-4 py-2 text-[15px] font-semibold text-white transition hover:bg-[#065c44]">Schedule Demo</button><button onClick={() => updateStatus('Cancelled', `${selected.clinic} demo request cancelled.`, 'error')} className="rounded-full border border-[#c43636] bg-white px-4 py-2 text-[15px] font-semibold text-[#c43636] transition hover:bg-[#fff1f1]">Cancel</button></>}{selected.status === 'Contacted' && <><button onClick={() => setMode('schedule')} className="rounded-full bg-[#087a59] px-4 py-2 text-[15px] font-semibold text-white transition hover:bg-[#065c44]">Schedule Demo</button><button onClick={() => updateStatus('Completed', `${selected.clinic} demo marked as Completed.`)} className="rounded-full border border-[#078c63] bg-white px-4 py-2 text-[15px] font-semibold text-[#087a59] transition hover:bg-[#eff9f3]">Mark Completed</button></>}{selected.status === 'Scheduled' && <button onClick={() => updateStatus('Completed', `${selected.clinic} demo marked as Completed.`)} className="rounded-full bg-[#087a59] px-4 py-2 text-[15px] font-semibold text-white transition hover:bg-[#065c44]">Mark Completed</button>}</div>}
               {mode === 'view' && ['Completed', 'Cancelled'].includes(selected.status) && (
                 editingStatus ? (
                   <div className="space-y-3 rounded-xl border border-[#d4e3d7] bg-[#f7fbf8] p-3">
-                    <label className="block text-xs font-medium text-[#526B62]">
+                    <label className="block text-[15px] font-medium text-[#526B62]">
                       Request Status
                       <select
                         value={statusDraft}
                         onChange={event => setStatusDraft(event.target.value as DemoStatus)}
-                        className="mt-1.5 w-full rounded-lg border border-[#d4e3d7] bg-white px-3 py-2.5 text-sm text-[#172b24] outline-none focus:border-[#087a59] focus:ring-2 focus:ring-[#087a59]/20"
+                        className="mt-1.5 w-full rounded-lg border border-[#d4e3d7] bg-white px-3 py-2.5 text-[13px] text-[#172b24] outline-none focus:border-[#087a59] focus:ring-2 focus:ring-[#087a59]/20"
                       >
                         {demoStatuses.map(status => <option key={status} value={status}>{status}</option>)}
                       </select>
                     </label>
                     <div className="flex flex-wrap gap-2">
-                      <button onClick={() => updateStatus(statusDraft, `Demo request status changed to ${statusDraft}.`, 'success', false)} className="rounded-full bg-[#087a59] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#065c44]">Save Status</button>
-                      <button onClick={() => { setStatusDraft(selected.status); setEditingStatus(false); }} className="rounded-full border border-[#078c63] bg-white px-4 py-2 text-xs font-semibold text-[#087a59] transition hover:bg-[#eff9f3]">Cancel</button>
+                      <button onClick={() => updateStatus(statusDraft, `Demo request status changed to ${statusDraft}.`, 'success', false)} className="rounded-full bg-[#087a59] px-4 py-2 text-[15px] font-semibold text-white transition hover:bg-[#065c44]">Save Status</button>
+                      <button onClick={() => { setStatusDraft(selected.status); setEditingStatus(false); }} className="rounded-full border border-[#078c63] bg-white px-4 py-2 text-[15px] font-semibold text-[#087a59] transition hover:bg-[#eff9f3]">Cancel</button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#f3f8f5] px-3 py-2.5">
-                    <p className="text-xs text-[#526B62]">
+                    <p className="text-[15px] text-[#526B62]">
                       {selected.status === 'Cancelled'
                         ? 'This request was cancelled.'
                         : 'This request is completed.'}
                     </p>
-                    <button onClick={() => { setStatusDraft(selected.status); setEditingStatus(true); }} className="rounded-full border border-[#078c63] bg-white px-4 py-2 text-xs font-semibold text-[#087a59] transition hover:bg-[#eff9f3]">Edit Status</button>
+                    <button onClick={() => { setStatusDraft(selected.status); setEditingStatus(true); }} className="rounded-full border border-[#078c63] bg-white px-4 py-2 text-[15px] font-semibold text-[#087a59] transition hover:bg-[#eff9f3]">Edit Status</button>
                   </div>
                 )
               )}
-              {mode !== 'view' && <div className="flex flex-wrap gap-2"><button onClick={() => mode === 'contact' ? updateStatus('Contacted', `${selected.clinic} marked as Contacted. Notification sent.`) : updateStatus('Scheduled', `Demo scheduled for ${selected.clinic}. Notification sent to clinic.`)} className="rounded-full bg-[#087a59] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#065c44]">{mode === 'contact' ? 'Save & Notify Clinic' : 'Confirm & Notify Clinic'}</button><button onClick={() => setMode('view')} className="rounded-full border border-[#078c63] bg-white px-4 py-2 text-xs font-semibold text-[#087a59] transition hover:bg-[#eff9f3]">Back</button></div>}
+              {mode !== 'view' && <div className="flex flex-wrap gap-2"><button onClick={() => mode === 'contact' ? updateStatus('Contacted', `${selected.clinic} marked as Contacted. Notification sent.`) : updateStatus('Scheduled', `Demo scheduled for ${selected.clinic}. Notification sent to clinic.`)} className="rounded-full bg-[#087a59] px-4 py-2 text-[15px] font-semibold text-white transition hover:bg-[#065c44]">{mode === 'contact' ? 'Save & Notify Clinic' : 'Confirm & Notify Clinic'}</button><button onClick={() => setMode('view')} className="rounded-full border border-[#078c63] bg-white px-4 py-2 text-[15px] font-semibold text-[#087a59] transition hover:bg-[#eff9f3]">Back</button></div>}
               </section>
               </div>
             </div>
-            <div className="flex shrink-0 justify-end border-t border-[#e2eee7] px-5 py-3">
-              <button onClick={() => setSelected(null)} className="rounded-full border border-[#087a59] px-4 py-2 text-xs font-semibold text-[#087a59] hover:bg-[#eff9f3]">Close</button>
+            <div className="flex shrink-0 justify-end border-t border-[#e1efed] bg-white px-5 py-3">
+              <button onClick={() => setSelected(null)} className="rounded-full border border-[#16837d] px-4 py-2 text-[15px] font-semibold text-[#105f5a] hover:bg-[#f1faf8]">Close</button>
             </div>
           </section>
         </div>,
@@ -1852,7 +1986,7 @@ export function Inbox() {
   });
   const activeMessage = visibleMessages.find(message => message.id === selected) || visibleMessages[0] || null;
   const formatMessageDate = (value: string, includeTime = false) => {
-    if (!value) return '—';
+    if (!value) return 'Not provided';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleString(undefined, includeTime
@@ -1875,22 +2009,22 @@ export function Inbox() {
     }
   };
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] min-h-[480px] flex-col overflow-hidden bg-gradient-to-br from-[#e7f7ef] via-[#f6fcf8] to-[#d3efe2] p-2 text-sm sm:p-3 lg:p-4">
-      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(220px,38%)_minmax(0,1fr)] overflow-hidden rounded-2xl border border-[#cfe8dc] bg-white/90 shadow-[0_8px_28px_rgba(14,86,62,0.12)] backdrop-blur lg:grid-cols-[295px_minmax(0,1fr)] lg:grid-rows-1">
-        <aside className="flex min-h-0 flex-col border-b border-[#d4e9de] bg-white/90 lg:border-b-0 lg:border-r">
-          <div className="shrink-0 border-b border-[#e2f0e8] p-3">
+    <div className="flex h-[calc(100vh-3.5rem)] min-h-[480px] flex-col overflow-hidden bg-gradient-to-br from-[#e5f4f1] via-[#f7fbfa] to-[#d7eee9] p-2 text-sm sm:p-3 lg:p-4">
+      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(220px,38%)_minmax(0,1fr)] overflow-hidden rounded-2xl border border-[#c6e5e1] bg-white/95 shadow-[0_8px_28px_rgba(16,95,90,0.1)] backdrop-blur lg:grid-cols-[295px_minmax(0,1fr)] lg:grid-rows-1">
+        <aside className="flex min-h-0 flex-col border-b border-[#c6e5e1] bg-white lg:border-b-0 lg:border-r">
+          <div className="shrink-0 border-b border-[#e1efed] p-3">
             <div className="flex items-center gap-2">
               <div className="relative min-w-0 flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#77b69a]" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#16837d]" />
                 <input
                   value={searchQuery}
                   onChange={event => setSearchQuery(event.target.value)}
-                  className="h-10 w-full rounded-full border border-[#cfe4d8] bg-white px-9 text-xs text-[#172b24] outline-none placeholder:text-[#82998f] focus:border-[#087a59] focus:ring-0 focus:shadow-[0_0_0_3px_rgba(8,122,89,0.18)]"
+                  className="h-10 w-full rounded-full border border-[#c6e5e1] bg-white px-9 text-xs text-[#173f40] outline-none placeholder:text-[#829e9b] focus:border-[#16837d] focus:ring-0"
                   placeholder="Search messages..."
                   aria-label="Search messages"
                 />
               </div>
-              <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e1f5eb] text-[#087a59]">
+              <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e5f4f1] text-[#16837d]">
                 <SlidersHorizontal className="h-4 w-4" />
               </span>
             </div>
@@ -1900,7 +2034,7 @@ export function Inbox() {
                   key={item}
                   type="button"
                   onClick={() => setFilter(item)}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-medium transition ${filter === item ? 'bg-[#087a59] text-white shadow-sm' : 'bg-[#e5f5ec] text-[#3f6253] hover:bg-[#d8f0e3]'}`}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-medium transition ${filter === item ? 'bg-[#16837d] text-white' : 'bg-[#e5f4f1] text-[#315f5e] hover:bg-[#d8eeea]'}`}
                 >
                   {item}
                 </button>
@@ -1911,25 +2045,25 @@ export function Inbox() {
             {loadError ? (
               <p role="alert" className="px-3 py-6 text-center text-xs text-[#b42318]">{loadError}</p>
             ) : visibleMessages.length === 0 ? (
-              <p className="px-3 py-8 text-center text-xs text-[#789087]">{messages.length ? 'No messages match your filters.' : 'No messages yet.'}</p>
+              <p className="px-3 py-8 text-center text-xs text-[#829e9b]">{messages.length ? 'No messages match your filters.' : 'No messages yet.'}</p>
             ) : visibleMessages.map(message => (
               <button
                 key={message.id}
                 type="button"
                 onClick={() => setSelected(message.id)}
-                className={`mb-1.5 flex w-full gap-3 rounded-xl p-3 text-left transition ${activeMessage?.id === message.id ? 'bg-[#def6eb]' : 'bg-white hover:bg-[#f2faf5]'}`}
+                className={`mb-1.5 flex w-full gap-3 rounded-xl p-3 text-left transition ${activeMessage?.id === message.id ? 'bg-[#e5f4f1]' : 'bg-white hover:bg-[#f1faf8]'}`}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#12a675] to-[#087a59] text-[11px] font-semibold text-white shadow-sm">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#36a99f] to-[#105f5a] text-[11px] font-semibold text-white">
                   {getInitials(message.senderName)}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between gap-2">
-                    <span className="truncate text-xs font-semibold text-[#173c2f]">{message.senderName}</span>
-                    <span className="shrink-0 text-[10px] text-[#16815d]">{formatMessageDate(message.createdAt)}</span>
+                    <span className="truncate text-xs font-semibold text-[#173f40]">{message.senderName}</span>
+                    <span className="shrink-0 text-[10px] text-[#16837d]">{formatMessageDate(message.createdAt)}</span>
                   </span>
-                  <span className="mt-1 block truncate text-[11px] text-[#315b4a]">{message.body || message.subject}</span>
+                  <span className="mt-1 block truncate text-[11px] text-[#527b79]">{message.body || message.subject}</span>
                 </span>
-                {!message.isRead && <span className="mt-5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1bb478]" aria-label="Unread" />}
+                {!message.isRead && <span className="mt-5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#16837d]" aria-label="Unread" />}
               </button>
             ))}
           </div>
@@ -1937,35 +2071,35 @@ export function Inbox() {
         <section className="flex min-h-0 min-w-0 flex-col">
           {activeMessage ? (
             <>
-              <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#dceee4] bg-white/90 px-4 py-3 sm:px-5">
+              <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#c6e5e1] bg-white px-4 py-3 sm:px-5">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#12a675] to-[#087a59] text-xs font-semibold text-white shadow-sm">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#36a99f] to-[#105f5a] text-xs font-semibold text-white">
                     {getInitials(activeMessage.senderName)}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[#173c2f]">{activeMessage.senderName}</p>
-                    <p className="truncate text-xs text-[#16815d]">{activeMessage.senderEmail}</p>
-                    <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#14865f]">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#58d68d]" />
+                    <p className="truncate text-sm font-semibold text-[#173f40]">{activeMessage.senderName}</p>
+                    <p className="truncate text-xs text-[#16837d]">{activeMessage.senderEmail}</p>
+                    <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#105f5a]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#8ebfb4]" />
                       {activeMessage.audience}
                     </p>
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="max-w-[200px] truncate text-xs font-semibold text-[#173c2f] sm:max-w-xs">{activeMessage.subject}</p>
-                  <p className={`mt-1 text-[11px] ${activeMessage.isRead ? 'text-[#16815d]' : 'text-[#a16a08]'}`}>{activeMessage.isRead ? 'Read' : 'Unread'}</p>
+                  <p className="max-w-[200px] truncate text-xs font-semibold text-[#173f40] sm:max-w-xs">{activeMessage.subject}</p>
+                  <p className={`mt-1 text-[11px] ${activeMessage.isRead ? 'text-[#527b79]' : 'text-[#a16a08]'}`}>{activeMessage.isRead ? 'Read' : 'Unread'}</p>
                 </div>
               </header>
-              <div className="relative min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_9%_100%,rgba(225,249,238,0.8),transparent_36%),radial-gradient(ellipse_at_100%_82%,rgba(204,244,225,0.72),transparent_34%),linear-gradient(135deg,#ffffff_24%,#f8fcf9_100%)] p-4 sm:p-6">
+              <div className="relative min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_9%_100%,rgba(229,244,241,0.8),transparent_36%),radial-gradient(ellipse_at_100%_82%,rgba(198,229,225,0.55),transparent_34%),linear-gradient(135deg,#ffffff_24%,#f7fbfa_100%)] p-4 sm:p-6">
                 <div className="flex items-start gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#12a675] to-[#087a59] text-[10px] font-semibold text-white">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#36a99f] to-[#105f5a] text-[10px] font-semibold text-white">
                     {getInitials(activeMessage.senderName)}
                   </span>
                   <div className="min-w-0">
-                    <p className="mb-1.5 text-[11px] font-medium text-[#16815d]">
+                    <p className="mb-1.5 text-[11px] font-medium text-[#16837d]">
                       {formatMessageDate(activeMessage.createdAt, true)}
                     </p>
-                    <div className="max-w-3xl rounded-2xl rounded-tl-md border border-[#ccebdd] bg-[#e1f6ec]/95 px-4 py-3 text-sm leading-6 text-[#183d30] shadow-sm">
+                    <div className="max-w-3xl rounded-2xl rounded-tl-md border border-[#c6e5e1] bg-[#e5f4f1] px-4 py-3 text-sm leading-6 text-[#173f40]">
                       {activeMessage.body}
                     </div>
                   </div>
@@ -1973,14 +2107,14 @@ export function Inbox() {
               </div>
               <form
                 onSubmit={event => { event.preventDefault(); void sendReply(); }}
-                className="shrink-0 border-t border-[#dceee4] bg-white/90 p-3 sm:px-4 sm:py-3"
+                className="shrink-0 border-t border-[#c6e5e1] bg-white p-3 sm:px-4 sm:py-3"
               >
                 {replyError && <p role="alert" className="mb-2 text-xs text-[#b42318]">{replyError}</p>}
                 <div className="flex items-center gap-2">
                   <input
                     value={reply}
                     onChange={event => setReply(event.target.value)}
-                    className="h-12 min-w-0 flex-1 rounded-2xl border border-[#cfe4d8] bg-white px-4 text-xs text-[#172b24] outline-none placeholder:text-[#82998f] focus:border-[#087a59] focus:ring-0 focus:shadow-[0_0_0_3px_rgba(8,122,89,0.18)]"
+                    className="h-12 min-w-0 flex-1 rounded-2xl border border-[#c6e5e1] bg-white px-4 text-xs text-[#173f40] outline-none placeholder:text-[#829e9b] focus:border-[#16837d] focus:ring-0"
                     placeholder={`Reply to ${activeMessage.senderName}...`}
                     aria-label={`Reply to ${activeMessage.senderName}`}
                   />
@@ -1988,7 +2122,7 @@ export function Inbox() {
                     type="submit"
                     disabled={!reply.trim()}
                     aria-label="Send message"
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#075b43] text-white shadow-sm transition hover:bg-[#087a59] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#16837d] text-white transition hover:bg-[#105f5a] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Send className="h-5 w-5" />
                   </button>
@@ -1996,7 +2130,7 @@ export function Inbox() {
               </form>
             </>
           ) : (
-            <div className="flex min-h-0 flex-1 items-center justify-center bg-[radial-gradient(ellipse_at_9%_100%,rgba(225,249,238,0.8),transparent_36%),linear-gradient(135deg,#ffffff_24%,#f8fcf9_100%)] px-6 text-center text-sm text-[#789087]">
+            <div className="flex min-h-0 flex-1 items-center justify-center bg-[radial-gradient(ellipse_at_9%_100%,rgba(229,244,241,0.8),transparent_36%),linear-gradient(135deg,#ffffff_24%,#f7fbfa_100%)] px-6 text-center text-sm text-[#829e9b]">
               Select a message to view the conversation.
             </div>
           )}

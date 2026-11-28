@@ -219,7 +219,7 @@ textarea {
 .clinic-application-modal input:focus,
 .clinic-application-modal textarea:focus,
 .clinic-application-modal [data-slot="select-trigger"]:focus {
-  border-color: #086b50;
+  border-color: #16837d;
   outline: none;
-  box-shadow: 0 0 0 2px rgb(8 107 80 / 18%);
+  box-shadow: none;
 }

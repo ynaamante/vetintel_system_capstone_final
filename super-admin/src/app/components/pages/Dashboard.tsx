@@ -285,13 +285,13 @@ export function Dashboard() {
       setRecentApplications(
         (data.applications || []).map((application: any) => ({
           id: String(application.id),
-          name: application.name || '—',
-          owner: application.owner || '—',
+          name: application.name || 'Not provided',
+          owner: application.owner || 'Not provided',
           staffCount: String(application.staff_count || 0),
           plan: application.plan || 'Starter',
           date: application.created_at
             ? new Date(application.created_at).toLocaleDateString()
-            : '—',
+            : 'Not provided',
           status: application.status === 'active'
             ? 'Approved'
             : application.status === 'rejected'
@@ -377,7 +377,7 @@ export function Dashboard() {
   ];
 
   const recentRoleRequests = [
-  ['No role requests yet', '—', '—', '—', 'Pending'],
+  ['No role requests yet', 'Not provided', 'Not provided', 'Not provided', 'Pending'],
 ];
   const activityRows = recentActivities.length > 0
   ? recentActivities.slice(0, 5)
@@ -388,15 +388,15 @@ export function Dashboard() {
         entity_type: 'system',
         changes: { name: 'New activity will appear here.' },
         created_at: new Date().toISOString(),
-        time: '—',
+        time: 'Not provided',
       },
     ];
   const statusClass = (status: string) => status === 'Approved' ? 'bg-[#d8f7e9] text-[#078c63]' : status === 'Under Review' ? 'bg-[#dff2fc] text-[#16759f]' : status === 'Needs Information' ? 'bg-[#eee8ff] text-[#7044b6]' : 'bg-[#fff1c9] text-[#c98200]';
 
   return (
-    <div className="p-5 space-y-5 bg-[#fafbf8] min-h-full">
-      <div className="relative isolate grid grid-cols-1 overflow-hidden rounded-xl border border-[#d4e3d7] bg-gradient-to-br from-white via-[#f7fbf8] to-[#e9f6ed] sm:grid-cols-2 xl:grid-cols-6">
-        <div aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 z-0 h-[70%] w-[22%] rounded-tl-[100%] bg-[#d4efdc]" />
+    <div className="p-5 space-y-5 bg-[#f7fbfa] min-h-full">
+      <div className="relative isolate grid grid-cols-1 overflow-hidden rounded-xl border border-[#c6e5e1] bg-gradient-to-br from-white via-[#f5fbfa] to-[#e2f4f1] sm:grid-cols-2 xl:grid-cols-6">
+        <div aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 z-0 h-[70%] w-[22%] rounded-tl-[100%] bg-[#c9ebe5]" />
         {[
           { label: 'Total Registered Clinics', value: clinicSummary.totalRegisteredClinics, delta: `+${clinicSummary.newClinicsLast30Days} this month` },
           { label: 'Active Clinics', value: clinicSummary.activeClinics, delta: '+5 this week' },
@@ -405,29 +405,29 @@ export function Dashboard() {
           { label: 'Active Subscriptions', value: 138, delta: '97% retention' },
           { label: 'Demo Requests', value: 14, delta: '6 uncontacted' },
         ].map((metric, index) => (
-          <div key={metric.label} className="relative z-10 min-w-0 border-b border-[#cfe2d7] px-4 py-4 last:border-b-0 sm:px-5 xl:border-b-0">
-            <p className="truncate text-sm text-[#526B62]">{metric.label}</p>
-            <p className="mt-1 text-3xl font-semibold leading-tight text-[#172b24]">{metric.value}</p>
-            <p className="mt-1 text-xs text-[#086b50]">{metric.delta}</p>
-            {index < 5 && <span aria-hidden="true" className="absolute right-0 top-6 bottom-6 hidden w-px bg-[#cfe2d7] xl:block" />}
+          <div key={metric.label} className="relative z-10 min-w-0 border-b border-[#c6e5e1] px-4 py-4 last:border-b-0 sm:px-5 xl:border-b-0">
+            <p className="truncate text-sm text-[#527b79]">{metric.label}</p>
+            <p className="mt-1 text-3xl font-semibold leading-tight text-[#173f40]">{metric.value}</p>
+            <p className="mt-1 text-xs text-[#16837d]">{metric.delta}</p>
+            {index < 5 && <span aria-hidden="true" className="absolute right-0 top-6 bottom-6 hidden w-px bg-[#c6e5e1] xl:block" />}
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.8fr_1fr] gap-3">
-        <div className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white shadow-none">
-          <div className="flex items-center justify-between bg-gradient-to-r from-[#013826] to-[#086b50] px-4 py-3">
+        <div className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white shadow-none">
+          <div className="flex items-center justify-between border-b border-[#16837d] bg-[#16837d] px-4 py-3">
             <h2 className="text-base font-semibold text-white">Recent Clinic Applications</h2>
-            <button onClick={() => navigate('/clinics')} className="text-sm font-semibold text-white transition hover:text-[#c7f0dc]">View all</button>
+            <button onClick={() => navigate('/clinics')} className="text-sm font-semibold text-white transition hover:text-[#c9ebe5]">View all</button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-[#e7f4ec]">
-                <tr>{['Clinic Name', 'Owner', 'Staff Req.', 'Plan', 'Submitted', 'Status'].map((heading) => <th className="px-3 py-2.5 text-xs font-semibold text-[#244b3e]" key={heading}>{heading}</th>)}</tr>
+              <thead className="bg-[#e5f4f1]">
+                <tr>{['Clinic Name', 'Owner', 'Staff Req.', 'Plan', 'Submitted', 'Status'].map((heading) => <th className="px-3 py-2.5 text-xs font-semibold text-[#315f5e]" key={heading}>{heading}</th>)}</tr>
               </thead>
               <tbody>
                 {recentApplications.map((row) => (
-                  <tr className="border-t border-[#e6eee9] transition-colors hover:bg-[#f7fbf8]" key={row.id}>
+                  <tr className="border-t border-[#e1efed] transition-colors hover:bg-[#f4faf9]" key={row.id}>
                     <td className="px-3 py-2.5 text-sm font-medium text-[#172b24]">{row.name}</td>
                     <td className="px-3 py-2.5 text-sm text-[#40594f]">{row.owner}</td>
                     <td className="px-3 py-2.5 text-sm text-[#40594f]">{row.staffCount}</td>
@@ -442,41 +442,41 @@ export function Dashboard() {
             </table>
           </div>
         </div>
-        <div className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white shadow-none">
-          <div className="bg-gradient-to-r from-[#013826] to-[#086b50] px-4 py-3">
+        <div className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white shadow-none">
+          <div className="border-b border-[#16837d] bg-[#16837d] px-4 py-3">
             <h2 className="text-base font-semibold text-white">Platform Activity</h2>
           </div>
           <div>
             {activityRows.map((activity, index) => (
               <div
-                className={`flex gap-3 px-4 py-3 transition-colors hover:bg-[#f7fbf8] ${index < activityRows.length - 1 ? 'border-b border-[#e6eee9]' : ''}`}
+                className={`flex gap-3 px-4 py-3 transition-colors hover:bg-[#f4faf9] ${index < activityRows.length - 1 ? 'border-b border-[#e1efed]' : ''}`}
                 key={activity.id}
               >
-                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#086b50]" />
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#16837d]" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-[#172b24]">{recentActivities.length > 0 ? getActivityTitle(activity.action, activity.entity_type) : activity.action}</p>
-                  <p className="text-xs text-[#526B62]">{recentActivities.length > 0 ? getActivityDescription(activity) : activity.changes.name}</p>
+                  <p className="text-xs text-[#527b79]">{recentActivities.length > 0 ? getActivityDescription(activity) : activity.changes.name}</p>
                 </div>
-                <span className="shrink-0 text-xs text-[#6faf91]">{activity.time || formatTimeAgo(activity.created_at)}</span>
+                <span className="shrink-0 text-xs text-[#58a49b]">{activity.time || formatTimeAgo(activity.created_at)}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-[#d4e3d7] bg-white shadow-none">
-        <div className="flex items-center justify-between bg-gradient-to-r from-[#013826] to-[#086b50] px-4 py-3">
+      <div className="overflow-hidden rounded-xl border border-[#c6e5e1] bg-white shadow-none">
+        <div className="flex items-center justify-between border-b border-[#16837d] bg-[#16837d] px-4 py-3">
           <h2 className="text-base font-semibold text-white">Recent Role Requests</h2>
-          <button onClick={() => navigate('/role-requests')} className="text-sm font-semibold text-white transition hover:text-[#c7f0dc]">View all</button>
+          <button onClick={() => navigate('/role-requests')} className="text-sm font-semibold text-white transition hover:text-[#c9ebe5]">View all</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-gradient-to-r from-[#d8f1e5] to-[#e7f4ec]">
-              <tr>{['Clinic', 'Requested Role', 'Users', 'Date', 'Status'].map((heading) => <th className="px-3 py-2.5 text-xs font-semibold text-[#244b3e]" key={heading}>{heading}</th>)}</tr>
+            <thead className="bg-gradient-to-r from-[#d8efec] to-[#e5f4f1]">
+              <tr>{['Clinic', 'Requested Role', 'Users', 'Date', 'Status'].map((heading) => <th className="px-3 py-2.5 text-xs font-semibold text-[#315f5e]" key={heading}>{heading}</th>)}</tr>
             </thead>
             <tbody>
               {recentRoleRequests.map((row) => (
-                <tr className="border-t border-[#e6eee9] transition-colors hover:bg-[#f7fbf8]" key={row[0] + row[1]}>
+                <tr className="border-t border-[#e1efed] transition-colors hover:bg-[#f4faf9]" key={row[0] + row[1]}>
                   {row.map((value, index) => (
                     <td className="px-3 py-2.5 text-sm text-[#40594f]" key={index}>
                       {index === row.length - 1 ? <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(value)}`}>{value}</span> : value}

@@ -104,9 +104,10 @@ function SelectLabel({
 
 function SelectItem({
   className,
+  hideIndicator = false,
   children,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Item>) {
+}: React.ComponentProps<typeof SelectPrimitive.Item> & { hideIndicator?: boolean }) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -117,7 +118,7 @@ function SelectItem({
       {...props}
     >
       <span className="absolute right-2 flex size-3.5 items-center justify-center">
-        <SelectPrimitive.ItemIndicator>
+        <SelectPrimitive.ItemIndicator className={hideIndicator ? "hidden" : undefined}>
           <CheckIcon className="size-4" />
         </SelectPrimitive.ItemIndicator>
       </span>

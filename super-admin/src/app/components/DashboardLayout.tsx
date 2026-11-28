@@ -168,7 +168,7 @@ export function DashboardLayout() {
   const pageTitle = location.pathname === '/' ? 'Dashboard Overview' : activeNavigation?.name || 'Super Admin Portal';
 
   return (
-    <div className="flex h-screen bg-[#fafbf8] text-[#172b24]">
+    <div className="flex h-screen bg-[#f7fbfa] text-[#174b4c]">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -179,18 +179,18 @@ export function DashboardLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-52 bg-[#013826] border-r border-[#33755b] transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:z-auto flex flex-col ${
+        className={`fixed inset-y-0 left-0 z-50 w-52 bg-[#e2f3f0] border-r border-[#c3e3df] transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:z-auto flex flex-col ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex h-16 items-center justify-between px-4 border-b border-[#33755b]">
+        <div className="flex h-14 items-center justify-between px-4 border-b border-[#c3e3df]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#086b50] rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-[#16837d] rounded-lg flex items-center justify-center">
               <Building2 className="w-4 h-4 text-white" />
             </div>
             <div>
-              <div className="font-semibold text-white text-sm">VetIntel</div>
-              <div className="text-[11px] text-[#bed6c5]">Super Admin</div>
+              <div className="font-semibold text-[#174b4c] text-sm">VetIntel</div>
+              <div className="text-[11px] text-[#527b79]">Super Admin</div>
             </div>
           </div>
           <button
@@ -214,8 +214,8 @@ export function DashboardLayout() {
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                   isActive
-                    ? 'bg-[#0a966b] text-white'
-                    : 'text-[#D2E5DC] hover:bg-[#086b50] hover:text-white'
+                    ? 'bg-[#16837d] text-white'
+                    : 'text-[#426e6d] hover:bg-[#d1eae6] hover:text-[#155b59]'
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -225,20 +225,20 @@ export function DashboardLayout() {
           })}
         </nav>
 
-        <div className="border-t border-[#33755b] px-2 py-3">
-          <div className="mb-3 flex items-center gap-3 rounded-lg bg-[#086b50] px-3 py-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#086b50]">
+        <div className="border-t border-[#c3e3df] px-2 py-3">
+          <div className="mb-3 flex items-center gap-3 px-3 py-2 shadow-none">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#16837d]">
               {user.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : <span className="text-xs text-white">{initials}</span>}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-xs font-semibold text-white">{user.name || 'Super Admin'}</p>
-              <p className="truncate text-[10px] text-[#D2E5DC]">{user.email}</p>
+              <p className="truncate text-xs font-semibold text-[#174b4c]">{user.name || 'Super Admin'}</p>
+              <p className="truncate text-[10px] text-[#527b79]">{user.email}</p>
             </div>
           </div>
           <Link
             to="/settings"
             onClick={() => setSidebarOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${isSettingsActive ? 'bg-[#0a966b] text-white' : 'text-[#D2E5DC] hover:bg-[#086b50] hover:text-white'}`}
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${isSettingsActive ? 'bg-[#16837d] text-white' : 'text-[#426e6d] hover:bg-[#d1eae6] hover:text-[#155b59]'}`}
             aria-current={isSettingsActive ? 'page' : undefined}
           >
             <Settings className="w-4 h-4" />
@@ -246,9 +246,9 @@ export function DashboardLayout() {
           </Link>
           <button
             onClick={handleLogout}
-            className="mt-2 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-[#D2E5DC] hover:bg-[#086b50] hover:text-white"
+            className="mt-2 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-[#426e6d] hover:bg-[#d1eae6] hover:text-[#155b59]"
           >
-            <LogOut className="w-4 h-4 text-[#D2E5DC]" />
+            <LogOut className="w-4 h-4 text-[#426e6d]" />
             Sign Out
           </button>
         </div>
@@ -257,7 +257,7 @@ export function DashboardLayout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top navigation */}
-        <header className="h-14 bg-white border-b border-[#d4e3d7] flex items-center justify-between px-5">
+        <header className="h-14 bg-[#d8efec] border-b border-[#bfe1dc] flex items-center justify-between px-5">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-gray-600 hover:text-gray-900"
@@ -273,26 +273,26 @@ export function DashboardLayout() {
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative text-gray-600 hover:text-gray-900"
+                className="relative text-[#527b79] transition-colors hover:text-[#105f5a]"
               >
                 <Bell className="w-6 h-6" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#16837d] text-xs text-white flex items-center justify-center">
                     {unreadCount}
                   </span>
                 )}
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-96 rounded-xl border border-[#c6e5e1] bg-white shadow-xl z-50 overflow-hidden">
                   {/* Header */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-                    <h3 className="font-semibold text-gray-900">Notifications</h3>
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-[#c6e5e1]">
+                    <h3 className="font-semibold text-[#173f40]">Notifications</h3>
                     <div className="flex items-center gap-2">
                       {unreadCount > 0 && (
                         <button
                           onClick={markAllRead}
-                          className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                          className="flex items-center gap-1 text-xs text-[#16837d] hover:text-[#105f5a]"
                         >
                           <CheckCheck className="w-3.5 h-3.5" />
                           Mark all read
@@ -300,7 +300,7 @@ export function DashboardLayout() {
                       )}
                       <button
                         onClick={() => setShowNotifications(false)}
-                        className="text-gray-400 hover:text-gray-600 ml-2"
+                        className="text-[#829e9b] hover:text-[#105f5a] ml-2"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -308,12 +308,12 @@ export function DashboardLayout() {
                   </div>
 
                   {/* Filter tabs */}
-                  <div className="flex border-b border-gray-200">
+                  <div className="flex border-b border-[#c6e5e1]">
                     {(['all', 'unread'] as const).map(f => (
                       <button
                         key={f}
                         onClick={() => setActiveFilter(f)}
-                        className={`flex-1 py-2 text-sm capitalize ${activeFilter === f ? 'border-b-2 border-blue-600 text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+                        className={`flex-1 py-2 text-sm capitalize ${activeFilter === f ? 'border-b-2 border-[#16837d] text-[#105f5a] font-medium' : 'text-[#527b79] hover:text-[#105f5a]'}`}
                       >
                         {f === 'unread' ? `Unread (${unreadCount})` : 'All'}
                       </button>
@@ -321,9 +321,9 @@ export function DashboardLayout() {
                   </div>
 
                   {/* List */}
-                  <div className="max-h-80 overflow-y-auto divide-y divide-gray-100">
+                  <div className="max-h-80 overflow-y-auto divide-y divide-[#e5f4f1]">
                     {visibleNotifications.length === 0 ? (
-                      <div className="py-10 text-center text-sm text-gray-400">
+                      <div className="py-10 text-center text-sm text-[#829e9b]">
                         No notifications
                       </div>
                     ) : (
@@ -331,26 +331,26 @@ export function DashboardLayout() {
                         <div
                           key={n.id}
                           onClick={() => markRead(n.id)}
-                          className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${!n.read ? 'bg-blue-50/50' : ''}`}
+                          className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-[#f7fbfa] transition-colors ${!n.read ? 'bg-[#f1faf8]' : ''}`}
                         >
                           <div className="mt-0.5 shrink-0">{notificationIcons[n.type]}</div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
-                              <p className={`text-sm ${!n.read ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
+                              <p className={`text-sm ${!n.read ? 'font-semibold text-[#173f40]' : 'font-medium text-[#527b79]'}`}>
                                 {n.title}
                               </p>
                               <button
                                 onClick={(e) => deleteNotification(n.id, e)}
-                                className="shrink-0 text-gray-300 hover:text-red-400 mt-0.5"
+                                className="shrink-0 text-[#829e9b] hover:text-[#c43636] mt-0.5"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5 leading-snug">{n.message}</p>
-                            <p className="text-xs text-gray-400 mt-1">{n.time}</p>
+                            <p className="text-xs text-[#527b79] mt-0.5 leading-snug">{n.message}</p>
+                            <p className="text-xs text-[#829e9b] mt-1">{n.time}</p>
                           </div>
                           {!n.read && (
-                            <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-blue-500" />
+                            <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-[#16837d]" />
                           )}
                         </div>
                       ))
@@ -359,10 +359,10 @@ export function DashboardLayout() {
 
                   {/* Footer */}
                   {notifications.length > 0 && (
-                    <div className="px-4 py-2 border-t border-gray-200 text-center">
+                    <div className="px-4 py-2 border-t border-[#c6e5e1] text-center">
                       <button
                         onClick={() => { setNotifications([]); setShowNotifications(false); }}
-                        className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                        className="text-xs text-[#829e9b] hover:text-red-500 transition-colors"
                       >
                         Clear all notifications
                       </button>
@@ -372,9 +372,9 @@ export function DashboardLayout() {
               )}
             </div>
 
-            <div className="relative pl-4 border-l border-[#d4e3d7] hidden md:flex items-center gap-3">
-              <div className="w-8 h-8 bg-[#086b50] rounded-full flex items-center justify-center">
-                <span className="text-sm text-white">{initials}</span>
+            <div className="relative hidden items-center border-l border-[#bfe1dc] pl-4 md:flex">
+              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-[#8ebfb4] bg-[#e5f4f1] text-xs font-semibold text-[#105f5a]" aria-label="Profile">
+                {user.avatar ? <img src={user.avatar} alt="Profile" className="h-full w-full object-cover" /> : initials}
               </div>
             </div>
           </div>

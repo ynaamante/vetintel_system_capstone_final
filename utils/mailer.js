@@ -14,6 +14,72 @@ function getTransport() {
   });
 }
 
+function verificationEmailHtml({ code, purpose = 'verification' }) {
+  const isPasswordReset = purpose === 'password_reset';
+  const title = isPasswordReset ? 'Your Password Reset Code' : 'Your Verification Code';
+  const intro = isPasswordReset
+    ? 'Here is your VetIntel password reset code. Please enter this code in the app to choose a new password.'
+    : 'Here is your VetIntel verification code. Please enter this code to verify your account.';
+  const ignoreMessage = isPasswordReset
+    ? 'If you did not request a password reset, you can safely ignore this email.'
+    : 'If you did not request this code, you can safely ignore this email.';
+  const safeCode = String(code).replace(/[^0-9]/g, '');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VetIntel Email Verification</title>
+</head>
+<body style="margin:0; padding:0; background-color:#edf8f5; font-family:Arial, Helvetica, sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#edf8f5; padding:35px 12px;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%; background-color:#ffffff; border:1px solid #b9e2da; border-radius:16px; overflow:hidden;">
+      <tr><td style="background-color:#dff3ee; padding:25px 30px; border-bottom:1px solid #b9e2da;">
+        <img src="cid:vetintel-logo" alt="VetIntel Logo" width="250" style="display:block; width:250px; max-width:100%; height:auto; border:0;">
+      </td></tr>
+      <tr><td style="padding:35px 32px 30px;">
+        <h1 style="margin:0 0 18px; color:#075b59; font-size:32px; font-weight:700;">Hello!</h1>
+        <p style="margin:0 0 22px; color:#102d42; font-size:17px; line-height:1.6;">${intro}</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#e0f3ee; border-radius:16px;">
+          <tr><td align="center" style="padding:22px 15px;">
+            <p style="margin:0 0 10px; color:#08766e; font-size:18px; font-weight:600;">${title}</p>
+            <p style="margin:0; color:#004e4d; font-size:46px; font-weight:700; letter-spacing:10px;">${safeCode}</p>
+          </td></tr>
+        </table>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td align="center" style="padding:22px 5px;">
+            <p style="margin:0; color:#102d42; font-size:16px; line-height:1.5;">This code will expire in <strong style="color:#075b59;">10 minutes.</strong></p>
+          </td></tr>
+        </table>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="border-top:1px solid #c6e5de; font-size:0; line-height:0;">&nbsp;</td></tr>
+        </table>
+        <p style="margin:20px 0 5px; color:#263e4c; font-size:15px; line-height:1.6; text-align:center;">${ignoreMessage}</p>
+      </td></tr>
+      <tr><td style="background-color:#d9f1eb; padding:22px 28px;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td align="left" valign="middle">
+            <p style="margin:0; color:#075b59; font-size:20px; font-weight:700;">VetIntel</p>
+            <p style="margin:5px 0 0; color:#164c50; font-size:13px;">The Pet Health Management System</p>
+          </td></tr>
+          <tr><td style="padding-top:15px;">
+            <p style="margin:0; color:#24515a; font-size:13px; font-style:italic; text-align:center;">Together for a healthier, happier pet community.</p>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td height="12" style="background-color:#006d68; font-size:0; line-height:0;">&nbsp;</td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+}
+
+function verificationLogoAttachment() {
+  return require('fs').readFileSync(require('path').join(__dirname, '../assets/email/vetintel-logo.png'));
+}
 async function sendOwnerCredentials({ email, ownerName, clinicName, temporaryPassword }) {
   const transport = getTransport();
   if (!transport) {
@@ -54,6 +120,8 @@ async function sendMessageNotification({ email, senderName, subject }) {
 async function sendTwoFactorCode({ email, code }) {
   const subject = 'Your VetIntel verification code';
   const text = `Your VetIntel verification code is ${code}. It expires in 10 minutes. If you did not request this code, you can ignore this email.`;
+  const html = verificationEmailHtml({ code });
+  const logo = verificationLogoAttachment();
 
   if (process.env.BREVO_API_KEY) {
     const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SENDER_EMAIL;
@@ -61,7 +129,7 @@ async function sendTwoFactorCode({ email, code }) {
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: { 'api-key': process.env.BREVO_API_KEY, accept: 'application/json', 'content-type': 'application/json' },
-      body: JSON.stringify({ sender: { email: senderEmail, name: process.env.BREVO_SENDER_NAME || 'VetIntel' }, to: [{ email }], subject, textContent: text }),
+      body: JSON.stringify({ sender: { email: senderEmail, name: process.env.BREVO_SENDER_NAME || 'VetIntel' }, to: [{ email }], subject, textContent: text, htmlContent: html, attachment: [{ name: 'vetintel-logo.png', content: logo.toString('base64'), contentId: 'vetintel-logo' }] }),
       signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) throw new Error('VetIntel could not send the verification email. Check the email service configuration.');
@@ -70,7 +138,7 @@ async function sendTwoFactorCode({ email, code }) {
 
   const transport = getTransport();
   if (!transport) throw new Error('Email verification is unavailable because SMTP is not configured.');
-  await transport.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: email, subject, text });
+  await transport.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: email, subject, text, html, attachments: [{ filename: 'vetintel-logo.png', content: logo, cid: 'vetintel-logo' }] });
 }
 
 async function sendTwoFactorSms({ phone, code }) {
@@ -149,6 +217,8 @@ async function sendVerificationCode({ email, code, purpose = 'verification' }) {
   const text = purpose === 'password_reset'
     ? `Your VetIntel password reset code is ${code}.\n\nIt expires in 10 minutes. Enter it in the app to choose a new password.\nDo not share this code. If you did not request a password reset, ignore this email.`
     : `Your VetIntel verification code is ${code}.\n\nIt expires in 10 minutes. Enter it in the app to verify your email.\nDo not share this code. If you did not request an account, ignore this email.`;
+  const html = verificationEmailHtml({ code, purpose });
+  const logo = verificationLogoAttachment();
   if (process.env.BREVO_API_KEY) {
     const sender = process.env.BREVO_SENDER_EMAIL || process.env.SENDER_EMAIL;
     if (!sender) return { sent: false, reason: 'Brevo verification sender is not configured.', errorCode: 'email_sender_missing' };
@@ -157,7 +227,7 @@ async function sendVerificationCode({ email, code, purpose = 'verification' }) {
         method: 'POST', signal: AbortSignal.timeout(15000),
         headers: { 'api-key': process.env.BREVO_API_KEY, 'content-type': 'application/json', accept: 'application/json' },
         body: JSON.stringify({ sender: { email: sender, name: process.env.BREVO_SENDER_NAME || 'VetIntel' },
-          to: [{ email }], subject, textContent: text }),
+          to: [{ email }], subject, textContent: text, htmlContent: html, attachment: [{ name: 'vetintel-logo.png', content: logo.toString('base64'), contentId: 'vetintel-logo' }] }),
       });
       const result = await response.json().catch(() => ({}));
       if (response.ok && result.messageId) return { sent: true, messageId: result.messageId };
@@ -175,7 +245,7 @@ async function sendVerificationCode({ email, code, purpose = 'verification' }) {
   const transport = getTransport();
   if (!transport) return { sent: false, reason: 'Verification email is not configured.', errorCode: 'email_not_configured' };
   try {
-    const result = await transport.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: email, subject, text });
+    const result = await transport.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: email, subject, text, html, attachments: [{ filename: 'vetintel-logo.png', content: logo, cid: 'vetintel-logo' }] });
     const sent = (result.accepted || []).some(value => String(value).toLowerCase() === email.toLowerCase());
     return { sent, messageId: result.messageId, ...(!sent && { reason: 'SMTP did not accept the verification email.', errorCode: 'email_provider_rejected' }) };
   } catch { return { sent: false, reason: 'Could not reach the verification email server.', errorCode: 'email_provider_unreachable' }; }
