@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import { invoiceBalance, invoiceNumber, invoicePaymentStatus, isBillingQueueInvoice } from '../../utils/billingView';
 import { formatDateText, formatDateTimeText } from '../../utils/dateFormatting';
 import ClinicAttachmentImage from '../../components/ClinicAttachmentImage';
+import { Icons } from '../../icons';
 import './invoiceReviewPanel.css';
 import { notifySuccess } from '../../utils/notifications';
 
@@ -231,7 +232,7 @@ export default function InvoiceReviewPanel({ invoice, invoices, payments, user, 
       <footer className="invoice-review-footer">
         {pending ? <button type="submit" form="invoice-review-reason" className={pending === 'void' ? 'invoice-review-danger' : 'invoice-review-warning'} disabled={saving}>{saving ? 'Saving...' : pending === 'void' ? 'Send Void Request' : 'Return for Correction'}</button> : <>
           {canReview && <><button type="button" className="invoice-review-danger" disabled={saving} onClick={() => setPending('void')}>Request Void</button><button type="button" className="invoice-review-warning" disabled={saving} onClick={() => setPending('return')}>Return for Correction</button></>}
-          {canIssue ? <button type="button" className="invoice-review-primary" disabled={saving} onClick={() => review('issue')}>{saving ? 'Issuing...' : 'Issue Invoice'}</button> : !voidPending && status !== 'Void' && invoiceBalance(invoice) > 0 && metadata.billing_review_status !== 'returned' ? <button type="button" className="invoice-review-primary" disabled={saving} onClick={onPayment}>Record Payment</button> : <button type="button" disabled={saving} onClick={onDownload}>Download Invoice / Receipt</button>}
+          {canIssue ? <button type="button" className="invoice-review-primary" disabled={saving} onClick={() => review('issue')}>{saving ? 'Issuing...' : 'Issue Invoice'}</button> : !voidPending && status !== 'Void' && invoiceBalance(invoice) > 0 && metadata.billing_review_status !== 'returned' ? <button type="button" className="invoice-review-primary" disabled={saving} onClick={onPayment}>Record Payment</button> : <button type="button" className="invoice-review-download" disabled={saving} onClick={onDownload}><span>{Icons.download}</span>Download Invoice / Receipt</button>}
         </>}
       </footer>
     </div>

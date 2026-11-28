@@ -6255,6 +6255,16 @@ html body .lab-intake-wizard .lab-wizard-test-options > button[aria-selected="tr
   background: rgba(255, 255, 255, .12);
   color: #fff !important;
 }
+.sidebar-action-logout,
+.sidebar-action.sidebar-action-logout:hover {
+  border: 2px solid #ef3340 !important;
+  color: #ef3340 !important;
+  border-radius: 11px !important;
+  box-shadow: none !important;
+}
+.sidebar-action-logout,
+.sidebar-action.sidebar-action-logout:hover { background: transparent !important; }
+.sidebar-action-logout svg { width: 27px; height: 27px; stroke-width: 2.4; }
 
 .sidebar-nav-item.active,
 .sidebar-nav-item.active:hover {
@@ -12121,44 +12131,6 @@ html body .lab-intake-wizard .lab-wizard-test-options > button[aria-selected="tr
   font-weight: 600 !important;
 }
 
-/* Give every accessible modal close control a visible text label. */
-button[aria-label*="close" i] {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: auto !important;
-  min-width: max-content !important;
-  min-height: 30px !important;
-  height: auto !important;
-  padding: 5px 9px !important;
-  font-family: 'DM Sans', sans-serif !important;
-  font-size: 0 !important;
-  font-weight: 600 !important;
-  line-height: 1.2 !important;
-  white-space: nowrap;
-}
-button[aria-label*="close" i] > svg,
-button[aria-label*="close" i] > span { display: none !important; }
-button[aria-label*="close" i]::after {
-  content: 'Close';
-  font-size: 12px;
-  line-height: 1.2;
-}
-.service-add-modal > div:first-child button {
-  width: auto !important;
-  min-width: max-content !important;
-  min-height: 30px !important;
-  height: auto !important;
-  padding: 5px 9px !important;
-  font-size: 0 !important;
-}
-.service-add-modal > div:first-child button::after {
-  content: 'Close';
-  font-family: 'DM Sans', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-}
-
 @media (max-width: 650px) {
   .vaccination-history-row { grid-template-columns: minmax(0, 1fr) auto; gap: 5px 8px; }
   .vaccination-history-status { grid-column: 1 / -1; justify-self: start; }
@@ -17681,12 +17653,14 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
 .patient-registration-content .patient-registration-tabs button {
   min-height: 42px;
   padding: 9px 16px !important;
+  border-color: #d6e4dd !important;
   border-radius: 10px !important;
   font-family: inherit;
   font-size: 13px !important;
 }
 
 .patient-registration-content .patient-registration-tabs button.is-active {
+  border-color: #086b50 !important;
   color: #fff !important;
 }
 
@@ -17879,8 +17853,9 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
 
 .patient-registration-content .patient-registration-select .filter-select-trigger:focus-visible,
 .patient-registration-content .patient-registration-select .filter-select-trigger[aria-expanded="true"] {
-  outline: 2px solid #83bcae;
-  outline-offset: 1px;
+  border-color: #78b7a1;
+  outline: none;
+  box-shadow: none;
 }
 
 .patient-registration-content .patient-registration-select .filter-select-trigger > span:first-child {
@@ -17962,10 +17937,178 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
   box-shadow: 0 1px 2px rgba(15, 23, 42, .03);
 }
 
+.patient-registration-content .patient-registration-field input:focus,
+.patient-registration-content .patient-registration-field textarea:focus {
+  border-color: #78b7a1 !important;
+  outline: none;
+  box-shadow: none;
+}
+
 .patient-registration-content .patient-registration-field input::placeholder,
 .patient-registration-content .patient-registration-field textarea::placeholder {
   color: #788493;
   opacity: 1;
+}
+
+.lab-date-time-popover.patient-registration-calendar {
+  box-sizing: border-box;
+  width: min(340px, calc(100vw - 24px));
+  height: 366px;
+  max-height: none;
+  gap: 8px;
+  overflow: hidden;
+  padding: 12px;
+  border-color: #cfe3da;
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(8, 55, 39, .2);
+  color: #173f35;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-header {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  gap: 6px;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-header button {
+  width: 32px;
+  height: 34px;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-month-year {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 82px;
+  min-width: 0;
+  gap: 6px;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-month-year select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0 5px;
+  overflow: hidden;
+  border-color: #cfe3da;
+  border-radius: 9px;
+  background: #f7fbf9;
+  color: #075b43;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-year-picker {
+  position: relative;
+  min-width: 0;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-year-picker > button {
+  display: flex;
+  width: 100%;
+  height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 7px;
+  border: 1px solid #cfe3da;
+  border-radius: 9px;
+  background: #f7fbf9;
+  color: #075b43;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-year-options {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 100%;
+  max-height: 210px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+  border: 1px solid #cfe3da;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(8, 55, 39, .2);
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-month-year .lab-date-time-year-options button {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: #24483d;
+  text-align: left;
+  font-size: 12px;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-month-year .lab-date-time-year-options button:hover {
+  background: #e9f6f0;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-month-year .lab-date-time-year-options button.selected {
+  background: #087a59;
+  color: #fff;
+  font-weight: 700;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-header button {
+  color: #087a59;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-header button:hover,
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-grid > button:hover:not(:disabled) {
+  background: #e9f6f0;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-grid > span {
+  color: #527368;
+  font-weight: 600;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-grid {
+  grid-template-rows: repeat(7, 32px);
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-grid > span,
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-grid > span.empty-day,
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-grid > button {
+  min-height: 32px;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-grid > button {
+  border: 1px solid transparent;
+  color: #24483d;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-grid > button.today {
+  border-color: #78b7a1;
+  box-shadow: none;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-grid > button.selected {
+  border-color: #087a59;
+  background: #087a59;
+  color: #fff;
+  font-weight: 700;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-grid > button.selected:hover:not(:disabled) {
+  border-color: #066548;
+  background: #066548;
+  color: #fff;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-grid > button:hover:not(:disabled):not(.selected) {
+  border-color: #a8d4c1;
+  background: #e2f2e9;
+  color: #075b43;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-calendar-grid > button:disabled {
+  border-color: transparent;
+  background: #f1f4f2;
+  color: #a7b2ac;
+  cursor: not-allowed;
+  opacity: 1;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-actions {
+  gap: 8px;
+  padding-top: 5px;
+  border-top: 1px solid #e2eee8;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-actions button {
+  min-height: 34px;
+  border-radius: 9px;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-actions button.apply {
+  border-color: #087a59;
+  background: #087a59;
+}
+.lab-date-time-popover.patient-registration-calendar .lab-date-time-actions button.apply:hover:not(:disabled) {
+  border-color: #066548;
+  background: #066548;
 }
 
 .patient-registration-progress {
@@ -18087,6 +18230,11 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
 
 .patient-registration-content .patient-registration-footer button:last-child {
   min-width: 145px;
+}
+.patient-registration-content .patient-registration-secondary-action:hover:not(:disabled) {
+  border-color: #78b7a1 !important;
+  background: #e7f4ec !important;
+  color: #013826 !important;
 }
 
 @media (max-width: 760px) {
@@ -19200,73 +19348,71 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
   padding: 14px 18px 22px;
 }
 .appointment-stat-grid {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 0;
   margin-bottom: 13px;
+  overflow: hidden;
+  padding: 24px 28px;
+  border: 1px solid #d0e2d7;
+  border-radius: 16px;
+  background: linear-gradient(112deg, #f8fcf9 0%, #f2f9f4 72%, #eaf6ed 100%);
 }
 .appointment-stat-card {
-  display: flex;
+  position: relative;
+  z-index: 1;
+  display: grid;
   min-width: 0;
-  min-height: 62px;
+  min-height: 112px;
   align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border: 1px solid #dfe9e2;
-  border-radius: 10px;
-  background: #fff;
+  padding: 0 28px;
   text-align: left;
 }
-.appointment-stat-green {
-  background: linear-gradient(110deg, #f3faf5, #fff);
+.appointment-stat-card:first-child { padding-left: 0; }
+.appointment-stat-card:not(:last-child)::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 100%;
+  background: #cbded2;
+  content: '';
 }
-.appointment-stat-amber {
-  border-color: #eee6d4;
-  background: linear-gradient(110deg, #fffbf2, #fff);
-}
-.appointment-stat-red {
-  border-color: #efe1e1;
-  background: linear-gradient(110deg, #fff8f8, #fff);
-}
-.appointment-stat-icon {
-  display: grid;
-  width: 35px;
-  height: 35px;
-  flex: 0 0 35px;
-  place-items: center;
+.appointment-stat-grid::after {
+  position: absolute;
+  z-index: 0;
+  right: -28px;
+  bottom: -86px;
+  width: 270px;
+  height: 150px;
   border-radius: 50%;
-  background: #e3f4e8;
-  color: #087c4e;
-}
-.appointment-stat-amber .appointment-stat-icon {
-  background: #fff1d2;
-  color: #c47a00;
-}
-.appointment-stat-red .appointment-stat-icon {
-  background: #ffebeb;
-  color: #d44444;
-}
-.appointment-stat-icon svg {
-  width: 17px;
-  height: 17px;
+  background: rgba(190, 229, 199, .42);
+  content: '';
+  pointer-events: none;
 }
 .appointment-stat-copy {
   display: grid;
   min-width: 0;
-  gap: 1px;
+  gap: 7px;
 }
 .appointment-stat-copy > span {
   overflow: hidden;
-  color: #45554e;
-  font-size: .72rem;
+  color: #18352b;
+  font-size: .92rem;
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .appointment-stat-copy > strong {
-  color: #172b24;
-  font-size: 1.25rem;
+  color: #071d14;
+  font-size: 2rem;
   font-weight: 750;
   line-height: 1.05;
+}
+.appointment-stat-copy > small {
+  color: #29463c;
+  font-size: .82rem;
 }
 .appointment-stat-action {
   width: 100%;
@@ -19476,6 +19622,10 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
   background: #fff;
   color: #63756d;
 }
+.appointment-search:focus-within {
+  border-color: #78b7a1;
+  box-shadow: none;
+}
 .appointment-search > span {
   display: flex;
   width: 14px;
@@ -19510,6 +19660,11 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
   font: inherit;
   font-size: .76rem;
 }
+.appointment-filter-row > select:focus {
+  border-color: #78b7a1 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
 .appointment-history-date-range {
   max-width: none;
   min-height: 42px;
@@ -19522,8 +19677,14 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
   font-size: .76rem;
 }
 .appointment-history-date-range .lab-date-range-trigger:focus-visible {
-  outline: 2px solid #83bcae;
-  outline-offset: 2px;
+  border-color: #78b7a1;
+  outline: none;
+  box-shadow: none;
+}
+.appointment-history-date-range .lab-date-range-trigger:hover,
+.appointment-history-date-range .lab-date-range-trigger[aria-expanded="true"] {
+  border-color: #78b7a1;
+  box-shadow: none;
 }
 .appointment-history-date-range .lab-date-range-popover {
   z-index: 20;
@@ -19570,15 +19731,16 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
   justify-content: space-between;
   gap: 12px;
   padding: 8px 12px;
-  border-bottom: 1px solid #e8eeea;
+  border-bottom: 1px solid #013826;
+  background: #013826;
 }
 .appointment-table-heading h2 {
-  color: #20372d;
+  color: #fff;
   font-size: .84rem;
   font-weight: 700;
 }
 .appointment-table-heading h2 > span {
-  color: #64746c;
+  color: #b8d8ca;
   font-weight: 500;
 }
 .appointment-legend {
@@ -19587,7 +19749,7 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  color: #596961;
+  color: #e6f2ec;
   font-size: .66rem;
 }
 .appointment-legend > span {
@@ -19621,12 +19783,12 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
   table-layout: fixed;
   text-align: left;
 }
-.appointment-dashboard-table th {
+.appointment-table-card .clinic-appointments-table th {
   height: 34px;
   padding: 0 10px;
   border-bottom: 1px solid #e8eeea;
-  background: #f8faf8;
-  color: #000;
+  background: #e7f4ec;
+  color: #013826;
   font-size: .7rem;
   font-weight: 700;
   white-space: nowrap;
@@ -19835,6 +19997,19 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
   .appointment-stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .appointment-stat-card {
+    min-height: 100px;
+    padding: 10px 16px;
+  }
+  .appointment-stat-card:first-child { padding-left: 0; }
+  .appointment-stat-card:not(:last-child)::after { display: none; }
+  .appointment-stat-card:nth-child(odd)::after {
+    display: block;
+    right: 0;
+    top: 8px;
+    height: calc(100% - 16px);
+  }
+  .appointment-stat-card:nth-child(-n+2) { border-bottom: 1px solid #cbded2; }
   .appointment-view-toolbar {
     align-items: stretch;
   }
@@ -19870,23 +20045,20 @@ html body .vi-modal--appt.appointment-create-dialog--general .appointment-create
     padding: 0 10px;
   }
   .appointment-stat-grid {
-    gap: 7px;
+    padding: 12px 14px;
   }
   .appointment-stat-card {
-    min-height: 58px;
-    gap: 7px;
-    padding: 7px;
-  }
-  .appointment-stat-icon {
-    width: 30px;
-    height: 30px;
-    flex-basis: 30px;
+    min-height: 88px;
+    padding: 8px 10px;
   }
   .appointment-stat-copy > span {
-    font-size: .58rem;
+    font-size: .68rem;
   }
   .appointment-stat-copy > strong {
-    font-size: .96rem;
+    font-size: 1.35rem;
+  }
+  .appointment-stat-copy > small {
+    font-size: .64rem;
   }
   .appointment-filter-row {
     grid-template-columns: 1fr 1fr;

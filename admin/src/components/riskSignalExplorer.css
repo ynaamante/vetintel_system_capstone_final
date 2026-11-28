@@ -3,10 +3,13 @@
 .risk-page .dm-topbar h2 { font-size: 36px !important; color: #104b20 !important; line-height: 1.15; }
 .risk-page .dm-topbar p { font-size: 13px !important; }
 .risk-page .dm-body { padding: 0 26px 24px; }
-.risk-filters { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)) auto; gap: 20px; align-items: end; padding: 16px 18px; margin-bottom: 20px; border: 1px solid #dbe4df; border-radius: 15px; background: #fbfdfb; }
+.risk-filters { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)) auto; gap: 20px; align-items: end; padding: 16px 18px; margin-bottom: 20px; border: 1px solid #dbe4df; border-radius: 15px !important; background: #fbfdfb; }
 .risk-field { display: grid; min-width: 0; gap: 7px; }
 .risk-field > span { font-size: 13px; font-weight: 700; }
-.risk-field .filter-select-trigger { width: 100%; min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; background: #fff; border: 1px solid #dce3e8; border-radius: 9px; color: #19342b; font: inherit; font-size: 13px; font-weight: 600; text-align: left; }
+.risk-field .filter-select-trigger { width: 100%; min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; background: #fff; border: 1px solid #dce3e8; border-radius: 9px !important; color: #19342b; font: inherit; font-size: 13px; font-weight: 600; text-align: left; }
+.risk-field .filter-select-trigger:hover,
+.risk-field .filter-select-trigger[aria-expanded="true"] { border-color: #78b7a1; background: #f8fcf9; }
+.risk-field .filter-select-trigger:focus-visible { outline: 2px solid #78b7a1; outline-offset: 1px; }
 .risk-field .filter-select-trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .risk-field .filter-select-chevron { width: 7px; height: 7px; flex-shrink: 0; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); margin-top: -4px; }
 .risk-page .risk-filters .dm-primary { min-height: 38px; padding: 9px 16px; font-size: 13px; }

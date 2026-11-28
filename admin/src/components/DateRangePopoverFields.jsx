@@ -39,10 +39,10 @@ export default function DateRangePopoverFields({
   return <>
     <button type="button" className="system-date-preset-back" onClick={() => setCustomOpen(false)}>‹ Date presets</button>
     <label className="system-date-range-field">From
-      <LabDateTimePicker label="Start date" mode="date" value={dateFrom} max={dateTo || undefined} onChange={onDateFromChange} />
+      <LabDateTimePicker label="Start date" mode="date" value={dateFrom} max={dateTo || undefined} popoverClassName="patient-registration-calendar" yearSelectorInPopover onChange={onDateFromChange} />
     </label>
     <label className="system-date-range-field">To
-      <LabDateTimePicker label="End date" mode="date" value={dateTo} min={dateFrom || undefined} onChange={onDateToChange} />
+      <LabDateTimePicker label="End date" mode="date" value={dateTo} min={dateFrom || undefined} popoverClassName="patient-registration-calendar" yearSelectorInPopover onChange={onDateToChange} />
     </label>
     {onSortOrderChange && <label className="system-date-range-field">{sortLabel}
       <select aria-label={sortLabel} value={sortOrder} onChange={event => onSortOrderChange(event.target.value)}>

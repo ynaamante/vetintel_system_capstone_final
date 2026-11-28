@@ -37,6 +37,8 @@
 .record-actions-dialog header p { margin: 4px 0 0; color: #43544d; font-size: 14px; overflow-wrap: anywhere; }
 .record-actions-close { display: inline-flex; align-items: center; gap: 6px; padding: 3px 0 3px 6px; border: 0; background: transparent; color: #004d32; font: 700 14px 'DM Sans', sans-serif; cursor: pointer; }
 .record-actions-close span, .record-actions-close svg { display: block; width: 17px; height: 17px; }
+.record-actions-close.is-icon-only { width: 32px; height: 32px; flex: 0 0 32px; justify-content: center; padding: 0; border-radius: 8px; }
+.record-actions-close.is-icon-only:hover { background: #eaf6f0; }
 
 .record-actions-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; padding: 8px 10px; margin-bottom: 10px; border: 1px solid #ccdcd5; border-radius: 11px; background: #fff; }
 .record-actions-avatar { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; background: #e1f1e7; color: #005334; font-weight: 800; }

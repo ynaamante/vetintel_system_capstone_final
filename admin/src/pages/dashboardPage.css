@@ -133,8 +133,20 @@
 .surveillance-filter-field .filter-select-trigger { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 38px; padding: 9px 12px; border: 1px solid #dce3e8; border-radius: 9px; background: #fff; color: #19342b; font-family: inherit; font-size: 13px; font-weight: 600; text-align: left; }
 .surveillance-filter-field .filter-select-trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .surveillance-filter-field .filter-select-chevron { width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); margin: -4px 3px 0 8px; flex-shrink: 0; }
-.surveillance-filter-field .filter-select-trigger:hover { border-color: #819e90; }
-.surveillance-filter-field .filter-select-trigger:focus-visible { outline: 2px solid #819e90; outline-offset: 2px; }
+.surveillance-filter-field .filter-select-trigger:hover,
+.surveillance-filter-field .filter-select-trigger[aria-expanded="true"] { border-color: #78b7a1; }
+.surveillance-filter-field .filter-select-trigger:focus-visible { outline: 2px solid #78b7a1; outline-offset: 2px; }
+.surveillance-dashboard-filter-menu .surveillance-dashboard-filter-option:hover,
+.surveillance-dashboard-filter-menu .surveillance-dashboard-filter-option.highlighted {
+  background: #e7f4ec;
+  color: #075b43;
+}
+.surveillance-dashboard-filter-menu .surveillance-dashboard-filter-option[aria-selected="true"],
+.surveillance-dashboard-filter-menu .surveillance-dashboard-filter-option[aria-selected="true"]:hover,
+.surveillance-dashboard-filter-menu .surveillance-dashboard-filter-option[aria-selected="true"].highlighted {
+  background: #086b50;
+  color: #fff;
+}
 /* Shared summary panel, matching Clinic Overview statistics. */
 .surveillance-stats { position: relative; isolation: isolate; overflow: hidden; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0; padding: 22px 0; border: 1px solid #d3e2da; border-radius: 15px; background: linear-gradient(110deg,#fcfefd,#f0f9f1); margin-bottom: 12px; }
 .surveillance-stats::after { content: ''; position: absolute; z-index: -1; right: -60px; bottom: -95px; width: 32%; height: 130px; background: #d6eedb; border-radius: 50%; transform: rotate(-22deg); pointer-events: none; }
