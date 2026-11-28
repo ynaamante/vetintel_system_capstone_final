@@ -1,9 +1,12 @@
+import NotificationButton from '../components/NotificationButton';
+import Toast from 'react-native-toast-message';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, TextInput, Modal, ScrollView, ActivityIndicator, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import ArchiveDialog from '../components/ArchiveDialog';
 import Svg, { Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format, isToday, isYesterday, isValid } from 'date-fns';
@@ -45,6 +48,13 @@ export default function MessagesScreen({ navigation }: any) {
   const storageWrites = useRef(Promise.resolve());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [archivedIds, setArchivedIds] = useState<string[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState<InboxItem | null>(null);
+  const [archiving, setArchiving] = useState(false);
+  const archiveBusy = useRef(false);
+  const [archiveError, setArchiveError] = useState('');
+  const archiveRevision = useRef(0);
   const [tab, setTab] = useState<Tab>('all');
   const [searching, setSearching] = useState(false);
   const [search, setSearch] = useState('');
@@ -61,20 +71,21 @@ export default function MessagesScreen({ navigation }: any) {
   const storageKey = `inbox-read:${user?.id || user?.email || ''}`;
   const s = styles(tc, isDark);
 
-  useEffect(() => { setBundles([]); setThreads([]); setReadIds([]); readIdsRef.current = []; readReady.current = false; setSelected(null); setComposing(false); }, [token]);
+  useEffect(() => { setBundles([]); setThreads([]); setArchivedIds([]); setArchiveTarget(null); setArchiveError(''); setShowArchived(false); setReadIds([]); readIdsRef.current = []; readReady.current = false; setSelected(null); setComposing(false); }, [token]);
   const load = useCallback(async (showLoading = false) => {
     if (!token) return;
     const request = ++revision.current;
+    const archiveRequest = archiveRevision.current;
     if (showLoading) setLoading(true);
     try {
-      const [rows, conversations, saved] = await Promise.all([ownerSharedRecordsApi.list(token), ownerInboxApi.list(token), readReady.current ? Promise.resolve(null) : AsyncStorage.getItem(storageKey)]);
+      const [rows, conversations, saved, archives] = await Promise.all([ownerSharedRecordsApi.list(token), ownerInboxApi.list(token), readReady.current ? Promise.resolve(null) : AsyncStorage.getItem(storageKey), ownerInboxApi.archives(token)]);
       if (request !== revision.current || currentToken.current !== token) return;
       if (!readReady.current) {
         let ids: string[] = [];
         try { const parsed = saved ? JSON.parse(saved) : []; if (Array.isArray(parsed)) ids = parsed.filter(id => typeof id === 'string'); } catch { /* A corrupt preference must not hide clinic messages. */ }
         readIdsRef.current = ids; setReadIds(ids); readReady.current = true;
       }
-      setBundles(rows); setThreads(conversations); setError('');
+      setBundles(rows); setThreads(conversations); if (archiveRequest === archiveRevision.current) setArchivedIds(archives); setError('');
     } catch (failure: any) { if (request === revision.current) setError(failure.message || 'Unable to load clinic messages.'); }
     finally { if (request === revision.current) setLoading(false); }
   }, [token, storageKey]);
@@ -97,11 +108,30 @@ export default function MessagesScreen({ navigation }: any) {
   }));
   const conversations: InboxItem[] = threads.map(thread => ({ key: `thread:${thread.id}`, threadId: thread.id, clinicName: thread.clinicName,
     message: thread.preview || `Start a conversation about ${thread.petName}.`, date: thread.time, petName: thread.petName, records: [], read: !thread.unread }));
-  const items = [...conversations, ...shares, ...updates].sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
+  const allItems = [...conversations, ...shares, ...updates].sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
+  const items = allItems.filter(item => archivedIds.includes(item.key) === showArchived);
   const unread = items.filter(item => !item.read).length;
   const query = search.trim().toLowerCase();
   const shown = items.filter(item => (tab !== 'unread' || !item.read) && (tab !== 'updates' || !!item.notificationId) &&
     (!query || `${item.clinicName} ${item.message} ${item.petName || ''} ${item.records.map(record => record.title || '').join(' ')}`.toLowerCase().includes(query)));
+
+  const confirmArchive = async () => {
+    if (!token || !archiveTarget || archiveBusy.current) return;
+    const target = archiveTarget;
+    const archived = !archivedIds.includes(target.key);
+    archiveBusy.current = true; setArchiving(true); setArchiveError('');
+    archiveRevision.current++;
+    try {
+      await ownerInboxApi.archive(token, target.key, archived);
+      if (currentToken.current !== token) return;
+      archiveRevision.current++;
+      setArchivedIds(ids => archived ? [...new Set([...ids, target.key])] : ids.filter(key => key !== target.key));
+      setArchiveTarget(null);
+      Toast.show({ type: 'conversationSuccess', text1: archived ? 'Conversation archived' : 'Conversation restored', text2: archived ? 'Moved to Archived conversations.' : 'The conversation is back in your inbox.' });
+    } catch (failure: any) {
+      if (currentToken.current === token) setArchiveError(failure.message || 'Unable to update this conversation.');
+    } finally { archiveBusy.current = false; setArchiving(false); }
+  };
 
   const markItemRead = async (item: InboxItem) => {
     if (item.read) return;
@@ -163,7 +193,7 @@ export default function MessagesScreen({ navigation }: any) {
         <TouchableOpacity accessibilityLabel="Go back" onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Main', { screen: 'Home' })} style={s.back}><Ionicons name="arrow-back" size={25} color="#FFFFFF" /></TouchableOpacity>
         <Text style={s.title}>Inbox</Text>
         <TouchableOpacity accessibilityLabel="Search inbox" accessibilityState={{ expanded: searching }} onPress={() => { setSearching(!searching); setSearch(''); }} style={s.headerButton}><Ionicons name="search-outline" size={28} color="#FFFFFF" /></TouchableOpacity>
-        <TouchableOpacity accessibilityLabel="Open notifications" onPress={() => navigation.navigate('Notifications')} style={s.headerButton}><Ionicons name="notifications-outline" size={27} color="#FFFFFF" /></TouchableOpacity>
+        <NotificationButton />
       </View>
       <Text style={s.subtitle}>Messages and shared records from your clinic.</Text>
     </View>
@@ -173,7 +203,8 @@ export default function MessagesScreen({ navigation }: any) {
       </View>
       {searching && <View style={s.searchBox}><Ionicons name="search-outline" size={20} color={tc.textSecondary} /><TextInput accessibilityLabel="Search inbox messages" autoFocus placeholder="Search clinic, pet, or message" placeholderTextColor={tc.textMuted} value={search} onChangeText={setSearch} style={s.searchInput} /><TouchableOpacity accessibilityLabel="Close inbox search" onPress={() => { setSearch(''); setSearching(false); }}><Ionicons name="close" size={21} color={tc.textSecondary} /></TouchableOpacity></View>}
       {!!error && <TouchableOpacity onPress={() => { void load(true); void refreshNotifications(); }} style={s.errorBox}><Text style={s.error}>{error} Tap to retry.</Text></TouchableOpacity>}
-      <FlatList data={shown} keyExtractor={item => item.key} refreshing={loading} onRefresh={() => { void load(true); void refreshNotifications(); }} contentContainerStyle={s.list} keyboardShouldPersistTaps="handled" renderItem={({ item }) => <TouchableOpacity accessibilityLabel={`Open message from ${item.clinicName}`} style={[s.card, !item.read && s.unreadCard]} onPress={() => void openItem(item)}>
+      <TouchableOpacity accessibilityRole="button" onPress={() => { setShowArchived(!showArchived); setTab('all'); }} style={s.errorBox}><Text style={{ color: isDark ? '#9EDDBB' : GREEN, fontWeight: '600' }}>{showArchived ? 'Back to inbox' : 'Archived conversations'}</Text></TouchableOpacity>
+      <FlatList data={shown} keyExtractor={item => item.key} refreshing={loading} onRefresh={() => { void load(true); void refreshNotifications(); }} contentContainerStyle={s.list} keyboardShouldPersistTaps="handled" renderItem={({ item }) => <TouchableOpacity accessibilityLabel={`Open message from ${item.clinicName}`} style={[s.card, !item.read && s.unreadCard]} onPress={() => void openItem(item)} onLongPress={() => { setArchiveTarget(item); setArchiveError(''); }} delayLongPress={250} accessibilityHint="Long press to archive or restore this conversation.">
         <LinearGradient colors={['#005638', '#00804A', '#005638']} style={s.avatar}><Text style={s.initials}>{initials(item.clinicName)}</Text></LinearGradient>
         <View style={s.cardContent}>
           <View style={s.cardHeading}>{!item.read && <View style={s.unreadDot} />}<Text style={s.clinicName} numberOfLines={1}>{item.clinicName}</Text><Text style={s.time}>{timestamp(item.date)}</Text></View>
@@ -182,9 +213,16 @@ export default function MessagesScreen({ navigation }: any) {
           {!item.records.length && /appointment|vacci|vaccine|lab|test|result/i.test(item.notificationType || '') && <View style={s.chips}><TouchableOpacity accessibilityLabel={`Open ${chip({ type: item.notificationType }).label} notification`} style={s.chip} onPress={() => void openItem(item)}><Ionicons name={chip({ type: item.notificationType }).icon} size={15} color={GREEN} /><Text style={s.chipText}>{chip({ type: item.notificationType }).label}</Text></TouchableOpacity></View>}
         </View>
         <Ionicons name="chevron-forward" size={21} color={tc.text} style={s.chevron} />
-      </TouchableOpacity>} ListEmptyComponent={<View style={s.empty}>{loading ? <ActivityIndicator color={GREEN} /> : <Ionicons name="mail-outline" size={40} color={tc.textMuted} />}<Text style={s.emptyTitle}>{loading ? 'Loading your inbox...' : query ? 'No matching messages' : tab === 'unread' ? 'You’re all caught up' : tab === 'updates' ? 'No clinic updates yet' : 'No messages yet'}</Text>{!loading && <Text style={s.emptyText}>{query ? 'Try another clinic, pet, or search term.' : 'Messages and shared records from your clinic will appear here.'}</Text>}</View>} />
+      </TouchableOpacity>} ListEmptyComponent={<View style={s.empty}>{loading ? <ActivityIndicator color={GREEN} /> : <Ionicons name="mail-outline" size={40} color={tc.textMuted} />}<Text style={s.emptyTitle}>{loading ? 'Loading your inbox...' : query ? 'No matching messages' : tab === 'unread' ? 'You’re all caught up' : tab === 'updates' ? 'No clinic updates yet' : showArchived ? 'No archived conversations' : 'No messages yet'}</Text>{!loading && <Text style={s.emptyText}>{query ? 'Try another clinic, pet, or search term.' : 'Messages and shared records from your clinic will appear here.'}</Text>}</View>} />
       <TouchableOpacity accessibilityRole="button" accessibilityLabel="Compose message to a clinic" style={s.compose} onPress={() => void openCompose()}><LinearGradient colors={['#00804A', '#00643B']} style={s.composeGradient}><Ionicons name="create-outline" size={35} color="#FFFFFF" /></LinearGradient></TouchableOpacity>
     </View>
+
+    <ArchiveDialog visible={!!archiveTarget}
+      title={showArchived ? 'Restore conversation?' : 'Archive conversation?'}
+      subject={archiveTarget?.clinicName}
+      description={showArchived ? 'This conversation will be moved back to your inbox. You can archive it again anytime.' : 'This conversation will be moved to Archived and removed from your inbox. You can restore it anytime.'}
+      confirmLabel={showArchived ? 'Restore conversation' : 'Archive conversation'}
+      busy={archiving} error={archiveError} onConfirm={() => void confirmArchive()} onCancel={() => setArchiveTarget(null)} />
 
     <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => { setSelected(null); setSelectedRecord(null); }}>
       <View style={s.backdrop}><View style={s.sheet}><View style={s.sheetHeader}><Text style={s.sheetTitle}>{selectedRecord ? chip(selectedRecord).label : selected?.clinicName}</Text><TouchableOpacity accessibilityLabel="Close message details" onPress={() => { setSelected(null); setSelectedRecord(null); }}><Ionicons name="close" size={25} color={tc.text} /></TouchableOpacity></View>

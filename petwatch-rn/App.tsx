@@ -1,6 +1,7 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import Toast from 'react-native-toast-message';
+import ConversationToast from './src/components/ConversationToast';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { AuthProvider } from './src/context/AuthContext';
@@ -16,7 +17,7 @@ export default function App() {
           <AuthProvider>
             <OwnerNotificationsProvider><AppNavigator /></OwnerNotificationsProvider>
             <StatusBar style="auto" />
-            <Toast />
+            <Toast config={{ conversationSuccess: ({ text1, text2 }) => <ConversationToast text1={text1} text2={text2} /> }} />
           </AuthProvider>
         </OnboardingProvider>
       </ThemeProvider>

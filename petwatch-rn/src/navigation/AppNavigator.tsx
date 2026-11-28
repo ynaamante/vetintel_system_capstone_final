@@ -45,6 +45,7 @@ function HomeNav() {
   return <HomeStack.Navigator id="HomeStack" screenOptions={{ headerShown: false, animation: 'none' }}>
     <HomeStack.Screen name="HomeOverview" component={HomeScreen} />
     <HomeStack.Screen name="NearbyClinics" component={NearbyClinicsScreen} />
+    <HomeStack.Screen name="HealthTips" component={HealthTipsScreen} />
   </HomeStack.Navigator>;
 }
 

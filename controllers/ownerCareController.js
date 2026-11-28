@@ -1,3 +1,4 @@
+const { loadAvailability, clinicDate } = require('../services/appointmentAvailability');
 const db = require('../config/db');
 const { publish } = require('../utils/clinicEvents');
 
@@ -14,7 +15,7 @@ exports.overview = async (req, res, next) => {
   const email = identity(req, res); if (!email) return;
   try {
     const [pets, appointments] = await Promise.all([
-      db.query(`SELECT p.id,p.clinic_id,p.name,p.species,p.breed,p.birth_date,p.sex,p.color,p.metadata->>'weight' AS weight,cl.name AS clinic_name,
+      db.query(`SELECT p.id,p.clinic_id,p.name,p.species,p.breed,p.birth_date,p.sex,p.color,p.metadata->>'weight' AS weight,cl.name AS clinic_name,cl.address AS clinic_address,
         (SELECT a.url FROM attachments a WHERE a.clinic_id=p.clinic_id AND a.owner_table='pets' AND a.owner_id=p.id
           AND a.metadata->>'source'='pet_profile_photo' ORDER BY a.uploaded_at DESC,a.id DESC LIMIT 1) AS photo_url
         FROM pets p JOIN clients c ON c.id=p.client_id AND c.clinic_id=p.clinic_id
@@ -78,6 +79,21 @@ exports.updatePet = async (req, res, next) => {
   finally { if (client) client.release(); }
 };
 
+exports.availability = async (req, res, next) => {
+  const email = identity(req, res); if (!email) return;
+  const petId = Number(req.query.pet_id), clinicId = Number(req.query.clinic_id);
+  if (!Number.isSafeInteger(petId) || petId < 1 || !Number.isSafeInteger(clinicId) || clinicId < 1)
+    return res.status(422).json({ error: 'Choose a registered pet and clinic.' });
+  try {
+    const owned = await db.query(`SELECT p.id FROM pets p JOIN clients c ON c.id=p.client_id AND c.clinic_id=p.clinic_id
+      JOIN clinics cl ON cl.id=p.clinic_id WHERE p.id=$1 AND p.clinic_id=$2 AND lower(trim(c.email))=$3
+      AND COALESCE((p.metadata->>'archived')::boolean,false)=false AND COALESCE(cl.archived,false)=false`, [petId,clinicId,email]);
+    if (!owned.rows.length) return res.status(403).json({ error: 'This pet is not registered to your account at this clinic.' });
+    const slots = await loadAvailability(db, clinicId, req.query.date);
+    res.json({ timezone: 'Asia/Manila', slots: slots.map(({ doctor_id, ...slot }) => slot) });
+  } catch (error) { if (error.status) return res.status(error.status).json({ error: error.message }); next(error); }
+};
+
 exports.book = async (req, res, next) => {
   const email = identity(req, res); if (!email) return;
   const petId = Number(req.body.pet_id), clinicId = Number(req.body.clinic_id);
@@ -85,7 +101,8 @@ exports.book = async (req, res, next) => {
   const reason = String(req.body.reason || '').trim(), notes = String(req.body.notes || '').trim();
   if (!Number.isSafeInteger(petId) || petId < 1 || !Number.isSafeInteger(clinicId) || clinicId < 1
       || !req.body.start_time || !Number.isFinite(start.getTime()) || start.getTime() <= Date.now()
-      || !reason || reason.length > 200 || notes.length > 2000) {
+      || !reason || reason.length > 200 || notes.length > 2000
+      || (req.body.reason_for_visit !== undefined && (typeof req.body.reason_for_visit !== 'string' || req.body.reason_for_visit.length > 1000))) {
     return res.status(422).json({ error: 'Choose a clinic-registered pet, future date and time, and visit type.' });
   }
   let client;
@@ -102,7 +119,13 @@ exports.book = async (req, res, next) => {
       await client.query('ROLLBACK');
       return res.status(403).json({ error: 'This pet must be registered at this clinic under your account email.' });
     }
-    const end = new Date(start.getTime() + 30 * 60000);
+    const slots = await loadAvailability(client, clinicId, clinicDate(start));
+    const slot = slots.find(item => item.start_time === start.toISOString());
+    if (!slot) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'This time is no longer available. Choose another preferred time.' });
+    }
+    const end = new Date(slot.end_time);
     const duplicate = await client.query(`SELECT id FROM appointments WHERE pet_id=$1 AND clinic_id=$2
       AND COALESCE(archived,false)=false AND status::text NOT IN ('completed','cancelled','canceled','no_show','rescheduled')
       AND start_time < $4 AND COALESCE(end_time,start_time + interval '30 minutes') > $3`,
@@ -113,13 +136,16 @@ exports.book = async (req, res, next) => {
     // Use reception's existing pending-confirmation workflow, visible to doctors as pending.
     const appointment = (await client.query(`INSERT INTO appointments
       (clinic_id,pet_id,client_id,practitioner_id,status,start_time,end_time,reason,notes,workflow_type)
-      VALUES($1,$2,$3,NULL,'scheduled',$4,$5,$6,$7::jsonb,'pending_confirmation') RETURNING id,start_time`,
+      VALUES($1,$2,$3,$8,'scheduled',$4,$5,$6,$7::jsonb,'pending_confirmation') RETURNING id,start_time`,
     [clinicId,petId,pet.client_id,start.toISOString(),end.toISOString(),reason,
-      JSON.stringify({ reason_for_visit: notes, source: 'pet_owner_mobile', requested_by: req.user.id })])).rows[0];
+      JSON.stringify({ reason_for_visit: String(req.body.reason_for_visit || notes).trim(), additional_notes: notes, source: 'pet_owner_mobile', requested_by: req.user.id }), slot.doctor_id])).rows[0];
     await client.query(`INSERT INTO audit_trail(user_id,action,table_name,record_id,new_data)
       VALUES($1,'owner_booking','appointments',$2,$3::jsonb)`,
     [req.user.id,appointment.id,JSON.stringify({ clinic_id: clinicId, pet_id: petId, status: 'pending', source: 'pet_owner_mobile' })]);
+    await client.query(`INSERT INTO clinic_notifications(clinic_id,recipient_user_id,title,text)
+      VALUES($1,$2,'New appointment request',$3)`, [clinicId,slot.doctor_id,'A pet owner requested ' + reason + '. Review it in Patient Intakes.']);
     await client.query('COMMIT');
+    publish(clinicId, 'registration');
     publish(clinicId, 'appointments');
     res.status(201).json({ ...appointment, status: 'pending' });
   } catch (error) { if (client) await client.query('ROLLBACK'); next(error); }
