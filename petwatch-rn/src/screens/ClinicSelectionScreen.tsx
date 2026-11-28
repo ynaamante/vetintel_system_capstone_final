@@ -1,3 +1,4 @@
+import HeaderSurface, { roundedScreenPanel } from '../components/HeaderSurface';
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,19 +21,21 @@ export default function ClinicSelectionScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={s.safe}>
-      <ScrollView contentContainerStyle={s.container}>
+      <HeaderSurface>
         <View style={s.header}>
-          <View style={s.logo}><Ionicons name="medical" size={28} color="#fff" /></View>
+          <View style={s.logo}><Ionicons name="medical" size={28} color={colors.white} /></View>
           <Text style={s.title}>Choose Your Clinic</Text>
           <Text style={s.sub}>Select your primary veterinary clinic</Text>
         </View>
+      </HeaderSurface>
+      <ScrollView style={s.panel} contentContainerStyle={s.container}>
         {mockClinics.map(clinic => (
           <TouchableOpacity key={clinic.id} style={[s.card, selectedId === clinic.id && s.cardActive]} onPress={() => setSelectedId(clinic.id)} activeOpacity={0.7}>
             <View style={s.cardTop}>
               <View style={{ flex: 1 }}>
                 <Text style={s.clinicName}>{clinic.name}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                  <Ionicons name="star" size={13} color="#F59E0B" />
+                  <Ionicons name="star" size={13} color={colors.warning} />
                   <Text style={s.rating}>{clinic.rating}</Text>
                   <Text style={s.dist}>• {clinic.distance} mi</Text>
                 </View>
@@ -53,22 +56,23 @@ export default function ClinicSelectionScreen({ navigation }: any) {
 
 const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: tc.background },
+  panel: { ...roundedScreenPanel, backgroundColor: tc.background },
   container: { padding: spacing.md, paddingBottom: 40 },
-  header: { alignItems: 'center', marginBottom: 24 },
+  header: { alignItems: 'center', paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: 18 },
   logo: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  title: { fontSize: 22, fontWeight: '700', color: tc.text, marginBottom: 8, textAlign: 'center' },
-  sub: { fontSize: 14, color: tc.textSecondary, textAlign: 'center' },
+  title: { fontSize: 22, fontWeight: '700', color: colors.ink, marginBottom: 8, textAlign: 'center' },
+  sub: { fontSize: 14, color: colors.textMuted, textAlign: 'center' },
   card: { backgroundColor: tc.surface, borderRadius: radius.lg, padding: 16, marginBottom: 12, borderWidth: 1.5, borderColor: tc.border },
-  cardActive: { borderColor: colors.primary, backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF' },
+  cardActive: { borderColor: colors.primary, backgroundColor: isDark ? colors.primarySoftDark : colors.primarySoft },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
   clinicName: { fontSize: 15, fontWeight: '600', color: tc.text },
   rating: { fontSize: 13, fontWeight: '600', color: tc.text },
   dist: { fontSize: 13, color: tc.textSecondary },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   infoText: { fontSize: 13, color: tc.textSecondary, flex: 1 },
-  emBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, backgroundColor: '#FEF2F2', borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start' },
+  emBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, backgroundColor: colors.dangerBg, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start' },
   emText: { fontSize: 12, color: colors.danger, fontWeight: '500' },
   btn: { backgroundColor: colors.primary, borderRadius: radius.md, height: 50, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  btnText: { color: colors.white, fontSize: 16, fontWeight: '600' },
   skip: { fontSize: 14, color: tc.textSecondary },
 });

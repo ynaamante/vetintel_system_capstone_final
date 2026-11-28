@@ -83,6 +83,13 @@ function requirements(req) {
  if(p.includes('/shareable-records'))return one('View Medical History');
  return [['__unmapped_clinic_operation__']];
 }
+function securityContext(req, needed) {
+ const path=String(req.path||'').toLowerCase();
+ const targetModule=path.includes('audit-trail')?'Security':path.includes('billing')||path.includes('payment')||path.includes('invoice')?'Billing & Payments':path.includes('inventory')?'Inventory':path.includes('roles')||path.includes('users')||path.includes('permissions')?'Staff Management':path.includes('disease-intelligence')?'Disease Intelligence':path.includes('appointment')?'Appointments':'Clinic Web Dashboard';
+ const requiredPermission=(needed||[]).flat().filter(item=>typeof item==='string'&&!item.startsWith('__')).join(' or ')||'Not recorded';
+ const attemptedAction=read(req)?`View ${targetModule}`:`Update ${targetModule}`;
+ return {target_module:targetModule,attempted_action:attemptedAction,required_permission:requiredPermission};
+}
 exports.protectedPath=p=>/^\/(clinic-records|roles|users|permissions|role-permissions|audit-trail|disease-intelligence|owner-monitoring|my-role-requests)(\/|$)/.test(p);
 exports.requirements=requirements;
 exports.guard=async(req,res,next)=>{
@@ -110,7 +117,7 @@ exports.guard=async(req,res,next)=>{
    }
    const needed=requirements(req);
    if(needed&&!needed.every(options=>options.some(item=>has(req.user,item)))){
-     try{await require('../utils/audit').logAudit({user_id:req.user?.id,role:req.user?.role,action:'unauthorized_access_attempt',table_name:'security_events',new_data:{clinic_id:req.user?.clinic_id||null,result:'Failed',source:'Clinic Web Dashboard',attempted_path:p,attempted_method:req.method},ip_address:req.ip||req.connection?.remoteAddress||null});}catch(error){console.error('Could not record denied access audit event:',error.message);}
+     try{await require('../utils/audit').logAudit({user_id:req.user?.id,role:req.user?.role,action:'unauthorized_access_attempt',table_name:'security_events',new_data:{clinic_id:req.user?.clinic_id||null,result:'Failed',source:'Clinic Web Dashboard',event_type:'Unauthorized access attempt',attempted_method:req.method,...securityContext(req,needed)},reason:'Insufficient permissions for this role.',ip_address:req.ip||req.connection?.remoteAddress||null});}catch(error){console.error('Could not record denied access audit event:',error.message);}
      return res.status(403).json({error:'Your clinic role does not permit this action.'});
    }
    return next();

@@ -35,8 +35,8 @@ const s = {
   statLabel:  { fontSize: '.78rem', color: '#64748b' },
   statVal:    { fontFamily: "'DM Sans', sans-serif", fontSize: '1.9rem', fontWeight: 700, letterSpacing: '-.03em', marginTop: 8 },
   statSub:    { fontSize: '.72rem', color: '#64748b', marginTop: 4 },
-  activeDot:  { width: 9, height: 9, borderRadius: '50%', background: '#16a34a', flexShrink: 0 },
-  activeText: { fontFamily: "'DM Sans', sans-serif", fontSize: '1.4rem', fontWeight: 700, color: '#16a34a', letterSpacing: '-.01em' },
+  activeDot:  { width: 9, height: 9, borderRadius: '50%', background: 'var(--success)', flexShrink: 0 },
+  activeText: { fontFamily: "'DM Sans', sans-serif", fontSize: '1.4rem', fontWeight: 700, color: 'var(--success)', letterSpacing: '-.01em' },
 
   card: {
     background: '#fff', border: '1px solid #e8ecf0',
@@ -50,7 +50,7 @@ const s = {
   },
   controlLabel: { fontSize: '.82rem', color: '#0f1117', marginBottom: 4 },
   controlVal:   { fontFamily: "'DM Sans', sans-serif", fontSize: '1rem', fontWeight: 600, color: '#0f1117' },
-  changeLink:   { fontSize: '.75rem', color: '#013826', textDecoration: 'none' },
+  changeLink:   { fontSize: '.75rem', color: 'var(--ink)', textDecoration: 'none' },
   divider:      { height: 1, background: '#f1f5f9' },
 
   toggle: {
@@ -73,7 +73,7 @@ const s = {
 
   privacyRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 },
   privacyCard: { borderRadius: 14, padding: '18px 20px' },
-  privacyGreen: { background: '#f0fdf4', border: '1px solid #bbf7d0' },
+  privacyGreen: { background: 'var(--success-bg)', border: '1px solid #bbf7d0' },
   privacyRed:   { background: '#fef2f2', border: '1px solid #fecaca' },
   privacyHd: {
     display: 'flex', alignItems: 'center', gap: 8,

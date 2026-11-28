@@ -1,9 +1,10 @@
 import AppHeader from '../components/AppHeader';
+import { roundedScreenPanel } from '../components/HeaderSurface';
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useOwnerNotifications } from '../context/OwnerNotificationsContext';
 import type { OwnerNotification } from '../services/api';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { format, parseISO } from 'date-fns';
@@ -14,12 +15,12 @@ import { useAuth } from '../context/AuthContext';
 import { petSharingApi } from '../services/api';
 
 
-const GREEN = '#005638';
+const GREEN = colors.primary;
 type ReadFilter = 'all' | 'unread' | 'read';
 
 export const isDiseaseAlert = (item: OwnerNotification) => /outbreak|disease|epidemic/i.test(item.type);
 const typeIcon: Record<string, any> = { outbreak: 'warning-outline', vaccination: 'medical-outline', appointment: 'calendar-outline', symptom: 'pulse-outline', deworming: 'shield-outline' };
-const sev = (s: string) => s === 'high' ? { bg: '#FEF2F2', border: '#FECACA', text: '#991B1B', color: colors.danger } : s === 'moderate' ? { bg: '#FFF7ED', border: '#FED7AA', text: '#9A3412', color: colors.warning } : { bg: '#EFF6FF', border: '#BFDBFE', text: '#1E40AF', color: colors.primary };
+const sev = (s: string) => s === 'high' ? { bg: colors.dangerBg, border: colors.dangerBg, text: colors.dangerText, color: colors.danger } : s === 'moderate' ? { bg: colors.warningBg, border: colors.warningBg, text: colors.warningText, color: colors.warning } : { bg: colors.infoBg, border: colors.infoBg, text: colors.info, color: colors.info };
 
 export default function AlertsScreen({ navigation, route }: any) {
   const { token } = useAuth();
@@ -29,7 +30,6 @@ export default function AlertsScreen({ navigation, route }: any) {
   const isNotifications = route.name === 'Notifications';
   const { notifications: list, loading, error, refresh, markRead: persistRead } = useOwnerNotifications();
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
-  useFocusEffect(useCallback(() => { StatusBar.setBarStyle('light-content'); return () => StatusBar.setBarStyle('default'); }, []));
   const s = styles(tc, isDark);
   const shown = list.filter(item =>
     (isNotifications ? !isDiseaseAlert(item) : isDiseaseAlert(item)) &&
@@ -56,13 +56,13 @@ export default function AlertsScreen({ navigation, route }: any) {
         <View style={{ flex: 1, marginLeft: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
             <Text style={[s.cardTitle, { color: tc.text, flex: 1 }]}>{item.title}</Text>
-            <View style={[s.badge, { backgroundColor: item.severity === 'high' ? '#FFF0F0' : '#FFF8E8' }]}><Text style={[s.badgeText, { color: item.severity === 'high' ? '#D81515' : '#B78000' }]}>{item.severity}</Text></View>
+            <View style={[s.badge, { backgroundColor: ss.bg }]}><Text style={[s.badgeText, { color: ss.text }]}>{item.severity}</Text></View>
           </View>
           <Text style={[s.cardMsg, { color: tc.textSecondary }]}>{item.message}</Text>
           {item.accessRequestId && <View style={{ marginBottom: 12 }}>
             <Text style={{ color: tc.text, fontWeight: '700', marginBottom: 8 }}>Access: {item.requestStatus}</Text>
             {item.requestStatus === 'pending' && <Text style={{ color: tc.text, marginBottom: 8 }}>Share vaccinations, completed consultations, diagnoses, treatments, and medications with this doctor for 30 minutes.</Text>}
-            <View style={{ flexDirection: 'row', gap: 10 }}>{(item.requestStatus === 'pending' ? ['approve','deny'] : item.requestStatus === 'approved' ? ['revoke'] : []).map(action => <TouchableOpacity key={action} disabled={deciding !== null} onPress={() => decide(item.accessRequestId!, action as 'approve' | 'deny' | 'revoke')} style={{ padding: 12, borderRadius: 10, backgroundColor: action === 'approve' ? colors.primary : tc.border, opacity: deciding ? 0.5 : 1 }}><Text style={{ color: action === 'approve' ? '#fff' : tc.text, fontWeight: '700' }}>{deciding === item.accessRequestId ? 'Updating...' : action === 'approve' ? 'Allow access' : action === 'deny' ? 'Decline' : 'Revoke access'}</Text></TouchableOpacity>)}</View>
+            <View style={{ flexDirection: 'row', gap: 10 }}>{(item.requestStatus === 'pending' ? ['approve','deny'] : item.requestStatus === 'approved' ? ['revoke'] : []).map(action => <TouchableOpacity key={action} disabled={deciding !== null} onPress={() => decide(item.accessRequestId!, action as 'approve' | 'deny' | 'revoke')} style={{ padding: 12, borderRadius: 10, backgroundColor: action === 'approve' ? colors.primary : tc.border, opacity: deciding ? 0.5 : 1 }}><Text style={{ color: action === 'approve' ? colors.white : tc.text, fontWeight: '700' }}>{deciding === item.accessRequestId ? 'Updating...' : action === 'approve' ? 'Allow access' : action === 'deny' ? 'Decline' : 'Revoke access'}</Text></TouchableOpacity>)}</View>
           </View>}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={[s.date, { color: tc.textMuted }]}>{format(parseISO(item.date), 'MMM d, yyyy ? h:mm a')}</Text>
@@ -92,25 +92,25 @@ export default function AlertsScreen({ navigation, route }: any) {
 }
 
 const styles = (tc: any, isDark: boolean) => StyleSheet.create({
-  safe: { flex: 1, backgroundColor: GREEN }, contentPanel: { flex: 1, backgroundColor: isDark ? tc.background : '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden', paddingTop: 18 }, headerRow: { flexDirection: 'row', alignItems: 'center' }, iconButton: { padding: 10 }, alertIcon: { width: 46, height: 46, borderRadius: 11, backgroundColor: isDark ? tc.surface : '#E8F5ED', alignItems: 'center', justifyContent: 'center' },
+  safe: { flex: 1, backgroundColor: tc.background }, contentPanel: { ...roundedScreenPanel, backgroundColor: isDark ? tc.background : colors.white, paddingTop: 18 }, headerRow: { flexDirection: 'row', alignItems: 'center' }, iconButton: { padding: 10 }, alertIcon: { width: 46, height: 46, borderRadius: 11, backgroundColor: isDark ? tc.surface : colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   pageHeader: { paddingBottom: 20 },
-  pageTitle: { flex: 1, fontSize: 21, fontWeight: '700', color: '#FFFFFF' },
-  pageSub: { fontSize: 12, color: '#E7F4EC', marginHorizontal: 18, marginTop: 2 },
+  pageTitle: { flex: 1, fontSize: 21, fontWeight: '700', color: colors.white },
+  pageSub: { fontSize: 12, color: colors.white, marginHorizontal: 18, marginTop: 2 },
   outlineBtn: { borderWidth: 1, borderColor: tc.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 7 },
   outlineBtnText: { fontSize: 13, color: tc.text },
   statsRow: { flexDirection: 'row', gap: 10, padding: spacing.md, paddingBottom: 0 },
   statCard: { flex: 1, backgroundColor: tc.surface, borderRadius: radius.md, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: tc.border },
   statVal: { fontSize: 20, fontWeight: '700' },
   statLabel: { fontSize: 11, color: tc.textSecondary, marginTop: 2 },
-  tabRow: { flexDirection: 'row', marginHorizontal: 10, marginTop: 0, backgroundColor: isDark ? tc.surface : '#EAF6EF', borderRadius: radius.md, padding: 3 },
+  tabRow: { flexDirection: 'row', marginHorizontal: 10, marginTop: 0, backgroundColor: isDark ? tc.surface : colors.primarySoft, borderRadius: radius.md, padding: 3 },
   tabBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm },
   tabBtnActive: { backgroundColor: GREEN },
   tabText: { fontSize: 12, color: tc.textSecondary },
-  tabTextActive: { color: '#FFFFFF', fontWeight: '700' },
-  card: { flexDirection: 'row', borderRadius: 15, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: isDark ? tc.border : '#E7E9E7', backgroundColor: tc.surface, minHeight: 82 },
+  tabTextActive: { color: colors.white, fontWeight: '700' },
+  card: { flexDirection: 'row', borderRadius: 15, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: isDark ? tc.border : colors.border, backgroundColor: tc.surface, minHeight: 82 },
   cardTitle: { fontSize: 14, lineHeight: 18, fontWeight: '700' },
   badge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
+  badgeText: { color: colors.white, fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
   cardMsg: { fontSize: 12, marginBottom: 5, lineHeight: 15 },
   date: { fontSize: 10 },
   markBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },

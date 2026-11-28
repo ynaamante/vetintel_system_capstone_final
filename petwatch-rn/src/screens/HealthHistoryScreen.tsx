@@ -1,4 +1,5 @@
 import AppHeader from '../components/AppHeader';
+import { roundedScreenPanel } from '../components/HeaderSurface';
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,9 +19,9 @@ const MOCK_HISTORY = [
 
 type Sev = 'all' | 'high' | 'moderate' | 'low';
 const sevColor: Record<string, any> = {
-  high: { bg: '#FEF2F2', border: '#FECACA', text: '#991B1B', dot: colors.danger },
-  moderate: { bg: '#FFF7ED', border: '#FED7AA', text: '#9A3412', dot: colors.warning },
-  low: { bg: '#EFF6FF', border: '#BFDBFE', text: '#1E40AF', dot: colors.primary },
+  high: { bg: colors.dangerBg, border: colors.danger, text: colors.dangerText, dot: colors.danger },
+  moderate: { bg: colors.warningBg, border: colors.warning, text: colors.warningText, dot: colors.warning },
+  low: { bg: colors.infoBg, border: colors.infoBg, text: colors.info, dot: colors.info },
 };
 
 export default function HealthHistoryScreen({ route, navigation }: any) {
@@ -61,50 +62,52 @@ export default function HealthHistoryScreen({ route, navigation }: any) {
   return (
     <SafeAreaView style={s.safe}>
       <AppHeader title="Health History" />
+      <View style={s.panel}>
+        <View style={s.petBadge}>
+          <Ionicons name="paw" size={16} color={colors.primary} />
+          <Text style={s.petBadgeText}>{pet.name}'s symptom history</Text>
+          <Text style={s.histCount}>{MOCK_HISTORY.length} records</Text>
+        </View>
 
-      <View style={s.petBadge}>
-        <Ionicons name="paw" size={16} color={colors.primary} />
-        <Text style={s.petBadgeText}>{pet.name}'s symptom history</Text>
-        <Text style={s.histCount}>{MOCK_HISTORY.length} records</Text>
+        <View style={s.filterRow}>
+          {(['all', 'high', 'moderate', 'low'] as Sev[]).map(f => (
+            <TouchableOpacity key={f} style={[s.filterBtn, filter === f && s.filterBtnActive]} onPress={() => setFilter(f)}>
+              <Text style={[s.filterText, filter === f && s.filterTextActive]}>{f.charAt(0).toUpperCase() + f.slice(1)}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <FlatList
+          data={shown}
+          keyExtractor={i => i.id}
+          renderItem={({ item }) => <Card item={item} />}
+          contentContainerStyle={{ padding: spacing.md, paddingBottom: 24 }}
+          ListEmptyComponent={
+            <View style={s.empty}>
+              <Ionicons name="time-outline" size={48} color={tc.textMuted} />
+              <Text style={s.emptyText}>No records for this filter</Text>
+            </View>
+          }
+        />
       </View>
-
-      <View style={s.filterRow}>
-        {(['all', 'high', 'moderate', 'low'] as Sev[]).map(f => (
-          <TouchableOpacity key={f} style={[s.filterBtn, filter === f && s.filterBtnActive]} onPress={() => setFilter(f)}>
-            <Text style={[s.filterText, filter === f && s.filterTextActive]}>{f.charAt(0).toUpperCase() + f.slice(1)}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <FlatList
-        data={shown}
-        keyExtractor={i => i.id}
-        renderItem={({ item }) => <Card item={item} />}
-        contentContainerStyle={{ padding: spacing.md, paddingBottom: 24 }}
-        ListEmptyComponent={
-          <View style={s.empty}>
-            <Ionicons name="time-outline" size={48} color={tc.textMuted} />
-            <Text style={s.emptyText}>No records for this filter</Text>
-          </View>
-        }
-      />
     </SafeAreaView>
   );
 }
 
 const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: tc.background },
+  panel: { ...roundedScreenPanel, backgroundColor: tc.background },
   nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tc.border },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   navTitle: { fontSize: 17, fontWeight: '600', color: tc.text },
-  petBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF', padding: 12, margin: spacing.md, marginBottom: 0, borderRadius: radius.md, borderWidth: 1, borderColor: isDark ? '#2563EB' : '#BFDBFE' },
-  petBadgeText: { fontSize: 14, color: isDark ? '#93C5FD' : '#1E40AF', fontWeight: '500', flex: 1 },
-  histCount: { fontSize: 13, color: isDark ? '#D2E5DC' : '#087A70', fontWeight: '600' },
+  petBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: isDark ? colors.primarySoftDark : colors.primarySoft, padding: 12, margin: spacing.md, marginBottom: 0, borderRadius: radius.md, borderWidth: 1, borderColor: isDark ? colors.primary : colors.border },
+  petBadgeText: { fontSize: 14, color: isDark ? colors.chart2 : colors.info, fontWeight: '500', flex: 1 },
+  histCount: { fontSize: 13, color: isDark ? colors.dark.textSecondary : colors.primary, fontWeight: '600' },
   filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: spacing.md, paddingVertical: 14 },
   filterBtn: { borderWidth: 1, borderColor: tc.border, borderRadius: radius.full, paddingHorizontal: 12, paddingVertical: 6 },
   filterBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   filterText: { fontSize: 13, color: tc.textSecondary },
-  filterTextActive: { color: '#fff', fontWeight: '600' },
+  filterTextActive: { color: colors.white, fontWeight: '600' },
   card: { backgroundColor: tc.surface, borderRadius: radius.lg, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: tc.border },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
   date: { fontSize: 14, fontWeight: '600', color: tc.text, marginBottom: 8 },

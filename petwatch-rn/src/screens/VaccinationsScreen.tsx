@@ -1,4 +1,5 @@
 import AppHeader from '../components/AppHeader';
+import { roundedScreenPanel } from '../components/HeaderSurface';
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -84,9 +85,9 @@ export default function VaccinationsScreen({ route, navigation }: any) {
 
   const getStatus = (vac: Vaccination) => {
     const days = differenceInDays(parseISO(vac.nextDue), new Date());
-    if (days < 0) return { label: 'Overdue', color: colors.danger, bg: '#FEF2F2', border: '#FECACA' };
-    if (days <= 30) return { label: `Due in ${days}d`, color: colors.warning, bg: '#FFF7ED', border: '#FED7AA' };
-    return { label: 'Up to date', color: colors.success, bg: '#F0FDF4', border: '#BBF7D0' };
+    if (days < 0) return { label: 'Overdue', color: colors.dangerText, bg: colors.dangerBg, border: colors.danger };
+    if (days <= 30) return { label: `Due in ${days}d`, color: colors.warningText, bg: colors.warningBg, border: colors.warning };
+    return { label: 'Up to date', color: colors.successText, bg: colors.successBg, border: colors.success };
   };
 
   const save = () => {
@@ -101,7 +102,7 @@ export default function VaccinationsScreen({ route, navigation }: any) {
     return (
       <View style={s.card}>
         <View style={s.cardTop}>
-          <View style={[s.iconCircle, { backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF' }]}>
+          <View style={[s.iconCircle, { backgroundColor: isDark ? colors.primarySoftDark : colors.primarySoft }]}>
             <Ionicons name="medical" size={22} color={colors.primary} />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
@@ -130,55 +131,58 @@ export default function VaccinationsScreen({ route, navigation }: any) {
 
   return (
     <SafeAreaView style={s.safe}>
-      <AppHeader title="Vaccinations" /><TouchableOpacity accessibilityLabel="Add vaccination" style={s.addBtn} onPress={() => setModal(true)}><Ionicons name="add" size={24} color={colors.primary} /></TouchableOpacity>
+      <AppHeader title="Vaccinations" />
+      <View style={s.panel}>
+        <TouchableOpacity accessibilityLabel="Add vaccination" style={s.addBtn} onPress={() => setModal(true)}><Ionicons name="add" size={24} color={colors.primary} /></TouchableOpacity>
 
-      <View style={s.petBadge}>
-        <Ionicons name="paw" size={16} color={colors.primary} />
-        <Text style={s.petBadgeText}>{pet.name}'s vaccination records</Text>
-      </View>
+        <View style={s.petBadge}>
+          <Ionicons name="paw" size={16} color={colors.primary} />
+          <Text style={s.petBadgeText}>{pet.name}'s vaccination records</Text>
+        </View>
 
-      <FlatList
-        data={vacs}
-        keyExtractor={i => i.id}
-        renderItem={({ item }) => <Card item={item} />}
-        contentContainerStyle={{ padding: spacing.md, paddingBottom: 24 }}
-        ListHeaderComponent={
-          <View style={s.sharedSection}>
-            <View style={s.sharedHeading}>
-              <Text style={s.sharedTitle}>Shared by your clinic</Text>
-              {sharedError ? <TouchableOpacity onPress={() => setSharedRetry(value => value + 1)}><Text style={s.retryText}>Retry</Text></TouchableOpacity> : null}
-            </View>
-            {sharedLoading ? <Text style={s.sharedHint}>Loading clinic-shared records…</Text>
-              : sharedError ? <Text style={s.sharedHint}>{sharedError}</Text>
-                : sharedVaccinations.length ? sharedVaccinations.map(item => (
-                  <View key={item.id} style={s.sharedCard}>
-                    <View style={s.sharedCardHeading}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.vacName}>{item.title}</Text>
-                        <Text style={s.vetName}>{item.clinicName}</Text>
+        <FlatList
+          data={vacs}
+          keyExtractor={i => i.id}
+          renderItem={({ item }) => <Card item={item} />}
+          contentContainerStyle={{ padding: spacing.md, paddingBottom: 24 }}
+          ListHeaderComponent={
+            <View style={s.sharedSection}>
+              <View style={s.sharedHeading}>
+                <Text style={s.sharedTitle}>Shared by your clinic</Text>
+                {sharedError ? <TouchableOpacity onPress={() => setSharedRetry(value => value + 1)}><Text style={s.retryText}>Retry</Text></TouchableOpacity> : null}
+              </View>
+              {sharedLoading ? <Text style={s.sharedHint}>Loading clinic-shared records…</Text>
+                : sharedError ? <Text style={s.sharedHint}>{sharedError}</Text>
+                  : sharedVaccinations.length ? sharedVaccinations.map(item => (
+                    <View key={item.id} style={s.sharedCard}>
+                      <View style={s.sharedCardHeading}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.vacName}>{item.title}</Text>
+                          <Text style={s.vetName}>{item.clinicName}</Text>
+                        </View>
+                        <View style={s.verifiedBadge}>
+                          <Ionicons name={item.clinicVerified ? 'shield-checkmark' : 'checkmark-circle'} size={13} color={item.clinicVerified ? colors.successText : colors.info} />
+                          <Text style={[s.verifiedBadgeText, !item.clinicVerified && s.sharedBadgeText]}>{item.clinicVerified ? 'Clinic Verified' : 'Shared by Clinic'}</Text>
+                        </View>
                       </View>
-                      <View style={s.verifiedBadge}>
-                        <Ionicons name={item.clinicVerified ? 'shield-checkmark' : 'checkmark-circle'} size={13} color={item.clinicVerified ? '#087f65' : '#56758a'} />
-                        <Text style={[s.verifiedBadgeText, !item.clinicVerified && s.sharedBadgeText]}>{item.clinicVerified ? 'Clinic Verified' : 'Shared by Clinic'}</Text>
-                      </View>
+                      <Text style={s.sharedDetail}>{item.detail}</Text>
+                      {item.date ? <Text style={s.sharedDate}>{new Date(item.date).toLocaleDateString()}</Text> : null}
+                      {item.clinicVerified && item.verifiedBy ? <Text style={s.verifiedBy}>Verified by {item.verifiedBy}{item.verifiedAt ? ` · ${new Date(item.verifiedAt).toLocaleDateString()}` : ''}</Text> : null}
                     </View>
-                    <Text style={s.sharedDetail}>{item.detail}</Text>
-                    {item.date ? <Text style={s.sharedDate}>{new Date(item.date).toLocaleDateString()}</Text> : null}
-                    {item.clinicVerified && item.verifiedBy ? <Text style={s.verifiedBy}>Verified by {item.verifiedBy}{item.verifiedAt ? ` · ${new Date(item.verifiedAt).toLocaleDateString()}` : ''}</Text> : null}
-                  </View>
-                )) : <Text style={s.sharedHint}>Your clinic has not shared any vaccination records for {pet.name} yet.</Text>}
-          </View>
-        }
-        ListEmptyComponent={sharedVaccinations.length ? null : (
-          <View style={s.empty}>
-            <Ionicons name="medical-outline" size={48} color={tc.textMuted} />
-            <Text style={s.emptyText}>No vaccination records</Text>
-            <TouchableOpacity style={s.primaryBtn} onPress={() => setModal(true)}>
-              <Text style={s.primaryBtnText}>Add Record</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      />
+                  )) : <Text style={s.sharedHint}>Your clinic has not shared any vaccination records for {pet.name} yet.</Text>}
+            </View>
+          }
+          ListEmptyComponent={sharedVaccinations.length ? null : (
+            <View style={s.empty}>
+              <Ionicons name="medical-outline" size={48} color={tc.textMuted} />
+              <Text style={s.emptyText}>No vaccination records</Text>
+              <TouchableOpacity style={s.primaryBtn} onPress={() => setModal(true)}>
+                <Text style={s.primaryBtnText}>Add Record</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        />
+      </View>
 
       <Modal visible={modal} transparent animationType="slide">
         <View style={s.modalOverlay}>
@@ -205,12 +209,13 @@ export default function VaccinationsScreen({ route, navigation }: any) {
 
 const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: tc.background },
+  panel: { ...roundedScreenPanel, backgroundColor: tc.background },
   nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tc.border },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   navTitle: { fontSize: 17, fontWeight: '600', color: tc.text },
   addBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  petBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF', padding: 12, marginHorizontal: spacing.md, marginTop: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: isDark ? '#2563EB' : '#BFDBFE' },
-  petBadgeText: { fontSize: 14, color: isDark ? '#93C5FD' : '#1E40AF', fontWeight: '500' },
+  petBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: isDark ? colors.primarySoftDark : colors.primarySoft, padding: 12, marginHorizontal: spacing.md, marginTop: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: isDark ? colors.primary : colors.border },
+  petBadgeText: { fontSize: 14, color: isDark ? colors.chart2 : colors.ink, fontWeight: '500' },
   card: { backgroundColor: tc.surface, borderRadius: radius.lg, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: tc.border },
   cardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   iconCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
@@ -231,15 +236,15 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   sharedHint: { color: tc.textSecondary, fontSize: 12, lineHeight: 17, paddingVertical: 5 },
   sharedCard: { padding: 13, marginBottom: 9, borderWidth: 1, borderColor: tc.border, borderRadius: radius.md, backgroundColor: tc.surface },
   sharedCardHeading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 99, backgroundColor: '#E5F7F1' },
-  verifiedBadgeText: { color: '#087f65', fontSize: 10, fontWeight: '700' },
-  sharedBadgeText: { color: '#56758a' },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 99, backgroundColor: colors.successBg },
+  verifiedBadgeText: { color: colors.successText, fontSize: 10, fontWeight: '700' },
+  sharedBadgeText: { color: colors.info },
   sharedDetail: { marginTop: 8, color: tc.textSecondary, fontSize: 12, lineHeight: 17 },
   sharedDate: { marginTop: 5, color: tc.textMuted, fontSize: 11 },
   verifiedBy: { marginTop: 5, color: tc.textSecondary, fontSize: 11 },
   empty: { alignItems: 'center', paddingVertical: 48 },
   emptyText: { fontSize: 15, color: tc.textSecondary, marginVertical: 12 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   modalBox: { backgroundColor: tc.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: tc.text, marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '500', color: tc.text, marginBottom: 6 },
@@ -248,5 +253,5 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   outlineBtn: { flex: 1, borderWidth: 1, borderColor: tc.border, borderRadius: radius.md, paddingVertical: 12, alignItems: 'center' },
   outlineBtnText: { fontSize: 14, color: tc.text },
   primaryBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, alignItems: 'center' },
-  primaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  primaryBtnText: { color: colors.white, fontSize: 14, fontWeight: '600' },
 });

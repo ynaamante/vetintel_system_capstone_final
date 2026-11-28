@@ -4,7 +4,7 @@ export function notifySuccess(title, text) {
   const notification = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     icon: 'check',
-    color: '#16a34a',
+    color: 'var(--success)',
     title,
     text,
     time: 'Just now',

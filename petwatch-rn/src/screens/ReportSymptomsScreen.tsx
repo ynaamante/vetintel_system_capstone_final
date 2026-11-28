@@ -1,4 +1,5 @@
 import AppHeader from '../components/AppHeader';
+import { roundedScreenPanel } from '../components/HeaderSurface';
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -42,9 +43,9 @@ export default function ReportSymptomsScreen({ route, navigation }: any) {
   }, 0);
 
   const getRiskLevel = () => {
-    if (totalRisk >= 8) return { label: 'High Risk', color: colors.danger, bg: '#FEF2F2', border: '#FECACA' };
-    if (totalRisk >= 4) return { label: 'Moderate Risk', color: colors.warning, bg: '#FFF7ED', border: '#FED7AA' };
-    return { label: 'Low Risk', color: colors.success, bg: '#F0FDF4', border: '#BBF7D0' };
+    if (totalRisk >= 8) return { label: 'High Risk', color: colors.dangerText, bg: colors.dangerBg, border: colors.danger };
+    if (totalRisk >= 4) return { label: 'Moderate Risk', color: colors.warningText, bg: colors.warningBg, border: colors.warning };
+    return { label: 'Low Risk', color: colors.successText, bg: colors.successBg, border: colors.success };
   };
 
   const submit = () => {
@@ -59,7 +60,7 @@ export default function ReportSymptomsScreen({ route, navigation }: any) {
   return (
     <SafeAreaView style={s.safe}>
       <AppHeader title="Report Symptoms" />
-      <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
+      <ScrollView style={s.panel} contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
         <View style={s.petBadge}>
           <Ionicons name="paw" size={16} color={colors.primary} />
           <Text style={s.petBadgeText}>Reporting for: <Text style={{ fontWeight: '700' }}>{pet.name}</Text></Text>
@@ -108,7 +109,7 @@ export default function ReportSymptomsScreen({ route, navigation }: any) {
         </View>
 
         <TouchableOpacity style={s.btn} onPress={submit}>
-          <Ionicons name="send" size={18} color="#fff" />
+          <Ionicons name="send" size={18} color={colors.white} />
           <Text style={s.btnText}>Submit Report</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -118,18 +119,19 @@ export default function ReportSymptomsScreen({ route, navigation }: any) {
 
 const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: tc.background },
+  panel: { ...roundedScreenPanel, backgroundColor: tc.background },
   nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tc.border },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   navTitle: { fontSize: 17, fontWeight: '600', color: tc.text },
   container: { padding: spacing.md, paddingBottom: 40 },
-  petBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF', borderRadius: radius.md, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: isDark ? '#2563EB' : '#BFDBFE' },
-  petBadgeText: { fontSize: 14, color: isDark ? '#93C5FD' : '#1E40AF' },
+  petBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: isDark ? colors.primarySoftDark : colors.primarySoft, borderRadius: radius.md, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: isDark ? colors.primary : colors.border },
+  petBadgeText: { fontSize: 14, color: isDark ? colors.chart2 : colors.ink },
   card: { backgroundColor: tc.surface, borderRadius: radius.lg, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: tc.border },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: tc.text, marginBottom: 4 },
   hint: { fontSize: 13, color: tc.textMuted, marginBottom: 14 },
   symptomsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   symBtn: { width: '47%', borderWidth: 1, borderColor: tc.border, borderRadius: radius.md, padding: 12, alignItems: 'center', gap: 6, position: 'relative' },
-  symBtnActive: { borderColor: colors.primary, backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF' },
+  symBtnActive: { borderColor: colors.primary, backgroundColor: isDark ? colors.primarySoftDark : colors.primarySoft },
   symLabel: { fontSize: 12, color: tc.textSecondary, textAlign: 'center' },
   riskCard: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.md, padding: 14, marginBottom: 14, borderWidth: 1 },
   riskLabel: { fontSize: 15, fontWeight: '700' },
@@ -139,5 +141,5 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   durationText: { fontSize: 14, color: tc.text },
   input: { borderWidth: 1, borderColor: tc.border, borderRadius: radius.md, padding: 12, fontSize: 15, color: tc.text, backgroundColor: tc.inputBg },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 14, marginBottom: 10 },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  btnText: { color: colors.white, fontSize: 16, fontWeight: '600' },
 });

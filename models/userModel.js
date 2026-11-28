@@ -19,7 +19,8 @@ module.exports = {
       `SELECT u.id,
               u.name,
               u.email,
-              ${includeInactive ? "u.phone, u.metadata->>'position' AS position," : ''}
+              u.phone,
+              u.metadata->>'position' AS position,
               u.is_active,
               u.created_at,
               u.clinic_id,

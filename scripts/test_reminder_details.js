@@ -22,7 +22,14 @@ async function call(handler,req){let code=200,body;await handler(req,{status(val
     const plan=(await db.query(`INSERT INTO treatment_plans(clinic_id,pet_id,title,diagnosis,follow_up,issued_by)
       VALUES($1,$2,'Rollback follow-up','Recorded diagnosis',CURRENT_DATE+5,$3) RETURNING id`,[actor.clinic_id,pet.id,actor.id])).rows[0];
     mailer.reminderEmailConfigured=()=>true;
-    mailer.sendClinicReminder=async input=>{sends++;assert.equal(input.email,'reminder-test@example.invalid');assert.ok(input.message.includes('Rollback reminder pet'));return{sent:true,messageId:'mock-provider-id'};};
+    mailer.sendClinicReminder=async input=>{
+      sends++;
+      assert.equal(input.email,'reminder-test@example.invalid');
+      assert.match(input.message,/Pet: Rollback reminder pet/);
+      assert.match(input.html,/A reminder for Rollback reminder pet/);
+      assert.match(input.html,/Hello Rollback reminder owner/);
+      return{sent:true,messageId:'mock-provider-id'};
+    };
     const req={user:{...actor,role:'doctor'},query:{},params:{id:`appointment:${appointment.id}`},body:{}};
     const initial=await call(details.get,req);assert.equal(initial.code,200);assert.equal(initial.body.patient.id,pet.id);assert.equal(initial.body.patient.owner,'Rollback reminder owner');assert.equal(initial.body.clinical_notes,'Recorded appointment note');assert.equal(initial.body.history.length,0);assert.equal(initial.body.notified,false);assert.equal(initial.body.can_reschedule,true);
     const vaccination=await call(details.get,{...req,params:{id:`vaccination:${vaccine.id}`}});assert.equal(vaccination.body.vaccination.vaccine_name,'Rollback vaccine');assert.equal(vaccination.body.clinical_notes,'Recorded vaccine note');

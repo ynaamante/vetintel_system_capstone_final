@@ -14,7 +14,7 @@ import { TreatmentPlansTab } from './ClinicLayout';
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
 const inputStyle = { width: '100%', boxSizing: 'border-box', padding: '9px 10px', border: '1px solid #d1d5db', borderRadius: 8, font: 'inherit', color: '#111827' };
 const labelStyle = { display: 'grid', gap: 5, color: '#1f2937', fontSize: 15, fontWeight: 600 };
-const buttonStyle = { padding: '9px 13px', border: 0, borderRadius: 8, background: '#086b50', color: '#fff', fontWeight: 700, cursor: 'pointer' };
+const buttonStyle = { padding: '9px 13px', border: 0, borderRadius: 8, background: 'var(--primary)', color: '#fff', fontWeight: 700, cursor: 'pointer' };
 
 async function request(user, path, options = {}) {
   if (!user?.token || !user?.clinic_id) throw new Error('Clinic session is unavailable. Sign in again and retry.');
@@ -488,7 +488,7 @@ export function PatientTreatmentRecordsPanel({ user, patientId, patientName, onC
           <input type="search" aria-label="Search treatment records" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search care plans, procedures, or medications..." />
         </label>
       </div>
-      {createOpen && <form onSubmit={createPlan} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 14, padding: 13, border: '1px solid #dce7e3', borderRadius: 9, background: '#fafbf8' }}>
+      {createOpen && <form onSubmit={createPlan} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 14, padding: 13, border: '1px solid #dce7e3', borderRadius: 9, background: 'var(--page)' }}>
         <label style={labelStyle}>Plan title<input name="title" required style={inputStyle} /></label>
         <label style={labelStyle}>Diagnosis<input name="diagnosis" required style={inputStyle} /></label>
         <label style={labelStyle}>Treatment step<input name="step" required style={inputStyle} /></label>
@@ -515,7 +515,7 @@ export function PatientTreatmentRecordsPanel({ user, patientId, patientName, onC
               </td>
               <td style={{ padding: '11px 9px', borderBottom: '1px solid #e2e8f0', color: '#334155', fontSize: 12 }}>{row.kind === 'plan' ? `${medications.length} prescribed` : '—'}</td>
               <td style={{ padding: '11px 9px', borderBottom: '1px solid #e2e8f0' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 14, background: isCompleted ? '#e7f7ef' : '#f1f5f9', color: isCompleted ? '#075c35' : '#334155', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{row.status}</span></td>
-              <td style={{ padding: '11px 9px', borderBottom: '1px solid #e2e8f0' }}><button type="button" onClick={() => row.kind === 'plan' ? setStandalonePlanRequest({ planId: row.plan.id }) : setSelectedTreatmentRecord(row.record)} style={{ minHeight: 36, border: 0, background: 'transparent', color: '#013826', padding: '0 4px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{row.kind === 'plan' ? 'View plan' : 'View record'}</button></td>
+              <td style={{ padding: '11px 9px', borderBottom: '1px solid #e2e8f0' }}><button type="button" onClick={() => row.kind === 'plan' ? setStandalonePlanRequest({ planId: row.plan.id }) : setSelectedTreatmentRecord(row.record)} style={{ minHeight: 36, border: 0, background: 'transparent', color: 'var(--ink)', padding: '0 4px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{row.kind === 'plan' ? 'View plan' : 'View record'}</button></td>
             </tr>;
           })}{!visibleRows.length && <tr><td colSpan={6} style={{ padding: 18, color: '#334155', fontSize: 14, textAlign: 'center' }}>{search || statusFilter !== 'all' ? 'No records match these filters.' : 'No treatment plans or records for this patient.'}</td></tr>}</tbody>
         </table>

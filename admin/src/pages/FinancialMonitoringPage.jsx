@@ -233,7 +233,7 @@ export default function FinancialMonitoringPage({ user, onNavigate }) {
                   <td style={{ ...s.td, fontFamily: 'monospace', color: '#64748b', fontSize: '.78rem' }}>{t.id}</td>
                   <td style={{ ...s.td, color: '#64748b' }}>{formatDateText(t.date)}</td>
                   <td style={{ ...s.td, color: '#0f1117', fontWeight: 500 }}>{t.service}</td>
-                  <td style={{ ...s.td, color: '#16a34a', fontWeight: 600 }}>{pesoFormatter.format(t.amount)}</td>
+                  <td style={{ ...s.td, color: 'var(--success)', fontWeight: 600 }}>{pesoFormatter.format(t.amount)}</td>
                   <td style={s.td}><StatusIndicator status={t.status} /></td>
                 </tr>
               ))}
@@ -256,14 +256,14 @@ const s = {
   toolbarSubtitle: { color: '#64748b', fontSize: '.74rem', marginTop: 3 },
   select: { padding: '8px 12px', border: '1px solid #dbe3ee', borderRadius: 8, fontSize: '.78rem', color: '#0f1117', background: '#f8fafc', outline: 'none', cursor: 'pointer' },
   exportGroup: { display: 'flex', alignItems: 'stretch', gap: 6 },
-  exportSelect: { padding: '0 8px', border: '1px solid #dbe3ee', borderRadius: 8, fontSize: '.78rem', color: '#013826', background: '#e7f4ec', outline: 'none', cursor: 'pointer', fontWeight: 600 },
+  exportSelect: { padding: '0 8px', border: '1px solid #dbe3ee', borderRadius: 8, fontSize: '.78rem', color: 'var(--ink)', background: 'var(--primary-soft)', outline: 'none', cursor: 'pointer', fontWeight: 600 },
   exportBtn: { display: 'flex', alignItems: 'center', gap: 7, padding: '9px 15px', background: '#087341', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer' },
   chartGrid: { display: 'grid', gridTemplateColumns: 'minmax(0, 1.03fr) minmax(0, 1fr)', gap: 10, marginBottom: 10 },
   card: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '20px 22px', marginBottom: 20 },
   cardHeader: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 },
   cardTitle: { fontSize: '.88rem', fontWeight: 600, color: '#0f1117', letterSpacing: '-.01em' },
   cardDescription: { fontSize: '.72rem', color: '#94a3b8', marginTop: 4 },
-  periodBadge: { padding: '4px 9px', borderRadius: 6, background: '#e7f4ec', color: '#013826', fontSize: '.68rem', fontWeight: 600 },
+  periodBadge: { padding: '4px 9px', borderRadius: 6, background: 'var(--primary-soft)', color: 'var(--ink)', fontSize: '.68rem', fontWeight: 600 },
   transactionCount: { color: '#64748b', fontSize: '.72rem', paddingTop: 2 },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: { textAlign: 'left', padding: '10px 12px', fontSize: '.7rem', fontWeight: 600, color: '#64748b', borderBottom: '1px solid #e2e8f0' },

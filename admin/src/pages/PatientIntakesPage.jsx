@@ -735,7 +735,7 @@ const responsiveStyles = `
   .intake-row-selected td { background: #e8f6f1; }
   .intake-row-selected td:first-child { box-shadow: inset 3px 0 #139675; }
   .intake-detail-backdrop { position: fixed; z-index: 39; inset: 0; background: rgba(15, 38, 42, .42); backdrop-filter: blur(2px); }
-  .intake-detail-panel { position: fixed; z-index: 40; inset: 0 0 0 auto; display: flex; flex-direction: column; width: min(540px, 78vw); height: 100vh; height: 100dvh; box-sizing: border-box; overflow: hidden; border: 1px solid #dbe7e1; border-right: 0; border-radius: 16px 0 0 16px; background: #fff; color: #111827; font-family: 'DM Sans', sans-serif; box-shadow: -16px 0 48px rgba(20, 48, 43, .2); }
+  .intake-detail-panel { position: fixed; z-index: 40; inset: 0 0 0 auto; display: flex; flex-direction: column; width: min(540px, 78vw); box-sizing: border-box; overflow: hidden; border: 1px solid #dbe7e1; border-right: 0; border-radius: 0; background: #fff; color: #111827; font-family: 'DM Sans', sans-serif; box-shadow: -16px 0 48px rgba(20, 48, 43, .2); }
   .intake-detail-head { position: relative; isolation: isolate; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; min-height: 94px; box-sizing: border-box; overflow: hidden; padding: 17px 26px 12px; border-bottom: 1px solid #e4ece8; background: radial-gradient(ellipse 48% 90px at 78% -5%, #d5eee4 99%, transparent 100%), #f8fbf9; }
   .intake-detail-heading { min-width: 0; }
   .intake-detail-heading h2 { margin: 0 0 3px; color: #064e3b; font-size: 24px; font-weight: 750; }
@@ -743,7 +743,7 @@ const responsiveStyles = `
   .intake-detail-heading .status-indicator { padding: 4px 10px; border-radius: 20px; background: #eaf1ff; color: #2867ee !important; font-size: 11px !important; }
   .intake-detail-heading .status-indicator-dot { display: none; }
   .intake-detail-head > button { min-height: 36px; flex: 0 0 auto; padding: 8px 13px; border: 1px solid #d4e1dc; border-radius: 8px; background: #fff; color: #173b30; cursor: pointer; font: inherit; font-size: 12px; font-weight: 650; }
-  .intake-detail-body { flex: 1; overflow-y: auto; padding: 14px 18px 8px; }
+  .intake-detail-body { flex: 1; overflow-y: auto; padding: 14px 18px 24px; }
   .intake-screening-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; margin: 0 0 12px; padding: 13px 16px; border: 1px solid #e3ece7; border-radius: 12px; background: linear-gradient(110deg, #f8fafb, #f0f7f2); }
   .intake-screening-details > div { display: grid; align-content: start; gap: 7px; font-size: 12px; }
   .intake-screening-details > div:nth-child(2) { padding-left: 17px; border-left: 1px solid #cbdad3; }
@@ -893,10 +893,10 @@ const responsiveStyles = `
     .intake-controls { align-items: flex-start; flex-direction: column; }
     .intake-toolbar { align-self: flex-end; }
     .intake-tabs { width: 100%; box-sizing: border-box; }
-    .intake-detail-panel { inset: 0 0 0 auto; width: min(100vw, 560px); height: 100vh; height: 100dvh; max-height: none; transform: none; border-radius: 0; }
+    .intake-detail-panel { width: min(100vw, 560px); transform: none; }
     .intake-detail-head { min-height: 86px; padding: 14px 15px 10px; }
     .intake-detail-heading h2 { font-size: 20px; }
-    .intake-detail-body { padding: 11px 12px 6px; }
+    .intake-detail-body { padding: 11px 12px 24px; }
     .intake-screening-details { grid-template-columns: 1fr 1fr; gap: 8px; padding: 11px; }
     .intake-patient-info-grid { grid-template-columns: 1fr; gap: 0; }
     .intake-review-facts > div { grid-template-columns: 115px minmax(0, 1fr); gap: 7px; }

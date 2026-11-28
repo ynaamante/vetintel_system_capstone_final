@@ -1,4 +1,5 @@
 import AppHeader from '../components/AppHeader';
+import { roundedScreenPanel } from '../components/HeaderSurface';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Linking, StyleSheet, TextInput, Modal, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,8 +10,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { clinicsApi } from '../services/api';
+import { colors } from '../theme/colors';
 
-const GREEN = '#005638';
+const GREEN = colors.primary;
 const LOCATION_KEY = 'nearby-clinics-search-location';
 type SearchLocation = { label: string; latitude: number; longitude: number };
 type Clinic = { id: string | number; name: string; address?: string; phone?: string; is_connected: boolean; emergency_care: boolean; latitude: number | null; longitude: number | null; distance_km: number | null };
@@ -182,23 +184,23 @@ export default function NearbyClinicsScreen() {
 }
 
 const styles = (tc: any, isDark: boolean) => StyleSheet.create({
-  safe: { flex: 1, backgroundColor: GREEN },
-  panel: { flex: 1, backgroundColor: isDark ? tc.background : '#FFFFFF', borderTopLeftRadius: 25, borderTopRightRadius: 25, overflow: 'hidden' },
+  safe: { flex: 1, backgroundColor: tc.background },
+  panel: { ...roundedScreenPanel, backgroundColor: isDark ? tc.background : colors.white },
   controls: { paddingHorizontal: 14, paddingTop: 16 },
-  locationBar: { minHeight: 35, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 15, backgroundColor: isDark ? tc.surface : '#E8F4ED' },
-  locationText: { flex: 1, color: tc.textSecondary, fontSize: 13 }, locationName: { color: tc.text, fontWeight: '700' }, change: { fontSize: 13, color: isDark ? '#8BD5AF' : GREEN, fontWeight: '700', textDecorationLine: 'underline' },
-  searchBox: { minHeight: 34, borderWidth: 1, borderColor: isDark ? tc.border : '#D6D7DD', borderRadius: 12, backgroundColor: isDark ? tc.surface : '#F8F8FA', flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 11, marginTop: 12 },
+  locationBar: { minHeight: 35, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 15, backgroundColor: isDark ? tc.surface : colors.primarySoft },
+  locationText: { flex: 1, color: tc.textSecondary, fontSize: 13 }, locationName: { color: tc.text, fontWeight: '700' }, change: { fontSize: 13, color: isDark ? colors.chart2 : GREEN, fontWeight: '700', textDecorationLine: 'underline' },
+  searchBox: { minHeight: 34, borderWidth: 1, borderColor: tc.border, borderRadius: 12, backgroundColor: tc.inputBg, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 11, marginTop: 12 },
   searchInput: { flex: 1, color: tc.text, fontSize: 13, paddingVertical: 6, minWidth: 0 },
   tabs: { flexDirection: 'row', gap: 7, marginTop: 14 },
-  tab: { flex: 1, minHeight: 34, paddingHorizontal: 4, paddingVertical: 8, alignItems: 'center', justifyContent: 'center', borderRadius: 11, borderWidth: 1, borderColor: isDark ? tc.border : '#DCDDDF', backgroundColor: isDark ? tc.surface : '#F8F8FA' },
-  tabActive: { backgroundColor: GREEN, borderColor: GREEN }, tabText: { fontSize: 12, fontWeight: '600', color: tc.text }, tabTextActive: { color: '#FFFFFF' },
-  listHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, marginBottom: 15 }, heading: { fontSize: 16, fontWeight: '700', color: tc.text }, mapLink: { flexDirection: 'row', alignItems: 'center', gap: 6 }, mapText: { color: isDark ? '#8BD5AF' : GREEN, fontSize: 13, fontWeight: '700' },
+  tab: { flex: 1, minHeight: 34, paddingHorizontal: 4, paddingVertical: 8, alignItems: 'center', justifyContent: 'center', borderRadius: 11, borderWidth: 1, borderColor: tc.border, backgroundColor: tc.inputBg },
+  tabActive: { backgroundColor: GREEN, borderColor: GREEN }, tabText: { fontSize: 12, fontWeight: '600', color: tc.text }, tabTextActive: { color: colors.white },
+  listHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, marginBottom: 15 }, heading: { fontSize: 16, fontWeight: '700', color: tc.text }, mapLink: { flexDirection: 'row', alignItems: 'center', gap: 6 }, mapText: { color: isDark ? colors.chart2 : GREEN, fontSize: 13, fontWeight: '700' },
   list: { paddingHorizontal: 14, paddingBottom: 20 },
-  card: { paddingHorizontal: 15, paddingTop: 7, paddingBottom: 9, marginBottom: 7, borderWidth: 1, borderColor: isDark ? tc.border : '#DEDFE3', borderRadius: 14, backgroundColor: tc.surface },
+  card: { paddingHorizontal: 15, paddingTop: 7, paddingBottom: 9, marginBottom: 7, borderWidth: 1, borderColor: isDark ? tc.border : colors.border, borderRadius: 14, backgroundColor: tc.surface },
   name: { color: tc.text, fontSize: 17, lineHeight: 20, fontWeight: '700' }, address: { color: tc.textSecondary, fontSize: 12, lineHeight: 17 },
-  badge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 2, marginTop: 1, backgroundColor: '#D4F4E1' }, badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#008044' }, badgeText: { fontSize: 11, fontWeight: '700', color: '#006537' }, distance: { color: tc.textSecondary, fontSize: 11, marginTop: 3 },
-  actions: { flexDirection: 'row', gap: 11, borderTopWidth: 1, borderTopColor: isDark ? tc.border : '#EEEEEF', paddingTop: 7, marginTop: 6 },
-  button: { flex: 1, minHeight: 28, paddingVertical: 4, paddingHorizontal: 5, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }, callButton: { borderWidth: 1, borderColor: GREEN }, directionsButton: { backgroundColor: GREEN }, callText: { color: isDark ? '#8BD5AF' : GREEN, fontSize: 13, fontWeight: '700' }, directionsText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' }, disabled: { opacity: 0.45 },
-  errorBox: { paddingHorizontal: 14, paddingBottom: 12 }, error: { color: isDark ? '#FFB4B4' : '#B42318', fontSize: 13, lineHeight: 19 }, empty: { paddingVertical: 35, alignItems: 'center', gap: 10 }, emptyTitle: { fontSize: 15, fontWeight: '600', color: tc.text }, emptyText: { fontSize: 13, lineHeight: 19, textAlign: 'center', color: tc.textSecondary },
-  modalBackdrop: { flex: 1, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center', padding: 22 }, modalCard: { width: '100%', maxWidth: 430, padding: 20, borderRadius: 20, backgroundColor: tc.surface }, modalHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, modalDescription: { color: tc.textSecondary, fontSize: 13, marginTop: 10 }, locationInput: { color: tc.text, paddingVertical: 10 }, modalButton: { minHeight: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginTop: 12 },
+  badge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 2, marginTop: 1, backgroundColor: colors.primarySoft }, badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary }, badgeText: { fontSize: 11, fontWeight: '700', color: colors.ink }, distance: { color: tc.textSecondary, fontSize: 11, marginTop: 3 },
+  actions: { flexDirection: 'row', gap: 11, borderTopWidth: 1, borderTopColor: isDark ? tc.border : colors.neutralBg, paddingTop: 7, marginTop: 6 },
+  button: { flex: 1, minHeight: 28, paddingVertical: 4, paddingHorizontal: 5, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }, callButton: { borderWidth: 1, borderColor: GREEN }, directionsButton: { backgroundColor: GREEN }, callText: { color: isDark ? colors.chart2 : GREEN, fontSize: 13, fontWeight: '700' }, directionsText: { color: colors.white, fontSize: 13, fontWeight: '700' }, disabled: { opacity: 0.45 },
+  errorBox: { paddingHorizontal: 14, paddingBottom: 12 }, error: { color: isDark ? colors.dangerTextDark : colors.dangerText, fontSize: 13, lineHeight: 19 }, empty: { paddingVertical: 35, alignItems: 'center', gap: 10 }, emptyTitle: { fontSize: 15, fontWeight: '600', color: tc.text }, emptyText: { fontSize: 13, lineHeight: 19, textAlign: 'center', color: tc.textSecondary },
+  modalBackdrop: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: 22 }, modalCard: { width: '100%', maxWidth: 430, padding: 20, borderRadius: 20, backgroundColor: tc.surface }, modalHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, modalDescription: { color: tc.textSecondary, fontSize: 13, marginTop: 10 }, locationInput: { color: tc.text, paddingVertical: 10 }, modalButton: { minHeight: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginTop: 12 },
 });

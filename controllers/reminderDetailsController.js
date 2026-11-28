@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const reminders = require('./reminderController');
 const mailer = require('../utils/mailer');
+const { reminderEmail } = require('../utils/reminderEmail');
 const { publish } = require('../utils/clinicEvents');
 
 exports.ensureSchema = () => db.query(`CREATE TABLE IF NOT EXISTS clinic_reminder_deliveries (
@@ -52,7 +53,7 @@ async function details(clinic,key) {
       FROM clinic_reminder_deliveries d LEFT JOIN users u ON u.id=d.actor_id
       LEFT JOIN clinic_owner_notifications n ON n.delivery_id=d.id AND n.clinic_id=d.clinic_id
       WHERE d.clinic_id=$1 AND d.reminder_key=$2 ORDER BY d.created_at DESC,d.id DESC LIMIT 100`,[clinic,String(key)]),
-    db.query('SELECT name FROM clinics WHERE id=$1',[clinic]),
+    db.query('SELECT name,address,phone,email FROM clinics WHERE id=$1',[clinic]),
   ]);
   const pet=patient.rows[0]; if(!pet)return null;
   const appointmentRow=appointment.rows[0]||null;
@@ -63,18 +64,24 @@ async function details(clinic,key) {
   const emailConfigured=mailer.reminderEmailConfigured();
   const channels=[{id:'email',label:'Email',available:emailPresent&&emailConfigured,reason:!emailPresent?'No owner email is recorded.':!emailConfigured?'Clinic email is not configured.':null},
     {id:'in_app',label:'In-App Notification',available:emailPresent,reason:emailPresent?null:'Record the owner\'s registered pet app email in their client profile.'}];
-  const clinicName=clinicRow.rows[0]?.name||'Your veterinary clinic';
+  const clinicProfile=clinicRow.rows[0];
+  const clinicName=clinicProfile?.name||'Your veterinary clinic';
   const dueDate=reminder.scheduled_at?new Date(reminder.scheduled_at).toLocaleDateString('en-PH',{timeZone:'Asia/Manila',month:'long',day:'numeric',year:'numeric'}):'the scheduled date';
   const label=vaccine.rows[0]?.vaccine_name||plan.rows[0]?.title||reminder.appointment_type||reminder.type||'follow-up';
   const message=`Hello ${pet.owner||'pet owner'},\n\n${clinicName} reminder: ${label} for ${pet.name} is due on ${dueDate}. Please contact the clinic to confirm or arrange your appointment.\n\nThank you,\n${clinicName}`;
-  return {reminder,patient:{...pet,photo_attachment_id:reminder.pet_photo_attachment_id},appointment:appointmentRow,vaccination:vaccine.rows[0]||null,treatment_plan:plan.rows[0]||null,
+  const data={reminder,patient:{...pet,photo_attachment_id:reminder.pet_photo_attachment_id},appointment:appointmentRow,vaccination:vaccine.rows[0]||null,treatment_plan:plan.rows[0]||null,
     clinical_notes:vaccine.rows[0]?.notes||appointmentRow?.clinical_notes||plan.rows[0]?.diagnosis||pet.notes||reminder.message||null,
     history:historyRows,notified:historyRows.some(row=>['sent','delivered'].includes(row.status)),channels,message,clinic_name:clinicName,
     can_reschedule:reminder.source==='appointment'&&appointmentRow&&['scheduled','confirmed','pending','checked_in','no_show','rescheduled'].includes(String(appointmentRow.status).toLowerCase())};
+  return {data,emailDetails:{
+    clinicName,address:clinicProfile?.address,phone:clinicProfile?.phone,email:clinicProfile?.email,
+    petName:pet.name,ownerName:pet.owner||'pet owner',service:label,
+    dueDate:reminder.scheduled_at?dueDate:'To be confirmed',
+  }};
 }
 exports.get=async(req,res,next)=>{
   const clinic=scope(req,res);if(!clinic)return;
-  try{const data=await details(clinic,req.params.id);if(!data)return res.status(404).json({error:'This reminder is no longer available in your clinic.'});res.json(data);}catch(error){next(error);}
+  try{const result=await details(clinic,req.params.id);if(!result)return res.status(404).json({error:'This reminder is no longer available in your clinic.'});res.json(result.data);}catch(error){next(error);}
 };
 exports.send=async(req,res,next)=>{
   const clinic=scope(req,res,true);if(!clinic)return;
@@ -83,13 +90,16 @@ exports.send=async(req,res,next)=>{
   const requestId=req.body.request_id;
   if(typeof requestId!=='string'||!(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i).test(requestId))return res.status(400).json({error:'A valid request identifier is required.'});
   try{
-    const data=await details(clinic,req.params.id);if(!data)return res.status(404).json({error:'This reminder is no longer available in your clinic.'});
+    const reminderDetails=await details(clinic,req.params.id);if(!reminderDetails)return res.status(404).json({error:'This reminder is no longer available in your clinic.'});
+    const {data,emailDetails}=reminderDetails;
     for(const channel of channels){const option=data.channels.find(row=>row.id===channel);if(!option?.available)return res.status(503).json({error:option?.reason||'This channel is unavailable.'});}
     const results=[];
     for(const channel of channels){
       const recipient=String(data.patient.email).trim().toLowerCase();
+      const emailContent=channel==='email'?reminderEmail(emailDetails):null;
+      const message=emailContent?.text??data.message;
       const inserted=await db.query(`INSERT INTO clinic_reminder_deliveries(clinic_id,reminder_key,pet_id,client_id,actor_id,request_id,channel,recipient,message,status)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'sending') ON CONFLICT(clinic_id,reminder_key,request_id,channel) DO NOTHING RETURNING id`,[clinic,req.params.id,data.patient.id,data.patient.client_id,req.user.id,requestId,channel,recipient,data.message]);
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'sending') ON CONFLICT(clinic_id,reminder_key,request_id,channel) DO NOTHING RETURNING id`,[clinic,req.params.id,data.patient.id,data.patient.client_id,req.user.id,requestId,channel,recipient,message]);
       if(!inserted.rows.length){const previous=await db.query('SELECT id,status,channel FROM clinic_reminder_deliveries WHERE clinic_id=$1 AND reminder_key=$2 AND request_id=$3 AND channel=$4',[clinic,req.params.id,requestId,channel]);results.push(previous.rows[0]);continue;}
       const id=inserted.rows[0].id;
       let result;
@@ -102,7 +112,7 @@ exports.send=async(req,res,next)=>{
             WHERE id=$4 AND clinic_id=$1`,[clinic,data.patient.client_id,data.patient.id,id,recipient,
             `${data.reminder.appointment_type||'Pet care'} reminder · ${data.patient.name}`,data.message,data.reminder.type==='vaccination'?'vaccination':'appointment',data.reminder.status==='overdue'?'moderate':'low']);
           result={sent:true};
-        }else result=await mailer.sendClinicReminder({email:recipient,clinicName:data.clinic_name,message:data.message});
+        }else result=await mailer.sendClinicReminder({email:recipient,clinicName:data.clinic_name,message,html:emailContent.html});
       }catch{result={sent:false};}
       const status=result.sent?'sent':'failed';
       const error=result.sent?null:channel==='in_app'?'The in-app notification could not be saved. Please try again.':result.reason||'The email provider did not accept this reminder. Check the clinic email configuration and try again.';

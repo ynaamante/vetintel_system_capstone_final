@@ -4,6 +4,7 @@ const dns = require('dns').promises;
 const crypto = require('crypto');
 const { validateOwnerFields, validateClinicalDates, validateOverrideReason } = require('../validation');
 const { logAudit } = require('../utils/audit');
+const { consumeLinkedInventory } = require('../utils/inventoryConsumption');
 const { has: hasPermission } = require('../utils/rolePermissions');
 const defaultClinicCatalog = require('../data/defaultClinicCatalog');
 const labTestTypes = require('../data/labTestTypes');
@@ -242,18 +243,23 @@ exports.createBillingCatalogItem = async (req, res, next) => {
     const unit = String(req.body.unit || 'item').trim() || 'item';
     const rawPrice = req.body.unit_price;
     const price = Number(rawPrice);
-    if (!billingCatalogTypes.has(itemType) || !billingCatalogCategories.has(category) || !name || name.length > 160 || req.body.unit_price === null || req.body.unit_price === undefined || String(req.body.unit_price).trim() === '' || !Number.isFinite(price) || price < 0) {
+    const active = req.body.active === undefined ? true : req.body.active;
+    if (!billingCatalogTypes.has(itemType) || !billingCatalogCategories.has(category) || !name || name.length > 160 || req.body.unit_price === null || req.body.unit_price === undefined || String(req.body.unit_price).trim() === '' || !Number.isFinite(price) || price < 0 || typeof active !== 'boolean') {
       return res.status(422).json({ error: 'Enter a valid item type, name, and non-negative price.' });
     }
     const result = await db.query(
-      `INSERT INTO clinic_billing_catalog (clinic_id, item_type, category, name, description, unit, duration, unit_price)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO clinic_billing_catalog (clinic_id, item_type, category, name, description, unit, duration, unit_price, active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (clinic_id, item_type, name) DO NOTHING
        RETURNING id, clinic_id, item_type, category, name, description, unit, duration, unit_price, active, created_at, updated_at`,
       [clinicId, itemType, category, name, String(req.body.description || '').trim() || null, unit,
-        String(req.body.duration || '').trim() || null, price]
+        String(req.body.duration || '').trim() || null, price, active]
     );
     if (!result.rows.length) return res.status(409).json({ error: 'An item with this name and type already exists.' });
+    await logAudit({
+      user_id:req.user?.id || null, role:req.user?.role || null, action:'create_service', table_name:'clinic_billing_catalog',
+      record_id:result.rows[0].id, new_data:result.rows[0], ip_address:req.ip || req.connection?.remoteAddress || null,
+    });
     return res.status(201).json(result.rows[0]);
   } catch (error) {
     return next(error);
@@ -275,6 +281,8 @@ exports.updateBillingCatalogItem = async (req, res, next) => {
       || (req.body.active !== undefined && typeof req.body.active !== 'boolean')) {
       return res.status(422).json({ error: 'Enter valid catalog item details.' });
     }
+    const before = await db.query('SELECT * FROM clinic_billing_catalog WHERE id=$1 AND clinic_id=$2',[id,clinicId]);
+    if (!before.rows.length) return res.status(404).json({ error: 'Billing catalog item not found.' });
     const result = await db.query(
       `WITH updated AS (UPDATE clinic_billing_catalog
        SET item_type=$1, category=$2, name=$3, description=$4, unit=$5, duration=$6, unit_price=$7,
@@ -286,10 +294,42 @@ exports.updateBillingCatalogItem = async (req, res, next) => {
         req.body.active === undefined ? null : req.body.active, id, clinicId]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Billing catalog item not found.' });
+    await logAudit({
+      user_id:req.user?.id || null, role:req.user?.role || null, action:'update_service', table_name:'clinic_billing_catalog',
+      record_id:id, old_data:before.rows[0], new_data:result.rows[0], ip_address:req.ip || req.connection?.remoteAddress || null,
+    });
     publishClinicEvent(clinicId, 'inventory');
     return res.json(result.rows[0]);
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ error: 'An item with this name and type already exists.' });
+    return next(error);
+  }
+};
+
+exports.setBillingCatalogActive = async (req, res, next) => {
+  try {
+    const clinicId = requireClinicId(req, res);
+    if (!clinicId) return;
+    if (!canManageBillingCatalog(req.user?.role)) return res.status(403).json({ error: 'Only clinic owners can archive or restore catalog items.' });
+    const id = Number.parseInt(req.params.id, 10);
+    const active = req.body?.active === true;
+    if (!Number.isInteger(id) || id < 1) return res.status(422).json({ error: 'Invalid catalog item.' });
+    const before = await db.query('SELECT * FROM clinic_billing_catalog WHERE id=$1 AND clinic_id=$2',[id,clinicId]);
+    if (!before.rows.length) return res.status(404).json({ error: 'Billing catalog item not found.' });
+    const result = await db.query(
+      `WITH updated AS (UPDATE clinic_billing_catalog SET active=$1,updated_at=now() WHERE id=$2 AND clinic_id=$3 RETURNING *),
+       inventory_sync AS (UPDATE clinic_inventory_items i SET active=c.active,updated_at=now() FROM updated c WHERE i.catalog_item_id=c.id AND i.clinic_id=c.clinic_id),
+       vaccine_sync AS (UPDATE clinic_vaccine_batches v SET active=c.active,updated_at=now() FROM updated c WHERE v.catalog_item_id=c.id AND v.clinic_id=c.clinic_id)
+       SELECT * FROM updated`, [active, id, clinicId]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Billing catalog item not found.' });
+    await logAudit({
+      user_id:req.user?.id || null, role:req.user?.role || null, action:active?'restore_service':'archive_service', table_name:'clinic_billing_catalog',
+      record_id:id, old_data:before.rows[0], new_data:result.rows[0], ip_address:req.ip || req.connection?.remoteAddress || null,
+    });
+    publishClinicEvent(clinicId, 'inventory');
+    return res.json(result.rows[0]);
+  } catch (error) {
     return next(error);
   }
 };
@@ -1795,6 +1835,12 @@ exports.completeConsultation = async (req, res, next) => {
         } else if (catalogItem.item_type === 'inpatient') {
           inpatientItems.push({ catalogItem, invoiceItemId: invoiceItem.rows[0].id });
         }
+        if (catalogItem.item_type !== 'vaccination') {
+          await consumeLinkedInventory(client, {
+            clinicId, catalogItem, quantity:item.quantity, user:req.user,
+            ipAddress:req.ip || req.connection?.remoteAddress || null,
+          });
+        }
       }
       const invoiceTotals = await client.query(
         `UPDATE invoices i
@@ -1842,10 +1888,12 @@ exports.completeConsultation = async (req, res, next) => {
       reason: String(req.body.reason || '').trim() || 'Consultation completed.',
       ip_address: req.ip || req.connection.remoteAddress,
     });
+    publishClinicEvent(clinicId, 'inventory');
     publishClinicEvent(clinicId, 'consultation');
     return res.json({ consultation: saved.rows[0], invoice: issuedInvoice });
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});
+    if (e.code === 'INSUFFICIENT_INVENTORY') return res.status(422).json({ error:e.message });
     return next(e);
   } finally {
     client.release();

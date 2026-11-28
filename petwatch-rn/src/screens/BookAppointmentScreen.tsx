@@ -1,5 +1,6 @@
 import MobileSelect from '../components/MobileSelect';
 import AppHeader from '../components/AppHeader';
+import { roundedScreenPanel } from '../components/HeaderSurface';
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Modal, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -122,7 +123,7 @@ export default function BookAppointmentScreen({ navigation, route }: any) {
           <React.Fragment key={i}>
             <View style={[s.stepItem, s.firstStepItem]}>
               <View style={[s.stepDot, s.firstStepDot, i <= step && { backgroundColor: colors.primary }]}>
-                {i < step ? <Ionicons name="checkmark" size={12} color="#fff" /> : <Text style={[s.stepNum, i <= step && { color: '#fff' }]}>{i + 1}</Text>}
+                {i < step ? <Ionicons name="checkmark" size={12} color={colors.white} /> : <Text style={[s.stepNum, i <= step && { color: colors.white }]}>{i + 1}</Text>}
               </View>
               <Text style={[s.stepLabel, s.firstStepLabel, i === step && { color: colors.primary, fontWeight: '600' }]}>{label}</Text>
             </View>
@@ -142,9 +143,9 @@ export default function BookAppointmentScreen({ navigation, route }: any) {
             <View style={s.petSearch}><Ionicons name="search-outline" size={18} color={tc.textMuted} /><TextInput accessibilityLabel="Search your pets" placeholder="Search your pets" placeholderTextColor={tc.textMuted} value={petSearch} onChangeText={setPetSearch} style={s.petSearchInput} />{!!petSearch && <TouchableOpacity accessibilityLabel="Clear pet search" onPress={() => setPetSearch('')}><Ionicons name="close-circle" size={17} color={tc.textMuted} /></TouchableOpacity>}</View>
             {filteredPets.map(p => (
               <TouchableOpacity key={p.id} accessibilityRole="radio" accessibilityState={{ checked: petId === p.id }} accessibilityLabel={p.name + ', ' + p.clinic_name} style={[s.petOption, petId === p.id && s.petOptionActive]} onPress={() => { setPetId(p.id); setClinicId(p.clinic_id); }}>
-                <View style={s.petPhotoBox}>{p.photo_url ? <Image source={{ uri: p.photo_url }} style={s.petPhoto} /> : <Ionicons name="paw-outline" size={30} color="#005638" />}</View>
+                <View style={s.petPhotoBox}>{p.photo_url ? <Image source={{ uri: p.photo_url }} style={s.petPhoto} /> : <Ionicons name="paw-outline" size={30} color={colors.primary} />}</View>
                 <View style={s.petOptionText}>
-                  <Text style={[s.petOptionName, bold, petId === p.id && { color: isDark ? '#B6DDC7' : '#09522C' }]}>{p.name}</Text>
+                  <Text style={[s.petOptionName, bold, petId === p.id && { color: isDark ? colors.dark.textSecondary : colors.primary }]}>{p.name}</Text>
                   <Text style={s.petOptionSpecies}>{[p.species, p.breed].filter(Boolean).join('  \u00b7  ') || 'Pet profile'}</Text>
                   <Text style={s.petOptionClinic}>{p.clinic_name}</Text>
                 </View>
@@ -163,7 +164,7 @@ export default function BookAppointmentScreen({ navigation, route }: any) {
             {filteredClinics.map(c => (
               <TouchableOpacity key={c.id} accessibilityRole="radio" accessibilityLabel={c.name} accessibilityState={{ checked: clinicId === c.id }} style={[s.clinicOption, clinicId === c.id && s.petOptionActive]} onPress={() => setClinicId(c.id)}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.clinicOptionName, bold, clinicId === c.id && { color: isDark ? '#B6DDC7' : '#09522C' }]}>{c.name}</Text>
+                  <Text style={[s.clinicOptionName, bold, clinicId === c.id && { color: isDark ? colors.dark.textSecondary : colors.primary }]}>{c.name}</Text>
                   <Text style={s.clinicAddress}>{c.address || 'Address not provided'}</Text>
                   <View style={s.registeredBadge}><Text style={s.registeredText}>Your Registered Clinic</Text></View>
                 </View>
@@ -184,18 +185,18 @@ export default function BookAppointmentScreen({ navigation, route }: any) {
               <Text style={[s.visitLabel, bold]}>Reason for Visit <Text style={s.required}>*</Text></Text>
               <TextInput accessibilityLabel="Reason for visit, required" style={[s.visitInput, s.visitReason]} value={visitReason} onChangeText={setVisitReason} maxLength={600} placeholder="e.g., annual vaccination, check-up, skin concern, etc." placeholderTextColor={tc.textMuted} multiline />
               <Text style={[s.visitLabel, bold]}>Preferred Date <Text style={s.required}>*</Text></Text>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Choose preferred date" style={s.visitPicker} onPress={() => setDateModal(true)}><Ionicons name="calendar-outline" size={17} color="#46725B" /><Text style={[s.visitInputText, { flex: 1, marginLeft: 12 }, !date && { color: tc.textMuted }]}>{date || 'Select date...'}</Text><Ionicons name="chevron-down" size={16} color={tc.textSecondary} /></TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Choose preferred date" style={s.visitPicker} onPress={() => setDateModal(true)}><Ionicons name="calendar-outline" size={17} color={colors.textMuted} /><Text style={[s.visitInputText, { flex: 1, marginLeft: 12 }, !date && { color: tc.textMuted }]}>{date || 'Select date...'}</Text><Ionicons name="chevron-down" size={16} color={tc.textSecondary} /></TouchableOpacity>
               <Text style={[s.visitLabel, bold]}>Preferred Time <Text style={s.required}>*</Text></Text>
               {!date && <Text style={s.availabilityHelp}>Choose a date to see available doctor times.</Text>}
               {slotsLoading && <Text style={s.availabilityHelp}>Checking doctor availability...</Text>}
               {!!slotsError && <TouchableOpacity onPress={() => setSlotsRefresh(value => value + 1)}><Text style={s.availabilityError}>{slotsError} Tap to retry.</Text></TouchableOpacity>}
               {!!date && !slotsLoading && !slotsError && !availableSlots.length && <Text style={s.availabilityHelp}>No available doctor times for this date. Please choose another date.</Text>}
-              <View style={s.timeGrid}>{availableSlots.map(slot => <TouchableOpacity accessibilityRole="radio" accessibilityState={{ checked: time === slot.label }} key={slot.start_time} style={[s.timeChip, time === slot.label && s.timeChipActive]} onPress={() => setTime(slot.label)}><Text style={[s.timeText, time === slot.label && { color: '#FFFFFF' }]}>{slot.label}</Text></TouchableOpacity>)}</View>
+              <View style={s.timeGrid}>{availableSlots.map(slot => <TouchableOpacity accessibilityRole="radio" accessibilityState={{ checked: time === slot.label }} key={slot.start_time} style={[s.timeChip, time === slot.label && s.timeChipActive]} onPress={() => setTime(slot.label)}><Text style={[s.timeText, time === slot.label && { color: colors.white }]}>{slot.label}</Text></TouchableOpacity>)}</View>
               {!!availableSlots.length && <Text style={s.availabilityHelp}>Clinic time (Asia/Manila). Availability is checked again when you submit.</Text>}
               <Text style={[s.visitLabel, bold]}>Additional Notes (Optional)</Text>
               <TextInput accessibilityLabel="Additional notes, optional" style={[s.visitInput, s.visitNotes]} value={notes} onChangeText={setNotes} maxLength={1200} placeholder="Any special concerns or information for the veterinarian..." placeholderTextColor={tc.textMuted} multiline />
             </View>
-            <View style={s.reminder}><Ionicons name="information-circle-outline" size={23} color="#00633D" /><View style={{ flex: 1 }}><Text style={[s.reminderTitle, bold]}>Important Reminder</Text><Text style={s.reminderBody}>For urgent or emergency cases, please contact the clinic directly or visit the nearest veterinary clinic.</Text></View></View>
+            <View style={s.reminder}><Ionicons name="information-circle-outline" size={23} color={colors.primary} /><View style={{ flex: 1 }}><Text style={[s.reminderTitle, bold]}>Important Reminder</Text><Text style={s.reminderBody}>For urgent or emergency cases, please contact the clinic directly or visit the nearest veterinary clinic.</Text></View></View>
           </View>
         )}
 
@@ -205,7 +206,7 @@ export default function BookAppointmentScreen({ navigation, route }: any) {
             <Text style={s.reviewSubtitle}>Please review your appointment details before submitting your request.</Text>
             <View style={s.reviewCard}>
               <View style={s.reviewPet}>
-                <View style={s.reviewPhotoBox}>{pet?.photo_url ? <Image source={{ uri: pet.photo_url }} style={s.reviewPhoto} /> : <Ionicons name="paw-outline" size={30} color="#005638" />}</View>
+                <View style={s.reviewPhotoBox}>{pet?.photo_url ? <Image source={{ uri: pet.photo_url }} style={s.reviewPhoto} /> : <Ionicons name="paw-outline" size={30} color={colors.primary} />}</View>
                 <View style={s.reviewPetText}><Text style={[s.reviewPetName, bold]}>{pet?.name}</Text><Text style={s.reviewPetSpecies}>{[pet?.species, pet?.breed].filter(Boolean).join(' \u00b7 ') || 'Pet profile'}</Text></View>
               </View>
               {[
@@ -215,9 +216,9 @@ export default function BookAppointmentScreen({ navigation, route }: any) {
                 { icon: 'calendar-outline', label: 'Preferred Date', value: date ? new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '' },
                 { icon: 'time-outline', label: 'Preferred Time', value: time },
                 { icon: 'document-text-outline', label: 'Additional Notes', value: notes.trim() || 'None' },
-              ].map(row => <View key={row.label} style={s.reviewRow}><Ionicons name={row.icon as keyof typeof Ionicons.glyphMap} size={19} color={isDark ? '#B6DDC7' : '#00633D'} /><Text style={s.reviewLabel}>{row.label}</Text><Text style={[s.reviewValue, row.strong && bold]}>{row.value}</Text></View>)}
+              ].map(row => <View key={row.label} style={s.reviewRow}><Ionicons name={row.icon as keyof typeof Ionicons.glyphMap} size={19} color={isDark ? colors.dark.textSecondary : colors.primary} /><Text style={s.reviewLabel}>{row.label}</Text><Text style={[s.reviewValue, row.strong && bold]}>{row.value}</Text></View>)}
             </View>
-            <View style={s.requestReminder}><Ionicons name="information-circle-outline" size={23} color="#00633D" /><View style={{ flex: 1 }}><Text style={[s.reminderTitle, bold]}>This is an appointment request.</Text><Text style={s.reminderBody}>Your doctor will review your request and notify you once the schedule is confirmed.</Text></View></View>
+            <View style={s.requestReminder}><Ionicons name="information-circle-outline" size={23} color={colors.primary} /><View style={{ flex: 1 }}><Text style={[s.reminderTitle, bold]}>This is an appointment request.</Text><Text style={s.reminderBody}>Your doctor will review your request and notify you once the schedule is confirmed.</Text></View></View>
           </View>
         )}
       </ScrollView>
@@ -227,10 +228,10 @@ export default function BookAppointmentScreen({ navigation, route }: any) {
         {step < 3
           ? <TouchableOpacity style={[s.nextBtn, s.firstNext, step >= 1 && { flex: 1 }, !canNext() && { opacity: 0.5 }]} onPress={next} disabled={!canNext()}>
               <Text style={[s.nextBtnText, bold, { fontSize: 16 }]}>Next</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
+              <Ionicons name="arrow-forward" size={18} color={colors.white} />
             </TouchableOpacity>
           : <TouchableOpacity accessibilityRole="button" accessibilityLabel="Request appointment" style={[s.nextBtn, s.firstNext, { flex: 1, gap: 6, minHeight: 52 }, saving && { opacity: 0.5 }]} onPress={confirm} disabled={saving}>
-              <Ionicons name="checkmark" size={18} color="#fff" />
+              <Ionicons name="checkmark" size={18} color={colors.white} />
               <Text style={[s.nextBtnText, bold, { fontSize: 15 }]}>{saving ? 'Sending...' : 'Request Appointment'}</Text>
             </TouchableOpacity>
         }
@@ -243,7 +244,7 @@ export default function BookAppointmentScreen({ navigation, route }: any) {
         <View style={s.dateOverlay}><View style={s.dateDialog}>
           <View style={s.calendarHeader}><TouchableOpacity accessibilityLabel="Previous month" onPress={() => setCalendarMonth(month => new Date(month.getFullYear(), month.getMonth() - 1, 1))}><Ionicons name="chevron-back" size={24} color={tc.text} /></TouchableOpacity><Text style={[s.calendarTitle, bold]}>{calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</Text><TouchableOpacity accessibilityLabel="Next month" onPress={() => setCalendarMonth(month => new Date(month.getFullYear(), month.getMonth() + 1, 1))}><Ionicons name="chevron-forward" size={24} color={tc.text} /></TouchableOpacity></View>
           <View style={s.calendarGrid}>{['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => <View key={'weekday-' + index} style={s.calendarCell}><Text style={s.calendarWeekday}>{day}</Text></View>)}
-            {calendarDays.map((day, index) => { const value = day ? localDate(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day)) : ''; const disabled = !day || value < today; return <TouchableOpacity key={index} disabled={disabled} accessibilityRole="button" accessibilityLabel={value || 'Empty day'} accessibilityState={{ selected: value === date, disabled }} style={[s.calendarCell, value === date && s.calendarSelected]} onPress={() => { setDate(value); setDateModal(false); }}><Text style={[s.calendarDay, disabled && { opacity: 0.3 }, value === date && { color: '#FFFFFF' }]}>{day || ''}</Text></TouchableOpacity>; })}
+            {calendarDays.map((day, index) => { const value = day ? localDate(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day)) : ''; const disabled = !day || value < today; return <TouchableOpacity key={index} disabled={disabled} accessibilityRole="button" accessibilityLabel={value || 'Empty day'} accessibilityState={{ selected: value === date, disabled }} style={[s.calendarCell, value === date && s.calendarSelected]} onPress={() => { setDate(value); setDateModal(false); }}><Text style={[s.calendarDay, disabled && { opacity: 0.3 }, value === date && { color: colors.white }]}>{day || ''}</Text></TouchableOpacity>; })}
           </View><TouchableOpacity style={s.modalCancel} onPress={() => setDateModal(false)}><Text style={s.modalCancelText}>Cancel</Text></TouchableOpacity>
         </View></View>
       </Modal>
@@ -252,33 +253,33 @@ export default function BookAppointmentScreen({ navigation, route }: any) {
 }
 
 const styles = (tc: any, isDark: boolean) => StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#005638' },
-  bookingPanel: { flex: 1, backgroundColor: tc.background, borderTopLeftRadius: 21, borderTopRightRadius: 21, overflow: 'hidden' },
+  safe: { flex: 1, backgroundColor: tc.background },
+  bookingPanel: { ...roundedScreenPanel, backgroundColor: tc.background },
   firstStepper: { paddingHorizontal: 15, paddingTop: 16, paddingBottom: 23 },
   firstStepItem: { width: 57 },
-  firstStepDot: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#C8DED0' },
+  firstStepDot: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.sidebarBorder },
   firstStepLabel: { fontSize: 11, lineHeight: 16, maxWidth: 70, color: tc.text },
   firstContainer: { paddingHorizontal: 15, paddingTop: 0, paddingBottom: 20 },
   petStepTitle: { fontSize: 20, lineHeight: 27, color: tc.text, marginBottom: 3 },
   petStepSubtitle: { fontSize: 14, lineHeight: 20, color: tc.textSecondary, marginBottom: 12 },
-  petSearch: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 42, paddingHorizontal: 12, borderWidth: 1, borderColor: tc.border, borderRadius: 11, backgroundColor: isDark ? tc.surface : '#FAFAFA', marginBottom: 17 },
+  petSearch: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 42, paddingHorizontal: 12, borderWidth: 1, borderColor: tc.border, borderRadius: 11, backgroundColor: isDark ? tc.surface : colors.hoverRow, marginBottom: 17 },
   petSearchInput: { flex: 1, fontSize: 14, color: tc.text, paddingVertical: 8 },
   petOption: { flexDirection: 'row', alignItems: 'center', gap: 11, minHeight: 85, paddingVertical: 11, paddingHorizontal: 12, borderWidth: 1, borderColor: tc.border, borderRadius: 13, backgroundColor: tc.surface, marginBottom: 8 },
-  petOptionActive: { borderColor: '#33845B', backgroundColor: isDark ? '#173E2B' : '#ECF8EF' },
-  petPhotoBox: { width: 63, height: 63, borderRadius: 10, backgroundColor: '#DCEEE2', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  petOptionActive: { borderColor: colors.primary, backgroundColor: isDark ? colors.primarySoftDark : colors.primarySoft },
+  petPhotoBox: { width: 63, height: 63, borderRadius: 10, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   petPhoto: { width: 63, height: 55 },
   petOptionText: { flex: 1 },
   petOptionName: { color: tc.text, fontSize: 17, lineHeight: 19 },
   petOptionSpecies: { color: tc.text, fontSize: 13, lineHeight: 18, marginTop: 1 },
   petOptionClinic: { color: tc.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 1 },
-  radio: { width: 20, height: 20, borderWidth: 1.5, borderColor: '#8B918D', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  radioSelected: { borderColor: '#007241' },
-  radioCenter: { width: 11, height: 11, borderRadius: 6, backgroundColor: '#007241' },
+  radio: { width: 20, height: 20, borderWidth: 1.5, borderColor: colors.inputBorder, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  radioSelected: { borderColor: colors.primary },
+  radioCenter: { width: 11, height: 11, borderRadius: 6, backgroundColor: colors.primary },
   reviewTitle: { color: tc.text, fontSize: 21, lineHeight: 28, marginBottom: 4 },
   reviewSubtitle: { color: tc.textSecondary, fontSize: 14, lineHeight: 20, marginBottom: 14 },
   reviewCard: { borderWidth: 1, borderColor: tc.border, borderRadius: 13, backgroundColor: tc.surface, paddingHorizontal: 12, paddingTop: 11, paddingBottom: 7 },
   reviewPet: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, paddingBottom: 12 },
-  reviewPhotoBox: { width: 65, height: 65, borderRadius: 9, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: '#E0F1E5' },
+  reviewPhotoBox: { width: 65, height: 65, borderRadius: 9, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
   reviewPhoto: { width: 65, height: 57 },
   reviewPetText: { flex: 1, borderLeftWidth: 1, borderLeftColor: tc.border, paddingLeft: 12, marginLeft: 12, paddingVertical: 6 },
   reviewPetName: { color: tc.text, fontSize: 17, lineHeight: 21 },
@@ -286,44 +287,44 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   reviewRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderTopWidth: 1, borderTopColor: tc.border, paddingVertical: 10 },
   reviewLabel: { width: '35%', color: tc.text, fontSize: 14, lineHeight: 18 },
   reviewValue: { flex: 1, color: tc.text, fontSize: 14, lineHeight: 18 },
-  requestReminder: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 13, backgroundColor: '#EFF7F2', padding: 15, marginTop: 18, marginBottom: 10 },
+  requestReminder: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 13, backgroundColor: colors.hoverMenu, padding: 15, marginTop: 18, marginBottom: 10 },
   visitSubtitle: { color: tc.textSecondary, fontSize: 14, lineHeight: 20, marginBottom: 9 },
   visitForm: { borderWidth: 1, borderColor: tc.border, borderRadius: 15, paddingHorizontal: 12, paddingTop: 13, paddingBottom: 15, backgroundColor: tc.surface },
   visitLabel: { color: tc.text, fontSize: 14, lineHeight: 20, marginBottom: 4 },
-  required: { color: '#C32626' },
-  visitPicker: { minHeight: 42, borderWidth: 1, borderColor: isDark ? tc.border : '#BCD5C6', borderRadius: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 9, marginBottom: 13, backgroundColor: isDark ? tc.inputBg : '#FAFBFA' },
+  required: { color: colors.danger },
+  visitPicker: { minHeight: 42, borderWidth: 1, borderColor: isDark ? tc.border : colors.inputBorder, borderRadius: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 9, marginBottom: 13, backgroundColor: isDark ? tc.inputBg : colors.hoverRow },
   visitInputText: { color: tc.text, fontSize: 14, lineHeight: 17 },
-  visitInput: { borderWidth: 1, borderColor: isDark ? tc.border : '#BCD5C6', borderRadius: 7, paddingHorizontal: 9, paddingVertical: 10, fontSize: 14, lineHeight: 20, color: tc.text, backgroundColor: isDark ? tc.inputBg : '#FAFBFA', textAlignVertical: 'top' },
+  visitInput: { borderWidth: 1, borderColor: isDark ? tc.border : colors.inputBorder, borderRadius: 7, paddingHorizontal: 9, paddingVertical: 10, fontSize: 14, lineHeight: 20, color: tc.text, backgroundColor: isDark ? tc.inputBg : colors.hoverRow, textAlignVertical: 'top' },
   visitReason: { minHeight: 64, marginBottom: 10 },
   visitNotes: { minHeight: 54 },
   availabilityHelp: { color: tc.textSecondary, fontSize: 12, lineHeight: 17, marginBottom: 9 },
-  availabilityError: { color: '#B42318', fontSize: 12, lineHeight: 17, marginBottom: 9 },
+  availabilityError: { color: colors.dangerText, fontSize: 12, lineHeight: 17, marginBottom: 9 },
   timeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 12 },
-  timeChip: { width: '23%', minHeight: 38, borderWidth: 1, borderColor: '#BCD5C6', borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? tc.inputBg : '#FAFBFA' },
-  timeChipActive: { backgroundColor: '#285C43', borderColor: '#285C43' },
-  timeText: { color: isDark ? '#B6DDC7' : '#1D5738', fontSize: 13, lineHeight: 16 },
-  reminder: { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 13, marginTop: 12, backgroundColor: isDark ? '#DDEDE3' : '#EFF7F2' },
-  reminderTitle: { color: '#005638', fontSize: 14, lineHeight: 17 },
-  reminderBody: { color: '#3F4B45', fontSize: 13, lineHeight: 15 },
-  dateOverlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'center', padding: 22 },
+  timeChip: { width: '23%', minHeight: 38, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? tc.inputBg : colors.hoverRow },
+  timeChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  timeText: { color: isDark ? colors.dark.textSecondary : colors.primary, fontSize: 13, lineHeight: 16 },
+  reminder: { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 13, marginTop: 12, backgroundColor: isDark ? colors.primarySoft : colors.hoverMenu },
+  reminderTitle: { color: colors.primary, fontSize: 14, lineHeight: 17 },
+  reminderBody: { color: colors.text, fontSize: 13, lineHeight: 15 },
+  dateOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 22 },
   dateDialog: { padding: 16, borderRadius: 18, backgroundColor: tc.surface, maxWidth: 420, width: '100%', alignSelf: 'center' },
   calendarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 },
   calendarTitle: { color: tc.text, fontSize: 17 },
   calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   calendarCell: { width: '14.2857%', height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
-  calendarSelected: { backgroundColor: '#005638' },
+  calendarSelected: { backgroundColor: colors.primary },
   calendarWeekday: { color: tc.textMuted, fontSize: 12 },
   calendarDay: { color: tc.text, fontSize: 14 },
   clinicOption: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 17, paddingVertical: 13, minHeight: 67, borderWidth: 1, borderColor: tc.border, borderRadius: 13, backgroundColor: tc.surface, marginBottom: 8 },
   clinicOptionName: { color: tc.text, fontSize: 16, lineHeight: 21 },
   clinicAddress: { color: tc.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 2 },
-  registeredBadge: { alignSelf: 'flex-start', marginTop: 5, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: '#C8EECE' },
-  registeredText: { color: '#16512A', fontSize: 10, lineHeight: 14 },
+  registeredBadge: { alignSelf: 'flex-start', marginTop: 5, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: colors.successBg },
+  registeredText: { color: colors.successText, fontSize: 10, lineHeight: 14 },
   clinicFooter: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  clinicBack: { width: '34%', minHeight: 48, borderWidth: 1, borderColor: '#33845B', borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  clinicBackText: { color: isDark ? '#B6DDC7' : '#005638', fontSize: 14 },
+  clinicBack: { width: '34%', minHeight: 48, borderWidth: 1, borderColor: colors.primary, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  clinicBackText: { color: isDark ? colors.dark.textSecondary : colors.primary, fontSize: 14 },
   firstFooter: { borderTopWidth: 0, paddingHorizontal: 15, paddingTop: 12, paddingBottom: 28 },
-  firstNext: { minHeight: 48, paddingVertical: 10, borderRadius: 14, backgroundColor: '#005638', gap: 14 },
+  firstNext: { minHeight: 48, paddingVertical: 10, borderRadius: 14, backgroundColor: colors.primary, gap: 14 },
   nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tc.border },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   navTitle: { fontSize: 17, fontWeight: '600', color: tc.text },
@@ -336,7 +337,7 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   container: { padding: spacing.md, paddingBottom: 24 },
   stepTitle: { fontSize: 18, fontWeight: '700', color: tc.text, marginBottom: 16 },
   optCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: tc.surface, borderRadius: radius.lg, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: tc.border },
-  optCardActive: { borderColor: colors.primary, backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF' },
+  optCardActive: { borderColor: colors.primary, backgroundColor: isDark ? colors.primarySoftDark : colors.primarySoft },
   petAvatar: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
   clinicIcon: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
   optTitle: { fontSize: 15, fontWeight: '600', color: tc.text },
@@ -354,8 +355,8 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   confirmVal: { fontSize: 14, fontWeight: '600', color: tc.text },
   footer: { padding: spacing.md, paddingBottom: 24, borderTopWidth: 1, borderTopColor: tc.border },
   nextBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 14 },
-  nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  nextBtnText: { color: colors.white, fontSize: 16, fontWeight: '600' },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   modalBox: { backgroundColor: tc.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: tc.text, marginBottom: 16 },
   modalOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: tc.border },

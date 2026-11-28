@@ -1,8 +1,9 @@
 import ArchiveDialog from '../components/ArchiveDialog';
 import AppHeader from '../components/AppHeader';
+import { roundedScreenPanel } from '../components/HeaderSurface';
 import React, { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Image, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -13,7 +14,7 @@ import { isDiseaseAlert } from './AlertsScreen';
 import { useOwnerNotifications } from '../context/OwnerNotificationsContext';
 import { petsApi, ownerCareApi, ownerSharedRecordsApi } from '../services/api';
 import { upcomingAppointments, dateLabel, statusLabel } from '../utils/ownerCare';
-const GREEN = '#005638';
+const GREEN = colors.primary;
 const HOME_BOLD = { fontWeight: '700' as const };
 export default function HomeScreen({ navigation }: any) {
   const { colors: tc, isDark } = useTheme();
@@ -30,10 +31,6 @@ export default function HomeScreen({ navigation }: any) {
   const dataRevision = useRef(0);
 
   const s = styles(tc, isDark);
-  useFocusEffect(useCallback(() => {
-    StatusBar.setBarStyle('light-content');
-    return () => StatusBar.setBarStyle('default');
-  }, []));
   const load = useCallback(async (active: () => boolean = () => true) => {
     if (!token) return;
     const revision = ++dataRevision.current;
@@ -86,7 +83,7 @@ export default function HomeScreen({ navigation }: any) {
   </View>);
   if (loading) return <SafeAreaView style={s.safe}><ActivityIndicator style={{ flex: 1 }} color={GREEN} /></SafeAreaView>;
   return <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
-      <AppHeader home title={greeting + (userName ? `, ${userName.split(' ')[0]}` : '') + '.'} subtitle="A little care. A healthier, happier pet." />
+    <AppHeader home title={greeting + (userName ? `, ${userName.split(' ')[0]}` : '') + '.'} subtitle="A little care. A healthier, happier pet." />
     <View style={s.contentPanel}>
     <ScrollView style={s.scroll} contentContainerStyle={s.container} contentInsetAdjustmentBehavior="never" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={GREEN} />}>
 
@@ -97,11 +94,11 @@ export default function HomeScreen({ navigation }: any) {
           <View style={s.calendar}><Text style={s.month}>{next ? new Date(next.start_time).toLocaleDateString(undefined, { month: 'short' }).toUpperCase() : 'NEXT'}</Text><Text style={s.day}>{next ? new Date(next.start_time).getDate() : '—'}</Text></View>
           <View style={s.appointmentDetail}><Text style={s.kicker}>NEXT APPOINTMENT</Text><Text style={s.name}>{next ? `${next.pet} · ${next.reason}` : 'No confirmed visits yet'}</Text><Text style={s.small}>{next ? `${new Date(next.start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · ${next.clinic_name || next.practitioner}` : 'Book a visit or view your requests'}</Text></View>{icon('chevron-forward', 18, tc.textMuted)}
         </TouchableOpacity>
-        {pending.length > 0 && <TouchableOpacity style={s.careRow} onPress={() => navigation.navigate('Appointments')}>{icon('time-outline', 17, '#B7791F')}<Text style={[s.body, { flex: 1 }]}>{pending.length} request{pending.length === 1 ? '' : 's'} · Awaiting clinic confirmation</Text>{icon('chevron-forward', 16, tc.textMuted)}</TouchableOpacity>}
-        {reminders.map(n => <TouchableOpacity key={n.id} style={s.careRow} onPress={() => navigation.navigate(isDiseaseAlert(n) ? 'Alerts' : 'Notifications')}><View style={[s.dotInline, { backgroundColor: n.severity === 'high' ? '#D67621' : GREEN }]} /><Text numberOfLines={2} style={[s.body, { flex: 1 }]}>{n.title} · {n.message}</Text>{icon('chevron-forward', 16, tc.textMuted)}</TouchableOpacity>)}
+        {pending.length > 0 && <TouchableOpacity style={s.careRow} onPress={() => navigation.navigate('Appointments')}>{icon('time-outline', 17, colors.warningText)}<Text style={[s.body, { flex: 1 }]}>{pending.length} request{pending.length === 1 ? '' : 's'} · Awaiting clinic confirmation</Text>{icon('chevron-forward', 16, tc.textMuted)}</TouchableOpacity>}
+        {reminders.map(n => <TouchableOpacity key={n.id} style={s.careRow} onPress={() => navigation.navigate(isDiseaseAlert(n) ? 'Alerts' : 'Notifications')}><View style={[s.dotInline, { backgroundColor: n.severity === 'high' ? colors.warning : GREEN }]} /><Text numberOfLines={2} style={[s.body, { flex: 1 }]}>{n.title} · {n.message}</Text>{icon('chevron-forward', 16, tc.textMuted)}</TouchableOpacity>)}
         {!reminders.length && <Text style={[s.small, s.emptyReminders]}>No unread clinic reminders.</Text>}
       </View>
-      <TouchableOpacity style={s.book} onPress={() => navigation.navigate('BookAppointment')}>{icon('calendar-outline', 24, '#fff')}<Text style={s.bookText}>Book appointment</Text></TouchableOpacity>
+      <TouchableOpacity style={s.book} onPress={() => navigation.navigate('BookAppointment')}>{icon('calendar-outline', 24, colors.white)}<Text style={s.bookText}>Book appointment</Text></TouchableOpacity>
       {section(`My pets (${allPets.length})`, <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}><TouchableOpacity accessibilityLabel="View archived pets" onPress={() => navigation.navigate('ArchivedPets')}><Text style={s.link}>Archived pets</Text></TouchableOpacity><View style={s.actionDivider} /><TouchableOpacity style={s.add} onPress={() => navigation.navigate('AddPet')}><Text style={s.link}>Add pet</Text></TouchableOpacity></View>)}
       {!allPets.length && <TouchableOpacity style={s.record} onPress={() => navigation.navigate('AddPet')}><Text style={s.name}>Welcome! Add your first pet</Text><Text style={s.body}>Clinic records appear when your clinic registers your account email.</Text></TouchableOpacity>}
       {allPets.map(pet => {
@@ -124,17 +121,20 @@ export default function HomeScreen({ navigation }: any) {
   </SafeAreaView>;
 }
 const styles = (tc: any, dark: boolean) => StyleSheet.create({
-  safe: { flex: 1, backgroundColor: GREEN }, contentPanel: { flex: 1, backgroundColor: dark ? tc.background : '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }, scroll: { flex: 1 }, container: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 24 },
-  appointmentDetail: { flex: 1, borderLeftWidth: 1, borderColor: '#CADDD1', paddingLeft: 12 }, emptyReminders: { borderTopWidth: 1, borderColor: '#CADDD1', paddingVertical: 8, paddingHorizontal: 7 }, header: { position: 'relative', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', backgroundColor: GREEN, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 14, marginBottom: 0 }, bell: { padding: 8 }, dot: { position: 'absolute', right: 8, top: 6, width: 7, height: 7, borderRadius: 4, backgroundColor: '#00D61B' },
+  safe: { flex: 1, backgroundColor: tc.background },
+  contentPanel: { ...roundedScreenPanel, backgroundColor: tc.background },
+  scroll: { flex: 1 },
+  container: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 24 },
+  appointmentDetail: { flex: 1, borderLeftWidth: 1, borderColor: tc.border, paddingLeft: 12 }, emptyReminders: { borderTopWidth: 1, borderColor: tc.border, paddingVertical: 8, paddingHorizontal: 7 }, header: { position: 'relative', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', backgroundColor: GREEN, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 14, marginBottom: 0 }, bell: { padding: 8 }, dot: { position: 'absolute', right: 8, top: 6, width: 7, height: 7, borderRadius: 4, backgroundColor: colors.success },
   messageDot: { position: 'absolute', right: 4, top: 3, width: 7, height: 7, borderRadius: 4, backgroundColor: GREEN, borderWidth: 1, borderColor: tc.background },
-  greeting: { ...HOME_BOLD, fontSize: 22, lineHeight: 27, letterSpacing: -0.5, color: '#FFFFFF', marginTop: 0 }, subtitle: { color: '#E7F4EC', fontSize: 13, marginTop: 2, marginBottom: 0 },
-  section: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 10 }, sectionTitle: { ...HOME_BOLD, fontSize: 20, lineHeight: 25, letterSpacing: -0.35, color: dark ? tc.text : GREEN },
-  small: { fontSize: 12, lineHeight: 15, color: tc.textSecondary }, body: { fontSize: 13, lineHeight: 19, color: tc.textSecondary }, name: { ...HOME_BOLD, fontSize: 14, lineHeight: 18, color: dark ? tc.text : '#111111' },
-  overview: { borderRadius: 14, borderWidth: 1, borderColor: dark ? '#555B58' : '#E0E2E1', backgroundColor: dark ? tc.surface : colors.paleSage, paddingHorizontal: 12 },
+  greeting: { ...HOME_BOLD, fontSize: 22, lineHeight: 27, letterSpacing: -0.5, color: colors.white, marginTop: 0 }, subtitle: { color: colors.white, fontSize: 13, marginTop: 2, marginBottom: 0 },
+  section: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 10 }, sectionTitle: { ...HOME_BOLD, fontSize: 20, lineHeight: 25, letterSpacing: -0.35, color: dark ? tc.text : colors.ink },
+  small: { fontSize: 12, lineHeight: 15, color: tc.textMuted }, body: { fontSize: 13, lineHeight: 19, color: tc.textSecondary }, name: { ...HOME_BOLD, fontSize: 14, lineHeight: 18, color: tc.text },
+  overview: { borderRadius: 14, borderWidth: 1, borderColor: tc.border, backgroundColor: dark ? tc.surface : colors.primarySoft, paddingHorizontal: 12 },
   appointment: { flexDirection: 'row', gap: 12, alignItems: 'center', paddingVertical: 14 }, calendar: { width: 52, height: 50, justifyContent: 'center', borderRadius: 9, padding: 4, backgroundColor: tc.surface, alignItems: 'center' }, month: { ...HOME_BOLD, color: GREEN, fontSize: 12, lineHeight: 14 }, day: { ...HOME_BOLD, color: GREEN, fontSize: 27, lineHeight: 29 }, kicker: { fontSize: 10, color: tc.textSecondary, marginBottom: 1, textTransform: 'uppercase' },
-  careRow: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderColor: dark ? '#555B58' : '#E0E2E1', paddingVertical: 10 }, dotInline: { width: 7, height: 7, borderRadius: 4 },
-  book: { backgroundColor: GREEN, borderRadius: 12, paddingVertical: 11, flexDirection: 'row', gap: 9, alignItems: 'center', justifyContent: 'center', marginTop: 12, marginBottom: 16 }, bookText: { ...HOME_BOLD, color: '#fff', fontSize: 16, lineHeight: 21 }, actionDivider: { width: 1, height: 15, backgroundColor: tc.border }, add: { flexDirection: 'row', alignItems: 'center', gap: 3 }, link: { ...HOME_BOLD, fontSize: 12, color: dark ? tc.text : GREEN },
-  petCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: dark ? '#555B58' : '#E0E2E1', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 7, backgroundColor: tc.surface, shadowColor: '#000', shadowOpacity: 0.12, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2 }, avatar: { width: 76, height: 74, borderRadius: 12, backgroundColor: dark ? tc.background : colors.paleSage, alignItems: 'center', justifyContent: 'center' }, petName: { ...HOME_BOLD, fontSize: 15, lineHeight: 19, color: dark ? tc.text : '#111111' }, statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#00CC20' }, pill: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: dark ? tc.background : colors.paleSage, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10, marginTop: 4 }, pillText: { fontSize: 11, color: dark ? tc.text : GREEN },
-  explore: { flexDirection: 'row', gap: 12 }, exploreCard: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 62, paddingHorizontal: 13, paddingVertical: 13, borderWidth: 1, borderColor: dark ? '#555B58' : '#E0E2E1', borderRadius: 13, backgroundColor: tc.surface }, advisory: { flexDirection: 'row', alignItems: 'center', gap: 9, borderWidth: 1, borderColor: dark ? '#555B58' : '#E0E2E1', borderRadius: 12, minHeight: 56, padding: 15, marginTop: 9, marginBottom: 16, backgroundColor: tc.surface },
-  record: { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: dark ? '#555B58' : '#E0E2E1', backgroundColor: tc.surface, marginBottom: 10 }, recordLine: { paddingTop: 10, borderTopWidth: 1, borderColor: dark ? '#555B58' : '#E0E2E1', marginTop: 10 }, error: { padding: 12, borderRadius: 10, backgroundColor: dark ? tc.surface : '#FFF4D6', marginBottom: 8 },
+  careRow: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderColor: tc.border, paddingVertical: 10 }, dotInline: { width: 7, height: 7, borderRadius: 4 },
+  book: { backgroundColor: GREEN, borderRadius: 12, paddingVertical: 11, flexDirection: 'row', gap: 9, alignItems: 'center', justifyContent: 'center', marginTop: 12, marginBottom: 16 }, bookText: { ...HOME_BOLD, color: colors.white, fontSize: 16, lineHeight: 21 }, actionDivider: { width: 1, height: 15, backgroundColor: tc.border }, add: { flexDirection: 'row', alignItems: 'center', gap: 3 }, link: { ...HOME_BOLD, fontSize: 12, color: dark ? tc.text : GREEN },
+  petCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: tc.border, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 7, backgroundColor: tc.surface, shadowColor: '#000', shadowOpacity: 0.12, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2 }, avatar: { width: 76, height: 74, borderRadius: 12, backgroundColor: dark ? tc.background : colors.paleSage, alignItems: 'center', justifyContent: 'center' }, petName: { ...HOME_BOLD, fontSize: 15, lineHeight: 19, color: tc.text }, statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }, pill: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: dark ? tc.background : colors.paleSage, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10, marginTop: 4 }, pillText: { fontSize: 11, color: dark ? tc.text : GREEN },
+  explore: { flexDirection: 'row', gap: 12 }, exploreCard: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 62, paddingHorizontal: 13, paddingVertical: 13, borderWidth: 1, borderColor: tc.border, borderRadius: 13, backgroundColor: tc.surface }, advisory: { flexDirection: 'row', alignItems: 'center', gap: 9, borderWidth: 1, borderColor: tc.border, borderRadius: 12, minHeight: 56, padding: 15, marginTop: 9, marginBottom: 16, backgroundColor: tc.surface },
+  record: { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: tc.border, backgroundColor: tc.surface, marginBottom: 10 }, recordLine: { paddingTop: 10, borderTopWidth: 1, borderColor: tc.border, marginTop: 10 }, error: { padding: 12, borderRadius: 10, backgroundColor: dark ? tc.surface : colors.warningBg, marginBottom: 8 },
 });

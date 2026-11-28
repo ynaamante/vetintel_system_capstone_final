@@ -3,6 +3,7 @@ import { clearPageState } from './utils/pageStateStore.js';
 import { watchClinicEvents } from './utils/clinicEvents';
 import { useEffect, useState } from 'react';
 import './styles/global.css';
+import './styles/doctorTheme.css';
 import Sidebar from './components/Sidebar';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -327,6 +328,12 @@ export default function App() {
     }
   }
 
+  const doctorThemeActive = isDoctorRole(user?.role);
+  useEffect(() => {
+    document.body.classList.toggle('doctor-theme-active', doctorThemeActive);
+    return () => document.body.classList.remove('doctor-theme-active');
+  }, [doctorThemeActive]);
+
   if (!user) {
     return <LoginPage onLogin={handleLogin} />;
   }
@@ -357,7 +364,8 @@ export default function App() {
 
   const role = normalizeRoleName(user.role);
   const ownerContent = ['owner', 'clinic_owner'].includes(role);
-  const staffContent = isDoctorRole(role) || role === 'receptionist';
+  const doctorContent = doctorThemeActive;
+  const staffContent = doctorContent || role === 'receptionist';
 
   return (
     <div style={{ position: 'fixed', inset: 0, display: 'flex', overflow: 'hidden' }}>
@@ -373,7 +381,7 @@ export default function App() {
         }}
       />
 
-      <main key={JSON.stringify([page, user.token, user.id, user.clinic_id, user.role, user.permissions])} className={`admin-content ${ownerContent ? 'owner-content' : ''} ${ownerContent || staffContent ? 'themed-page-headers' : ''} ${page === 'inbox' ? 'inbox-content' : ''} ${page === 'clinics' ? 'owner-overview-content' : ''}`}>
+      <main key={JSON.stringify([page, user.token, user.id, user.clinic_id, user.role, user.permissions])} className={`admin-content ${ownerContent ? 'owner-content' : ''} ${doctorContent ? 'doctor-content' : ''} ${staffContent ? 'staff-content' : ''} ${ownerContent || staffContent ? 'themed-page-headers' : ''} ${page === 'inbox' ? 'inbox-content' : ''} ${page === 'clinics' ? 'owner-overview-content' : ''}`}>
         {page === 'dashboard' && <DashboardPage user={user} initialFilters={monitoringFilters} onFiltersChange={setMonitoringFilters} onNavigate={navigateSurveillance} />}
         {page === 'disease' && <DiseaseMonitoringPage user={user} initialFilters={monitoringFilters} onFiltersChange={setMonitoringFilters} onNavigate={navigateSurveillance} />}
         {page === 'clinic' && <ClinicLayout user={user} initialTab={clinicInitialTab} initialInvoiceId={clinicInitialInvoiceId} onNavigate={(nextPage, context) => { if (nextPage === 'patient-records') setInboxPatientRequest(context); if (nextPage === 'clinic') { setClinicInitialTab(context?.tab || 'dashboard'); setClinicInitialInvoiceId(context?.invoiceId || null); } setPage(nextPage); }} />}

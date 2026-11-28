@@ -93,10 +93,10 @@ export default function ClientManagementPage({ user }) {
       <div style={s.page}>
         <div style={s.statsGrid}>
           {[
-            { label: 'Total Clients', value: clients.length, icon: Icons.users, iconBg: '#e7f4ec', iconColor: '#013826' },
+            { label: 'Total Clients', value: clients.length, icon: Icons.users, iconBg: 'var(--primary-soft)', iconColor: 'var(--ink)' },
             { label: 'Total Pets', value: totalPets, icon: Icons.pet, iconBg: '#f5f3ff', iconColor: '#7c3aed' },
-            { label: 'New This Month', value: newThisMonth, icon: Icons.users, iconBg: '#fffbeb', iconColor: '#d97706' },
-            { label: 'Searchable', value: 'Yes', icon: Icons.search, iconBg: '#f0fdf4', iconColor: '#16a34a' },
+            { label: 'New This Month', value: newThisMonth, icon: Icons.users, iconBg: 'var(--warning-bg)', iconColor: 'var(--warning-text)' },
+            { label: 'Searchable', value: 'Yes', icon: Icons.search, iconBg: 'var(--success-bg)', iconColor: 'var(--success)' },
           ].map((c) => (
             <div key={c.label} style={s.statCard}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

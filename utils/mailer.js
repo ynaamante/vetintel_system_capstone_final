@@ -114,7 +114,8 @@ function reminderEmailConfigured() {
   if (process.env.BREVO_API_KEY) return Boolean(process.env.BREVO_SENDER_EMAIL || process.env.SENDER_EMAIL);
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD);
 }
-async function sendClinicReminder({ email, clinicName, message }) {
+async function sendClinicReminder({ email, clinicName, message, html }) {
+  const subject = `${clinicName}: pet care reminder`;
   if (process.env.BREVO_API_KEY) {
     const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SENDER_EMAIL;
     if (!senderEmail) return { sent: false, reason: 'Brevo sender email is not configured.' };
@@ -123,7 +124,7 @@ async function sendClinicReminder({ email, clinicName, message }) {
         method: 'POST',
         headers: { 'api-key': process.env.BREVO_API_KEY, accept: 'application/json', 'content-type': 'application/json' },
         body: JSON.stringify({ sender: { email: senderEmail, name: process.env.BREVO_SENDER_NAME || clinicName },
-          to: [{ email }], subject: `${clinicName}: pet care reminder`, textContent: message }),
+          to: [{ email }], subject, textContent: message, htmlContent: html }),
         signal: AbortSignal.timeout(15000),
       });
       const payload = await response.json().catch(() => ({}));
@@ -140,7 +141,7 @@ async function sendClinicReminder({ email, clinicName, message }) {
   const transport = getTransport();
   if (!transport) return { sent: false, reason: 'Clinic email is not configured.' };
   const result = await transport.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: email, subject: `${clinicName}: pet care reminder`, text: message });
+    to: email, subject, text: message, html });
   const accepted = (result.accepted || []).some(value => String(value).toLowerCase() === email.toLowerCase());
   return { sent: accepted, messageId: result.messageId || null };
 }

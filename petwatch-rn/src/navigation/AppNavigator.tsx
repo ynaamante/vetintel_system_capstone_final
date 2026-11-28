@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import NavigationIcon from '../components/NavigationIcon';
@@ -33,6 +33,7 @@ import ReportSymptomsScreen from '../screens/ReportSymptomsScreen';
 import VaccinationsScreen from '../screens/VaccinationsScreen';
 import HealthHistoryScreen from '../screens/HealthHistoryScreen';
 import HealthReportScreen from '../screens/HealthReportScreen';
+import HealthRecordDetailsScreen from '../screens/HealthRecordDetailsScreen';
 import BookAppointmentScreen from '../screens/BookAppointmentScreen';
 import NearbyClinicsScreen from '../screens/NearbyClinicsScreen';
 import HealthTipsScreen from '../screens/HealthTipsScreen';
@@ -51,20 +52,20 @@ function HomeNav() {
 
 
 function TabNav() {
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { notifications } = useOwnerNotifications();
   const unread = notifications.filter(item => !item.read && isDiseaseAlert(item)).length;
   return (
     <Tab.Navigator id="MainTabs" screenOptions={({ route }) => ({
       headerShown: false,
       animation: 'none',
-      tabBarStyle: { backgroundColor: tc.surface, borderTopColor: tc.border, height: 66, paddingTop: 5, paddingBottom: 8 },
-      tabBarActiveTintColor: '#005638',
+      tabBarStyle: { backgroundColor: isDark ? tc.surface : colors.sidebar, borderTopColor: isDark ? tc.border : colors.sidebarBorder, height: 66, paddingTop: 5, paddingBottom: 8 },
+      tabBarActiveTintColor: isDark ? colors.chart2 : colors.primary,
       tabBarLabelStyle: { fontSize: 12 },
-      tabBarLabel: ({ focused, color }) => <View style={{ alignItems: 'center', width: 78 }}><Text style={{ color, fontSize: 12, fontWeight: focused ? '700' : '400' }}>{route.name}</Text>{focused && <View style={{ position: 'absolute', bottom: -9, height: 3, width: 64, borderRadius: 2, backgroundColor: '#005638' }} />}</View>,
-      tabBarInactiveTintColor: tc.text,
+      tabBarLabel: ({ focused, color }) => <View style={{ alignItems: 'center', width: 78 }}><Text style={{ color, fontSize: 12, fontWeight: focused ? '700' : '400' }}>{route.name}</Text>{focused && <View style={{ position: 'absolute', bottom: -9, height: 3, width: 64, borderRadius: 2, backgroundColor: colors.primary }} />}</View>,
+      tabBarInactiveTintColor: isDark ? tc.textSecondary : colors.ink,
       tabBarIcon: ({ focused, color }) => {
-        return <View style={{ width: 78, height: 27, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? '#E1F3E6' : 'transparent' }}><NavigationIcon name={route.name} color={color} /></View>;
+        return <View style={{ width: 78, height: 27, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? (isDark ? colors.primarySoftDark : colors.primarySoft) : 'transparent' }}><NavigationIcon name={route.name} color={color} /></View>;
       },
     })}>
       <Tab.Screen name="Home" component={HomeNav} />
@@ -78,11 +79,24 @@ function TabNav() {
 export default function AppNavigator() {
   const { isLoggedIn, needsFirstPet, isRestoring } = useAuth();
   const { hasSeenOnboarding } = useOnboarding();
+  const { colors: tc, isDark } = useTheme();
+  const baseTheme = isDark ? DarkTheme : DefaultTheme;
+  const navigationTheme = {
+    ...baseTheme,
+    colors: {
+      primary: isDark ? colors.chart2 : colors.primary,
+      background: tc.background,
+      card: tc.surface,
+      text: tc.text,
+      border: tc.border,
+      notification: colors.danger,
+    },
+  };
 
-  if (isRestoring) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.light.background }}><ActivityIndicator color={colors.primary} /></View>;
+  if (isRestoring) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: tc.background }}><ActivityIndicator color={colors.primary} /></View>;
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator id="RootStack" screenOptions={{ headerShown: false, animation: 'none' }}>
         {!hasSeenOnboarding ? (
           // Onboarding flow
@@ -117,6 +131,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Vaccinations" component={VaccinationsScreen} />
             <Stack.Screen name="HealthHistory" component={HealthHistoryScreen} />
             <Stack.Screen name="HealthReport" component={HealthReportScreen} />
+            <Stack.Screen name="HealthRecordDetails" component={HealthRecordDetailsScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="BookAppointment" component={BookAppointmentScreen} />
             <Stack.Screen name="HealthTips" component={HealthTipsScreen} />
             <Stack.Screen name="ClinicSelection" component={ClinicSelectionScreen} />

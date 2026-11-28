@@ -1,21 +1,22 @@
+import HeaderSurface, { roundedScreenPanel } from '../components/HeaderSurface';
 import NotificationButton from '../components/NotificationButton';
 import Toast from 'react-native-toast-message';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, TextInput, Modal, ScrollView, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, TextInput, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import ArchiveDialog from '../components/ArchiveDialog';
-import Svg, { Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format, isToday, isYesterday, isValid } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useOwnerNotifications } from '../context/OwnerNotificationsContext';
 import { ownerSharedRecordsApi, ownerCareApi, ownerInboxApi, OwnerConversation } from '../services/api';
+import { colors, gradients } from '../theme/colors';
 
-const GREEN = '#005638';
+const GREEN = colors.primary;
 type Tab = 'all' | 'unread' | 'updates';
 type InboxItem = { key: string; clinicName: string; message: string; date: string; records: any[]; read: boolean; threadId?: string; notificationId?: string; notificationType?: string; petName?: string; petId?: number };
 const initials = (name: string) => {
@@ -90,10 +91,9 @@ export default function MessagesScreen({ navigation }: any) {
     finally { if (request === revision.current) setLoading(false); }
   }, [token, storageKey]);
   useFocusEffect(useCallback(() => {
-    StatusBar.setBarStyle('light-content');
     void load(true);
     const timer = setInterval(() => void load(), 5000);
-    return () => { clearInterval(timer); revision.current++; StatusBar.setBarStyle('default'); };
+    return () => { clearInterval(timer); revision.current++; };
   }, [load]));
 
   const shares: InboxItem[] = bundles.map(bundle => ({
@@ -186,26 +186,26 @@ export default function MessagesScreen({ navigation }: any) {
   };
 
   return <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
-    <View style={s.header}>
-      <LinearGradient colors={['#005638', '#004A30', '#005638']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
-      <View pointerEvents="none" style={s.wave}><Svg width="100%" height="100%" viewBox="0 0 502 28" preserveAspectRatio="none"><Path d="M0 0 C120 40 260 8 380 3 C450 -1 485 5 502 24 L502 40 L0 40Z" fill="#087B50" /></Svg></View>
-      <View style={s.headerRow}>
-        <TouchableOpacity accessibilityLabel="Go back" onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Main', { screen: 'Home' })} style={s.back}><Ionicons name="arrow-back" size={25} color="#FFFFFF" /></TouchableOpacity>
-        <Text style={s.title}>Inbox</Text>
-        <TouchableOpacity accessibilityLabel="Search inbox" accessibilityState={{ expanded: searching }} onPress={() => { setSearching(!searching); setSearch(''); }} style={s.headerButton}><Ionicons name="search-outline" size={28} color="#FFFFFF" /></TouchableOpacity>
-        <NotificationButton />
+    <HeaderSurface>
+      <View style={s.header}>
+        <View style={s.headerRow}>
+          <TouchableOpacity accessibilityLabel="Go back" onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Main', { screen: 'Home' })} style={s.back}><Ionicons name="arrow-back" size={25} color={colors.ink} /></TouchableOpacity>
+          <Text style={s.title}>Inbox</Text>
+          <TouchableOpacity accessibilityLabel="Search inbox" accessibilityState={{ expanded: searching }} onPress={() => { setSearching(!searching); setSearch(''); }} style={s.headerButton}><Ionicons name="search-outline" size={28} color={colors.ink} /></TouchableOpacity>
+          <NotificationButton />
+        </View>
+        <Text style={s.subtitle}>Messages and shared records from your clinic.</Text>
       </View>
-      <Text style={s.subtitle}>Messages and shared records from your clinic.</Text>
-    </View>
+    </HeaderSurface>
     <View style={s.panel}>
       <View style={s.tabs} accessibilityRole="tablist">
         {([{ id: 'all', label: `All (${items.length})` }, { id: 'unread', label: `Unread (${unread})` }, { id: 'updates', label: 'Clinic Updates' }] as const).map(option => <TouchableOpacity key={option.id} accessibilityRole="tab" accessibilityState={{ selected: tab === option.id }} onPress={() => setTab(option.id)} style={[s.tab, tab === option.id && s.activeTab]}><Text style={[s.tabText, tab === option.id && s.activeTabText]}>{option.label}</Text></TouchableOpacity>)}
       </View>
       {searching && <View style={s.searchBox}><Ionicons name="search-outline" size={20} color={tc.textSecondary} /><TextInput accessibilityLabel="Search inbox messages" autoFocus placeholder="Search clinic, pet, or message" placeholderTextColor={tc.textMuted} value={search} onChangeText={setSearch} style={s.searchInput} /><TouchableOpacity accessibilityLabel="Close inbox search" onPress={() => { setSearch(''); setSearching(false); }}><Ionicons name="close" size={21} color={tc.textSecondary} /></TouchableOpacity></View>}
       {!!error && <TouchableOpacity onPress={() => { void load(true); void refreshNotifications(); }} style={s.errorBox}><Text style={s.error}>{error} Tap to retry.</Text></TouchableOpacity>}
-      <TouchableOpacity accessibilityRole="button" onPress={() => { setShowArchived(!showArchived); setTab('all'); }} style={s.errorBox}><Text style={{ color: isDark ? '#9EDDBB' : GREEN, fontWeight: '600' }}>{showArchived ? 'Back to inbox' : 'Archived conversations'}</Text></TouchableOpacity>
+      <TouchableOpacity accessibilityRole="button" onPress={() => { setShowArchived(!showArchived); setTab('all'); }} style={s.errorBox}><Text style={{ color: isDark ? colors.chart2 : GREEN, fontWeight: '600' }}>{showArchived ? 'Back to inbox' : 'Archived conversations'}</Text></TouchableOpacity>
       <FlatList data={shown} keyExtractor={item => item.key} refreshing={loading} onRefresh={() => { void load(true); void refreshNotifications(); }} contentContainerStyle={s.list} keyboardShouldPersistTaps="handled" renderItem={({ item }) => <TouchableOpacity accessibilityLabel={`Open message from ${item.clinicName}`} style={[s.card, !item.read && s.unreadCard]} onPress={() => void openItem(item)} onLongPress={() => { setArchiveTarget(item); setArchiveError(''); }} delayLongPress={250} accessibilityHint="Long press to archive or restore this conversation.">
-        <LinearGradient colors={['#005638', '#00804A', '#005638']} style={s.avatar}><Text style={s.initials}>{initials(item.clinicName)}</Text></LinearGradient>
+        <LinearGradient colors={gradients.brand} style={s.avatar}><Text style={s.initials}>{initials(item.clinicName)}</Text></LinearGradient>
         <View style={s.cardContent}>
           <View style={s.cardHeading}>{!item.read && <View style={s.unreadDot} />}<Text style={s.clinicName} numberOfLines={1}>{item.clinicName}</Text><Text style={s.time}>{timestamp(item.date)}</Text></View>
           <Text style={s.message} numberOfLines={2}>{item.message}</Text>
@@ -214,7 +214,7 @@ export default function MessagesScreen({ navigation }: any) {
         </View>
         <Ionicons name="chevron-forward" size={21} color={tc.text} style={s.chevron} />
       </TouchableOpacity>} ListEmptyComponent={<View style={s.empty}>{loading ? <ActivityIndicator color={GREEN} /> : <Ionicons name="mail-outline" size={40} color={tc.textMuted} />}<Text style={s.emptyTitle}>{loading ? 'Loading your inbox...' : query ? 'No matching messages' : tab === 'unread' ? 'You’re all caught up' : tab === 'updates' ? 'No clinic updates yet' : showArchived ? 'No archived conversations' : 'No messages yet'}</Text>{!loading && <Text style={s.emptyText}>{query ? 'Try another clinic, pet, or search term.' : 'Messages and shared records from your clinic will appear here.'}</Text>}</View>} />
-      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Compose message to a clinic" style={s.compose} onPress={() => void openCompose()}><LinearGradient colors={['#00804A', '#00643B']} style={s.composeGradient}><Ionicons name="create-outline" size={35} color="#FFFFFF" /></LinearGradient></TouchableOpacity>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Compose message to a clinic" style={s.compose} onPress={() => void openCompose()}><LinearGradient colors={gradients.brand} style={s.composeGradient}><Ionicons name="create-outline" size={35} color={colors.white} /></LinearGradient></TouchableOpacity>
     </View>
 
     <ArchiveDialog visible={!!archiveTarget}
@@ -238,9 +238,9 @@ export default function MessagesScreen({ navigation }: any) {
 }
 
 const styles = (tc: any, dark: boolean) => StyleSheet.create({
-  safe: { flex: 1, backgroundColor: GREEN }, header: { height: 80, overflow: 'hidden' }, headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, height: 40, paddingTop: 4 }, back: { width: 44, justifyContent: 'center' }, title: { flex: 1, color: '#FFFFFF', fontSize: 26, lineHeight: 33, fontWeight: '700' }, headerButton: { padding: 6, marginLeft: 13 }, subtitle: { color: '#F1F8F4', fontSize: 12, lineHeight: 18, marginLeft: 65 }, wave: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 27 },
-  panel: { flex: 1, backgroundColor: dark ? tc.background : '#FFFFFF', borderTopLeftRadius: 30, borderTopRightRadius: 30, overflow: 'hidden' }, tabs: { flexDirection: 'row', gap: 7, marginHorizontal: 26, marginTop: 20, marginBottom: 19 }, tab: { flex: 1, minHeight: 39, paddingHorizontal: 3, justifyContent: 'center', alignItems: 'center', borderRadius: 12, backgroundColor: dark ? tc.surface : '#F5F5F5', borderWidth: 1, borderColor: dark ? tc.border : '#E6E6E8' }, activeTab: { backgroundColor: GREEN, borderColor: GREEN }, tabText: { color: tc.text, fontSize: 13, fontWeight: '600' }, activeTabText: { color: '#FFFFFF', fontWeight: '700' },
-  list: { paddingHorizontal: 16, paddingBottom: 105 }, card: { flexDirection: 'row', padding: 15, paddingBottom: 11, paddingRight: 31, marginBottom: 12, borderRadius: 16, borderWidth: 1, borderColor: dark ? tc.border : '#EEEEEF', backgroundColor: dark ? tc.surface : '#FCFCFC', minHeight: 99, shadowColor: '#000000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 1 }, unreadCard: { backgroundColor: dark ? '#153C2C' : '#EAF4EF', borderColor: dark ? '#27513E' : '#E4EFE8' }, avatar: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginTop: 0 }, initials: { color: '#FFFFFF', fontSize: 18, fontWeight: '600' }, cardContent: { flex: 1, marginLeft: 15 }, cardHeading: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -3 }, unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#00743D' }, clinicName: { flex: 1, fontSize: 17, lineHeight: 21, fontWeight: '700', color: tc.text }, time: { color: tc.textSecondary, fontSize: 12, lineHeight: 18, marginLeft: 4 }, message: { color: tc.text, fontSize: 14, lineHeight: 19, marginTop: 1 }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 7 }, chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, borderWidth: 1, borderColor: dark ? tc.border : '#D6E3DC', backgroundColor: dark ? '#B7D8C5' : '#FCFFFD', paddingHorizontal: 8, paddingVertical: 5 }, chipText: { color: '#16452C', fontSize: 11 }, chevron: { position: 'absolute', right: 9, top: '50%' },
-  searchBox: { marginHorizontal: 16, marginBottom: 15, borderWidth: 1, borderColor: tc.border, borderRadius: 12, flexDirection: 'row', gap: 9, alignItems: 'center', paddingHorizontal: 12, backgroundColor: tc.surface }, searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: tc.text }, errorBox: { paddingHorizontal: 20, paddingBottom: 12 }, error: { color: dark ? '#FFBBBB' : '#B42318', fontSize: 13 }, empty: { alignItems: 'center', padding: 30, gap: 12 }, emptyTitle: { color: tc.text, fontSize: 16, fontWeight: '700' }, emptyText: { color: tc.textSecondary, fontSize: 13, lineHeight: 20, textAlign: 'center' }, compose: { position: 'absolute', right: 20, bottom: 28, borderRadius: 23, shadowColor: '#000000', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 3 }, elevation: 5 }, composeGradient: { width: 65, height: 65, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000066' }, sheet: { maxHeight: '85%', backgroundColor: tc.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 22, paddingBottom: 28 }, sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22, paddingBottom: 15 }, sheetTitle: { color: tc.text, fontSize: 20, fontWeight: '700', flex: 1 }, detailContent: { paddingHorizontal: 22, paddingBottom: 18 }, detailClinic: { color: tc.text, fontSize: 17, fontWeight: '700' }, detailMeta: { color: tc.textSecondary, fontSize: 12, lineHeight: 18 }, detailBody: { color: tc.text, fontSize: 14, lineHeight: 22, marginVertical: 16 }, recordTitle: { color: tc.text, fontSize: 15, fontWeight: '600', marginTop: 4 }, recordRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: tc.border }, primaryButton: { backgroundColor: GREEN, borderRadius: 10, alignItems: 'center', padding: 13, marginTop: 15 }, primaryText: { color: '#FFFFFF', fontWeight: '700' }, contactDescription: { marginHorizontal: 22, marginBottom: 10, color: tc.textSecondary, fontSize: 13, lineHeight: 20 },
+  safe: { flex: 1, backgroundColor: tc.background }, header: { height: 80, overflow: 'hidden' }, headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, height: 40, paddingTop: 4 }, back: { width: 44, justifyContent: 'center' }, title: { flex: 1, color: colors.ink, fontSize: 26, lineHeight: 33, fontWeight: '700' }, headerButton: { padding: 6, marginLeft: 13 }, subtitle: { color: colors.textMuted, fontSize: 12, lineHeight: 18, marginLeft: 65 },
+  panel: { ...roundedScreenPanel, backgroundColor: dark ? tc.background : colors.white }, tabs: { flexDirection: 'row', gap: 7, marginHorizontal: 26, marginTop: 20, marginBottom: 19 }, tab: { flex: 1, minHeight: 39, paddingHorizontal: 3, justifyContent: 'center', alignItems: 'center', borderRadius: 12, backgroundColor: dark ? tc.surface : colors.hoverRow, borderWidth: 1, borderColor: dark ? tc.border : colors.border }, activeTab: { backgroundColor: GREEN, borderColor: GREEN }, tabText: { color: tc.text, fontSize: 13, fontWeight: '600' }, activeTabText: { color: colors.white, fontWeight: '700' },
+  list: { paddingHorizontal: 16, paddingBottom: 105 }, card: { flexDirection: 'row', padding: 15, paddingBottom: 11, paddingRight: 31, marginBottom: 12, borderRadius: 16, borderWidth: 1, borderColor: dark ? tc.border : colors.neutralBg, backgroundColor: dark ? tc.surface : colors.hoverRow, minHeight: 99, shadowColor: '#000000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 1 }, unreadCard: { backgroundColor: dark ? colors.ink : colors.primarySoft, borderColor: dark ? colors.dark.border : colors.neutralBg }, avatar: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginTop: 0 }, initials: { color: colors.white, fontSize: 18, fontWeight: '600' }, cardContent: { flex: 1, marginLeft: 15 }, cardHeading: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -3 }, unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary }, clinicName: { flex: 1, fontSize: 17, lineHeight: 21, fontWeight: '700', color: tc.text }, time: { color: tc.textSecondary, fontSize: 12, lineHeight: 18, marginLeft: 4 }, message: { color: tc.text, fontSize: 14, lineHeight: 19, marginTop: 1 }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 7 }, chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, borderWidth: 1, borderColor: dark ? tc.border : colors.border, backgroundColor: dark ? colors.dark.textSecondary : colors.hoverRow, paddingHorizontal: 8, paddingVertical: 5 }, chipText: { color: colors.ink, fontSize: 11 }, chevron: { position: 'absolute', right: 9, top: '50%' },
+  searchBox: { marginHorizontal: 16, marginBottom: 15, borderWidth: 1, borderColor: tc.border, borderRadius: 12, flexDirection: 'row', gap: 9, alignItems: 'center', paddingHorizontal: 12, backgroundColor: tc.surface }, searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: tc.text }, errorBox: { paddingHorizontal: 20, paddingBottom: 12 }, error: { color: dark ? colors.dangerTextDark : colors.dangerText, fontSize: 13 }, empty: { alignItems: 'center', padding: 30, gap: 12 }, emptyTitle: { color: tc.text, fontSize: 16, fontWeight: '700' }, emptyText: { color: tc.textSecondary, fontSize: 13, lineHeight: 20, textAlign: 'center' }, compose: { position: 'absolute', right: 20, bottom: 28, borderRadius: 23, shadowColor: '#000000', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 3 }, elevation: 5 }, composeGradient: { width: 65, height: 65, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
+  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay }, sheet: { maxHeight: '85%', backgroundColor: tc.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 22, paddingBottom: 28 }, sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22, paddingBottom: 15 }, sheetTitle: { color: tc.text, fontSize: 20, fontWeight: '700', flex: 1 }, detailContent: { paddingHorizontal: 22, paddingBottom: 18 }, detailClinic: { color: tc.text, fontSize: 17, fontWeight: '700' }, detailMeta: { color: tc.textSecondary, fontSize: 12, lineHeight: 18 }, detailBody: { color: tc.text, fontSize: 14, lineHeight: 22, marginVertical: 16 }, recordTitle: { color: tc.text, fontSize: 15, fontWeight: '600', marginTop: 4 }, recordRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: tc.border }, primaryButton: { backgroundColor: GREEN, borderRadius: 10, alignItems: 'center', padding: 13, marginTop: 15 }, primaryText: { color: colors.white, fontWeight: '700' }, contactDescription: { marginHorizontal: 22, marginBottom: 10, color: tc.textSecondary, fontSize: 13, lineHeight: 20 },
 });

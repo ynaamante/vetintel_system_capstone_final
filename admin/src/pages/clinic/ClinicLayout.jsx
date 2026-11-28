@@ -311,27 +311,27 @@ const T = {
   actions: { display: 'flex', gap: 10 },
   search:  {
     width: '100%', padding: '9px 14px 9px 36px',
-    border: '1px solid #e8ecf0', borderRadius: 8,
-    fontSize: '.78rem', color: '#111827',
-    background: '#f1f6ef', outline: 'none', marginBottom: 20,
+    border: '1px solid var(--input-border, #e8ecf0)', borderRadius: 8,
+    fontSize: '.78rem', color: 'var(--text, #111827)',
+    background: 'var(--surface, #f1f6ef)', outline: 'none', marginBottom: 20,
   },
   searchWrap: { position: 'relative', marginBottom: 20 },
-  searchIcon: { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#64748b', display: 'flex' },
+  searchIcon: { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: 'var(--text-muted, #64748b)', display: 'flex' },
   table:   { width: '100%', borderCollapse: 'collapse' },
-  th:      { textAlign: 'left', fontSize: '.72rem', fontWeight: 700, color: '#111827', textTransform: 'none', letterSpacing: 0, paddingBottom: 10, borderBottom: '1px solid #f1f5f9' },
-  td:      { padding: '13px 0', fontSize: '.75rem', color: '#111827', borderBottom: '1px solid #f8fafc', verticalAlign: 'middle' },
-  tdMuted: { padding: '13px 0', fontSize: '.75rem', color: '#111827', borderBottom: '1px solid #f8fafc', verticalAlign: 'middle' },
+  th:      { textAlign: 'left', fontSize: '.72rem', fontWeight: 700, color: 'var(--ink, #111827)', textTransform: 'none', letterSpacing: 0, paddingBottom: 10, borderBottom: '1px solid var(--border, #f1f5f9)' },
+  td:      { padding: '13px 0', fontSize: '.75rem', color: 'var(--text, #111827)', borderBottom: '1px solid var(--border, #f8fafc)', verticalAlign: 'middle' },
+  tdMuted: { padding: '13px 0', fontSize: '.75rem', color: 'var(--text-muted, #111827)', borderBottom: '1px solid var(--border, #f8fafc)', verticalAlign: 'middle' },
   secondaryBtn: {
     display: 'flex', alignItems: 'center', gap: 6,
-    padding: '7px 14px', border: '1px solid #e8ecf0',
-    borderRadius: 8, fontSize: '.75rem', color: '#111827',
-    background: '#fff', cursor: 'pointer',
+    padding: '7px 14px', border: '1px solid var(--primary, #e8ecf0)',
+    borderRadius: 8, fontSize: '.75rem', color: 'var(--primary, #111827)',
+    background: 'var(--surface, #fff)', cursor: 'pointer',
   },
   primaryBtn: {
     display: 'flex', alignItems: 'center', gap: 6,
     padding: '7px 14px', border: 'none',
     borderRadius: 8, fontSize: '.75rem', color: '#fff',
-    background: '#086b50', cursor: 'pointer', fontWeight: 500,
+    background: 'var(--primary, #086b50)', cursor: 'pointer', fontWeight: 500,
   },
 };
 
@@ -340,15 +340,15 @@ function PrivacyBanner({ onClose }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
-      background: '#f0fdf4', border: '1px solid #bbf7d0',
+      background: 'var(--banner-gradient, #f0fdf4)', border: '1px solid var(--border, #bbf7d0)',
       borderRadius: 10, padding: '12px 16px', marginBottom: 20,
     }}>
-      <span style={{ width: 16, height: 16, display: 'flex', color: '#15803d', flexShrink: 0 }}>{Icons.lock}</span>
-      <div style={{ fontSize: '.82rem', color: '#166534', flex: 1 }}>
+      <span style={{ width: 16, height: 16, display: 'flex', color: 'var(--primary-hover, #15803d)', flexShrink: 0 }}>{Icons.lock}</span>
+      <div style={{ fontSize: '.82rem', color: 'var(--ink, #166534)', flex: 1 }}>
         <strong style={{ fontWeight: 600 }}>Privacy Protected</strong>
         {' — Patient names, owner info, and contact details are stored locally and NEVER shared with the intelligence network.'}
       </div>
-      <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#15803d', display: 'flex' }}>
+      <button type="button" aria-label="Dismiss privacy notice" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-hover, #15803d)', display: 'flex' }}>
         <span style={{ width: 16, height: 16, display: 'flex' }}>{Icons.close}</span>
       </button>
     </div>
@@ -1931,6 +1931,11 @@ export function LabResultsTab({ patientName, patientRecord, user, onCountChange,
 function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAdmissionRequest = null, onExternalAdmissionClose, onExternalAdmissionSave }) {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [actionRecord, setActionRecord] = useState(null);
+  const [historyRecord, setHistoryRecord] = useState(null);
+  const [inpatientAuditEntries, setInpatientAuditEntries] = useState([]);
+  const [inpatientAuditLoading, setInpatientAuditLoading] = useState(false);
+  const [inpatientAuditError, setInpatientAuditError] = useState('');
   const [localRecords, setLocalRecords] = usePageState(user, `InpatientTab:localRecords:all`, []);
   const [clinicPets, setClinicPets] = usePageState(user, `InpatientTab:clinicPets:all`, []);
   const [treatmentPlans, setTreatmentPlans] = usePageState(user, `InpatientTab:treatmentPlans:all`, []);
@@ -2365,6 +2370,30 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
     setDischargeForm({ discharge_assessment: '', home_instructions: '', outstanding_concerns: '', follow_up_recommendations: '' });
     setRecordsError('');
   };
+  useEffect(() => {
+    if (!historyRecord) return undefined;
+    const controller = new AbortController();
+    setInpatientAuditEntries([]);
+    setInpatientAuditError('');
+    if (!user?.clinic_id || !user?.token) {
+      setInpatientAuditLoading(false);
+      setInpatientAuditError('Sign in to this clinic to load inpatient audit history.');
+      return () => controller.abort();
+    }
+    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+    const query = new URLSearchParams({ clinic_id: String(user.clinic_id), table_name: 'clinic_inpatient_stays', record_id: String(historyRecord.databaseId || historyRecord.id) });
+    setInpatientAuditLoading(true);
+    fetch(`${apiUrl}/audit-trail/filter?${query}`, { headers: { Authorization: `Bearer ${user.token}` }, signal: controller.signal })
+      .then(async response => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(payload?.error || `Unable to load inpatient audit history (HTTP ${response.status}).`);
+        if (!Array.isArray(payload)) throw new Error('The inpatient audit endpoint returned an invalid response.');
+        setInpatientAuditEntries(payload);
+      })
+      .catch(error => { if (error.name !== 'AbortError') setInpatientAuditError(error.message || 'Unable to load inpatient audit history.'); })
+      .finally(() => { if (!controller.signal.aborted) setInpatientAuditLoading(false); });
+    return () => controller.abort();
+  }, [historyRecord, user?.clinic_id, user?.token]);
   const openFullInpatientRecord = focusRef => {
     setShowFullInpatientRecord(true);
     if (focusRef === inpatientMonitoringRef) openInpatientObservationForm();
@@ -2444,7 +2473,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
             </thead>
             <tbody>
               {records.map(record => {
-                const openActions = () => openInpatientRecord(record);
+                const openActions = () => setActionRecord(record);
                 return <tr key={record.id} className="clinic-action-row" tabIndex={0} onClick={openActions} onKeyDown={event => handleClinicActionRowKeyDown(event, openActions)}>
                 <td className="clinic-management-id">{record.id}</td>
                 <td className="clinic-management-primary">{record.pet}</td>
@@ -2456,7 +2485,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
                 <td>{record.doctor}</td>
                 <td><StatusIndicator status={record.status === 'admitted' ? 'Active' : 'Completed'} /></td>
                 <td className="lab-result-actions">
-                  <button type="button" className="clinic-record-actions-trigger" aria-label={`Open actions for inpatient record ${record.id}`} onClick={event => { event.stopPropagation(); openActions(); }}>
+                  <button type="button" className="clinic-record-actions-trigger" aria-label={`Open actions for inpatient record ${record.id}`} aria-haspopup="dialog" onClick={event => { event.stopPropagation(); openActions(); }}>
                     {Icons.chevronRight}
                   </button>
                 </td>
@@ -2681,6 +2710,42 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
             </div>
           </ModalFooter>
         </ModalDialog>
+      </div>}
+      {actionRecord && <RecordActionsModal
+        title="Inpatient Actions"
+        recordLabel={`Inpatient record #${actionRecord.id}`}
+        recordName={actionRecord.pet || 'Patient'}
+        recordMeta={`${actionRecord.ward || 'Ward not assigned'} · ${actionRecord.admitted || 'Admission date not recorded'}`}
+        user={user}
+        status={actionRecord.status === 'admitted' ? 'Admitted' : 'Discharged'}
+        onClose={() => setActionRecord(null)}
+        actions={[
+          { label: 'View Inpatient Details', description: 'Review the admission, patient, ward, and care information.', onClick: () => { const record = actionRecord; setActionRecord(null); openInpatientRecord(record); } },
+          { label: 'Audit History', description: 'Review the recorded activity and changes for this inpatient stay.', onClick: () => { setHistoryRecord(actionRecord); setInpatientAuditError(''); setActionRecord(null); } },
+          ...(actionRecord.treatment_plan_id ? [{ label: 'View Treatment Plan', description: 'Open the care plan linked to this inpatient stay.', onClick: () => { const record = actionRecord; setActionRecord(null); onOpenTreatmentPlan?.(record); } }] : []),
+        ]}
+      />}
+      {historyRecord && <div className="lab-audit-backdrop" onClick={() => setHistoryRecord(null)}>
+        <div className="lab-audit-dialog" role="dialog" aria-modal="true" aria-labelledby="inpatient-audit-title" onClick={event => event.stopPropagation()}>
+          <header className="lab-audit-header">
+            <div><h2 id="inpatient-audit-title">Inpatient Audit History</h2><p>{historyRecord.pet || 'Patient'} · Recorded changes to this inpatient stay</p></div>
+            <button type="button" aria-label="Close inpatient audit history" onClick={() => setHistoryRecord(null)}>{Icons.close}</button>
+          </header>
+          <div className="lab-audit-content">
+            {inpatientAuditLoading && <p className="lab-audit-empty">Loading inpatient activity…</p>}
+            {inpatientAuditError && <p className="lab-clinical-history-error" role="alert">{inpatientAuditError}</p>}
+            {!inpatientAuditLoading && !inpatientAuditError && (inpatientAuditEntries.length
+              ? <ol className="lab-audit-timeline">{inpatientAuditEntries.map((entry, index) => {
+                const oldData = entry.old_data || {};
+                const newData = entry.new_data || {};
+                const changedFields = Object.keys(oldData).filter(key => key !== '_audit' && JSON.stringify(oldData[key]) !== JSON.stringify(newData[key]));
+                const action = String(entry.action || 'activity').replace(/[_-]+/g, ' ');
+                return <AuditTimelineEntry key={entry.id || `${entry.timestamp}-${index}`} date={formatDateTimeText(entry.timestamp, 'en-US', entry.timestamp)} dateTime={entry.timestamp} title={`${action.charAt(0).toUpperCase()}${action.slice(1)} inpatient stay`} detail={entry.reason || newData._audit?.reason || (changedFields.length ? `Updated ${changedFields.map(field => field.replace(/_/g, ' ')).join(', ')}.` : '')} actor={entry.actor_name || entry.user_name} actorRole={entry.actor_role || 'Clinic staff'} changes={changedFields.map(field => ({ field: field.replace(/_/g, ' '), previous: oldData[field], next: newData[field] }))} />;
+              })}</ol>
+              : <p className="lab-audit-empty">No recorded activity was found for this inpatient stay.</p>)}
+          </div>
+          <footer className="lab-audit-footer"><button type="button" className="lab-audit-close-button" onClick={() => setHistoryRecord(null)}>Close</button></footer>
+        </div>
       </div>}
       {selectedRecord && !showFullInpatientRecord && <div className="clinic-inpatient-summary-backdrop" onClick={() => setSelectedRecord(null)}>
         <section className="clinic-inpatient-summary-dialog" role="dialog" aria-modal="true" aria-labelledby="inpatient-summary-title" onClick={event => event.stopPropagation()}>
@@ -3007,6 +3072,7 @@ function InpatientTab({ user, onOpenTreatmentPlan, appointments = [], externalAd
 
 export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, onStandalonePlanClose, appointments = [], createOnly = false, initialPlan = {}, onCreateClose, onCreated, portalTarget } = {}) {
   const [recordFilter, setRecordFilter] = useState('All Plans');
+  const [showArchivedPlans, setShowArchivedPlans] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [patientFilter, setPatientFilter] = useState(patientName || 'all');
@@ -3028,6 +3094,11 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
     medication: { name: '', dosage: '', route: '', frequency: '', quantity: '', instructions: '', startDate: '', endDate: '' },
   }));
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [actionPlan, setActionPlan] = useState(null);
+  const [historyPlan, setHistoryPlan] = useState(null);
+  const [planAuditEntries, setPlanAuditEntries] = useState([]);
+  const [planAuditLoading, setPlanAuditLoading] = useState(false);
+  const [planAuditError, setPlanAuditError] = useState('');
   const [selectedPlanTab, setSelectedPlanTab] = useState('Plan Details');
   const [planStepState, setPlanStepState] = useState({});
   const [planOverrides, setPlanOverrides] = useState({});
@@ -3065,6 +3136,30 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
   const [openTreatmentActions, setOpenTreatmentActions] = useState(null);
   const [treatmentRecordError, setTreatmentRecordError] = useState('');
   const [savingTreatmentRecord, setSavingTreatmentRecord] = useState(false);
+  useEffect(() => {
+    if (!historyPlan) return undefined;
+    const controller = new AbortController();
+    setPlanAuditEntries([]);
+    setPlanAuditError('');
+    if (!user?.clinic_id || !user?.token) {
+      setPlanAuditLoading(false);
+      setPlanAuditError('Sign in to this clinic to load treatment plan audit history.');
+      return () => controller.abort();
+    }
+    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+    const query = new URLSearchParams({ clinic_id: String(user.clinic_id), table_name: 'treatment_plans', record_id: String(historyPlan.databaseId || historyPlan.id) });
+    setPlanAuditLoading(true);
+    fetch(`${apiUrl}/audit-trail/filter?${query}`, { headers: { Authorization: `Bearer ${user.token}` }, signal: controller.signal })
+      .then(async response => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(payload?.error || `Unable to load treatment plan audit history (HTTP ${response.status}).`);
+        if (!Array.isArray(payload)) throw new Error('The treatment plan audit endpoint returned an invalid response.');
+        setPlanAuditEntries(payload);
+      })
+      .catch(error => { if (error.name !== 'AbortError') setPlanAuditError(error.message || 'Unable to load treatment plan audit history.'); })
+      .finally(() => { if (!controller.signal.aborted) setPlanAuditLoading(false); });
+    return () => controller.abort();
+  }, [historyPlan, user?.clinic_id, user?.token]);
   useEffect(() => {
     if (!user?.token || !user?.clinic_id) return undefined;
     const controller = new AbortController();
@@ -3183,9 +3278,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
   ].sort((left, right) => (Date.parse(right.date || '') || 0) - (Date.parse(left.date || '') || 0)).filter(record => {
     const recordStatus = String(record.status || '').toLowerCase();
     const isCompleted = ['completed', 'finalized'].includes(recordStatus);
-    const matchesCategory = recordFilter === 'Archived Plans'
-      ? Boolean(record.plan?.archived)
-      : !record.plan?.archived && (
+    const matchesCategory = Boolean(record.plan?.archived) === showArchivedPlans && (
         recordFilter === 'All Plans'
         || (recordFilter === 'Active Plans' && recordStatus === 'active')
         || (recordFilter === 'Paused Plans' && recordStatus === 'paused')
@@ -3831,14 +3924,14 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
   const formatDoseTime = value => value
     ? new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     : null;
-  const togglePlanArchive = async () => {
-    if (!selectedPlan?.databaseId || !user?.token || !user?.clinic_id || archivingPlan) return;
+  const togglePlanArchive = async (planToToggle = selectedPlan) => {
+    if (!planToToggle?.databaseId || !user?.token || !user?.clinic_id || archivingPlan) return false;
     setArchivingPlan(true);
     setArchivePlanError('');
-    const restoring = Boolean(selectedPlan.archived);
+    const restoring = Boolean(planToToggle.archived);
     try {
       const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
-      const response = await fetch(`${apiUrl}/clinic-records/treatment-plans/${encodeURIComponent(selectedPlan.databaseId)}/archive?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
+      const response = await fetch(`${apiUrl}/clinic-records/treatment-plans/${encodeURIComponent(planToToggle.databaseId)}/archive?clinic_id=${encodeURIComponent(user.clinic_id)}`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -3848,29 +3941,32 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || `Unable to ${restoring ? 'restore' : 'archive'} treatment plan (HTTP ${response.status}).`);
-      const updatedPlan = { ...selectedPlan, archived: !restoring };
-      setPlanOverrides(previous => ({ ...previous, [selectedPlan.id]: updatedPlan }));
-      setSelectedPlan(updatedPlan);
+      const updatedPlan = { ...planToToggle, archived: !restoring };
+      setPlanOverrides(previous => ({ ...previous, [planToToggle.id]: updatedPlan }));
+      setSelectedPlan(current => current && String(current.id) === String(planToToggle.id) ? updatedPlan : current);
       setClinicalRecordsVersion(version => version + 1);
-      setRecordFilter(restoring ? 'All Plans' : 'Archived Plans');
-      notifySuccess(restoring ? 'Treatment plan restored' : 'Treatment plan archived', `${selectedPlan.pet}'s treatment plan was ${restoring ? 'restored' : 'moved to the archive'}.`);
+      setRecordFilter('All Plans');
+      setShowArchivedPlans(!restoring);
+      notifySuccess(restoring ? 'Treatment plan restored' : 'Treatment plan archived', `${planToToggle.pet}'s treatment plan was ${restoring ? 'restored' : 'moved to the archive'}.`);
+      return true;
     } catch (error) {
       setArchivePlanError(error.message || 'Unable to update the treatment plan archive status.');
+      return false;
     } finally {
       setArchivingPlan(false);
     }
   };
   return (
     <div style={standalonePlanRequest || createOnly ? { display: 'none' } : { ...T.wrap, padding: '20px 20px 20px', borderRadius: 14 }}>
-      <div style={{ ...T.hd, margin: '0 0 26px' }}>
+      <div className="lab-results-header treatment-plan-page-header" style={{ ...T.hd, margin: '0 0 12px' }}>
         <div>
-          <div style={{ ...T.title, fontSize: '.9rem', fontWeight: 600 }}>Treatments &amp; Plans</div>
-          <div style={{ marginTop: 4, fontSize: '.75rem', color: '#64748b' }}>Centralized care plans and ongoing treatment progress for clinic patients</div>
+          <h2 className="lab-results-title">Treatments &amp; Plans</h2>
+          <p className="lab-results-description">Centralized care plans and ongoing treatment progress for clinic patients</p>
         </div>
       </div>
-      <div className="treatment-plan-status-row">
+      <div className="lab-status-row treatment-plan-status-row">
         <div className="lab-status-filters" role="tablist" aria-label="Treatment plans">
-          {['All Plans', 'Active Plans', 'Paused Plans', 'Completed', 'Archived Plans'].map(filter => <button
+          {['All Plans', 'Active Plans', 'Paused Plans', 'Completed'].map(filter => <button
             key={filter}
             type="button"
             role="tab"
@@ -3883,8 +3979,7 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
           {Icons.plus} Create Plan
         </button>
       </div>
-      {scheduledTreatmentAppointments.length > 0 && <section className="lab-clinical-history-state" style={{ margin: '0 0 14px' }}><strong>Scheduled treatments · plan pending doctor assessment</strong>{scheduledTreatmentAppointments.map(appointment => <div key={appointment.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 8, color: '#334155' }}><span>{appointment.pet} · {appointment.scheduledService}</span><span>{formatDateTimeText(appointment.start_time, 'en-US', appointment.start_time)} · Scheduled</span></div>)}</section>}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.6fr) minmax(180px, .75fr)', gap: 12, marginBottom: 14 }}>
+      <div className="treatment-plan-filter-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.6fr) minmax(180px, .75fr)', gap: 12, marginBottom: 10 }}>
         <div style={{ ...T.searchWrap, margin: 0 }}>
           <span style={T.searchIcon}>{Icons.search}</span>
           <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by pet name, owner, or diagnosis..." style={{ ...T.search, marginBottom: 0, padding: '9px 12px 9px 34px', fontSize: '.74rem' }} />
@@ -3896,6 +3991,13 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
           <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none', fontSize: 15, lineHeight: 1 }}>⌄</span>
         </span>
       </div>
+      <div className="clinic-archive-toolbar treatment-plan-archive-toolbar">
+        <div className="lab-archive-tabs" role="tablist" aria-label="Active and archived treatment plans">
+          <button type="button" role="tab" aria-selected={!showArchivedPlans} className={!showArchivedPlans ? 'active' : ''} onClick={() => setShowArchivedPlans(false)}>Active <span>{allPlans.filter(plan => !plan.archived).length}</span></button>
+          <button type="button" role="tab" aria-selected={showArchivedPlans} className={showArchivedPlans ? 'active' : ''} onClick={() => setShowArchivedPlans(true)}>Archived <span>{allPlans.filter(plan => plan.archived).length}</span></button>
+        </div>
+      </div>
+      {scheduledTreatmentAppointments.length > 0 && <section className="lab-clinical-history-state" style={{ margin: '0 0 14px' }}><strong>Scheduled treatments · plan pending doctor assessment</strong>{scheduledTreatmentAppointments.map(appointment => <div key={appointment.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 8, color: '#334155' }}><span>{appointment.pet} · {appointment.scheduledService}</span><span>{formatDateTimeText(appointment.start_time, 'en-US', appointment.start_time)} · Scheduled</span></div>)}</section>}
       {combinedRecords.some(record => record.isMock) && <div role="note" style={{ marginBottom: 12, padding: '10px 12px', border: '1px solid #ead9a7', borderRadius: 8, background: '#fffaf0', color: '#755b16', fontSize: '.74rem' }}>
         <strong>Reference sample only:</strong> this example is for guidance and is not a real patient record. It is read-only and is not saved to the clinic database.
       </div>}
@@ -3907,12 +4009,8 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
               const plan = record.kind === 'plan' ? record.plan : null;
               const displayDate = record.date || '—';
               const patient = clinicPets.find(item => item.name === record.patient);
-              const openPlan = () => {
-                setArchivePlanError('');
-                setSelectedPlan(plan);
-                setSelectedPlanTab('Plan Details');
-              };
-              return <tr key={record.id} className="clinic-action-row" tabIndex={0} onClick={openPlan} onKeyDown={event => handleClinicActionRowKeyDown(event, openPlan)}>
+              const openPlanActions = () => { setArchivePlanError(''); setActionPlan(plan); };
+              return <tr key={record.id} className="clinic-action-row" tabIndex={0} onClick={openPlanActions} onKeyDown={event => handleClinicActionRowKeyDown(event, openPlanActions)}>
                 <td style={{ ...T.td, padding: '13px 9px' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9 }}><div style={{ width: 32, height: 32, flexShrink: 0, borderRadius: '50%', background: '#e7f4ec', color: '#013826', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '.78rem' }}>{String(record.patient || '?').slice(0, 1)}</div><div><div style={{ color: '#111827', fontWeight: 700, fontSize: '.78rem' }}>{record.patient}</div><div style={{ color: '#64748b', fontSize: '.68rem' }}>{plan?.species || patient?.species || 'Patient record'}</div></div></div></td>
                 <td style={{ ...T.td, padding: '13px 9px', color: '#013826', fontWeight: 700, fontSize: '.78rem' }}><div>{record.title}</div><div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 5, marginTop: 3, color: '#64748b', fontWeight: 400, fontSize: '.68rem' }}><span>{plan.isMock ? 'Reference sample · not saved' : `Plan · ${plan.id}`}</span></div></td>
                 <td style={{ ...T.tdMuted, padding: '13px 9px', color: '#475569', fontSize: '.7rem' }}>{record.diagnosis}</td>
@@ -3923,7 +4021,8 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
                   <button
                     type="button"
                     aria-label={`Actions for ${record.patient}: ${record.title}`}
-                    onClick={event => { event.stopPropagation(); openPlan(); }}
+                    aria-haspopup="dialog"
+                    onClick={event => { event.stopPropagation(); openPlanActions(); }}
                     className="clinic-record-actions-trigger"
                   >{Icons.chevronRight}</button>
                 </td>
@@ -3933,6 +4032,43 @@ export function TreatmentPlansTab({ patientName, user, standalonePlanRequest, on
           </tbody>
         </table>
       </div>
+      {actionPlan && <RecordActionsModal
+        title="Treatment Plan Actions"
+        recordLabel={`Treatment plan ${actionPlan.id}`}
+        recordName={actionPlan.pet || 'Patient'}
+        recordMeta={`${actionPlan.title || 'Treatment plan'} · ${actionPlan.diagnosis || 'Diagnosis not recorded'}`}
+        user={user}
+        status={actionPlan.archived ? 'Archived' : actionPlan.status || 'Active'}
+        onClose={() => { setActionPlan(null); setArchivePlanError(''); }}
+        error={archivePlanError}
+        actions={[
+          { label: 'View Treatment Plan Details', description: 'Review plan instructions, progress, medications, and follow-up.', onClick: () => { setSelectedPlan(actionPlan); setSelectedPlanTab('Plan Details'); setActionPlan(null); } },
+          { label: 'Audit History', description: 'Review the recorded activity and changes for this treatment plan.', unavailable: !actionPlan.databaseId, onClick: () => { setHistoryPlan(actionPlan); setPlanAuditError(''); setActionPlan(null); } },
+          { label: actionPlan.archived ? 'Restore Treatment Plan' : 'Archive Treatment Plan', description: actionPlan.archived ? 'Return this plan to the active list.' : 'Move this plan out of the active list.', destructive: !actionPlan.archived, unavailable: !actionPlan.databaseId, onClick: async () => { if (await togglePlanArchive(actionPlan)) setActionPlan(null); } },
+        ]}
+      />}
+      {historyPlan && <div className="lab-audit-backdrop" onClick={() => setHistoryPlan(null)}>
+        <div className="lab-audit-dialog" role="dialog" aria-modal="true" aria-labelledby="treatment-plan-audit-title" onClick={event => event.stopPropagation()}>
+          <header className="lab-audit-header">
+            <div><h2 id="treatment-plan-audit-title">Treatment Plan Audit History</h2><p>{historyPlan.pet || 'Patient'} · Recorded changes to this treatment plan</p></div>
+            <button type="button" aria-label="Close treatment plan audit history" onClick={() => setHistoryPlan(null)}>{Icons.close}</button>
+          </header>
+          <div className="lab-audit-content">
+            {planAuditLoading && <p className="lab-audit-empty">Loading treatment plan activity…</p>}
+            {planAuditError && <p className="lab-clinical-history-error" role="alert">{planAuditError}</p>}
+            {!planAuditLoading && !planAuditError && (planAuditEntries.length
+              ? <ol className="lab-audit-timeline">{planAuditEntries.map((entry, index) => {
+                const oldData = entry.old_data || {};
+                const newData = entry.new_data || {};
+                const changedFields = Object.keys(oldData).filter(key => key !== '_audit' && JSON.stringify(oldData[key]) !== JSON.stringify(newData[key]));
+                const action = String(entry.action || 'activity').replace(/[_-]+/g, ' ');
+                return <AuditTimelineEntry key={entry.id || `${entry.timestamp}-${index}`} date={formatDateTimeText(entry.timestamp, 'en-US', entry.timestamp)} dateTime={entry.timestamp} title={`${action.charAt(0).toUpperCase()}${action.slice(1)} treatment plan`} detail={entry.reason || newData._audit?.reason || (changedFields.length ? `Updated ${changedFields.map(field => field.replace(/_/g, ' ')).join(', ')}.` : '')} actor={entry.actor_name || entry.user_name} actorRole={entry.actor_role || 'Clinic staff'} changes={changedFields.map(field => ({ field: field.replace(/_/g, ' '), previous: oldData[field], next: newData[field] }))} />;
+              })}</ol>
+              : <p className="lab-audit-empty">No recorded activity was found for this treatment plan.</p>)}
+          </div>
+          <footer className="lab-audit-footer"><button type="button" className="lab-audit-close-button" onClick={() => setHistoryPlan(null)}>Close</button></footer>
+        </div>
+      </div>}
       {clinicalRecordsError && <div role="alert" style={{ marginTop: 12, padding: '10px 12px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#b91c1c', fontSize: '.78rem' }}>{clinicalRecordsError}</div>}
       {createPlanOpen && createPortal(<div style={modalStyles.backdrop} onClick={closeCreatePlan}>
         <ModalDialog as="form" size="large" role="dialog" aria-modal="true" aria-labelledby="create-plan-title" onSubmit={saveNewPlan} onClick={event => event.stopPropagation()} className="clinic-add-form-dialog clinic-create-plan-dialog" style={{ ...modalStyles.dialog, minHeight: 0, width: 'min(720px, calc(100vw - 24px))', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', padding: '26px 28px 22px', fontSize: '1rem' }}>
@@ -5283,10 +5419,16 @@ function LocalAuditTab({ user }) {
   </div>;
 }
 
-function VisitCheckupTab({ user, onOpenVisit, visits = [], loading = false, error = '', onNewVisitCheckup }) {
+function VisitCheckupTab({ user, onOpenVisit, visits = [], appointments = [], onVisitsChange, onAppointmentsChange, loading = false, error = '' }) {
   const [search, setSearch] = useState('');
-  const [visitTypeFilter, setVisitTypeFilter] = useState('all');
   const [visitStatusFilter, setVisitStatusFilter] = useState('all');
+  const [showArchived, setShowArchived] = useState(false);
+  const [actionVisit, setActionVisit] = useState(null);
+  const [historyVisit, setHistoryVisit] = useState(null);
+  const [auditEntries, setAuditEntries] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState('');
+  const [archiveError, setArchiveError] = useState('');
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -5295,11 +5437,6 @@ function VisitCheckupTab({ user, onOpenVisit, visits = [], loading = false, erro
   const dateRangeTriggerRef = useRef(null);
   const dateRangePopoverRef = useRef(null);
   const [dateRangePosition, setDateRangePosition] = useState(null);
-  const getVisitType = visit => {
-    const notes = visit.consultation_notes && typeof visit.consultation_notes === 'object' ? visit.consultation_notes : {};
-    const type = visit.visit_type || visit.type || notes.visit_type || visit.reason || '';
-    return /check\s*-?up/i.test(type) ? 'check-up' : 'clinic-visit';
-  };
   const getVisitStatus = visit => {
     const appointmentStatus = String(visit.appointment_status || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
     const consultationStatus = String(visit.consultation_status || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
@@ -5338,8 +5475,46 @@ function VisitCheckupTab({ user, onOpenVisit, visits = [], loading = false, erro
       window.removeEventListener('scroll', updatePosition, true);
     };
   }, [dateRangeOpen]);
+  useEffect(() => {
+    if (!historyVisit) return undefined;
+    const controller = new AbortController();
+    setAuditEntries([]);
+    setAuditError('');
+    if (!user?.clinic_id || !user?.token) {
+      setAuditLoading(false);
+      setAuditError('Sign in to this clinic to load visit audit history.');
+      return () => controller.abort();
+    }
+    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
+    const query = new URLSearchParams({ clinic_id: String(user.clinic_id), table_name: 'appointments', record_id: String(historyVisit.appointment_id) });
+    setAuditLoading(true);
+    fetch(`${apiUrl}/audit-trail/filter?${query}`, { headers: { Authorization: `Bearer ${user.token}` }, signal: controller.signal })
+      .then(async response => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(payload?.error || `Unable to load visit audit history (HTTP ${response.status}).`);
+        if (!Array.isArray(payload)) throw new Error('The visit audit endpoint returned an invalid response.');
+        setAuditEntries(payload);
+      })
+      .catch(fetchError => { if (fetchError.name !== 'AbortError') setAuditError(fetchError.message || 'Unable to load visit audit history.'); })
+      .finally(() => { if (!controller.signal.aborted) setAuditLoading(false); });
+    return () => controller.abort();
+  }, [historyVisit, user?.clinic_id, user?.token]);
+  const archiveVisit = async visit => {
+    try {
+      const appointment = appointments.find(item => String(item.id) === String(visit.appointment_id)) || { id: visit.appointment_id, archived: visit.archived };
+      const saved = await updateClinicRecordArchive({ user, endpoint: '/clinic-records/appointments', record: appointment, label: 'visit and check-up' });
+      onAppointmentsChange?.(appointments.map(item => String(item.id) === String(visit.appointment_id) ? { ...item, ...saved } : item));
+      onVisitsChange?.(visits.map(item => String(item.appointment_id) === String(visit.appointment_id) ? { ...item, ...saved, archived: saved.archived } : item));
+      setArchiveError('');
+      notifySuccess(`Visit ${visit.appointment_id} ${saved.archived ? 'archived' : 'restored'} successfully!`, '');
+      return true;
+    } catch (archiveFailure) {
+      setArchiveError(archiveFailure.message || 'Unable to update this visit and check-up.');
+      return false;
+    }
+  };
   const filteredVisits = visits.filter(visit => (
-    (visitTypeFilter === 'all' || getVisitType(visit) === visitTypeFilter)
+    Boolean(visit.archived) === showArchived
     && (visitStatusFilter === 'all' || getVisitStatus(visit) === visitStatusFilter)
     && dateInRange(visit.visit_date, dateFrom, dateTo)
     && [visit.pet, visit.owner, visit.reason, visit.veterinarian, visit.appointment_status, visit.consultation_status]
@@ -5361,14 +5536,13 @@ function VisitCheckupTab({ user, onOpenVisit, visits = [], loading = false, erro
   return <div className="lab-results-list clinic-appointments-list clinic-visits-tab" style={{ ...T.wrap, padding: 18 }}>
     <div className="lab-results-header clinic-visits-page-header">
       <div><h2 className="lab-results-title">Visit &amp; Check-up</h2><p className="lab-results-description">Completed visits, active consultations, and scheduled check-ups for this clinic.</p></div>
+      <div className="lab-archive-tabs" role="tablist" aria-label="Active and archived visits">
+        <button type="button" role="tab" aria-selected={!showArchived} className={!showArchived ? 'active' : ''} onClick={() => setShowArchived(false)}>Active</button>
+        <button type="button" role="tab" aria-selected={showArchived} className={showArchived ? 'active' : ''} onClick={() => setShowArchived(true)}>Archived</button>
+      </div>
     </div>
     {error && <div className="lab-clinical-history-error" role="alert">{error}</div>}
-    <div className="lab-status-row clinic-vaccinations-status-row clinic-visits-status-row">
-      <div className="lab-status-filters" role="tablist" aria-label="Filter visits by type">
-        {[['all', 'All visits'], ['check-up', 'Check-ups'], ['clinic-visit', 'Clinic visits']].map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={visitTypeFilter === value} className={visitTypeFilter === value ? 'active' : ''} onClick={() => setVisitTypeFilter(value)}>{label}</button>)}
-      </div>
-      <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Create Consultation')} onClick={onNewVisitCheckup}>{Icons.plus} Visit &amp; Check-up</button>
-    </div>
+    {archiveError && <div className="lab-clinical-history-error" role="alert">{archiveError}</div>}
     <div className="lab-filter-bar clinic-visits-filter-bar">
       <label className="lab-results-search">
         {Icons.search}
@@ -5416,22 +5590,60 @@ function VisitCheckupTab({ user, onOpenVisit, visits = [], loading = false, erro
               const date = visitDate(visit.visit_date);
               const status = visit.consultation_status === 'completed' || visit.appointment_status === 'completed'
                 ? 'Completed' : visit.consultation_status === 'in_progress' ? 'In Consultation' : visit.appointment_status || 'Scheduled';
-              return <tr key={visit.appointment_id} className="clinic-action-row" tabIndex={0} onClick={() => onOpenVisit(visit.appointment_id)} onKeyDown={event => { if (event.target === event.currentTarget && ['Enter', ' '].includes(event.key)) { event.preventDefault(); onOpenVisit(visit.appointment_id); } }}>
+              const openActions = () => { setArchiveError(''); setActionVisit(visit); };
+              return <tr key={visit.appointment_id} className="clinic-action-row" tabIndex={0} onClick={openActions} onKeyDown={event => { if (event.target === event.currentTarget && ['Enter', ' '].includes(event.key)) { event.preventDefault(); openActions(); } }}>
                 <td data-label="Date & Time"><div className="lab-result-date"><strong>{date.date}</strong>{date.time && <span>{date.time}</span>}</div></td>
                 <td data-label="Patient" className="lab-result-pet">{visit.pet || '—'}{visit.species && <small style={{ display: 'block', color: '#64748b' }}>{visit.species}</small>}</td>
                 <td data-label="Owner">{visit.owner || '—'}</td>
                 <td data-label="Visit / Check-up"><div className="lab-result-test"><strong>{getVisitSummary(visit)}</strong><span>{/check\s*-?up/i.test(visit.reason || '') ? 'Check-up' : 'Clinic visit'}</span></div></td>
                 <td data-label="Veterinarian">{visit.veterinarian || '—'}</td>
                 <td data-label="Status"><StatusIndicator status={status} /></td>
-                <td className="lab-result-actions"><button type="button" className="lab-row-action-trigger clinic-record-actions-trigger" aria-label={`Open visit for ${visit.pet}`} onClick={event => { event.stopPropagation(); onOpenVisit(visit.appointment_id); }}>{Icons.chevronRight}</button></td>
+                <td className="lab-result-actions"><button type="button" className="lab-row-action-trigger clinic-record-actions-trigger" aria-label={`Open actions for visit ${visit.appointment_id}`} aria-haspopup="dialog" onClick={event => { event.stopPropagation(); openActions(); }}>{Icons.chevronRight}</button></td>
               </tr>;
             })}
-            {!loading && !filteredVisits.length && <tr><td className="lab-results-empty" colSpan="7">{search || visitTypeFilter !== 'all' || visitStatusFilter !== 'all' || dateFrom || dateTo ? 'No visits match the selected filters.' : 'No visit or check-up records are available yet.'}</td></tr>}
+            {!loading && !filteredVisits.length && <tr><td className="lab-results-empty" colSpan="7">{search || visitStatusFilter !== 'all' || dateFrom || dateTo ? 'No visits match the selected filters.' : showArchived ? 'No archived visits or check-ups.' : 'No visit or check-up records are available yet.'}</td></tr>}
             {loading && <tr><td className="lab-results-empty" colSpan="6">Loading visit records…</td></tr>}
           </tbody>
         </table>
       </div>
     </section>
+    {actionVisit && <RecordActionsModal
+      title="Visit & Check-up Actions"
+      recordLabel={`Visit #${actionVisit.appointment_id}`}
+      recordName={actionVisit.pet || 'Patient'}
+      recordMeta={`${actionVisit.reason || (getVisitType(actionVisit) === 'check-up' ? 'Check-up' : 'Clinic visit')} · ${visitDate(actionVisit.visit_date).date}${visitDate(actionVisit.visit_date).time ? ` · ${visitDate(actionVisit.visit_date).time}` : ''}`}
+      user={user}
+      status={actionVisit.consultation_status || actionVisit.appointment_status || 'scheduled'}
+      onClose={() => { setArchiveError(''); setActionVisit(null); }}
+      error={archiveError}
+      actions={[
+        { label: 'View Visit & Check-up Details', description: 'Review the patient, visit notes, schedule, and check-up information.', onClick: () => { const id = actionVisit.appointment_id; setActionVisit(null); onOpenVisit(id); } },
+        { label: 'Audit History', description: 'Review the recorded activity and changes for this visit.', onClick: () => { setHistoryVisit(actionVisit); setAuditError(''); setActionVisit(null); } },
+        { label: showArchived ? 'Restore Visit & Check-up' : 'Archive Visit & Check-up', description: showArchived ? 'Return this visit to the active list.' : 'Move this visit out of the active list.', permission: 'Cancel Appointment', destructive: !showArchived, onClick: async () => { if (await archiveVisit(actionVisit)) setActionVisit(null); } },
+      ]}
+    />}
+    {historyVisit && <div className="lab-audit-backdrop" onClick={() => setHistoryVisit(null)}>
+      <div className="lab-audit-dialog" role="dialog" aria-modal="true" aria-labelledby="visit-audit-title" onClick={event => event.stopPropagation()}>
+        <header className="lab-audit-header">
+          <div><h2 id="visit-audit-title">Visit &amp; Check-up Audit History</h2><p>{historyVisit.pet || 'Patient'} · Recorded changes to this visit</p></div>
+          <button type="button" aria-label="Close visit audit history" onClick={() => setHistoryVisit(null)}>{Icons.close}</button>
+        </header>
+        <div className="lab-audit-content">
+          {auditLoading && <p className="lab-audit-empty">Loading visit activity…</p>}
+          {auditError && <p className="lab-clinical-history-error" role="alert">{auditError}</p>}
+          {!auditLoading && !auditError && (auditEntries.length
+            ? <ol className="lab-audit-timeline">{auditEntries.map((entry, index) => {
+              const oldData = entry.old_data || {};
+              const newData = entry.new_data || {};
+              const changedFields = Object.keys(oldData).filter(key => key !== '_audit' && JSON.stringify(oldData[key]) !== JSON.stringify(newData[key]));
+              const action = String(entry.action || 'activity').replace(/[_-]+/g, ' ');
+              return <AuditTimelineEntry key={entry.id || `${entry.timestamp}-${index}`} date={formatDateTimeText(entry.timestamp, 'en-US', entry.timestamp)} dateTime={entry.timestamp} title={`${action.charAt(0).toUpperCase()}${action.slice(1)} visit`} detail={entry.reason || newData._audit?.reason || (changedFields.length ? `Updated ${changedFields.map(field => field.replace(/_/g, ' ')).join(', ')}.` : '')} actor={entry.actor_name || entry.user_name} actorRole={entry.actor_role || 'Clinic staff'} changes={changedFields.map(field => ({ field: field.replace(/_/g, ' '), previous: oldData[field], next: newData[field] }))} />;
+            })}</ol>
+            : <p className="lab-audit-empty">No recorded activity was found for this visit.</p>)}
+        </div>
+        <footer className="lab-audit-footer"><button type="button" className="lab-audit-close-button" onClick={() => setHistoryVisit(null)}>Close</button></footer>
+      </div>
+    </div>}
   </div>;
 }
 
@@ -5637,7 +5849,7 @@ const modalStyles = {
   invalidInput: { border: '1px solid #dc2626' },
   fieldError: { color: '#dc2626', fontSize: '.7rem', fontWeight: 500 },
   footer: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 },
-  cancel: { border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', color: '#111827', padding: '8px 15px', fontSize: '.78rem', cursor: 'pointer' },
+  cancel: { border: '1px solid var(--primary, #137a76)', borderRadius: 8, background: 'var(--primary, #137a76)', color: '#fff', padding: '8px 15px', fontSize: '.78rem', cursor: 'pointer' },
   error: { color: '#dc2626', fontSize: '.75rem', marginTop: 4 },
   detailGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, color: '#111827' },
   tags: { display: 'flex', gap: 6, marginTop: 7 },
@@ -5755,10 +5967,6 @@ function OwnersTab({ owners, user, onOwnersChange }) {
   const [archiveError, setArchiveError] = useState('');
   const displayedOwners = localOwners || owners || [];
   const filtered = displayedOwners.filter(o => Boolean(o.archived) === showArchived && [o.id, o.name, o.phone, o.email, o.address].some(value => String(value || '').toLowerCase().includes(search.toLowerCase())));
-  const ownerStatusCounts = {
-    active: displayedOwners.filter(owner => !owner.archived).length,
-    archived: displayedOwners.filter(owner => owner.archived).length,
-  };
   const archiveOwner = async owner => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
     const query = user.clinic_id ? `?clinic_id=${encodeURIComponent(user.clinic_id)}` : '';
@@ -5861,18 +6069,18 @@ function OwnersTab({ owners, user, onOwnersChange }) {
     onBack={() => setSelectedOwner(null)}
     onClose={() => { setSelectedOwner(null); setActionOwner(null); }}
   />}
-    <div className="lab-results-header">
+    <div className="lab-results-header clinic-management-page-header">
       <div>
         <h2 className="lab-results-title">Owners Management</h2>
         <p className="lab-results-description">Manage owner profiles, contact details, and linked pets.</p>
       </div>
-    </div>
-    <div className="lab-status-row clinic-management-status-row clinic-archive-status-row">
-      <div className="lab-status-filters" role="tablist" aria-label="Owner record status">
-        <button type="button" role="tab" aria-selected={!showArchived} className={!showArchived ? 'active' : ''} onClick={() => setShowArchived(false)}>Active<span>{ownerStatusCounts.active}</span></button>
-        <button type="button" role="tab" aria-selected={showArchived} className={showArchived ? 'active' : ''} onClick={() => setShowArchived(true)}>Archived<span>{ownerStatusCounts.archived}</span></button>
-      </div>
       <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Create Owner')} onClick={() => setAddOpen(true)}>{Icons.plus} Add New Owner</button>
+    </div>
+    <div className="clinic-management-archive-row">
+      <div className="lab-archive-tabs" role="tablist" aria-label="Active and archived owners">
+        <button type="button" role="tab" aria-selected={!showArchived} className={!showArchived ? 'active' : ''} onClick={() => setShowArchived(false)}>Active</button>
+        <button type="button" role="tab" aria-selected={showArchived} className={showArchived ? 'active' : ''} onClick={() => setShowArchived(true)}>Archived</button>
+      </div>
     </div>
     <label className="lab-results-search clinic-management-search">
       {Icons.search}
@@ -6075,10 +6283,6 @@ function PetsTab({ pets, owners, user, onPetsChange, onOwnersChange }) {
   const [localPets, setLocalPets] = useState(null);
   const ownerRows = owners || [];
   const displayedPets = localPets || pets || [];
-  const petStatusCounts = {
-    active: displayedPets.filter(pet => !pet.archived).length,
-    archived: displayedPets.filter(pet => pet.archived).length,
-  };
   const speciesOptions = [...new Set(displayedPets
     .filter(pet => Boolean(pet.archived) === showArchived)
     .map(pet => String(pet.species || '').trim() || 'Not specified'))]
@@ -6252,18 +6456,18 @@ function PetsTab({ pets, owners, user, onPetsChange, onOwnersChange }) {
         onUploadPhoto={uploadPetPhoto}
       />}
       {transferPet && <TransferPetModal pet={transferPet} owners={ownerRows} onClose={() => setTransferPet(null)} onTransfer={transfer} />}
-      <div className="lab-results-header">
+      <div className="lab-results-header clinic-management-page-header">
         <div>
           <h2 className="lab-results-title">Pets Management</h2>
           <p className="lab-results-description">Manage registered pets, profiles, owners, and health status.</p>
         </div>
-      </div>
-      <div className="lab-status-row clinic-management-status-row clinic-archive-status-row">
-        <div className="lab-status-filters" role="tablist" aria-label="Pet record status">
-          <button type="button" role="tab" aria-selected={!showArchived} className={!showArchived ? 'active' : ''} onClick={() => setShowArchived(false)}>Active<span>{petStatusCounts.active}</span></button>
-          <button type="button" role="tab" aria-selected={showArchived} className={showArchived ? 'active' : ''} onClick={() => setShowArchived(true)}>Archived<span>{petStatusCounts.archived}</span></button>
-        </div>
         <button type="button" className="lab-results-add" disabled={!hasAction(user.permissions,user.role,'Create Pet Records')} onClick={() => setAddOpen(true)}>{Icons.plus} Add New Pet</button>
+      </div>
+      <div className="clinic-management-archive-row">
+        <div className="lab-archive-tabs" role="tablist" aria-label="Active and archived pets">
+          <button type="button" role="tab" aria-selected={!showArchived} className={!showArchived ? 'active' : ''} onClick={() => setShowArchived(false)}>Active</button>
+          <button type="button" role="tab" aria-selected={showArchived} className={showArchived ? 'active' : ''} onClick={() => setShowArchived(true)}>Archived</button>
+        </div>
       </div>
       <div className="lab-filter-bar clinic-pet-filter-bar">
         <label className="lab-results-search clinic-management-search">
@@ -7969,16 +8173,6 @@ function VaccinationsTab({ onVisitEnded, onAppointmentRequestHandled, openAppoin
         />
       </div>
       {archiveError && <div role="alert" style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#b91c1c', fontSize: '.78rem' }}>{archiveError}</div>}
-      {overdueVaccinations.length > 0 && !showArchived && <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 13, padding: '10px 13px', border: '1px solid #efd181', borderRadius: 10, background: '#fff4c9', color: '#86540a', fontSize: '.8rem', lineHeight: 1.5 }}>
-        <span>
-          <strong>{overdueVaccinations.length} {overdueVaccinations.length === 1 ? 'vaccine is' : 'vaccines are'} overdue:</strong>{' '}
-          {overdueVaccinations.map(item => `${item.type} (${item.pet})`).join(', ')}.
-          {isUsingDemoVaccinations && <span style={{ marginLeft: 6, fontSize: '.72rem' }}>Demo data</span>}
-        </span>
-        <button type="button" onClick={contactOverdueOwner} style={{ flex: '0 0 auto', minHeight: 36, padding: '0 12px', border: '1px solid #e3d4aa', borderRadius: 8, background: '#fff', color: '#81500a', font: 'inherit', fontSize: '.75rem', fontWeight: 650, cursor: 'pointer' }}>
-          {overduePetGroups.length === 1 && !isUsingDemoVaccinations && onNavigate ? 'Contact owner' : 'View overdue'}
-        </button>
-      </div>}
       <div className="clinic-archive-toolbar">
         <div className="lab-archive-tabs" role="tablist" aria-label="Active and archived vaccinations">
           <button type="button" role="tab" aria-selected={!showArchived} className={!showArchived ? 'active' : ''} onClick={() => setShowArchived(false)}>Active <span>{displayedVaccinations.filter(item => !item.archived).length}</span></button>
@@ -8701,7 +8895,7 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
       if (!response.ok) throw new Error(payload.error || 'Unable to save the lab test request.');
       return payload;
     }} />,
-    visits: <VisitCheckupTab user={user} onOpenVisit={setOpenVisitId} visits={visits} loading={visitsLoading} error={visitsError} onNewVisitCheckup={() => { setVisitCheckupRequest({ id: Date.now() }); setTab('appointments'); }} />,
+    visits: <VisitCheckupTab user={user} onOpenVisit={setOpenVisitId} visits={visits} appointments={appointments} onVisitsChange={setVisits} onAppointmentsChange={setAppointments} loading={visitsLoading} error={visitsError} />,
     vaccinations: <VaccinationsTab onAppointmentRequestHandled={() => setOpenVaccinationRequest(null)} onVisitEnded={id => { setTab('visits'); setOpenVisitId(id); refreshWorkflow(); }} openAppointmentRequest={openVaccinationRequest} onWorkflowChanged={refreshWorkflow} vaccinations={vaccinations} appointments={appointments} pets={pets} user={user} onNavigate={onNavigate} onOpenAppointments={() => setTab('appointments')} onVaccinationsChange={setVaccinations}
       onAppointmentUpdate={(id, saved) => setAppointments(current => current.map(item => String(item.id) === String(id) ? { ...item, reason: saved.reason, notes: saved.notes } : item))}
       onAppointmentArchive={id => setAppointments(current => current.map(item => String(item.id) === String(id) ? { ...item, archived: true } : item))} />,
@@ -8729,7 +8923,7 @@ export default function ClinicLayout({ user, onNavigate, initialTab = 'dashboard
   const dashboardDateAction = tab === 'dashboard' ? <div className="clinic-dashboard-date"><span>{Icons.calendar}</span><div><strong>{dashboardDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</strong><small>{dashboardDate.toLocaleDateString('en-US', { weekday: 'long' })} · {dashboardDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</small></div></div> : null;
 
   return (
-    <div className="clinic-records-shell" style={{ flex: 1, minWidth: 0, width: '100%', overflowY: 'auto', overflowX: 'hidden', background: '#f1f6ef', fontSize: '14px', color: '#111827' }}>
+    <div className="clinic-records-shell" style={{ flex: 1, minWidth: 0, width: '100%', overflowY: 'auto', overflowX: 'hidden', background: 'var(--page, #f1f6ef)', fontSize: '14px', color: 'var(--text, #111827)' }}>
       <Topbar user={user} title="Local Clinic Records" subtitle="Patient records, vaccinations, treatments, consultations, and lab results" actions={dashboardDateAction} className={tab === 'dashboard' ? 'clinic-dashboard-topbar' : ''} />
       {openVisitId && <VisitWorkflowDialog user={user} appointmentId={openVisitId} onClose={() => setOpenVisitId(null)} onChanged={refreshWorkflow} onPatient={openPatient} onVaccinations={openVaccinations} onBilling={invoiceId => { setOpenVisitId(null); onNavigate?.('clinic', { tab: 'consultation', invoiceId }); setTab('consultation'); }} />}
       <TabNav items={availableTabs} active={tab} setTab={nextTab => { setOpenVaccinationRequest(null); setOpenVisitId(null); setTab(nextTab); }} />

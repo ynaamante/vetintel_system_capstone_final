@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   },
   checkButtonCompleted: {
     backgroundColor: colors.successBg,
-    borderColor: '#BBF7D0',
+    borderColor: colors.success,
   },
   checkButtonText: {
     fontSize: 13,

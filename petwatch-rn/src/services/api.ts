@@ -1,5 +1,6 @@
 import { NativeModules, Platform } from 'react-native';
 import { resolveApiUrl } from './apiBaseUrl';
+import type { OwnerMedicalActivity } from '../utils/medicalActivity';
 
 function apiUrl() {
   const source = NativeModules.SourceCode;
@@ -149,7 +150,7 @@ export const petsApi = {
 // ==================== APPOINTMENTS ====================
 
 export const ownerCareApi = {
-  medicalActivity: (id: string, token: string) => apiCall(`/owner/clinic-pets/${encodeURIComponent(id)}/medical-activity`, { token }),
+  medicalActivity: (id: string, token: string): Promise<OwnerMedicalActivity> => apiCall(`/owner/clinic-pets/${encodeURIComponent(id)}/medical-activity`, { token }),
   archivedPets: (token: string) => apiCall('/owner/archived-pets', { token }),
   archivePet: (id: string, source: 'clinic' | 'account', archived: boolean, token: string) => apiCall('/owner/pet-archive', { method: 'POST', token, body: { pet_id: id, source, archived } }),
   uploadPhoto: (id: string, clinic: boolean, data: string, token: string) => apiCall(`/owner/${clinic ? 'clinic-pets' : 'pets'}/${encodeURIComponent(id)}/photo`, { method: 'POST', token, body: { data } }),

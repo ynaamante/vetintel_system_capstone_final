@@ -22,18 +22,26 @@ export default function VisitWorkflowDialog({user,appointmentId,onClose,onChange
   const vaccinesReady=!!data?.vaccinations.length&&data.vaccinations.every(v=>v.status!=='scheduled'&&v.verified);
   const vaccinationVisit=/vaccin|rabies/i.test(visit?.reason||'')||service?.item_type==='vaccination';
   const assigned=visit&&!visit.practitioner_id||Number(visit?.practitioner_id)===Number(user.id);
-  return <dialog ref={dialog} className="reception-workflow-dialog clinic-record-details-modal" onCancel={event=>{event.preventDefault();if(!busy)onClose();}}>
+  return <dialog ref={dialog} className="reception-workflow-dialog clinic-record-details-modal reception-visit-detail-dialog" onCancel={event=>{event.preventDefault();if(!busy)onClose();}}>
     <header className="clinic-record-details-header"><div><h2>{visit?.reason||'Visit & Check-up'}</h2><p>{visit?.pet} · {visit?.owner}</p>{visit&&<StatusIndicator status={active?'in_consultation':ended?'completed':visit.status}/>}</div><button type="button" disabled={busy} onClick={onClose}>Close</button></header>
     <div className="reception-workflow-body record-details-content">
       {error&&<p role="alert" className="reception-action-error">{error}</p>}
       {!data&&<p>Loading visit…</p>}
       {visit&&<>
-        <section><h3>Visit details</h3><dl><dt>Attending veterinarian</dt><dd>{visit.veterinarian||'Unassigned'}</dd><dt>Appointment type</dt><dd>{visit.reason}</dd><dt>Visit date</dt><dd>{new Date(visit.start_time).toLocaleString()}</dd><dt>Visit status</dt><dd><StatusIndicator status={active?'in_consultation':ended?'completed':visit.status}/></dd></dl></section>
-        <section><h3>Service &amp; pricing</h3><dl><dt>Service</dt><dd>{service?.name||visit.reason}</dd><dt>Clinic price</dt><dd>{service?`₱${Number(service.unit_price).toFixed(2)}`:'Select the clinic service when completing the visit.'}</dd></dl></section>
-        <section><h3>Related records</h3><p>Records linked to this visit.</p><button type="button" onClick={()=>onVaccinations(visit)}>Vaccinations ({data.vaccinations.length})</button> <button type="button" onClick={()=>onPatient(visit)}>View Patient Records</button>
+        <section className="visit-detail-section"><h3>Visit Details</h3><dl className="visit-detail-grid">
+          <div><dt>Attending Veterinarian</dt><dd>{visit.veterinarian||'Unassigned'}</dd></div>
+          <div><dt>Visit Date</dt><dd>{new Date(visit.start_time).toLocaleString()}</dd></div>
+          <div><dt>Appointment Type</dt><dd>{visit.reason}</dd></div>
+          <div><dt>Visit Status</dt><dd><StatusIndicator status={active?'in_consultation':ended?'completed':visit.status}/></dd></div>
+        </dl></section>
+        <section className="visit-detail-section"><h3>Service &amp; Pricing</h3><dl className="visit-detail-grid visit-service-grid">
+          <div><dt>Service</dt><dd>{service?.name||visit.reason}</dd></div>
+          <div><dt>Clinic Price</dt><dd>{service?`₱${Number(service.unit_price).toFixed(2)}`:'Select the clinic service when completing the visit.'}</dd></div>
+        </dl></section>
+        <section className="visit-detail-section visit-related-section"><h3>Related Records</h3><p>Records linked to this visit.</p><div className="visit-related-actions"><button type="button" onClick={()=>onVaccinations(visit)}>Vaccinations ({data.vaccinations.length})</button><button type="button" onClick={()=>onPatient(visit)}>View Patient Records</button></div>
           {!!data.vaccinations.length&&<div className="lab-results-table-wrap"><table className="lab-results-table"><thead><tr><th>Vaccine</th><th>Administration</th><th>Verification</th></tr></thead><tbody>{data.vaccinations.map(v=><tr key={v.id}><td>{v.vaccine_name}</td><td><StatusIndicator status={v.status}/></td><td><StatusIndicator status={v.verified?'verified':'pending'} label={v.verified?'Verified':'Not verified'}/></td></tr>)}</tbody></table></div>}
         </section>
-        <section className="visit-workflow-panel"><h3>Consultation Status</h3><p>Manage the consultation progress for this visit.</p><dl><dt>Started at</dt><dd>{visit.started_at?new Date(visit.started_at).toLocaleString():'Not started'}</dd><dt>Duration</dt><dd>{visit.started_at?`${Math.max(0,Math.floor(((visit.completed_at?new Date(visit.completed_at):new Date())-new Date(visit.started_at))/60000))} min`:'—'}</dd><dt>Ended at</dt><dd>{visit.completed_at?new Date(visit.completed_at).toLocaleString():'—'}</dd></dl>
+        <section className="visit-workflow-panel visit-detail-section"><h3>Consultation Status</h3><p>Manage the consultation progress for this visit.</p><dl className="visit-consultation-grid"><div><dt>Started At</dt><dd>{visit.started_at?new Date(visit.started_at).toLocaleString():'Not started'}</dd></div><div><dt>Duration</dt><dd>{visit.started_at?`${Math.max(0,Math.floor(((visit.completed_at?new Date(visit.completed_at):new Date())-new Date(visit.started_at))/60000))} min`:'—'}</dd></div><div><dt>Ended At</dt><dd>{visit.completed_at?new Date(visit.completed_at).toLocaleString():'—'}</dd></div></dl>
           {active&&vaccinationVisit&&!vaccinesReady&&<p>Administer and verify the vaccinations before ending consultation.</p>}
           <div className="visit-workflow-buttons"><button type="button" className="is-save" disabled={busy||!assigned||active||ended||!['scheduled','checked_in','in_consultation'].includes(visit.status)} onClick={()=>act('start')}>Start Consultation</button><button type="button" className="is-save" disabled={busy||!assigned||!active||(vaccinationVisit&&!vaccinesReady)} onClick={()=>act('end')}>End Consultation</button></div>
         </section>

@@ -39,7 +39,7 @@ body.diagnosis-full-page-open > #root { display: none; }
 .diagnosis-observation-dialog header p { margin: 8px 0 18px; }
 .diagnosis-observation-dialog fieldset { border: 0; padding: 0; }
 .diagnosis-observation-dialog label { display: grid; gap: 6px; margin-bottom: 14px; font-size: 13px; font-weight: 600; }
-.diagnosis-observation-dialog input, .diagnosis-observation-dialog select, .diagnosis-observation-dialog textarea, .diagnosis-lab-picker select { width: 100%; padding: 9px 12px; border: 1px solid #bed6c5; border-radius: 7px; background: #fff; font: inherit; color: #153026; }
+.diagnosis-observation-dialog input, .diagnosis-observation-dialog select, .diagnosis-observation-dialog textarea, .diagnosis-lab-picker select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 7px; background: #fff; font: inherit; color: #153026; }
 .diagnosis-observation-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
 .diagnosis-observation-dialog footer { display: flex; justify-content: flex-end; gap: 10px; }
 .diagnosis-observation-dialog button { border: 1px solid #9bc9ac; border-radius: 7px; padding: 10px 14px; background: white; color: #075c26; font: inherit; cursor: pointer; }

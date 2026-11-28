@@ -6,11 +6,11 @@ import { canViewFeature } from '../utils/permissionUtils';
 
 // All available features organized by section
 const ALL_NAV_ITEMS = [
-  // Disease Intelligence
-  { id: 'dashboard', label: 'Dashboard',              icon: 'grid',     section: 'Disease Intelligence', checkPermission: 'Intelligence Dashboard' },
-  { id: 'disease',   label: 'Disease Monitoring',     icon: 'activity', section: 'Disease Intelligence', dot: true },
-  { id: 'risk',      label: 'Risk Monitoring',        icon: 'shield',   section: 'Disease Intelligence' },
-  { id: 'reports',   label: 'Reports',                icon: 'file',     section: 'Disease Intelligence' },
+  // Disease Monitoring
+  { id: 'dashboard', label: 'Dashboard',              icon: 'grid',     section: 'Disease Monitoring', checkPermission: 'Intelligence Dashboard' },
+  { id: 'disease',   label: 'Disease Monitoring',     icon: 'activity', section: 'Disease Monitoring', dot: true },
+  { id: 'risk',      label: 'Risk Monitoring',        icon: 'shield',   section: 'Disease Monitoring' },
+  { id: 'reports',   label: 'Reports',                icon: 'file',     section: 'Disease Monitoring' },
   // Clinic Management
   { id: 'clinics',   label: 'Clinic Overview',         icon: 'building', section: 'Clinic Management' },
   { id: 'users',     label: 'User Management',         icon: 'users',   section: 'Clinic Management', checkPermission: 'User & Role Management' },
@@ -19,12 +19,12 @@ const ALL_NAV_ITEMS = [
   { id: 'services',  label: 'Services Management',    icon: 'settings', section: 'Clinic Management', ownerOnly: true },
   { id: 'client-mgmt', label: 'Client Management', icon: 'users', section: 'Clinic Management' },
   { id: 'audit',     label: 'Audit Trail',            icon: 'list',    section: 'Clinic Management' },
-  // Clinic Records
-  { id: 'schedule',  label: 'My Schedule',             icon: 'calendar', section: 'Clinical Records', doctorOnly: true },
-  { id: 'patient-intakes', label: 'Patient Intakes',   icon: 'clipboard', section: 'Clinical Records', doctorOnly: true },
-  { id: 'clinic',    label: 'Local Clinic Records',   icon: 'building', section: 'Clinical Records', checkPermission: 'Local Clinic Records' },
-  { id: 'patient-records', label: 'Patient Records',   icon: 'file', section: 'Clinical Records', doctorOnly: true },
-  { id: 'reminders', label: 'Due Dates & Reminders', icon: 'bell', section: 'Clinical Records', doctorOnly: true },
+  // Clinic Records — the doctor clinical-workspace navigation group.
+  { id: 'schedule',  label: 'My Schedule',             icon: 'calendar', section: 'Clinic Records', doctorOnly: true },
+  { id: 'patient-intakes', label: 'Patient Intakes',   icon: 'clipboard', section: 'Clinic Records', doctorOnly: true },
+  { id: 'clinic',    label: 'Local Clinic Records',   icon: 'building', section: 'Clinic Records', checkPermission: 'Local Clinic Records' },
+  { id: 'patient-records', label: 'Patient Records',   icon: 'file', section: 'Clinic Records', doctorOnly: true },
+  { id: 'reminders', label: 'Due Dates & Reminders', icon: 'bell', section: 'Clinic Records', doctorOnly: true },
   // Operations
   { id: 'patient-registration', label: 'New Patient Registration', icon: 'clipboard', section: 'Operations' },
   { id: 'appointments', label: 'Appointment Management', icon: 'calendar', section: 'Operations' },
@@ -79,13 +79,19 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
             aria-label="Expand navigation menu"
             title="Expand navigation menu"
           >
-            <span style={{ ...s.brand, ...s.brandCollapsed }}>V</span>
+            <span className="sidebar-brand" style={{ ...s.brand, ...s.brandCollapsed }}>V</span>
           </button>
         ) : (
           <>
-            <div style={s.brand}>VetIntel</div>
+            <img
+              className="sidebar-brand-logo"
+              src="/images/vetintel-sidebar-logo.png"
+              alt="VetIntel"
+              style={s.brandLogo}
+            />
             <button
               type="button"
+              className="sidebar-menu-button"
               style={s.menuButton}
               onClick={() => window.dispatchEvent(new CustomEvent('vetintel-toggle-sidebar'))}
               aria-label="Collapse navigation menu"
@@ -99,26 +105,40 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
         )}
       </div>
 
+      {!collapsed && <div className="sidebar-brand-divider" style={s.brandDivider} aria-hidden="true" />}
+
       {!collapsed && (
-        <div style={s.clinicCard}>
-          <div style={s.clinicName}>{user.clinic_name || 'Clinic not assigned'}</div>
-          <div style={s.clinicMeta}>
-            <span>{user.clinic_id ? `CLI-${String(user.clinic_id).padStart(3, '0')}` : 'No clinic ID'}</span>
-            <span style={s.status}>
-              <span style={s.statusDot} />
-              Connected
-            </span>
+        <>
+          <div style={s.clinicCard}>
+            <div className="sidebar-clinic-name" style={s.clinicName}>{user.clinic_name || 'Clinic not assigned'}</div>
+            <div className="sidebar-clinic-meta" style={s.clinicMeta}>
+              <span>{user.clinic_id ? `CLI-${String(user.clinic_id).padStart(3, '0')}` : 'No clinic ID'}</span>
+              <span className="sidebar-status" style={s.status}>
+                <span style={s.statusDot} />
+                Connected
+              </span>
+            </div>
           </div>
-        </div>
+          <div className="sidebar-clinic-divider" style={s.clinicDivider} aria-hidden="true" />
+        </>
       )}
 
       {Object.entries(groupedNav).map(([sectionKey, sectionItems]) => (
-        <div key={sectionKey}>
+        <div
+          key={sectionKey}
+          className={sectionKey === 'Clinic Records' ? 'sidebar-clinical-section' : undefined}
+          role={sectionKey === 'Clinic Records' ? 'group' : undefined}
+          aria-label={sectionKey === 'Clinic Records' ? sectionKey : undefined}
+        >
           {sectionKey !== '__general__' && !collapsed && (
-            <div className={`sidebar-section${sectionKey === 'Clinic Management' ? ' sidebar-section-clinic-management' : ''}`} style={s.section}>{sectionKey}</div>
+            <div className={[
+              'sidebar-section',
+              sectionKey === 'Clinic Management' && 'sidebar-section-clinic-management',
+              ['Clinic Records', 'Disease Monitoring'].includes(sectionKey) && 'sidebar-section-doctor-workspace',
+            ].filter(Boolean).join(' ')} style={s.section}>{sectionKey}</div>
           )}
           {sectionItems.map(item => (
-            <div key={item.id} className={item.id === 'schedule' ? 'sidebar-clinical-section' : undefined}>
+            <div key={item.id}>
               <div
                 className={`sidebar-nav-item${(active === item.id || (item.id === 'services' && active === 'inventory')) ? ' active' : ''}`}
                 style={{ ...s.item, ...(collapsed ? s.itemCollapsed : {}), ...((active === item.id || (item.id === 'services' && active === 'inventory')) ? s.itemActive : {}) }}
@@ -155,7 +175,7 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
         </div>
       )}
 
-      <div style={s.actions}>
+      <div className="sidebar-actions" style={s.actions}>
         <button type="button" className={`sidebar-action${active === 'settings' ? ' active' : ''}`} style={{ ...s.action, width: '100%', border: 0, background: active === 'settings' ? '#0a966b' : 'transparent', textAlign: 'left', ...(collapsed ? { justifyContent: 'center', padding: '10px 0' } : {}) }} onClick={() => navigate('settings')} aria-current={active === 'settings' ? 'page' : undefined} aria-label="Settings" title={collapsed ? 'Settings' : undefined}><span style={s.icon}>{Icons.settings}</span>{!collapsed && 'Settings'}</button>
         {collapsed && (
           <button type="button" className="sidebar-action sidebar-action-logout" style={s.logoutButton} onClick={onLogout} aria-label="Sign out" title="Sign out">
@@ -164,8 +184,8 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
         )}
       </div>
       {!collapsed && (
-        <div style={s.userBox}>
-          <div style={s.avatar}>
+        <div className="sidebar-user-box" style={s.userBox}>
+          <div className="sidebar-user-avatar" style={s.avatar}>
             {String(user.name || 'V')
               .trim()
               .split(/\s+/)
@@ -173,9 +193,9 @@ export default function Sidebar({ active, setPage, user, onLogout, collapsed = f
               .map((part) => part.charAt(0).toUpperCase())
               .join('')}
           </div>
-          <div style={s.userDetails}>
-            <div style={s.userName}>{user.name}</div>
-            <div style={s.userRole}>{user.role}</div>
+          <div className="sidebar-user-details" style={s.userDetails}>
+            <div className="sidebar-user-name" style={s.userName}>{user.name}</div>
+            <div className="sidebar-user-role" style={s.userRole}>{user.role}</div>
           </div>
           <button type="button" className="sidebar-action sidebar-action-logout" style={s.logoutButton} onClick={onLogout} aria-label="Sign out" title="Sign out">
             {Icons.logout}
@@ -196,6 +216,8 @@ const s = {
   brand:      { padding: 0, fontFamily: "'DM Sans', sans-serif", fontSize: '1.2rem', fontWeight: 700, color: '#edf9f5', letterSpacing: '-.02em', lineHeight: 1, whiteSpace: 'nowrap' },
   brandCollapsed: { fontSize: '1rem', letterSpacing: 0 },
   brandRow:   { display: 'flex', alignItems: 'center', gap: 10, minHeight: 68, padding: '10px 8px 10px 4px' },
+  brandLogo:  { display: 'block', width: 178, maxWidth: 'calc(100% - 36px)', height: 54, objectFit: 'contain', objectPosition: 'left center', flex: '1 1 auto', minWidth: 0 },
+  brandDivider: { height: 2, margin: '0 -14px 8px', background: 'rgba(255,255,255,.2)', flexShrink: 0 },
   brandRowCollapsed: { justifyContent: 'center', gap: 0, minHeight: 98, padding: '14px 0 20px', marginBottom: 1, borderBottom: '1px solid rgba(255,255,255,.12)' },
   brandToggle: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, padding: 0, border: 0, borderRadius: 10, background: 'transparent', cursor: 'pointer' },
   brandIcon: { width: 40, height: 40, borderRadius: 10, background: 'transparent', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, flexShrink: 0 },
@@ -204,6 +226,7 @@ const s = {
   clinicCard: { minHeight: 52, padding: '2px 4px 8px', marginBottom: 8, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, overflow: 'hidden' },
   clinicName: { color: '#fff', fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4 },
   clinicMeta: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, color: 'rgba(255,255,255,.82)', fontSize: 12, whiteSpace: 'nowrap' },
+  clinicDivider: { height: 2, margin: '0 -14px', background: 'rgba(255,255,255,.2)', flexShrink: 0 },
   status:     { display: 'inline-flex', alignItems: 'center', gap: 5, color: '#dffaf3', fontSize: 12 },
   statusDot:  { width: 8, height: 8, borderRadius: '50%', background: '#53d38d', boxShadow: '0 0 0 3px rgba(83,211,141,.18)', flexShrink: 0 },
   section:    { padding: '14px 4px 8px', marginTop: 2, fontSize: 11, fontWeight: 700, color: 'rgba(220,245,239,.82)', letterSpacing: '.12em', textTransform: 'uppercase' },
@@ -224,7 +247,7 @@ const s = {
   userDetails: { minWidth: 0, flex: 1 },
   userName:   { width: 'fit-content', maxWidth: '100%', fontSize: 13, color: '#fff', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   userRole:   { fontSize: 12, color: 'rgba(255,255,255,.8)', marginTop: 1, textTransform: 'lowercase' },
-  actions:    { padding: '6px 0 8px', borderTop: '1px solid rgba(255,255,255,.12)' },
+  actions:    { padding: '6px 14px 8px', margin: '0 -14px', borderTop: '2px solid rgba(255,255,255,.12)' },
   action:     { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 11px', borderRadius: 8, color: '#edf9f5', fontSize: 14, cursor: 'pointer', transition: 'background .15s ease, color .15s ease' },
   logoutButton: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef3340', borderRadius: 11, border: '2px solid #ef3340', flexShrink: 0, background: 'transparent', padding: 0 },
 };

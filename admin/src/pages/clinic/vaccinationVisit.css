@@ -9,11 +9,11 @@
 .vaccination-visit-editor button:disabled { opacity: .45; cursor: default; }
 .vaccination-visit-editor .vve-close { border: 0; padding: 0 4px; font-size: 25px; }
 .vve-patient { display: flex; gap: 9px; align-items: center; margin-top: 8px; }
-.vve-avatar { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #e7f4ec; color: #075443; font-size: 22px; }
+.vve-avatar { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--primary-soft); color: #075443; font-size: 22px; }
 .vve-patient strong { display: block; font-size: 15px; }
 .vve-patient div > span { display: block; font-size: 11px; margin-top: 3px; }
 .vve-tabs { display: flex; flex-shrink: 0; gap: 6px; padding: 0 18px 9px; }
-.vaccination-visit-editor .vve-tabs button.active,.vaccination-visit-editor button.primary { background: #086b50; color: white; border-color: #086b50; }
+.vaccination-visit-editor .vve-tabs button.active,.vaccination-visit-editor button.primary { background: var(--primary); color: white; border-color: var(--primary); }
 .vve-content { display: grid; flex: 1; min-height: 0; gap: 10px; padding: 0 18px 12px; overflow: auto; }
 .vve-section { padding: 10px; border: 1px solid #cce5da; border-radius: 8px; background: linear-gradient(120deg,#f3faf6,#fbfdfc); }
 .vve-section h3,.vaccine-batch-inventory h3 { font-size: 16px; color: #074f3e; margin: 0; }
@@ -50,7 +50,7 @@
 .vaccine-batch-inventory { padding: 18px; margin: 16px 0; background: white; border: 1px solid #dbe3ee; border-radius: 10px; }
 .vaccine-batch-inventory header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .vaccine-batch-inventory form { margin: 12px 0; }
-.vaccine-batch-inventory form > button { margin: 12px 0; background: #086b50; color: #fff; }
+.vaccine-batch-inventory form > button { margin: 12px 0; background: var(--primary); color: #fff; }
 .vaccination-visit-editor.vve-reference { width: min(740px,calc(100vw - 24px)); max-height: min(800px,calc(100dvh - 24px)); border-radius: 13px; font-size: 11px; }
 .vve-reference .vve-heading { padding: 14px 24px 10px; }
 .vve-reference .vve-heading h2 { color: #074c3e; font-size: 21px; line-height: 1.2; font-weight: 750; letter-spacing: -.4px; }
@@ -93,14 +93,14 @@
 .vve-reference .vve-proof-compact .vve-upload { display: grid; gap: 3px; width: 215px; min-width: 160px; min-height: 44px; padding: 5px 10px; border: 1px dashed #95cabb; background: #f9fdfb; border-radius: 7px; }
 .vve-reference .vve-upload strong { font-size: 11px; }
 .vve-reference .vve-upload small { font-size: 11px; color: #66756e; font-weight: 400; }
-.vve-reference .vve-proof-filename { display: block; margin-top: 3px; color: #086b50; font-size: 11px; overflow-wrap: anywhere; }
+.vve-reference .vve-proof-filename { display: block; margin-top: 3px; color: var(--primary); font-size: 11px; overflow-wrap: anywhere; }
 .vve-reference .vve-proof-preview { margin-top: 7px; }
 .vve-reference .vve-proof-preview img { width: 140px; max-height: 90px; object-fit: contain; border-radius: 6px; }
 .vve-reference .vve-scan-status { color: #526b64; margin: 5px 0 0; }
 .vve-reference .vve-completion { gap: 7px; grid-template-columns: 1fr 1fr; margin-top: 7px; }
 .vve-reference .vve-completion > div:first-child { padding: 1px 3px; background: #ffffff8a; border-radius: 6px; }
 .vve-reference .vve-completion label { gap: 6px; font-size: 11px; line-height: 1.4; margin: 5px 0; }
-.vve-reference .vve-completion input[type=checkbox] { width: 15px; height: 15px; flex: 0 0 15px; margin: 0; accent-color: #086b50; }
+.vve-reference .vve-completion input[type=checkbox] { width: 15px; height: 15px; flex: 0 0 15px; margin: 0; accent-color: var(--primary); }
 .vve-reference .vve-completion-note { display: flex; align-items: flex-start; gap: 7px; padding: 8px; border-radius: 6px; background: #e5f5ee; }
 .vve-reference .vve-completion-note > span { color: #087457; font-size: 15px; line-height: 1; }
 .vve-reference .vve-completion-note p { background: none; padding: 0; margin: 0; font-size: 11px; }

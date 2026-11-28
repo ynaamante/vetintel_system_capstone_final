@@ -4,17 +4,19 @@ import { useEffect, useRef, useState } from 'react';
 import Topbar from '../components/Topbar';
 import RecordActionsModal from '../components/RecordActionsModal';
 import StatusIndicator from '../components/StatusIndicator';
+import RolePermissionTree, { permissionValue, visibleActions } from '../components/RolePermissionTree';
 import { Icons } from '../icons';
 import { canViewFeature } from '../utils/permissionUtils';
 import './userRoleManagement.css';
+import './rolesPermissions.css';
 
 const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
 
 const ROLE_META = {
-  owner: { color: '#d97706', bg: '#fffbeb', border: '#fde68a', icon: Icons.shield },
-  doctor: { color: '#013826', bg: '#e7f4ec', border: '#b7e4d7', icon: Icons.activity },
+  owner: { color: 'var(--warning-text)', bg: 'var(--warning-bg)', border: '#fde68a', icon: Icons.shield },
+  doctor: { color: 'var(--ink)', bg: 'var(--primary-soft)', border: '#b7e4d7', icon: Icons.activity },
   assistant_doctor: { color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff', icon: Icons.activity },
-  receptionist: { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', icon: Icons.users },
+  receptionist: { color: 'var(--success)', bg: 'var(--success-bg)', border: '#bbf7d0', icon: Icons.users },
 };
 
 const ROLE_LABELS = {
@@ -177,7 +179,9 @@ export default function UserRoleManagementPage({ user }) {
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState('');
   const [notification, setNotification] = useState('');
-  const [editForm, setEditForm] = useState({ id: '', name: '', email: '', role: 'doctor', status: 'Active' });
+  const [editForm, setEditForm] = useState({ id: '', name: '', email: '', role: 'doctor', position: '', phone: '', status: 'Active' });
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState('');
 
   const canView = canViewFeature(user.permissions, user.role, 'User & Role Management');
 
@@ -253,6 +257,7 @@ export default function UserRoleManagementPage({ user }) {
   };
 
   const openEdit = user => {
+    setEditError('');
     setEditForm({
       id: user.id,
       name: user.name,
@@ -260,44 +265,62 @@ export default function UserRoleManagementPage({ user }) {
       role: ['owner', 'clinic_owner'].includes(normalizeRole(user.role))
         ? (approvedRoles[0] || '')
         : normalizeRole(user.role),
+      position: user.position || '',
+      phone: user.phone || '',
       status: user.status,
     });
     setShowEdit(true);
   };
 
-  const handleUpdate = () => {
-    if (!editForm.name || !editForm.email) return;
-    fetch(`${apiUrl}/users/${editForm.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${user.token}`,
-      },
-      body: JSON.stringify({
-        name: editForm.name,
-        email: editForm.email.trim(),
-        role_name: normalizeRole(editForm.role),
-        is_active: editForm.status === 'Active',
-      }),
-    }).then(response => response.ok
-      ? response.json()
-      : response.json().then(body => Promise.reject(new Error(body.error || 'Failed to update staff account'))))
-      .then(row => {
-        setUsers(prev => prev.map(u => u.id === editForm.id ? {
-          ...u,
-          name: row.name,
-          email: row.email,
-          role: normalizeRole(row.role),
-          status: row.is_active === false ? 'Inactive' : 'Active',
-        } : u));
-        setShowEdit(false);
-        setNotification('Staff account updated.');
-        window.setTimeout(() => setNotification(''), 3000);
-      })
-      .catch(error => {
-        console.error('Failed to update staff account', error);
-        setNotification(error.message);
+  const handleUpdate = async () => {
+    const name = editForm.name.trim();
+    const email = editForm.email.trim();
+    if (!name || !email) {
+      setEditError('First name, last name, and email address are required.');
+      return false;
+    }
+
+    setEditBusy(true);
+    setEditError('');
+    try {
+      const response = await fetch(`${apiUrl}/users/${editForm.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${user.token}`,
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          role_name: normalizeRole(editForm.role),
+          position: editForm.position.trim(),
+          phone: editForm.phone.trim(),
+          is_active: editForm.status === 'Active',
+        }),
       });
+      const row = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(row.error || 'Failed to update staff account.');
+
+      setUsers(prev => prev.map(staff => staff.id === editForm.id ? {
+        ...staff,
+        name: row.name,
+        email: row.email,
+        role: normalizeRole(row.role),
+        position: row.position || '',
+        phone: row.phone || '',
+        status: row.is_active === false ? 'Inactive' : 'Active',
+      } : staff));
+      setShowEdit(false);
+      setNotification('Staff account updated.');
+      window.setTimeout(() => setNotification(''), 3000);
+      return true;
+    } catch (error) {
+      console.error('Failed to update staff account', error);
+      setEditError(error.message || 'Failed to update staff account.');
+      return false;
+    } finally {
+      setEditBusy(false);
+    }
   };
 
   const setEditField = key => e => setEditForm(f => ({ ...f, [key]: e.target.value }));
@@ -329,6 +352,15 @@ export default function UserRoleManagementPage({ user }) {
       setActionBusy(false);
     }
   };
+
+  if (profileUser) {
+    return <StaffDetailsView
+      currentUser={user}
+      staff={profileUser}
+      rolePermissions={rolePermissions[normalizeRole(profileUser.role)] || {}}
+      onClose={() => { setProfileUser(null); setActionUserId(null); }}
+    />;
+  }
 
   return (
     <div style={s.main}>
@@ -442,12 +474,13 @@ export default function UserRoleManagementPage({ user }) {
             : { label: 'Activate Account', description: 'Restore access to this clinic account.', icon: Icons.refresh, onClick: () => runStaffAction('status'), unavailable: actionBusy },
         ]}
       />}
-      {profileUser && <StaffProfileModal user={profileUser} rolePermissions={rolePermissions[normalizeRole(profileUser.role)] || {}} onClose={() => setProfileUser(null)} />}
       {showEdit && (
         <EditUserModal
           user={editForm}
           approvedRoles={approvedRoles}
-          onClose={() => setShowEdit(false)}
+          busy={editBusy}
+          error={editError}
+          onClose={() => { if (!editBusy) setShowEdit(false); }}
           onSave={handleUpdate}
           onChange={setEditField}
         />
@@ -456,54 +489,55 @@ export default function UserRoleManagementPage({ user }) {
   );
 }
 
-function EditUserModal({ user, approvedRoles, onClose, onSave, onChange }) {
+function EditUserModal({ user, approvedRoles, busy, error, onClose, onSave, onChange }) {
+  const dialog = useRef(null);
   const [firstName, ...lastParts] = user.name.split(' ');
   const lastName = lastParts.join(' ');
+
+  useEffect(() => {
+    const previous = document.activeElement;
+    dialog.current.showModal();
+    return () => previous?.focus();
+  }, []);
+
   return (
-    <div className="urm-staff-secondary-modal">
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 100 }} />
-      <div style={m.panel} role="dialog" aria-modal="true" aria-label="Edit Staff Account" onKeyDown={event => { if (event.key === 'Escape' && !event.defaultPrevented) onClose(); }}>
-        <div style={m.header}>
-          <div style={m.headerTitle}><span style={m.headerIcon}>{Icons.shield}</span> Edit Staff Account</div>
-          <button style={m.closeBtn} onClick={onClose} aria-label="Close staff editor" autoFocus>
-            <span style={{ width: 18, height: 18, display: 'flex', color: '#64748b' }}>{Icons.close}</span>
-          </button>
-        </div>
-        <div style={m.divider} />
-        <div style={m.body}>
-          <div style={m.twoColumns}>
-            <div style={m.field}><label style={m.label}>First Name <span style={m.required}>*</span></label><input style={m.input} value={firstName} onChange={e => onChange('name')({ target: { value: `${e.target.value} ${lastName}` } })} /></div>
-            <div style={m.field}><label style={m.label}>Last Name <span style={m.required}>*</span></label><input style={m.input} value={lastName} onChange={e => onChange('name')({ target: { value: `${firstName} ${e.target.value}` } })} /></div>
-          </div>
-          <div style={m.field}>
-            <label style={m.label}>Email Address <span style={m.required}>*</span></label>
-            <input style={m.input} placeholder="email@happypaws.com" value={user.email} onChange={onChange('email')} />
-            <small style={m.help}>This will be used to log in to the system.</small>
-          </div>
-          <div style={m.field}>
-            <label style={m.label}>Role <span style={m.required}>*</span></label>
-            <select style={m.input} value={user.role} onChange={onChange('role')}>
-              {APPROVED_STAFF_ROLES.filter(role => approvedRoles.includes(role.value) || role.value === user.role).map(role => (
-                <option key={role.value} value={role.value}>{role.label}</option>
-              ))}
-            </select>
-            <small style={m.help}>Only roles approved by Super Admin are shown.</small>
-          </div>
-          <div style={m.field}>
-            <label style={m.label}>Account Status</label>
-            <select style={m.input} value={user.status} onChange={onChange('status')}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </div>
-        </div>
-        <div style={m.divider} />
-        <div style={m.footer}>
-          <button style={m.secondaryBtn} onClick={onClose}>Cancel</button>
-          <button style={m.primaryBtn} onClick={onSave}>Save Changes</button>
-        </div>
-      </div>
-    </div>
+    <dialog ref={dialog} className="urm-add-dialog" aria-labelledby="urm-edit-title" onCancel={event => { event.preventDefault(); if (!busy) onClose(); }}>
+      <header>
+        <div><h2 id="urm-edit-title">Edit Staff Account</h2><p>Update this staff account’s details, role, access, and status.</p></div>
+        <button type="button" disabled={busy} onClick={onClose}>Close</button>
+      </header>
+      <form onSubmit={async event => { event.preventDefault(); await onSave(); }}>
+        <fieldset className="urm-add-fields" disabled={busy}>
+          <section aria-labelledby="urm-edit-staff-info">
+            <h3 id="urm-edit-staff-info">Staff Information</h3>
+            <div className="urm-add-grid">
+              <label className="urm-add-field"><span>First Name <span className="urm-add-required">*</span></span><input required autoComplete="given-name" placeholder="Enter first name" value={firstName} onChange={event => onChange('name')({ target: { value: [event.target.value, lastName].filter(Boolean).join(' ') } })} /></label>
+              <label className="urm-add-field"><span>Last Name <span className="urm-add-required">*</span></span><input required autoComplete="family-name" placeholder="Enter last name" value={lastName} onChange={event => onChange('name')({ target: { value: [firstName, event.target.value].filter(Boolean).join(' ') } })} /></label>
+              <label className="urm-add-field urm-add-wide"><span>Email Address <span className="urm-add-required">*</span></span><input required type="email" autoComplete="email" placeholder="Enter email address" value={user.email} onChange={onChange('email')} /></label>
+            </div>
+          </section>
+          <section aria-labelledby="urm-edit-access">
+            <h3 id="urm-edit-access">Account &amp; Access</h3>
+            <div className="urm-add-grid">
+              <label className="urm-add-field"><span>Role <span className="urm-add-required">*</span></span><select required value={user.role} onChange={onChange('role')}>
+                {APPROVED_STAFF_ROLES.filter(role => approvedRoles.includes(role.value) || role.value === user.role).map(role => <option key={role.value} value={role.value}>{role.label}</option>)}
+              </select></label>
+              <label className="urm-add-field"><span>Position / Title</span><input maxLength={120} autoComplete="organization-title" placeholder="e.g., Veterinarian, Receptionist" value={user.position} onChange={onChange('position')} /></label>
+            </div>
+          </section>
+          <section aria-labelledby="urm-edit-extra">
+            <h3 id="urm-edit-extra">Additional Details <small>(Optional)</small></h3>
+            <div className="urm-add-grid">
+              <label className="urm-add-field"><span>Contact Number</span><input type="tel" maxLength={40} autoComplete="tel" placeholder="Enter contact number" value={user.phone} onChange={onChange('phone')} /></label>
+              <label className="urm-add-field"><span>Employment Status</span><span className="urm-add-status" data-status={user.status}><select value={user.status} onChange={onChange('status')}><option value="Active">Active</option><option value="Inactive">Inactive</option></select></span></label>
+            </div>
+          </section>
+        </fieldset>
+        <div className="urm-add-notice">{Icons.user}<span>Changes will update this staff member’s account details immediately.</span></div>
+        {error && <p role="alert" className="urm-add-error">{error}</p>}
+        <footer><button type="button" disabled={busy} onClick={onClose}>Cancel</button><button type="submit" className="urm-add-submit" disabled={busy}>{busy ? 'Saving…' : 'Save Changes'}</button></footer>
+      </form>
+    </dialog>
   );
 }
 
@@ -539,7 +573,7 @@ function StaffProfileModal({ user, rolePermissions, onClose }) {
                 </button>
                 {isExpanded && <div style={m.permissionItems}>
                   {items.map(([label, allowed]) => <div key={label} style={{ ...m.permissionItem, color: allowed ? '#334155' : '#9db0c9' }}>
-                    <span style={{ color: allowed ? '#16a34a' : '#ef4444', fontWeight: 700 }}>{allowed ? '✓' : '×'}</span>
+                    <span style={{ color: allowed ? 'var(--success)' : '#ef4444', fontWeight: 700 }}>{allowed ? '✓' : '×'}</span>
                     <span>{label}</span>
                   </div>)}
                 </div>}
@@ -551,6 +585,45 @@ function StaffProfileModal({ user, rolePermissions, onClose }) {
       </div>
     </div>
   );
+}
+
+function StaffDetailsView({ currentUser, staff, rolePermissions, onClose }) {
+  const role = normalizeRole(staff.role);
+  const roleName = roleLabel(role);
+  const actions = visibleActions(role);
+  const enabled = actions.filter(action => permissionValue(rolePermissions, action)).length;
+  const initials = staff.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+  const details = [
+    ['Position / title', staff.position || 'Not provided'],
+    ['Contact number', staff.phone || 'Not provided'],
+    ['Last login', staff.lastLogin === '—' ? 'Never' : staff.lastLogin || 'Never'],
+  ];
+  return <section className="urm-staff-details-screen" aria-labelledby="staff-details-title">
+    <Topbar
+      user={currentUser}
+      className="urm-staff-details-topbar"
+      headerContent={<><button className="records-back" type="button" onClick={onClose}>← Back</button><div><h2 id="staff-details-title">Staff Details</h2><p>View account information and role permissions for {staff.name}</p></div></>}
+    />
+    <div className="urm-staff-details-content">
+      <section className="urm-staff-details-summary" aria-label="Staff account summary">
+        <span className="urm-staff-details-avatar" aria-hidden="true">{initials}</span>
+        <div className="urm-staff-details-description"><h3>{staff.name}</h3><p>{staff.position || roleName}</p><small>{staff.email}</small></div>
+        <div><small>Account Status</small><StatusIndicator status={staff.status} /></div>
+        <div><small>Enabled Permissions</small><strong className="urm-staff-detail-enabled">{enabled}</strong></div>
+      </section>
+      <div className="urm-staff-details-body">
+        <section className="urm-staff-information-card">
+          <header><h3>Staff Information</h3><span>Account details</span></header>
+          <div className="urm-staff-information-grid">{details.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
+        </section>
+        <section className="urm-staff-role-workspace">
+          <header><div><h3>Role Permission Summary</h3><p>Permissions inherited from the {roleName} role.</p></div><span>{enabled} of {actions.length} enabled</span></header>
+          <RolePermissionTree workspace role={role} permissions={rolePermissions} />
+        </section>
+      </div>
+      <footer className="urm-staff-details-footer"><p>Role permissions are managed from the role configuration and apply to every staff member assigned to this role.</p><button type="button" onClick={onClose}>Close</button></footer>
+    </div>
+  </section>;
 }
 
 const s = {
@@ -582,7 +655,7 @@ const m = {
   panel: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: '#fff', borderRadius: 16, width: 440, maxWidth: '90vw', maxHeight: '92vh', overflowY: 'auto', zIndex: 101, boxShadow: '0 20px 60px rgba(0,0,0,.15)' },
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 22px 16px' },
   headerTitle: { display: 'flex', alignItems: 'center', gap: 8, fontSize: '1rem', fontWeight: 600, color: '#0f1117' },
-  headerIcon: { width: 18, height: 18, display: 'flex', color: '#013826' },
+  headerIcon: { width: 18, height: 18, display: 'flex', color: 'var(--ink)' },
   closeBtn: { background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, display: 'flex' },
   divider: { height: 1, background: '#f1f5f9' },
   body: { padding: '18px 24px 8px' },
@@ -608,11 +681,11 @@ const m = {
   permissionCount: { border: '1px solid #e2e8f0', borderRadius: 8, padding: '3px 9px', fontWeight: 500, fontSize: '.68rem' },
   permissionGroup: { border: '1px solid #dbe4ee', borderRadius: 10, overflow: 'hidden', marginBottom: 6 },
   permissionRow: { width: '100%', display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', border: 0, padding: '10px 16px', fontSize: '.75rem', fontWeight: 600, color: '#0f2747', textAlign: 'left', cursor: 'pointer' },
-  permissionValue: { marginLeft: 'auto', color: '#013826', background: '#d8f4e8', borderRadius: 12, padding: '3px 9px', fontSize: '.68rem', fontWeight: 500 },
+  permissionValue: { marginLeft: 'auto', color: 'var(--ink)', background: '#d8f4e8', borderRadius: 12, padding: '3px 9px', fontSize: '.68rem', fontWeight: 500 },
   chevron: { color: '#94a3b8', fontSize: '1rem', lineHeight: 1, transition: 'transform .15s ease' },
   permissionItems: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px 18px', padding: '10px 16px 12px', background: '#fff' },
   permissionItem: { display: 'flex', alignItems: 'center', gap: 7, fontSize: '.69rem', lineHeight: 1.2 },
-  rolePill: { display: 'inline-block', color: '#013826', background: '#e7f4ec', border: '1px solid #b7e4d7', borderRadius: 7, padding: '3px 9px', marginBottom: 14 },
+  rolePill: { display: 'inline-block', color: 'var(--ink)', background: 'var(--primary-soft)', border: '1px solid #b7e4d7', borderRadius: 7, padding: '3px 9px', marginBottom: 14 },
   profileFooter: { display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0, padding: '10px 24px 16px', borderTop: '1px solid #f1f5f9' },
   profileSecondaryBtn: { padding: '8px 14px', background: '#fff', color: '#0f1117', border: '1px solid #dfe4ea', borderRadius: 8, fontSize: '.76rem', fontWeight: 500, cursor: 'pointer' },
   profilePrimaryBtn: { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', background: '#0f0b22', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.76rem', fontWeight: 600, cursor: 'pointer' },

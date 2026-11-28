@@ -1,13 +1,20 @@
 const db=require('../config/db');
+const {publish}=require('../utils/clinicEvents');
 exports.ensureSchema=()=>db.query(`CREATE TABLE IF NOT EXISTS clinic_vaccine_batches(
   id SERIAL PRIMARY KEY,clinic_id INTEGER NOT NULL REFERENCES clinics(id),product_name TEXT NOT NULL,
   manufacturer TEXT NOT NULL,batch_number TEXT NOT NULL,expiry_date DATE NOT NULL,
   quantity INTEGER NOT NULL DEFAULT 0 CHECK(quantity>=0),default_dose TEXT,default_route TEXT,
   catalog_item_id INTEGER REFERENCES clinic_billing_catalog(id),created_by INTEGER REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(clinic_id,product_name,batch_number));`);
+  UNIQUE(clinic_id,product_name,batch_number));
+  ALTER TABLE clinic_vaccine_batches ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT true;
+  ALTER TABLE clinic_vaccine_batches ADD COLUMN IF NOT EXISTS stock_status TEXT NOT NULL DEFAULT 'available';
+  ALTER TABLE clinic_vaccine_batches ADD COLUMN IF NOT EXISTS status_reason TEXT;
+  ALTER TABLE clinic_vaccine_batches DROP CONSTRAINT IF EXISTS clinic_vaccine_batches_stock_status_check;
+  ALTER TABLE clinic_vaccine_batches ADD CONSTRAINT clinic_vaccine_batches_stock_status_check CHECK(stock_status IN('available','quarantined','recalled'));
+`);
 function scope(req,res){const clinic=Number(req.user?.clinic_id),role=String(req.user?.role||'').toLowerCase().replace(/[\s-]+/g,'_');if(!Number.isInteger(clinic)||clinic<1||!['doctor','assistant_doctor','veterinarian','clinic_owner','owner','receptionist'].includes(role)){res.status(403).json({error:'Clinic staff access required.'});return null;}return clinic;}
-exports.list=async(req,res,next)=>{const clinic=scope(req,res);if(!clinic)return;try{const rows=await db.query(`SELECT id,product_name,manufacturer,batch_number,TO_CHAR(expiry_date,'YYYY-MM-DD') AS expiry_date,quantity,default_dose,default_route,catalog_item_id FROM clinic_vaccine_batches WHERE clinic_id=$1 AND active=true ORDER BY product_name,expiry_date`,[clinic]);res.json(rows.rows);}catch(e){next(e);}};
+exports.list=async(req,res,next)=>{const clinic=scope(req,res);if(!clinic)return;try{const rows=await db.query(`SELECT id,product_name,manufacturer,batch_number,TO_CHAR(expiry_date,'YYYY-MM-DD') AS expiry_date,quantity,default_dose,default_route,catalog_item_id,stock_status,status_reason FROM clinic_vaccine_batches WHERE clinic_id=$1 AND active=true AND stock_status='available' AND quantity>0 AND expiry_date>=CURRENT_DATE ORDER BY product_name,expiry_date`,[clinic]);res.json(rows.rows);}catch(e){next(e);}};
 exports.create=async(req,res,next)=>{const clinic=scope(req,res);if(!clinic)return;try{
   if(!['doctor','assistant_doctor','veterinarian','clinic_owner','owner'].includes(String(req.user.role).toLowerCase().replace(/[\s-]+/g,'_')))return res.status(403).json({error:'Clinical staff or clinic owner access required to add vaccine stock.'});
   const b=req.body;const name=String(b.product_name||'').trim(),manufacturer=String(b.manufacturer||'').trim(),batch=String(b.batch_number||'').trim(),quantity=Number(b.quantity);
@@ -16,3 +23,10 @@ exports.create=async(req,res,next)=>{const clinic=scope(req,res);if(!clinic)retu
   const rows=await db.query(`INSERT INTO clinic_vaccine_batches(clinic_id,product_name,manufacturer,batch_number,expiry_date,quantity,default_dose,default_route,created_by)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,[clinic,name,manufacturer,batch,date,quantity,String(b.default_dose||'').trim()||null,String(b.default_route||'').trim()||null,req.user.id]);res.status(201).json(rows.rows[0]);
 }catch(e){if(e.code==='23505')return res.status(409).json({error:'This product and batch already exist in inventory.'});next(e);}};
+exports.updateStatus=async(req,res,next)=>{const clinic=scope(req,res);if(!clinic)return;try{
+  const id=Number(req.params.id),status=String(req.body?.stock_status||'').trim().toLowerCase(),reason=String(req.body?.status_reason||'').trim()||null;
+  if(!Number.isInteger(id)||!['available','quarantined','recalled'].includes(status))return res.status(422).json({error:'Choose available, quarantined, or recalled for the vaccine batch.'});
+  const result=await db.query(`UPDATE clinic_vaccine_batches SET stock_status=$1,status_reason=$2,updated_at=now() WHERE id=$3 AND clinic_id=$4 RETURNING id,product_name,batch_number,stock_status,status_reason`,[status,reason,id,clinic]);
+  if(!result.rows.length)return res.status(404).json({error:'Vaccine batch not found.'});
+  publish(clinic,'inventory');res.json(result.rows[0]);
+}catch(e){next(e);}};

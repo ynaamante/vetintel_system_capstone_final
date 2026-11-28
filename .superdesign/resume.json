@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "user-management:staff-details": {
+      "targetKind": "existing-ui",
+      "projectId": "817ae18e-5e06-4324-84e7-425bc3291f76",
+      "baselineDraftId": "14035f30-429e-415a-bcb2-d1ce565115ec",
+      "activeDraftId": "14035f30-429e-415a-bcb2-d1ce565115ec",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "admin/src/pages/UserRoleManagementPage.jsx",
+        "admin/src/pages/userRoleManagement.css",
+        "admin/src/pages/RolesPermissionsPage.jsx",
+        "admin/src/pages/rolesPermissions.css",
+        "admin/src/components/RolePermissionTree.jsx",
+        "admin/src/components/Topbar.jsx",
+        "admin/src/components/StatusIndicator.jsx",
+        "admin/src/icons/index.jsx"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "737e4be714b0566d6f71fa030d8556f2bde3a8ee430f82a1de6dfa81afc98a3f",
+        "admin/src/pages/UserRoleManagementPage.jsx": "26fbb8cc720d0cb758eb42a4cca4ba5e69982caf89658280024b65ed5e3aeaae",
+        "admin/src/pages/userRoleManagement.css": "c7fcda481bf7735da56dc12cfc2fc411cc932b4906fe23bd955eebabf9ce6384",
+        "admin/src/pages/RolesPermissionsPage.jsx": "91f384c015aeebc608d8f704b54ea77e7c4c8f8921870989286eef334d07fda8",
+        "admin/src/pages/rolesPermissions.css": "fb026e57403b8a641ecaac5ee97ad9d21dfede161c9645b475b7e3fd3e730045",
+        "admin/src/components/RolePermissionTree.jsx": "607860e7a5e6cd737a2ea34889d2dde805005b801dc9dbe6ba0a877e664bfaea",
+        "admin/src/components/Topbar.jsx": "ed604d049133df41dee0da3e614bccb2b65bd8e151d67c8a7024170b38224fa7",
+        "admin/src/components/StatusIndicator.jsx": "5f10c260ac6c6c65f6f1887a737471afceb4148db9e4bdbccc0df2ae93429618",
+        "admin/src/icons/index.jsx": "f1e8cbf000a1b3a969c7c9c13297945e734962e8b0641c59054a111960bae2fa"
+      },
+      "components": [],
+      "drafts": {
+        "14035f30-429e-415a-bcb2-d1ce565115ec": {
+          "title": "VetIntel Staff Details View Reproduction",
+          "visualDirection": "Role Details-aligned staff account and permission workspace",
+          "currentVersion": 1
+        }
+      },
+      "updatedAt": "2026-11-24T21:38:18+08:00"
+    }
+  }
+}

@@ -181,7 +181,13 @@ exports.update = async (req, res, next) => {
       return res.status(400).json({ error: 'invalid user id' });
     }
 
-    const { name, email, clinic_id, clinic_name, role_id, role_name, is_active, password } = req.body;
+    const { name, email, clinic_id, clinic_name, role_id, role_name, position, phone, is_active, password } = req.body;
+
+    if ((position != null && (typeof position !== 'string' || position.trim().length > 120))
+        || (phone != null && (typeof phone !== 'string' || phone.trim().length > 40))
+        || (is_active != null && typeof is_active !== 'boolean')) {
+      return res.status(400).json({ error: 'Check the position, contact number, and employment status.' });
+    }
 
     const userResult = await db.query('SELECT * FROM users WHERE id = $1', [numericId]);
     if (userResult.rows.length === 0) {
@@ -226,10 +232,12 @@ exports.update = async (req, res, next) => {
            role_id = COALESCE($4, role_id),
            is_active = COALESCE($5, is_active),
            password_hash = COALESCE($6, password_hash),
+           phone = CASE WHEN $7::text IS NULL THEN phone ELSE NULLIF(BTRIM($7::text), '') END,
+           metadata = CASE WHEN $8::text IS NULL THEN metadata ELSE jsonb_strip_nulls(COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('position', NULLIF(BTRIM($8::text), ''))) END,
            updated_at = now()
-       WHERE id = $7
+       WHERE id = $9
        RETURNING id`,
-      [name, email, resolvedClinicId, resolvedRoleId, is_active, passwordHash, numericId]
+      [name, email, resolvedClinicId, resolvedRoleId, is_active, passwordHash, phone, position, numericId]
     );
 
     if (result.rows.length === 0) {
@@ -240,6 +248,8 @@ exports.update = async (req, res, next) => {
       `SELECT u.id,
               u.name,
               u.email,
+              u.phone,
+              u.metadata->>'position' AS position,
               u.is_active,
               u.created_at,
               u.updated_at,

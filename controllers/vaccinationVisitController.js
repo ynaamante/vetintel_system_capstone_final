@@ -32,9 +32,9 @@ exports.save=async(req,res,next)=>{
     const existing=(await client.query(`SELECT * FROM vaccinations WHERE appointment_id=$1 AND clinic_id=$2 AND COALESCE(archived,false)=false ORDER BY id LIMIT 1 FOR UPDATE`,[id,clinic])).rows[0];
     if(existing&&existing.status!=='scheduled')return await fail('Administration is already recorded. Verify the existing record instead of recording it again.');
     let batch;
-    if(req.body.inventory_batch_id){batch=(await client.query(`SELECT *,TO_CHAR(expiry_date,'YYYY-MM-DD') AS expiry FROM clinic_vaccine_batches WHERE id=$1 AND clinic_id=$2 AND active=true FOR UPDATE`,[Number(req.body.inventory_batch_id),clinic])).rows[0];if(!batch)return await fail('Inventory batch not found in this clinic.',422);}
+    if(req.body.inventory_batch_id){batch=(await client.query(`SELECT *,TO_CHAR(expiry_date,'YYYY-MM-DD') AS expiry FROM clinic_vaccine_batches WHERE id=$1 AND clinic_id=$2 AND active=true AND stock_status='available' AND quantity>0 AND expiry_date>=CURRENT_DATE FOR UPDATE`,[Number(req.body.inventory_batch_id),clinic])).rows[0];if(!batch)return await fail('This inventory batch is unavailable, expired, recalled, quarantined, or out of stock.',422);}
     else if(req.body.batch_number&&req.body.manufacturer&&validDate(String(req.body.expiry_date||''))){
-      const matches=await client.query(`SELECT *,TO_CHAR(expiry_date,'YYYY-MM-DD') AS expiry FROM clinic_vaccine_batches WHERE clinic_id=$1 AND active=true AND lower(batch_number)=lower($2) AND lower(manufacturer)=lower($3) AND expiry_date=$4 FOR UPDATE`,[clinic,String(req.body.batch_number).trim(),String(req.body.manufacturer).trim(),req.body.expiry_date]);
+      const matches=await client.query(`SELECT *,TO_CHAR(expiry_date,'YYYY-MM-DD') AS expiry FROM clinic_vaccine_batches WHERE clinic_id=$1 AND active=true AND stock_status='available' AND quantity>0 AND expiry_date>=CURRENT_DATE AND lower(batch_number)=lower($2) AND lower(manufacturer)=lower($3) AND expiry_date=$4 FOR UPDATE`,[clinic,String(req.body.batch_number).trim(),String(req.body.manufacturer).trim(),req.body.expiry_date]);
       if(matches.rows.length===1)batch=matches.rows[0];
     }
     if(batch){const mismatch=await validation.batch(client,selectedService.service,batch,clinic);if(mismatch)return await fail(mismatch,422);}
@@ -69,7 +69,17 @@ exports.save=async(req,res,next)=>{
     await client.query(`UPDATE vaccinations SET vaccine_name=$1,manufacturer=$2,batch_number=$3,expiry_date=$4,dose=$5,next_due=$6,sticker_attachment_id=$7,verified=false,
       verified_by=NULL,verified_at=NULL,verification_reason=NULL,status=$8,date_given=CASE WHEN $8='administered' THEN CURRENT_DATE ELSE date_given END,administered_by=$9
       WHERE id=$10 AND clinic_id=$11`,[name,manufacturer||details.manufacturer||null,lot||details.lot_number||null,expiry||details.expiry_date||null,dose||null,nextDue||null,stickerId,confirm?'administered':'scheduled',req.user.id,v.id,clinic]);
-    if(confirm&&batch)await client.query(`UPDATE clinic_vaccine_batches SET quantity=quantity-1,updated_at=now() WHERE id=$1 AND clinic_id=$2`,[batch.id,clinic]);
+    if(confirm&&batch){
+      await client.query(`UPDATE clinic_vaccine_batches SET quantity=quantity-1,updated_at=now() WHERE id=$1 AND clinic_id=$2`,[batch.id,clinic]);
+      // Keep the owner-facing inventory lots aligned with the administered vaccine.
+      const inventory=(await client.query('SELECT id FROM clinic_inventory_items WHERE clinic_id=$1 AND vaccine_batch_id=$2 FOR UPDATE',[clinic,batch.id])).rows;
+      for(const item of inventory){
+        const lot=(await client.query(`SELECT id FROM clinic_inventory_lots WHERE clinic_id=$1 AND inventory_item_id=$2 AND status='available' AND quantity>0 AND (expiry_date IS NULL OR expiry_date>=CURRENT_DATE) ORDER BY expiry_date NULLS LAST,id LIMIT 1 FOR UPDATE`,[clinic,item.id])).rows[0];
+        if(lot)await client.query('UPDATE clinic_inventory_lots SET quantity=quantity-1,updated_at=now() WHERE id=$1',[lot.id]);
+        const total=(await client.query('SELECT COALESCE(SUM(quantity),0)::integer AS quantity FROM clinic_inventory_lots WHERE clinic_id=$1 AND inventory_item_id=$2',[clinic,item.id])).rows[0];
+        await client.query('UPDATE clinic_inventory_items SET quantity=$1,updated_at=now() WHERE id=$2 AND clinic_id=$3',[Number(total.quantity||0),item.id,clinic]);
+      }
+    }
     await client.query(`INSERT INTO audit_trail(user_id,action,table_name,record_id,new_data) VALUES($1,$2,'vaccinations',$3,$4::jsonb)`,[req.user.id,confirm?'confirm_administration':'save_vaccination_draft',v.id,JSON.stringify({...draft,status:confirm?'administered':'scheduled'})]);
     await client.query('COMMIT');publish(clinic,'vaccination');return res.json({id:v.id,status:confirm?'administered':'scheduled',sticker_attachment_id:stickerId});
   }catch(e){await client.query('ROLLBACK').catch(()=>{});next(e);}finally{client.release();}

@@ -26,30 +26,30 @@ function groupedRows(rows, mode) {
 }
 
 export default function DiseaseCaseExplorer({user,data,loading,error,filters,search,onSearch,onApply,onRetry,onExport,onRules,onNavigate}) {
-  const [draft,setDraft] = useState(filters);
   const [mode,setMode] = useState('disease');
   const [selected,setSelected] = useState(null);
   const [limit,setLimit] = useState(10);
   const [toolsOpen,setToolsOpen] = useState(false);
-  const dirty = ['disease','clinic_id','area','days'].some(key=>String(draft[key]||'')!==String(filters[key]||''));
   const rows = groupedRows(data.case_summaries || [],mode);
   const diseases = (data.diseases || []).filter(row=>row.cases>0).sort((a,b)=>b.cases-a.cases);
   const trend = (data.trend || []).map(row=>({...row,label:`${shortDate(row.case_date)}–${shortDate(row.period_end)}${row.partial?'*':''}`}));
   const value = number => loading || error ? '—' : number;
-  const apply = next => {setDraft(next);setLimit(10);onApply(next);};
+  const changeFilter = (key, value) => {
+    if (String(filters[key]) === String(value)) return;
+    setLimit(10);
+    onApply({ ...filters, [key]: value });
+  };
   const navigate = (page,context=filters) => onNavigate?.(page,context);
-  const field = (key,label,options) => <div className="dce-field"><span>{label}</span><FilterSelect label={label} value={draft[key]} onChange={value=>setDraft(current=>({...current,[key]:value}))} options={options}/></div>;
+  const field = (key,label,options) => <div className="dce-field"><span>{label}</span><FilterSelect label={label} value={filters[key]} onChange={value=>changeFilter(key,value)} options={options}/></div>;
   return <div className="dm-page dce-page">
     <Topbar className="dm-topbar" user={user} title="Disease Monitoring" subtitle="Explore confirmed cases by disease, participating clinic, and reporting barangay." actions={<label className="dm-search">{Icons.search}<input aria-label="Search diseases, areas, or reporting clinics" placeholder="Search diseases, clinics, or reporting areas…" value={search} onChange={event=>onSearch(event.target.value)}/></label>}/>
     <div className="dm-body">
-      <form className="dce-filters" onSubmit={event=>{event.preventDefault();apply(draft);}}>
+      <div className="dce-filters" role="group" aria-label="Disease monitoring filters">
         {field('disease','Disease',[{value:'',label:'All Diseases'},...(data.disease_options||[]).map(row=>({value:row.disease_key,label:row.disease}))])}
         {field('clinic_id','Participating Clinic',[{value:'',label:'All Clinics'},...(data.clinic_options||[]).map(row=>({value:String(row.id),label:row.name}))])}
         {field('area','Reporting Barangay',[{value:'',label:'All Reporting Barangays'},...[...new Set([...(data.area_options||[]),...(filters.area?[filters.area]:[])])].map(area=>({value:area,label:area}))])}
         {field('days','Date Range',[30,60,90].map(days=>({value:String(days),label:`Last ${days} Days`})))}
-        <button className="dm-primary" disabled={loading}>Apply Filters</button>
-      </form>
-      {dirty&&<p className="dm-footnote" role="status">Filters changed. Select Apply Filters to update the results.</p>}
+      </div>
       {error&&<p role="alert" className="dm-error">{error} <button onClick={onRetry}>Retry</button></p>}
       <div className="dce-metrics monitoring-summary monitoring-summary-four" aria-busy={loading}>
         <article><h2>Confirmed Cases</h2><strong>{value(data.total_cases??0)}</strong><p>Finalized diagnoses in the selected period.</p></article>

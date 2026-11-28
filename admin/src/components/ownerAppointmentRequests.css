@@ -114,6 +114,11 @@
 #oar-appointment-drawer { position:fixed; top:0; right:0; bottom:0; left:auto; margin:0; width:min(510px,100vw); min-width:0; max-width:100vw; height:100dvh; min-height:0; max-height:100dvh; padding:0; border:0; border-radius:15px 0 0 15px; overflow:hidden; font-family:'DM Sans',Arial,sans-serif; }
 #oar-appointment-drawer[open] { display:block; }
 #oar-appointment-drawer .oar-drawer-layout { height:100%; min-height:0; display:grid; grid-template-rows:auto minmax(0,1fr) auto; padding:0 21px; }
+@media (max-height: 480px) {
+  #oar-appointment-drawer { overflow-y: auto; overscroll-behavior-y: contain; }
+  #oar-appointment-drawer .oar-drawer-layout { height: auto; min-height: 100%; grid-template-rows: auto 1fr auto; }
+  #oar-appointment-drawer .oar-drawer-layout .oar-drawer-body { overflow-y: visible; }
+}
 #oar-appointment-drawer .oar-drawer-header { margin:0; padding:16px 0 22px; gap:10px; min-height:86px; }
 #oar-appointment-drawer .oar-drawer-header h2 { font-size:23px; line-height:29px; font-weight:800; letter-spacing:-.7px; margin:0; }
 #oar-appointment-drawer .oar-drawer-header p { font-size:13px; line-height:19px; font-weight:400; margin:2px 0 0; }

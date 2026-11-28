@@ -1,5 +1,6 @@
 import React from 'react';
 import { Image, Text, View, StyleSheet } from 'react-native';
+import { colors } from '../theme/colors';
 
 export default function AuthBrand() {
   return <View style={s.brand} accessible accessibilityLabel="VetIntel. Better Care. Healthier Pets.">
@@ -10,6 +11,6 @@ export default function AuthBrand() {
 }
 const s = StyleSheet.create({
   brand: { alignItems: 'center', width: 218, marginBottom: 22 }, mark: { width: 72, height: 72, marginBottom: 3 },
-  name: { color: '#005b40', fontSize: 33, lineHeight: 38, fontWeight: '800', letterSpacing: -1 },
-  tagline: { color: '#007251', fontSize: 10, fontWeight: '600', lineHeight: 15 },
+  name: { color: colors.ink, fontSize: 33, lineHeight: 38, fontWeight: '800', letterSpacing: -1 },
+  tagline: { color: colors.primary, fontSize: 10, fontWeight: '600', lineHeight: 15 },
 });

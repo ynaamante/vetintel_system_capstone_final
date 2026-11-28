@@ -8,26 +8,27 @@ import './riskSignalExplorer.css';
 import './monitoringSummary.css';
 
 export default function RiskSignalExplorer({user,data,loading,error,filters,status,search,onSearch,onApply,onSelect,onRetry,onRules}) {
-  const [draft,setDraft]=useState({...filters,status});
   const [limit,setLimit]=useState(10);
   const all=data.alerts||[];
   const rows=all.filter(row=>!status||row.status===status);
   const stats=[['Open Signals',all.filter(row=>row.status!=='resolved').length,'Potential signals requiring review.'],['Needs Review',all.filter(row=>row.status==='new').length,'New signals for veterinarian review.'],['Under Review',all.filter(row=>row.status==='under_review').length,'Currently being evaluated.']];
-  const dirty=['disease','area','days'].some(key=>draft[key]!==filters[key])||draft.status!==status;
-  const apply=next=>{setDraft(next);setLimit(10);onApply(next);};
-  const field=(key,label,options)=><div className="risk-field"><span>{label}</span><FilterSelect className="risk-filter-select" label={label} value={draft[key]} onChange={value=>setDraft(current=>({...current,[key]:value}))} options={options}/></div>;
+  const currentFilters = { ...filters, status };
+  const changeFilter = (key, value) => {
+    if (String(currentFilters[key]) === String(value)) return;
+    setLimit(10);
+    onApply({ ...currentFilters, [key]: value });
+  };
+  const field=(key,label,options)=><div className="risk-field"><span>{label}</span><FilterSelect className="risk-filter-select" label={label} value={currentFilters[key]} onChange={value=>changeFilter(key,value)} options={options}/></div>;
   return <main className="dm-page risk-page">
     <Topbar className="dm-topbar" user={user} title="Risk Monitoring" subtitle="Review potential disease signals across participating veterinary clinics." actions={<label className="dm-search">{Icons.search}<input aria-label="Search disease signals" placeholder="Search diseases or reporting barangays…" value={search} onChange={event=>onSearch(event.target.value)}/></label>}/>
     <div className="dm-body">
-      <form className="risk-filters" onSubmit={event=>{event.preventDefault();apply(draft);}}>
+      <div className="risk-filters" role="group" aria-label="Risk monitoring filters">
         {field('disease','Disease',[{value:'',label:'All Diseases'},...(data.disease_options||[]).map(row=>({value:row.disease_key,label:row.disease}))])}
         {field('area','Reporting Barangay',[{value:'',label:'All Barangays'},...[...new Set([...(data.area_options||[]),...(filters.area?[filters.area]:[])])].map(area=>({value:area,label:area}))])}
         {field('status','Status',[{value:'',label:'All Statuses'},...['new','under_review','resolved'].map(value=>({value,label:signalStatus(value)}))])}
         {field('days','Date Range',[30,60,90].map(days=>({value:String(days),label:`Last ${days} Days`})))}
-        <button className="dm-primary" disabled={loading}>Apply Filters</button>
-      </form>
-      {dirty&&<p className="risk-scope" role="status">Filters changed. Select Apply Filters to update the results.</p>}
-      {filters.clinic_id&&<p className="risk-scope">Clinic scope carried over from monitoring: {(data.clinic_options||[]).find(row=>String(row.id)===String(filters.clinic_id))?.name||`Clinic #${filters.clinic_id}`} <button onClick={()=>apply({...filters,status,clinic_id:''})}>Show all participating clinics</button></p>}
+      </div>
+      {filters.clinic_id&&<p className="risk-scope">Clinic scope carried over from monitoring: {(data.clinic_options||[]).find(row=>String(row.id)===String(filters.clinic_id))?.name||`Clinic #${filters.clinic_id}`} <button type="button" onClick={()=>changeFilter('clinic_id','')}>Show all participating clinics</button></p>}
       {error&&<p className="dm-error" role="alert">{error} <button onClick={onRetry}>Retry</button></p>}
       <div className="risk-metrics monitoring-summary" aria-busy={loading}>{stats.map(([title,count,description])=><article key={title}><h2>{title}</h2><strong>{loading||error?'—':count}</strong><p>{description}</p></article>)}</div>
       <p className="risk-scope">Open Signals = Needs Review + Under Review. Status filters the list only.</p>

@@ -2,6 +2,7 @@
 import { View, Text, TouchableOpacity, Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, StyleProp, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 type Props = { value: string; options: string[]; placeholder?: string; label: string; onChange: (value: string) => void; style?: StyleProp<ViewStyle> };
 export default function MobileSelect({ value, options, placeholder = 'Select...', label, onChange, style }: Props) {
@@ -21,15 +22,15 @@ export default function MobileSelect({ value, options, placeholder = 'Select...'
   });
   return <>
     <View ref={trigger} collapsable={false} style={style}>
-      <TouchableOpacity accessibilityRole="button" accessibilityLabel={label + ': ' + (value || placeholder)} accessibilityState={{ expanded: !!position }} onPress={open} style={[s.trigger, { borderColor: position ? '#33845B' : isDark ? tc.border : '#BCD5C6', backgroundColor: isDark ? tc.inputBg : '#FAFBFA' }]}>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel={label + ': ' + (value || placeholder)} accessibilityState={{ expanded: !!position }} onPress={open} style={[s.trigger, { borderColor: position ? colors.primary : isDark ? tc.border : colors.inputBorder, backgroundColor: isDark ? tc.inputBg : colors.light.inputBg }]}>
         <Text style={[s.value, { color: value ? tc.text : tc.textMuted }]}>{value || placeholder}</Text><Ionicons name={position ? 'chevron-up' : 'chevron-down'} size={16} color={tc.textSecondary} />
       </TouchableOpacity>
     </View>
     <Modal visible={!!position} transparent animationType="none" statusBarTranslucent onRequestClose={() => setPosition(null)}>
       <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Close dropdown" onPress={() => setPosition(null)} />
-      {!!position && <View style={[s.menu, position, { backgroundColor: tc.surface, borderColor: isDark ? tc.border : '#CEE0D4' }]} accessibilityViewIsModal>
-        <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled>{options.map(option => <TouchableOpacity key={option} accessibilityRole="radio" accessibilityState={{ checked: option === value }} onPress={() => { onChange(option); setPosition(null); }} style={[s.option, option === value && { backgroundColor: isDark ? '#1B4530' : '#E8F4EC' }]}>
-          <Text style={[s.optionText, { color: option === value ? isDark ? '#B6DDC7' : '#005638' : tc.text }]}>{option}</Text>{option === value && <Ionicons name="checkmark" size={18} color={isDark ? '#B6DDC7' : '#005638'} />}
+      {!!position && <View style={[s.menu, position, { backgroundColor: tc.surface, borderColor: tc.border }]} accessibilityViewIsModal>
+        <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled>{options.map(option => <TouchableOpacity key={option} accessibilityRole="radio" accessibilityState={{ checked: option === value }} onPress={() => { onChange(option); setPosition(null); }} style={[s.option, option === value && { backgroundColor: isDark ? colors.primarySoftDark : colors.primarySoft }]}>
+          <Text style={[s.optionText, { color: option === value ? isDark ? tc.textSecondary : colors.primary : tc.text }]}>{option}</Text>{option === value && <Ionicons name="checkmark" size={18} color={isDark ? tc.textSecondary : colors.primary} />}
         </TouchableOpacity>)}</ScrollView>
       </View>}
     </Modal>

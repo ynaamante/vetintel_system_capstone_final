@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Image, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -97,9 +96,9 @@ export default function LoginScreen({ navigation, route }: any) {
             </View>
             <TouchableOpacity disabled={loading} onPress={() => navigation.navigate('ForgotPassword', { email: email.trim() })} style={{ alignSelf: 'flex-end', paddingVertical: 10, marginTop: -4, marginBottom: 8 }}><Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>Forgot password?</Text></TouchableOpacity>
             <TouchableOpacity style={s.btn} onPress={handleLogin} disabled={loading}>
-              <LinearGradient colors={['#007C63', '#35A978']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.btnGradient}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Sign In</Text>}
-              </LinearGradient>
+              <View style={s.btnFill}>
+                {loading ? <ActivityIndicator color={colors.white} /> : <Text style={s.btnText}>Sign In</Text>}
+              </View>
             </TouchableOpacity>
             <View style={s.row}>
               <Text style={s.muted}>Don't have an account? </Text>
@@ -120,18 +119,18 @@ const styles = (tc: any, isDark: boolean, compact: boolean) => StyleSheet.create
   wordmarkCrop: { width: 170, height: 40, overflow: 'hidden', marginTop: 1 },
   wordmark: { width: 170, height: 52 },
   tagline: { fontSize: 14, color: tc.textSecondary, marginTop: 1 },
-  card: { backgroundColor: tc.surface, borderRadius: radius.xl, padding: compact ? 18 : 24, marginBottom: compact ? 0 : 16, shadowColor: '#163B2D', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 },
+  card: { backgroundColor: tc.surface, borderRadius: radius.xl, padding: compact ? 18 : 24, marginBottom: compact ? 0 : 16, shadowColor: colors.ink, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 },
   title: { fontSize: 24, fontWeight: '700', color: tc.text, marginBottom: 4 },
   sub: { fontSize: 14, color: tc.textSecondary, marginBottom: 20 },
   label: { fontSize: 14, fontWeight: '500', color: tc.text, marginBottom: 6, marginTop: 4 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: tc.border, borderRadius: radius.md, backgroundColor: tc.inputBg, paddingHorizontal: 12, marginBottom: 14 },
+  inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: isDark ? tc.border : colors.inputBorder, borderRadius: radius.md, backgroundColor: tc.inputBg, paddingHorizontal: 12, marginBottom: 14 },
   icon: { marginRight: 8 },
   inputRowFocused: { borderColor: colors.botanicalTeal },
   input: { flex: 1, height: 44, fontSize: 15, color: tc.text, outlineWidth: 0 },
   btn: { borderRadius: radius.md, overflow: 'hidden', height: 48, marginTop: 4, marginBottom: 16 },
-  btnGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  btnFill: { backgroundColor: colors.primary, flex: 1, alignItems: 'center', justifyContent: 'center' },
+  btnText: { color: colors.white, fontSize: 16, fontWeight: '600' },
   row: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
   muted: { fontSize: 14, color: tc.textSecondary },
-  link: { fontSize: 14, color: colors.deepForest, fontWeight: '600' },
+  link: { fontSize: 14, color: isDark ? colors.chart2 : colors.primary, fontWeight: '600' },
 });

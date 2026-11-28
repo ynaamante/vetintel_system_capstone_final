@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { requirements: permissionsForRequest } = require('../middleware/clinicRbac');
 
 const MEDICAL_TABLE = /diagnos|medical|treatment|consultation|laboratory|lab_result|lab_test|vaccin|prescription|inpatient|patient_record/i;
 const MEDICAL_FIELDS = new Set(['diagnosis','case_classification','clinical_status','record_status','recorded_at','medication','dosage','frequency','duration','status','result','test_name','vaccine_name','vaccine_date','next_due_date']);
@@ -34,6 +35,19 @@ const MODULE_SQL = `CASE
 const resultFor = (action='', newData={}) => {
   const value = String(newData?._audit?.result || newData?.result || newData?._audit?.status || '').toLowerCase();
   return /fail|denied|unauthorized|error|rejected/.test(`${action} ${value}`) ? 'Failed' : 'Successful';
+};
+const requiredPermissionFor = (eventData={}) => {
+  const stored=String(eventData.required_permission||'').trim();
+  if(stored&&stored!=='Not recorded')return stored;
+  // Older denied-access events kept the route but predate the permission field.
+  // Derive a display-safe permission name without returning the route itself.
+  const path=String(eventData.attempted_path||'').trim();
+  if(!path)return null;
+  try {
+    const needed=permissionsForRequest({path,method:eventData.attempted_method||'GET',body:{}});
+    const permissions=(needed||[]).flat().filter(value=>typeof value==='string'&&!value.startsWith('__'));
+    return permissions.length?permissions.join(' or '):null;
+  } catch { return null; }
 };
 const changedFields = (oldData={}, newData={}) => [...new Set([...Object.keys(oldData||{}),...Object.keys(newData||{})])]
   .filter(key=>key!=='_audit' && JSON.stringify(oldData?.[key])!==JSON.stringify(newData?.[key]));
@@ -215,7 +229,8 @@ exports.getById = async (req, res, next) => {
     const row=(await db.query(`${AUDIT_SELECT} WHERE a.id=$1 AND COALESCE(a.archived,false)=false${scope}`,params)).rows[0];
     if(!row)return res.status(404).json({error:'Audit record not found.'});
     const summary=auditSummary(row);
-    res.json({...summary,changes:safeChanges(row),source:row.new_data?._audit?.source||row.new_data?.source||null,device:row.new_data?._audit?.device||row.new_data?.device||null});
+    const eventData=row.new_data||{},metadata=eventData._audit||{};
+    res.json({...summary,changes:safeChanges(row),source:metadata.source||eventData.source||null,device:metadata.device||eventData.device||null,reason:metadata.reason||eventData.reason||(summary.result==='Failed'?'The application prevented this action.':null),event_type:eventData.event_type||metadata.event_type||null,http_method:eventData.attempted_method||null,target_module:eventData.target_module||null,attempted_action:eventData.attempted_action||null,required_permission:requiredPermissionFor(eventData)});
   }catch(error){next(error);}
 };
 

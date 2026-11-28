@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { colors, gradients } from '../theme/colors';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Image, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -62,21 +63,21 @@ export default function VerifyEmailScreen({ route, navigation }: any) {
     }
     finally { setResending(false); }
   };
-  return <LinearGradient colors={['#e6f3ec', '#dfeee7']} style={{ flex: 1 }}><SafeAreaView style={{ flex: 1 }}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.container}>
+  return <LinearGradient colors={gradients.header} style={{ flex: 1 }}><SafeAreaView style={{ flex: 1 }}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.container}>
     <AuthBrand />
-    <View style={s.card}><View style={s.icon}><Ionicons name="mail-open-outline" size={32} color="#008260" /></View>
+    <View style={s.card}><View style={s.icon}><Ionicons name="mail-open-outline" size={32} color={colors.primary} /></View>
       <Text accessibilityRole="header" style={s.title}>Verify your email</Text><Text style={s.body}>{notice}</Text><Text style={s.email}>{email}</Text>
       <Text style={s.label}>Verification code</Text>
       <TextInput accessibilityLabel="Verification code" value={code} onChangeText={value => setCode(value.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" maxLength={6}
         autoComplete="one-time-code" textContentType="oneTimeCode" placeholder="000000" style={s.input} editable={!busy && !resending} />
       {!!error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}
-      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Verify Email" onPress={verify} disabled={busy || resending} style={s.button}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={s.buttonText}>Verify Email</Text>}</TouchableOpacity>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Verify Email" onPress={verify} disabled={busy || resending} style={s.button}>{busy ? <ActivityIndicator color={colors.white} /> : <Text style={s.buttonText}>Verify Email</Text>}</TouchableOpacity>
       <View style={s.deliveryHelp}>
         <Text style={s.helpTitle}>Didn’t receive a code?</Text>
         <Text style={s.hint}>Check your spam or junk folder, or request a new code.</Text>
         <TouchableOpacity accessibilityRole="button" accessibilityLabel="Resend Code" accessibilityState={{ disabled: !!remaining || busy || resending }}
           disabled={!!remaining || busy || resending} onPress={resend} style={[s.resendButton, (!!remaining || busy || resending) && s.resendDisabled]}>
-          {resending ? <ActivityIndicator color="#007957" size="small" /> : <Text style={s.link}>{remaining ? `Resend Code in ${remaining}s` : 'Resend Code'}</Text>}
+          {resending ? <ActivityIndicator color={colors.primary} size="small" /> : <Text style={s.link}>{remaining ? `Resend Code in ${remaining}s` : 'Resend Code'}</Text>}
         </TouchableOpacity>
       </View>
       <Text style={s.hint}>Your account stays pending until your email is verified.</Text>
@@ -86,13 +87,13 @@ export default function VerifyEmailScreen({ route, navigation }: any) {
 }
 const s = StyleSheet.create({
   container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }, logo: { width: 218, height: 133, marginBottom: 24 },
-  card: { width: '100%', maxWidth: 430, backgroundColor: '#fff', padding: 24, borderRadius: 20, shadowColor: '#315849', shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
-  icon: { alignSelf: 'center', backgroundColor: '#e5f4ec', padding: 15, borderRadius: 40, marginBottom: 16 }, title: { fontSize: 25, fontWeight: '800', color: '#242629', textAlign: 'center', marginBottom: 12 },
-  body: { color: '#648377', fontSize: 14, lineHeight: 21, textAlign: 'center' }, email: { textAlign: 'center', color: '#007957', fontWeight: '600', marginVertical: 15 }, label: { fontSize: 14, fontWeight: '600', marginBottom: 8, color: '#29372f' },
-  input: { height: 54, backgroundColor: '#f4f7f2', borderWidth: 1, borderColor: '#cddfd5', borderRadius: 8, textAlign: 'center', fontSize: 25, letterSpacing: 9, color: '#173c2b', marginBottom: 16 },
-  button: { minHeight: 46, backgroundColor: '#008260', borderRadius: 8, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' }, resend: { alignItems: 'center', padding: 13 }, link: { color: '#007957', fontWeight: '700', fontSize: 13 },
-  hint: { color: '#72877c', fontSize: 12, lineHeight: 18, textAlign: 'center' }, error: { color: '#b42318', fontSize: 13, marginBottom: 14, lineHeight: 19 },
-  deliveryHelp: { marginTop: 22, marginBottom: 16, alignItems: 'center', gap: 7 }, helpTitle: { color: '#334b40', fontSize: 14, fontWeight: '600' },
-  resendButton: { minHeight: 44, borderWidth: 1, borderColor: '#8ebdab', borderRadius: 8, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', marginTop: 4 },
-  resendDisabled: { opacity: 0.5, backgroundColor: '#f4f7f2' },
+  card: { width: '100%', maxWidth: 430, backgroundColor: colors.white, padding: 24, borderRadius: 20, shadowColor: colors.ink, shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  icon: { alignSelf: 'center', backgroundColor: colors.primarySoft, padding: 15, borderRadius: 40, marginBottom: 16 }, title: { fontSize: 25, fontWeight: '800', color: colors.ink, textAlign: 'center', marginBottom: 12 },
+  body: { color: colors.textMuted, fontSize: 14, lineHeight: 21, textAlign: 'center' }, email: { textAlign: 'center', color: colors.primary, fontWeight: '600', marginVertical: 15 }, label: { fontSize: 14, fontWeight: '600', marginBottom: 8, color: colors.text },
+  input: { height: 54, backgroundColor: colors.light.inputBg, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, textAlign: 'center', fontSize: 25, letterSpacing: 9, color: colors.ink, marginBottom: 16 },
+  button: { minHeight: 46, backgroundColor: colors.primary, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: colors.white, fontSize: 16, fontWeight: '700' }, resend: { alignItems: 'center', padding: 13 }, link: { color: colors.primary, fontWeight: '700', fontSize: 13 },
+  hint: { color: colors.textMuted, fontSize: 12, lineHeight: 18, textAlign: 'center' }, error: { color: colors.dangerText, fontSize: 13, marginBottom: 14, lineHeight: 19 },
+  deliveryHelp: { marginTop: 22, marginBottom: 16, alignItems: 'center', gap: 7 }, helpTitle: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  resendButton: { minHeight: 44, borderWidth: 1, borderColor: colors.primary, borderRadius: 8, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  resendDisabled: { opacity: 0.5, backgroundColor: colors.hoverRow },
 });

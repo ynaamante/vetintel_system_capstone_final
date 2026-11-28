@@ -145,31 +145,36 @@ function safeAuditChanges(payload, fallbackCategory='') {
   }));
 }
 
-function DetailDrawer({ log, token, onClose }) {
+export function ActivityDetailsDrawer({ log, token, onClose }) {
   const [detail, setDetail] = useState(log);
   const [error, setError] = useState('');
   useEffect(() => {
     const apiUrl=(import.meta.env.VITE_API_URL||'http://localhost:3000/api').replace(/\/+$/,'');
     const controller=new AbortController();
-    fetch(`${apiUrl}/audit-trail/${log.rawId}`,{headers:{Authorization:`Bearer ${token}`},signal:controller.signal,cache:'no-store'})
-      .then(async response=>{const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Unable to load activity details.');setDetail({...log,...payload,id:log.id,description:auditDescription(payload)||log.description,module:auditModule(payload)||log.module,role:payload.role||log.role,ip_address:payload.ip_address||log.ip,changes:safeAuditChanges(payload,log.entity)});})
+    const auditId=log.rawId||log.id;
+    fetch(`${apiUrl}/audit-trail/${auditId}`,{headers:{Authorization:`Bearer ${token}`},signal:controller.signal,cache:'no-store'})
+      .then(async response=>{const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Unable to load activity details.');const displayId=log.displayId||(String(log.id||'').startsWith('AUD-')?log.id:`AUD-${String(payload.id).padStart(4,'0')}`);setDetail({...log,...payload,id:displayId,description:auditDescription(payload)||log.description,module:auditModule(payload)||log.module,role:payload.role||log.role,ip_address:payload.ip_address||log.ip,changes:safeAuditChanges(payload,log.entity)});})
       .catch(failure=>{if(failure.name!=='AbortError')setError(failure.message);});
     return()=>controller.abort();
-  },[log.rawId,token]);
+  },[log.id,log.rawId,log.displayId,token]);
   useEffect(()=>{const close=event=>{if(event.key==='Escape')onClose();};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close);},[onClose]);
   const result=detail.result||'Successful';
+  const role=String(detail.role||'Role not recorded').replace(/[_-]+/g,' ').replace(/\b\w/g,letter=>letter.toUpperCase());
+  const accessAction=detail.attempted_action||(result==='Failed'?'Restricted access':String(detail.action||'Activity').replace(/[_-]+/g,' '));
+  const accessResult=result==='Failed'?'Denied':result;
+  const isRestrictedAttempt=result==='Failed'&&/unauthorized|restricted/i.test(String(detail.action||''));
+  const activityTitle=isRestrictedAttempt?'Attempted Restricted Access':detail.description;
   return createPortal(<>
     <button type="button" className="audit-drawer-scrim" aria-label="Close activity details" onClick={onClose}/>
     <aside className="audit-detail-drawer" role="dialog" aria-modal="true" aria-labelledby="audit-drawer-title">
-      <header><div><h2 id="audit-drawer-title">Activity Details</h2><p>{detail.id}</p></div><button type="button" aria-label="Close activity details" onClick={onClose}>{Icons.close}</button></header>
+      <header><div><h2 id="audit-drawer-title">Activity Details</h2><p>Audit ID: {detail.id}</p></div><button type="button" aria-label="Close activity details" onClick={onClose}>{Icons.close} Close</button></header>
       <div className="audit-drawer-content">
-        <span className={`audit-result-pill ${result==='Failed'?'is-failed':''}`}><i/>{result}</span>
-        <h3>{detail.description}</h3>
-        <p className="audit-drawer-date">{formatDateTimeText(detail.timestamp,'en-PH')}</p>
-        <section><h4>Staff Information</h4><strong>{detail.user||'System'}</strong><p>{String(detail.role||'Role not recorded').replace(/[_-]+/g,' ').replace(/\b\w/g,letter=>letter.toUpperCase())}</p></section>
-        <section><h4>Affected Patient</h4>{detail.pet?<><strong>{detail.pet.name}</strong><p>{[detail.pet.species,detail.pet.id?`Patient ID: ${detail.pet.id}`:null].filter(Boolean).join(' | ')}</p></>:<p>No patient linked to this activity.</p>}</section>
-        <section><h4>Change History</h4>{error&&<p role="alert" className="audit-drawer-error">{error}</p>}{!detail.changes&&!error&&<p>Loading changed fields...</p>}{detail.changes?.length?detail.changes.map((change,index)=><div className="audit-change-pair" key={`${change.field}-${index}`}><div><small>Previous Value | {change.field}</small><p>{change.previous}</p></div><div><small>Updated Value</small><p>{change.updated}</p></div></div>):detail.changes&&<p>No field changes recorded.</p>}</section>
-        <section><h4>Additional Information</h4><dl><dt>Module</dt><dd>{detail.module||'Other'}</dd><dt>Action Type</dt><dd>{detail.action||'-'}</dd><dt>Result</dt><dd>{result}</dd><dt>Source</dt><dd>{detail.source||'Not recorded'}</dd><dt>Device</dt><dd>{detail.device||'Not recorded'}</dd><dt>IP Address</dt><dd>{detail.ip_address||'Not recorded'}</dd><dt>Timestamp</dt><dd>{formatDateTimeText(detail.timestamp,'en-PH')}</dd><dt>Affected Record</dt><dd>{detail.category||'record'}{detail.record_id?` #${detail.record_id}`:''}</dd></dl></section>
+        <span className={`audit-result-pill ${result==='Failed'?'is-failed':''}`}><i/>{result}</span><h3>{activityTitle}</h3><p className="audit-drawer-date">{formatDateTimeText(detail.timestamp,'en-PH')}</p>
+        {error&&<p role="alert" className="audit-drawer-error">{error}</p>}
+        <section className="audit-performed-by"><h4>Performed By</h4><div className="audit-actor-grid"><div><span>Staff Member</span><strong>{detail.user||'System'}</strong></div><div><span>Staff Role</span><strong>{role}</strong></div></div></section>
+        <section><h4>Access Attempt</h4><dl><dt>Target Module</dt><dd>{detail.target_module||detail.module||'Not recorded'}</dd><dt>Attempted Action</dt><dd>{accessAction}</dd><dt>Required Permission</dt><dd>{detail.required_permission&&detail.required_permission!=='Not recorded'?<code className="audit-permission-code">{detail.required_permission}</code>:'Not recorded'}</dd><dt>Access Result</dt><dd className={result==='Failed'?'is-denied':''}>{accessResult}</dd><dt>Denial Reason</dt><dd>{detail.reason||'Not recorded'}</dd></dl></section>
+        <section><h4>Event Details</h4><dl><dt>Module</dt><dd>{detail.module||'Other'}</dd><dt>Event Type</dt><dd>{detail.event_type||String(detail.action||'Activity').replace(/[_-]+/g,' ')}</dd><dt>Source</dt><dd>{detail.source||'Clinic Web Dashboard'}</dd><dt>Device</dt><dd>{detail.device||'Not recorded'}</dd><dt>IP Address</dt><dd>{detail.ip_address||'Not recorded'}</dd></dl></section>
+        {result==='Failed'&&<p className="audit-protection-note"><span aria-hidden="true">ⓘ</span>This activity was logged as a failed access attempt. No changes were made to any records.</p>}
       </div>
     </aside>
   </>,document.body);
@@ -341,7 +346,7 @@ export default function AuditTrailPage({ user }) {
 
       </div>
 
-      {modal && <DetailDrawer log={modal} token={user.token} onClose={() => setModal(null)} />}
+      {modal && <ActivityDetailsDrawer log={modal} token={user.token} onClose={() => setModal(null)} />}
     </div>
   );
 }

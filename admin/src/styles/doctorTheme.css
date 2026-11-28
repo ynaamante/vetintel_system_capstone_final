@@ -1,0 +1,1479 @@
+/* Doctor-facing teal design system. Scoped so other admin roles keep their current UI. */
+body.doctor-theme-active,
+.doctor-content,
+.staff-content,
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) {
+  --page: #ffffff;
+  --surface: #ffffff;
+  --sidebar: #e4f5f2;
+  --sidebar-border: #cbe7e3;
+  --ink: #0d4a48;
+  --text: #1f3b3a;
+  --text-muted: #4f6b69;
+  --primary: #137a76;
+  --primary-hover: #0f6764;
+  --primary-soft: #d8f6f2;
+  --border: #d4e9e6;
+  --input-border: #6e9995;
+  --danger: #c9433f;
+  --warning: #e9a23b;
+  --success: #2e9e6b;
+  --disabled-bg: #eef5f4;
+  --disabled-text: #8aa5a2;
+  --focus-ring: rgba(19, 122, 118, .35);
+  --overlay: rgba(13, 74, 72, .45);
+  --header-gradient: linear-gradient(135deg, #dcf3f0, #d0eeea);
+  --header-surface:
+    radial-gradient(ellipse 37% 86px at 60% calc(100% + 45px), rgba(19, 122, 118, .16) 98%, transparent 100%),
+    radial-gradient(ellipse 30% 64px at 111% calc(100% + 31px), #c5e8e3 98%, transparent 100%),
+    linear-gradient(135deg, #dcf3f0, #d0eeea);
+  --header-border: #c3e4e0;
+  --banner-gradient: linear-gradient(135deg, #d8f6f2, #c5e8e3);
+  --table-head: #eef8f6;
+  --hover-menu: #eaf7f5;
+  --hover-row: #f4fbfa;
+  --hover-band: #e6f5f2;
+  --chart-1: #137a76;
+  --chart-2: #7dd3c3;
+  --chart-3: #f2917a;
+  --chart-area: rgba(19, 122, 118, .12);
+  --success-bg: #e3f5ec;
+  --success-text: #1e7a50;
+  --warning-bg: #fdf1dc;
+  --warning-text: #8a5a0b;
+  --danger-bg: #fbe6e5;
+  --danger-text: #a63a36;
+  --info-bg: #dff1f4;
+  --info-text: #1f6f7d;
+  --neutral-bg: #eaf0ef;
+  --neutral-text: #4f6b69;
+
+  /* Existing clinic components still use these aliases. */
+  --color-deep-forest: var(--ink);
+  --color-botanical-teal: var(--primary);
+  --color-eucalyptus: var(--sidebar-border);
+  --color-pale-sage: var(--primary-soft);
+  --color-warm-ivory: var(--page);
+  --color-white: var(--surface);
+  --ink2: var(--ink);
+  --ink3: var(--text-muted);
+  --slate: var(--text-muted);
+  --muted: var(--text-muted);
+  --bg: var(--page);
+  --blue: var(--primary);
+  --blue-light: var(--primary-soft);
+  --blue-mid: var(--sidebar-border);
+  --red: var(--danger);
+  --red-light: var(--danger-bg);
+  --amber: var(--warning);
+  --amber-light: var(--warning-bg);
+  --green: var(--success);
+  --green-light: var(--success-bg);
+}
+
+.doctor-content {
+  background: var(--page);
+  color: var(--text);
+}
+
+/* Navigation */
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) {
+  background: var(--sidebar) !important;
+  color: var(--ink) !important;
+  box-shadow: inset -1px 0 0 var(--sidebar-border) !important;
+}
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-brand,
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-clinic-name,
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-user-name,
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-nav-item,
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-action {
+  color: var(--ink) !important;
+}
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-clinic-meta,
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-status,
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-user-role,
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-section {
+  color: var(--text-muted) !important;
+}
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-menu-button {
+  color: var(--ink) !important;
+}
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) :is(.sidebar-brand-divider, .sidebar-clinic-divider) {
+  background: var(--sidebar-border) !important;
+}
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) :is(.sidebar-icon, .sidebar-action > span) {
+  color: var(--ink) !important;
+}
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) :is(.sidebar-icon, .sidebar-action > span) svg { color: inherit !important; }
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-nav-item:hover,
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-action:hover { background: var(--primary-soft) !important; color: var(--ink) !important; }
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-nav-item.active,
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-nav-item.active:hover { background: var(--primary) !important; color: #fff !important; }
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-nav-item.active .sidebar-icon { color: #fff !important; }
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-action.active {
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-action.active > span { color: #fff !important; }
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-clinical-section,
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-section-clinic-management,
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-actions { border-color: var(--sidebar-border) !important; }
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-user-box { background: var(--primary-soft) !important; border-color: var(--sidebar-border) !important; }
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-user-avatar { background: var(--primary) !important; color: #fff !important; }
+:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-brand-toggle:focus-visible { outline-color: var(--primary) !important; }
+
+/* Shared shell, forms, cards, and tables */
+.doctor-content .page-topbar {
+  background: var(--header-surface) !important;
+  border-bottom: 1px solid var(--header-border) !important;
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 8px 22px 9px !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+.doctor-content .page-topbar h2,
+.doctor-content .page-topbar-account-name { color: var(--ink) !important; }
+.doctor-content .page-topbar p,
+.doctor-content .page-topbar-account-role { color: var(--text-muted) !important; }
+.doctor-content .page-topbar h2 {
+  margin: 0 !important;
+  font-size: 23px !important;
+  line-height: 1.05 !important;
+}
+.doctor-content .page-topbar p {
+  margin: 2px 0 0 !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+}
+.doctor-content .page-topbar-avatar { background: var(--primary) !important; color: #fff !important; }
+.doctor-content .page-topbar-notifications { color: var(--primary) !important; }
+.doctor-content .page-topbar-notifications[aria-expanded="true"] { background: var(--primary-soft) !important; }
+body .admin-content.doctor-content .page-topbar-notifications {
+  color: var(--primary) !important;
+  background: rgb(255 255 255 / 70%) !important;
+}
+body .admin-content.doctor-content .page-topbar-notifications:hover,
+body .admin-content.doctor-content .page-topbar-notifications[aria-expanded="true"] { background: #fff !important; }
+.doctor-content :is(input, select, textarea) { border-color: var(--input-border); color: var(--text); }
+.doctor-content :is(input, select, textarea):focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--focus-ring); outline: 0; }
+.doctor-content input::placeholder,
+.doctor-content textarea::placeholder { color: var(--text-muted); }
+.doctor-content input[type="checkbox"],
+.doctor-content input[type="radio"] { accent-color: var(--primary); }
+.doctor-content button:disabled { background: var(--disabled-bg) !important; color: var(--disabled-text) !important; border-color: var(--disabled-bg) !important; }
+
+/* Disease Monitoring, the doctor role's monitoring workspace. */
+.doctor-content .dm-page,
+.doctor-content .dce-page { background: var(--page); color: var(--text); }
+.doctor-content .dce-filters { border-color: var(--border); background: var(--surface); }
+.doctor-content .dce-field .filter-select-trigger { border-color: var(--input-border); background: var(--surface); color: var(--text); }
+.doctor-content .dce-field .filter-select-trigger:hover { border-color: var(--primary); }
+.doctor-content .dm-primary { background: var(--primary) !important; border-color: var(--primary) !important; color: #fff !important; }
+.doctor-content .dm-primary:hover { background: var(--primary-hover) !important; border-color: var(--primary-hover) !important; }
+.doctor-content .dm-panel h2 { color: var(--ink); }
+.doctor-content .dm-panel p,
+.doctor-content .dce-table-footer,
+.doctor-content .dm-footnote { color: var(--text-muted); }
+.doctor-content .dm-panel { border-color: var(--border); background: var(--surface); }
+.doctor-content .dm-panel th { background: var(--table-head); color: var(--ink); }
+.doctor-content .dm-panel td { border-color: var(--border); }
+.doctor-content .dce-summary-row:hover,
+.doctor-content .dce-summary-row:focus-within { background: var(--hover-row); }
+.doctor-content .dce-bar-track { background: var(--hover-band); }
+.doctor-content .dce-bar-track > div { background: var(--chart-1); }
+.doctor-content .dce-page .dce-view-controls button,
+.doctor-content .dce-page .dce-actions button,
+.doctor-content .dce-page .dce-table-footer button {
+  border-color: var(--primary);
+  background: var(--surface);
+  color: var(--primary);
+}
+.doctor-content .dce-page .dce-view-controls [aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+.doctor-content .recharts-area-area { fill: var(--chart-area) !important; }
+.doctor-content .recharts-area-curve { stroke: var(--chart-1) !important; }
+.doctor-content .recharts-dot { fill: var(--chart-1) !important; stroke: var(--chart-1) !important; }
+.doctor-content .recharts-bar-rectangle path { fill: var(--chart-1) !important; }
+.doctor-content .dce-page .dm-chart .recharts-default-tooltip {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+.doctor-content .dce-page .dm-chart .recharts-tooltip-label { color: var(--text) !important; }
+.doctor-content .dce-page .dm-chart .recharts-tooltip-item { color: var(--primary) !important; }
+.doctor-content .dce-page .dm-chart .recharts-label-list text { fill: var(--ink); }
+
+/* Role-specific status colors. */
+.doctor-content .status-success { background: var(--success-bg); color: var(--success-text); }
+.doctor-content .status-warning { background: var(--warning-bg); color: var(--warning-text); }
+.doctor-content .status-danger { background: var(--danger-bg); color: var(--danger-text); }
+.doctor-content .status-info { background: var(--info-bg); color: var(--info-text); }
+.doctor-content .status-neutral { background: var(--neutral-bg); color: var(--neutral-text); }
+
+/* Disease Intelligence dashboard: override its page-local dark-green theme. */
+.admin-content.doctor-content .surveillance-dashboard { background: var(--page) !important; color: var(--text) !important; }
+.admin-content.doctor-content .surveillance-dashboard > .page-topbar.surveillance-topbar,
+.admin-content.doctor-content .dce-page > .page-topbar.dm-topbar {
+  background: var(--header-surface) !important;
+  border-bottom: 1px solid var(--header-border) !important;
+}
+.admin-content.doctor-content .surveillance-dashboard > .page-topbar.surveillance-topbar > .page-topbar-heading > h2,
+.admin-content.doctor-content .dce-page > .page-topbar.dm-topbar h2 { color: var(--ink) !important; }
+.admin-content.doctor-content .surveillance-dashboard > .page-topbar.surveillance-topbar > .page-topbar-heading > p,
+.admin-content.doctor-content .dce-page > .page-topbar.dm-topbar p { color: var(--text-muted) !important; }
+.doctor-content .surveillance-search,
+.doctor-content .surveillance-filters { border-color: var(--border) !important; background: var(--surface) !important; }
+.doctor-content .surveillance-search svg { color: var(--primary) !important; }
+.doctor-content .surveillance-filter-field > span,
+.doctor-content .surveillance-filter-field .filter-select-trigger { color: var(--text) !important; }
+.doctor-content .surveillance-filter-field .filter-select-trigger { border-color: var(--input-border) !important; background: var(--surface) !important; }
+.doctor-content .surveillance-filter-field .filter-select-trigger:hover { border-color: var(--primary) !important; }
+.doctor-content .surveillance-scope,
+.doctor-content .surveillance-card > p,
+.doctor-content .surveillance-card > .surveillance-period { color: var(--text-muted) !important; }
+.doctor-content .surveillance-change { background: var(--success-bg) !important; color: var(--success-text) !important; }
+.doctor-content .surveillance-banner.is-clear { border-color: var(--border) !important; border-left-color: var(--primary) !important; background: var(--banner-gradient) !important; }
+.doctor-content .surveillance-banner.is-clear::after { background: var(--primary-soft) !important; }
+.doctor-content .surveillance-banner.is-clear h2 { color: var(--ink) !important; }
+.doctor-content .surveillance-banner.is-clear > svg { color: var(--primary) !important; }
+.doctor-content .surveillance-primary { background: var(--primary) !important; border-color: var(--primary) !important; }
+.doctor-content .surveillance-primary:hover { background: var(--primary-hover) !important; border-color: var(--primary-hover) !important; }
+.doctor-content .surveillance-card { border-color: var(--border) !important; background: var(--surface) !important; }
+.doctor-content .surveillance-card h2,
+.doctor-content .surveillance-chart-note strong { color: var(--ink) !important; }
+.doctor-content .surveillance-link,
+.doctor-content .surveillance-alerts td button { color: var(--primary) !important; }
+.doctor-content .surveillance-chart-note { background: var(--primary-soft) !important; }
+.doctor-content .surveillance-signal-note { background: var(--hover-row) !important; color: var(--text) !important; }
+.doctor-content .surveillance-alerts th { background: var(--table-head) !important; color: var(--ink) !important; }
+.doctor-content .surveillance-alerts td { border-color: var(--border) !important; }
+.doctor-content .surveillance-footer { border-color: var(--border) !important; background: var(--primary-soft) !important; color: var(--text) !important; }
+.doctor-content .surveillance-footer svg,
+.doctor-content .surveillance-signal-note svg { color: var(--primary) !important; }
+.doctor-content .surveillance-dashboard button:focus-visible { outline-color: var(--primary) !important; }
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme,
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme,
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme { background: var(--sidebar) !important; }
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme :is(.sidebar-brand, .sidebar-clinic-name, .sidebar-user-name, .sidebar-nav-item, .sidebar-action),
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme :is(.sidebar-brand, .sidebar-clinic-name, .sidebar-user-name, .sidebar-nav-item, .sidebar-action),
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme :is(.sidebar-brand, .sidebar-clinic-name, .sidebar-user-name, .sidebar-nav-item, .sidebar-action) { color: var(--ink) !important; }
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme .sidebar-nav-item.active,
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme .sidebar-nav-item.active,
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme .sidebar-nav-item.active { background: var(--primary) !important; color: #fff !important; }
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme .sidebar-nav-item:hover,
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme .sidebar-action:hover,
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme .sidebar-nav-item:hover,
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme .sidebar-action:hover,
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme .sidebar-nav-item:hover,
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme .sidebar-action:hover { background: var(--primary-soft) !important; color: var(--ink) !important; }
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme .sidebar-nav-item.active:hover,
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme .sidebar-nav-item.active:hover,
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme .sidebar-nav-item.active:hover { background: var(--primary-hover) !important; color: #fff !important; }
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme .sidebar-icon,
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme .sidebar-icon,
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme .sidebar-icon { color: var(--ink) !important; }
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme .sidebar-nav-item.active .sidebar-icon,
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme .sidebar-nav-item.active .sidebar-icon,
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme .sidebar-nav-item.active .sidebar-icon { color: #fff !important; }
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme :is(.sidebar-clinic-meta, .sidebar-user-role, .sidebar-section),
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme :is(.sidebar-clinic-meta, .sidebar-user-role, .sidebar-section),
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme :is(.sidebar-clinic-meta, .sidebar-user-role, .sidebar-section) { color: var(--text-muted) !important; }
+.admin-sidebar:is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) .sidebar-section.sidebar-section-doctor-workspace {
+  color: var(--ink) !important;
+  font-weight: 800 !important;
+}
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme :is(.sidebar-clinical-section, .sidebar-action + .sidebar-action),
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme :is(.sidebar-clinical-section, .sidebar-action + .sidebar-action),
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme :is(.sidebar-clinical-section, .sidebar-action + .sidebar-action) { border-color: var(--sidebar-border) !important; }
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme .sidebar-user-box,
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme .sidebar-user-box,
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme .sidebar-user-box { background: var(--primary-soft) !important; border-color: var(--sidebar-border) !important; }
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme .sidebar-user-avatar,
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme .sidebar-user-avatar,
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme .sidebar-user-avatar { background: var(--primary) !important; color: #fff !important; }
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme .sidebar-action > span,
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme .sidebar-action > span,
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme .sidebar-action > span { color: var(--ink) !important; }
+.admin-sidebar.admin-sidebar-doctor.admin-sidebar-dashboard-theme .sidebar-action.active > span,
+.admin-sidebar.admin-sidebar-veterinarian.admin-sidebar-dashboard-theme .sidebar-action.active > span,
+.admin-sidebar.admin-sidebar-assistant_doctor.admin-sidebar-dashboard-theme .sidebar-action.active > span { color: #fff !important; }
+
+/* Clinical Records headers, navigation, tables, and shared record panels. */
+.admin-content.doctor-content .clinic-records-shell { background: var(--page) !important; color: var(--text) !important; }
+.admin-content.doctor-content .clinic-records-shell > .page-topbar,
+.admin-content.doctor-content .clinic-records-shell > .page-topbar.clinic-dashboard-topbar {
+  background: var(--header-surface) !important;
+  border-bottom: 1px solid var(--header-border) !important;
+}
+.admin-content.doctor-content .clinic-records-shell > .page-topbar h2 { color: var(--ink) !important; }
+.admin-content.doctor-content .clinic-records-shell > .page-topbar p { color: var(--text-muted) !important; }
+.doctor-content .clinic-records-tabnav,
+.doctor-content .clinic-dashboard-tabs-toolbar { background: var(--surface) !important; border-color: var(--border) !important; }
+.doctor-content .clinic-records-tabnav-item { color: var(--ink) !important; }
+.doctor-content .clinic-records-tabnav-item:hover { background: var(--primary-soft) !important; color: var(--ink) !important; }
+.doctor-content .clinic-records-tabnav-item.active { background: var(--primary) !important; color: #fff !important; }
+.doctor-content :is(.lab-results-list, .lab-result-entry, .clinic-management-list, .clinic-record-details, .clinic-appointment-details) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+}
+.doctor-content :is(.lab-results-table, .clinic-management-table, .appointment-dashboard-table) th { background: var(--table-head) !important; color: var(--ink) !important; }
+.doctor-content :is(.lab-results-table, .clinic-management-table, .appointment-dashboard-table) td { border-color: var(--border) !important; }
+.doctor-content :is(.lab-results-table, .clinic-management-table, .appointment-dashboard-table) tbody tr:hover { background: var(--hover-row) !important; }
+
+/* Reports and Risk Monitoring retain their own page CSS, so give them the same tokens explicitly. */
+body .admin-content.doctor-content :is(.risk-page, .reports-page) { background: var(--page) !important; color: var(--text) !important; }
+body .admin-content.doctor-content :is(.risk-page, .reports-page) > .page-topbar {
+  background: var(--header-surface) !important;
+  border-bottom: 1px solid var(--header-border) !important;
+}
+body .admin-content.doctor-content :is(.risk-page, .reports-page) > .page-topbar h2 { color: var(--ink) !important; }
+body .admin-content.doctor-content :is(.risk-page, .reports-page) > .page-topbar p { color: var(--text-muted) !important; }
+.doctor-content :is(.risk-filters, .reports-panel) { border-color: var(--border) !important; background: var(--surface) !important; }
+.doctor-content :is(.risk-field, .reports-field) .filter-select-trigger { border-color: var(--input-border) !important; background: var(--surface) !important; color: var(--text) !important; }
+.doctor-content :is(.risk-field, .reports-field) .filter-select-trigger:hover { border-color: var(--primary) !important; }
+.doctor-content .risk-scope,
+.doctor-content .risk-table-footer { color: var(--text-muted) !important; }
+.doctor-content .risk-notice { border-color: var(--border) !important; background: var(--banner-gradient) !important; color: var(--text) !important; }
+.doctor-content .risk-page button:focus-visible,
+.doctor-content .reports-page button:focus-visible { outline-color: var(--primary) !important; }
+.doctor-content .risk-page :is(.risk-rules-action, .risk-table-footer button, .risk-tools button) { border-color: var(--primary) !important; background: var(--surface); color: var(--primary) !important; }
+.doctor-content .reports-types > label { border-color: var(--border) !important; background: var(--surface) !important; }
+.doctor-content .reports-types > label.selected { border-color: var(--primary) !important; background: var(--primary-soft) !important; box-shadow: inset 0 0 0 1px var(--primary) !important; }
+.doctor-content .reports-page input[type="radio"] { accent-color: var(--primary) !important; }
+.doctor-content .reports-page .reports-primary { border-color: var(--primary) !important; background: var(--primary) !important; }
+.doctor-content .reports-page .reports-primary:hover { border-color: var(--primary-hover) !important; background: var(--primary-hover) !important; }
+.doctor-content .reports-snapshot,
+.doctor-content .reports-scope { background: var(--primary-soft) !important; color: var(--text) !important; }
+.doctor-content .reports-preview-content,
+.doctor-content .reports-summary { border-color: var(--border) !important; }
+.doctor-content .reports-summary dd { color: var(--ink) !important; }
+.doctor-content .reports-page th { background: var(--table-head) !important; color: var(--ink) !important; }
+.doctor-content .reports-page td,
+.doctor-content .reports-summary dl > div { border-color: var(--border) !important; }
+
+/* Menus and dialogs use portals, so they need the role marker on <body>. */
+body.doctor-theme-active :is(.filter-select-menu, .medication-date-popover) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+body.doctor-theme-active :is(.filter-select-option, .dashboard-filter-select-option) { color: var(--text) !important; }
+body.doctor-theme-active :is(.filter-select-option, .dashboard-filter-select-option):is(:hover, .highlighted) { background: var(--hover-menu) !important; color: var(--ink) !important; }
+body.doctor-theme-active :is(.filter-select-option, .dashboard-filter-select-option)[aria-selected="true"] { background: var(--primary) !important; color: #fff !important; }
+body.doctor-theme-active :is(.dm-dialog, .surveillance-review, [role="dialog"]) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+body.doctor-theme-active :is(.dm-dialog, .surveillance-review, [role="dialog"])::backdrop { background: var(--overlay) !important; }
+body.doctor-theme-active :is(.dm-dialog, .surveillance-review, [role="dialog"]) :is(h1, h2, h3) { color: var(--ink) !important; }
+body.doctor-theme-active :is(.dm-dialog, .surveillance-review, [role="dialog"]) :is(input, select, textarea) { border-color: var(--input-border) !important; color: var(--text) !important; }
+body.doctor-theme-active :is(.dm-dialog, .surveillance-review, [role="dialog"]) :is(button.dm-primary, .surveillance-primary) { background: var(--primary) !important; border-color: var(--primary) !important; color: #fff !important; }
+
+/* Exact Dashboard palette: this page otherwise applies an older aqua theme after shared styles. */
+body .admin-content.doctor-content .surveillance-dashboard > .page-topbar.surveillance-topbar {
+  background:
+    radial-gradient(ellipse 37% 86px at 60% calc(100% + 45px), rgba(19, 122, 118, .16) 98%, transparent 100%),
+    radial-gradient(ellipse 30% 64px at 111% calc(100% + 31px), #c5e8e3 98%, transparent 100%),
+    linear-gradient(135deg, #dcf3f0, #d0eeea) !important;
+  border-bottom: 1px solid #c3e4e0 !important;
+  box-shadow: none !important;
+  min-height: 56px;
+  padding: 8px 22px 9px !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+body .admin-content.doctor-content .surveillance-dashboard > .page-topbar.surveillance-topbar > .page-topbar-heading > h2 {
+  margin: 0 !important;
+  color: var(--ink) !important;
+  font-size: 23px !important;
+  line-height: 1.05 !important;
+  font-weight: 750 !important;
+  letter-spacing: -.35px !important;
+}
+body .admin-content.doctor-content .surveillance-dashboard > .page-topbar.surveillance-topbar > .page-topbar-heading > p {
+  margin: 2px 0 0 !important;
+  color: var(--text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 600;
+  line-height: 1.25 !important;
+}
+body .admin-content.doctor-content .surveillance-topbar .page-topbar-notifications {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 50% !important;
+  background: rgb(255 255 255 / 70%) !important;
+  color: var(--primary) !important;
+}
+body .admin-content.doctor-content .surveillance-topbar .page-topbar-notifications:hover,
+body .admin-content.doctor-content .surveillance-topbar .page-topbar-notifications[aria-expanded="true"] { background: #fff !important; }
+
+@media (max-width: 600px) {
+  .doctor-content .page-topbar { min-height: 52px; padding: 8px 12px !important; }
+  .doctor-content .page-topbar h2 { font-size: 20px !important; }
+}
+body .admin-content.doctor-content .surveillance-dashboard .surveillance-search,
+body .admin-content.doctor-content .surveillance-dashboard .surveillance-filters,
+body .admin-content.doctor-content .surveillance-dashboard .surveillance-card { background: var(--surface) !important; border-color: var(--border) !important; }
+body .admin-content.doctor-content .surveillance-dashboard .surveillance-filter-field .filter-select-trigger {
+  background: var(--surface) !important;
+  border-color: var(--input-border) !important;
+  color: var(--text) !important;
+}
+body .admin-content.doctor-content .surveillance-dashboard .surveillance-banner.is-clear {
+  background: linear-gradient(135deg, #d8f6f2, #c5e8e3) !important;
+  border-color: var(--border) !important;
+  border-left-color: var(--primary) !important;
+}
+body .admin-content.doctor-content .surveillance-dashboard .surveillance-alerts th { background: var(--table-head) !important; }
+body .admin-content.doctor-content .surveillance-dashboard .surveillance-chart-note { background: var(--primary-soft) !important; }
+body .admin-content.doctor-content .surveillance-dashboard .surveillance-card :is(.recharts-cartesian-grid line, .recharts-reference-line line) { stroke: var(--border) !important; }
+body .admin-content.doctor-content .surveillance-dashboard .recharts-text { fill: var(--text-muted) !important; }
+body .admin-content.doctor-content .surveillance-dashboard .recharts-rectangle.recharts-tooltip-cursor {
+  fill: var(--info-bg);
+  stroke: none;
+}
+body .admin-content.doctor-content .surveillance-dashboard .recharts-tooltip-wrapper { color: var(--text) !important; }
+
+
+/* Case Summary has its own local dialog theme. */
+body.doctor-theme-active .dm-dialog.dce-summary-dialog {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+body.doctor-theme-active .dce-summary-dialog > header { border-bottom: 1px solid var(--border) !important; }
+body.doctor-theme-active .dce-summary-dialog > header h2 { color: var(--ink) !important; }
+body.doctor-theme-active .dce-summary-dialog > header button { color: var(--primary) !important; }
+body.doctor-theme-active .dce-summary-banner {
+  background: var(--banner-gradient) !important;
+  color: var(--text) !important;
+}
+body.doctor-theme-active .dce-summary-banner::after { background: var(--primary-soft) !important; }
+body.doctor-theme-active .dce-summary-banner > strong {
+  border-right-color: var(--sidebar-border) !important;
+  color: var(--ink) !important;
+}
+body.doctor-theme-active .dce-summary-dialog .dm-details > div { border-bottom-color: var(--border) !important; }
+body.doctor-theme-active .dce-summary-dialog .dm-details dt { color: var(--text-muted) !important; }
+body.doctor-theme-active .dce-summary-dialog .dm-details dd { color: var(--text) !important; }
+body.doctor-theme-active .dce-summary-dialog .dce-summary-privacy {
+  background: var(--info-bg) !important;
+  color: var(--text) !important;
+}
+body.doctor-theme-active .dce-summary-privacy strong { color: var(--info-text) !important; }
+
+/* Clinical Records pages contain local header styles (including inline style blocks). */
+body .admin-content.doctor-content :is(.schedule-page, .intake-shell, .patient-records-page, .reminders-page, .clinic-records-shell) > .page-topbar {
+  background: var(--header-surface) !important;
+  border-bottom: 1px solid var(--header-border) !important;
+  box-sizing: border-box;
+  min-height: 56px !important;
+  padding: 8px 22px 9px !important;
+  align-items: center !important;
+}
+body .admin-content.doctor-content :is(.schedule-page, .intake-shell, .patient-records-page, .reminders-page, .clinic-records-shell) > .page-topbar .page-topbar-heading > h2 {
+  margin: 0 !important;
+  color: var(--ink) !important;
+  font-size: 23px !important;
+  line-height: 1.05 !important;
+}
+body .admin-content.doctor-content :is(.schedule-page, .intake-shell, .patient-records-page, .reminders-page, .clinic-records-shell) > .page-topbar .page-topbar-heading > p {
+  margin: 2px 0 0 !important;
+  color: var(--text-muted) !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+}
+
+/* Complete Clinical Records palette: page surfaces, tabs, controls, and detail dialogs. */
+.doctor-content :is(.schedule-page-card-heading, .schedule-page-card-title) {
+  background: var(--primary-hover);
+}
+.doctor-content .schedule-page-card-heading .schedule-page-card-subtitle {
+  color: var(--primary-soft) !important;
+}
+body .admin-content.doctor-content :is(.intake-shell, .patient-records-page, .reminders-page, .clinic-records-shell) { background: var(--page) !important; color: var(--text) !important; }
+body .admin-content.doctor-content .clinic-records-tabnav {
+  border-color: var(--border) !important;
+  background: linear-gradient(180deg, #fcfefd 0%, #eef8f6 52%, #d8f6f2 100%) !important;
+}
+body .admin-content.doctor-content .clinic-records-tabnav-item { color: var(--ink) !important; }
+body .admin-content.doctor-content .clinic-records-tabnav-item.active {
+  background: linear-gradient(150deg, #137a76, #0f6764 70%, #137a76) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+body .admin-content.doctor-content .clinic-records-tabnav-item:focus-visible {
+  outline-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--focus-ring) !important;
+}
+body .admin-content.doctor-content .clinic-dashboard-date {
+  border-color: var(--sidebar-border) !important;
+  background: rgb(255 255 255 / 72%) !important;
+  color: var(--text) !important;
+}
+body .admin-content.doctor-content .clinic-dashboard-date > span,
+body .admin-content.doctor-content .clinic-dashboard-date svg { color: var(--primary) !important; }
+body .admin-content.doctor-content .clinic-dashboard-date strong { color: var(--ink) !important; }
+body .admin-content.doctor-content .clinic-dashboard-date small { color: var(--text-muted) !important; }
+body .admin-content.doctor-content .clinic-records-shell :is([class*="-card"], [class*="-panel"], [class*="-table-wrap"], [class*="-filter-bar"], [class*="-filters"]) {
+  border-color: var(--border) !important;
+  background-color: var(--surface) !important;
+}
+body .admin-content.doctor-content .clinic-records-shell :is(th, [class*="-table"] th) { background: var(--table-head) !important; color: var(--ink) !important; }
+body .admin-content.doctor-content .clinic-records-shell :is(td, [class*="-table"] td) { border-color: var(--border) !important; color: var(--text) !important; }
+body .admin-content.doctor-content .clinic-records-shell :is(.clinic-dashboard-export, button.clinic-management-primary, button[class$="-primary"]) {
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+body .admin-content.doctor-content .clinic-records-shell :is(.clinic-dashboard-export, button.clinic-management-primary, button[class$="-primary"]):hover { background: var(--primary-hover) !important; border-color: var(--primary-hover) !important; }
+body .admin-content.doctor-content .clinic-records-shell strong.clinic-management-primary {
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--ink) !important;
+}
+
+body .admin-content.doctor-content .intake-shell :is(.intake-table-wrap, .intake-filter-menu, .intake-detail-panel, .intake-preview-dialog, .correction-modal, .reassign-modal, .rejection-modal) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+body .admin-content.doctor-content .intake-shell :is(.intake-tabs, .oar-filters, .intake-review-facts strong) { background: var(--primary-soft) !important; border-color: var(--border) !important; color: var(--ink); }
+body .admin-content.doctor-content .intake-shell .request-type-tabs { border-color: var(--sidebar-border); }
+body .admin-content.doctor-content .intake-shell .request-type-tab.is-active::after { background: var(--primary); }
+body .admin-content.doctor-content .intake-shell :is(.request-type-tab.is-active, .intake-tab-active, .oar-filters .is-active) {
+  background: var(--primary) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+body .admin-content.doctor-content .intake-shell :is(.intake-approve-button, .correction-submit, .reassign-submit, .intake-review-form > button):not(:disabled) { background: var(--primary) !important; border-color: var(--primary) !important; color: #fff !important; }
+body .admin-content.doctor-content .intake-shell :is(.intake-approve-button, .correction-submit, .reassign-submit, .intake-review-form > button):hover:not(:disabled) { background: var(--primary-hover) !important; border-color: var(--primary-hover) !important; }
+body .admin-content.doctor-content .intake-shell :is(.intake-table thead th, .oar-table th, .intake-detail-section:not(.intake-attachments-section) h3) { background: var(--table-head) !important; color: var(--ink) !important; }
+body .admin-content.doctor-content .intake-shell :is(.intake-table td, .oar-table td, .intake-detail-section, .intake-detail-actions, .intake-review-facts > div, .oar-extra-filters) { border-color: var(--border) !important; }
+body .admin-content.doctor-content .intake-shell :is(.intake-table tbody tr:not(:has(.intake-empty)):hover td, .intake-row-selected td, .oar-table tbody tr:hover) { background: var(--hover-row) !important; }
+body .admin-content.doctor-content .intake-shell .intake-row-selected td:first-child { box-shadow: inset 3px 0 var(--primary); }
+body .admin-content.doctor-content .intake-shell .intake-detail-head { background: var(--header-surface); border-color: var(--header-border); }
+body .admin-content.doctor-content .intake-shell .intake-review-card-heading { background: var(--primary-hover); }
+body .admin-content.doctor-content .intake-shell .intake-review-card-heading h3 { color: #fff !important; }
+body .admin-content.doctor-content .intake-shell :is(
+  .intake-review-rule-note,
+  .intake-review-note > span,
+  .intake-review-disclaimer,
+  .intake-screening-details > p
+) { color: var(--text-muted); }
+body .admin-content.doctor-content .intake-shell .intake-detail-field > .intake-detail-link { color: var(--primary-hover); }
+body .admin-content.doctor-content .intake-shell :is(.intake-screening-note, .intake-screening-details, .intake-reason, .oar-about, .correction-patient-summary) {
+  background: var(--hover-row) !important;
+  border-color: var(--border) !important;
+  color: var(--ink);
+}
+body .admin-content.doctor-content .intake-shell .intake-reason { border-left-color: var(--primary) !important; }
+body .admin-content.doctor-content .intake-shell :is(.intake-detail-heading h2, .oar-about strong) { color: var(--ink); }
+body .admin-content.doctor-content .intake-shell :is(.intake-attachment button, .intake-preview-dialog header button, .oar-info, .oar-extra-filters button) { border-color: var(--sidebar-border); color: var(--primary); }
+body .admin-content.doctor-content .intake-shell .intake-review-message:not(.is-error) { color: var(--primary); }
+body .admin-content.doctor-content .intake-shell :is(.intake-tag-approved, .intake-screening-badge.is-routine) { background: var(--primary-soft); color: var(--ink); }
+body .admin-content.doctor-content .intake-shell :is(.intake-detail-backdrop, .intake-preview-backdrop, .correction-modal-backdrop) { background: var(--overlay) !important; }
+
+/* Appointment request details are portaled to the body. */
+body.doctor-theme-active #oar-appointment-drawer::backdrop { background: var(--overlay); }
+body.doctor-theme-active #oar-appointment-drawer :is(.oar-drawer-header, .oar-drawer-pet, .oar-drawer-details dl, .oar-drawer-details dl > div, .oar-drawer-footer) { border-color: var(--border); }
+body.doctor-theme-active #oar-appointment-drawer :is(.oar-drawer-details > h3, .oar-drawer-owner h3, .oar-drawer-header h2) { color: var(--ink); }
+body.doctor-theme-active #oar-appointment-drawer .oar-drawer-details dt { background: var(--table-head); color: var(--ink); }
+body.doctor-theme-active #oar-appointment-drawer .oar-drawer-photo-placeholder { background: var(--primary-soft); color: var(--primary); }
+body.doctor-theme-active #oar-appointment-drawer .oar-drawer-footer > .oar-decline { background: var(--surface); border-color: var(--primary); color: var(--primary); }
+body.doctor-theme-active #oar-appointment-drawer .oar-drawer-footer > .oar-approve { background: var(--primary); border-color: var(--primary); color: #fff; }
+body.doctor-theme-active #oar-appointment-drawer .oar-drawer-footer > .oar-approve:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); }
+body.doctor-theme-active :is(.intake-shell, #oar-appointment-drawer) .oar-status-approved { background: var(--primary-soft); color: var(--ink); }
+
+body .admin-content.doctor-content .patient-records-page :is(.records-toolbar, .patient-records-table-wrap, .patient-edit-dialog, .records-detail, .records-filter-menu) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+body .admin-content.doctor-content .patient-records-page .records-stat-icon { border-color: var(--border) !important; }
+body .admin-content.doctor-content .patient-records-page .patient-archive-tabs { background: transparent !important; }
+body .admin-content.doctor-content .patient-records-page .records-view-toggle { background: var(--surface) !important; border-color: var(--border) !important; }
+body .admin-content.doctor-content .patient-records-page :is(.patient-archive-tabs button.active, .patient-archive-tabs button[aria-pressed="true"], .records-add, .records-primary, .view-record-button) { background: var(--primary) !important; border-color: var(--primary) !important; color: #fff !important; }
+body .admin-content.doctor-content .patient-records-page .records-view {
+  border: 1px solid var(--primary) !important;
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+body .admin-content.doctor-content .patient-records-page .records-view:hover { background: var(--primary-hover) !important; border-color: var(--primary-hover) !important; color: #fff !important; }
+body .admin-content.doctor-content .patient-records-page :is(th, .records-table th) { background: var(--table-head) !important; color: var(--ink) !important; }
+body .admin-content.doctor-content .patient-records-page :is(td, .records-table td) { border-color: var(--border) !important; color: var(--text) !important; }
+
+body .admin-content.doctor-content .reminders-page :is(.reminders-card, .reminders-search, .reminders-select-wrap, .reminders-date-filter) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+body .admin-content.doctor-content .reminders-page .reminders-view-tabs { background: var(--primary-soft) !important; }
+body .admin-content.doctor-content .reminders-page :is(.reminders-view-tab.is-active, .reminders-bulk-button) { background: var(--primary) !important; border-color: var(--primary) !important; color: #fff !important; }
+body .admin-content.doctor-content .reminders-page .reminders-table th { background: var(--table-head) !important; color: var(--ink) !important; }
+body .admin-content.doctor-content .reminders-page .reminders-table td { border-color: var(--border) !important; color: var(--text) !important; }
+body .admin-content.doctor-content .reminders-page .reminders-clickable-row:hover { background: var(--hover-row) !important; }
+body.doctor-theme-active .reminders-page .system-date-range-popover {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+}
+body.doctor-theme-active .reminders-page .system-date-presets .system-date-preset:hover,
+body.doctor-theme-active .reminders-page .system-date-presets .system-date-preset[aria-pressed="true"] {
+  background: var(--primary-soft) !important;
+  color: var(--ink) !important;
+}
+body.doctor-theme-active .reminders-page .system-date-preset-check { color: var(--primary) !important; }
+body.doctor-theme-active .reminders-page .system-date-presets .system-date-custom { border-top-color: var(--border) !important; }
+body .admin-content.doctor-content :is(.intake-shell, .patient-records-page, .reminders-page, .clinic-records-shell) :is(input, select, textarea) { border-color: var(--input-border) !important; color: var(--text) !important; }
+body.doctor-theme-active :is([class*="clinic-"][class*="dialog"], [class*="clinic-"][class*="modal"], .patient-edit-dialog) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+body.doctor-theme-active :is([class*="clinic-"][class*="dialog"], [class*="clinic-"][class*="modal"], .patient-edit-dialog) :is(h1, h2, h3) { color: var(--ink) !important; }
+
+/* Shared Inbox and Settings use standalone page styles rather than Topbar variants. */
+body .admin-content.doctor-content .settings-page { background: var(--page) !important; color: var(--text) !important; }
+body .admin-content.doctor-content .settings-page > .page-topbar { background: var(--header-surface) !important; border-bottom-color: var(--header-border) !important; }
+body .admin-content.doctor-content .settings-page .settings-content :is(section, [role="status"], [role="alert"]) { border-color: var(--border) !important; color: var(--text) !important; }
+
+body .admin-content.doctor-content .si-page { --si-green: var(--primary); --si-border: var(--border); background: var(--page) !important; color: var(--text) !important; }
+body .admin-content.doctor-content .si-banner {
+  height: 56px;
+  min-height: 56px;
+  padding: 8px 22px 9px;
+  background: var(--header-surface) !important;
+  color: var(--ink) !important;
+}
+body .admin-content.doctor-content .si-banner::after { background: transparent !important; }
+body .admin-content.doctor-content .si-banner :is(h1, p) { color: inherit !important; }
+body .admin-content.doctor-content .si-banner h1 { font-size: 23px; line-height: 1.05; }
+body .admin-content.doctor-content .si-banner p { color: var(--text-muted) !important; font-size: 11px; line-height: 1.25; }
+body .admin-content.doctor-content .si-banner > button,
+body .admin-content.doctor-content .si-primary { background: var(--primary) !important; border-color: var(--primary) !important; color: #fff !important; }
+body .admin-content.doctor-content .si-banner > button:hover,
+body .admin-content.doctor-content .si-primary:hover { background: var(--primary-hover) !important; border-color: var(--primary-hover) !important; }
+body .admin-content.doctor-content .si-page :is(.si-list, .si-thread, .si-detail-card, .si-composer, .si-modal) { border-color: var(--border) !important; background: var(--surface) !important; color: var(--text) !important; }
+body .admin-content.doctor-content .si-page :is(.si-tabs, .si-search, .si-filters select, .si-composer textarea, .si-menu > div, .si-quick > div, .si-modal > select) { border-color: var(--input-border) !important; background: var(--surface) !important; color: var(--text) !important; }
+body .admin-content.doctor-content .si-tabs { background: var(--primary-soft) !important; }
+body .admin-content.doctor-content .si-tabs button[aria-selected="true"] { background: var(--primary) !important; color: #fff !important; }
+body .admin-content.doctor-content .si-conversation { border-bottom-color: var(--border) !important; background: var(--surface) !important; color: var(--text) !important; }
+body .admin-content.doctor-content .si-conversation.is-selected { background: var(--primary-soft) !important; }
+body .admin-content.doctor-content .si-conversation.is-selected::before { background: var(--primary) !important; }
+body .admin-content.doctor-content .si-avatar { background: var(--primary) !important; color: #fff !important; }
+body .admin-content.doctor-content .si-outline { border-color: var(--primary) !important; background: var(--surface) !important; color: var(--primary) !important; }
+body .admin-content.doctor-content .si-outline:hover { background: var(--primary-soft) !important; color: var(--primary-hover) !important; }
+body .admin-content.doctor-content .si-message.is-outgoing .si-bubble { background: var(--primary) !important; }
+body .admin-content.doctor-content .si-message:not(.is-outgoing) .si-bubble { background: var(--hover-row) !important; color: var(--text) !important; }
+body .admin-content.doctor-content .si-composer-top button[aria-selected="true"] { border-bottom-color: var(--primary) !important; color: var(--primary) !important; }
+body .admin-content.doctor-content .si-modal-backdrop { background: var(--overlay) !important; }
+body .admin-content.doctor-content .si-tag { background: var(--danger-bg) !important; color: var(--danger-text) !important; }
+
+/* Reusable record action dialogs are rendered in a portal. */
+body.doctor-theme-active .record-actions-backdrop { background: var(--overlay) !important; }
+body.doctor-theme-active .record-actions-dialog {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+body.doctor-theme-active .record-actions-dialog > header {
+  /* Preserve the compact curved header that belongs to action dialogs. */
+  background: radial-gradient(ellipse 67% 94px at 91% -49px, #c5e8e3 99%, transparent 100%) !important;
+  border-bottom-color: var(--border) !important;
+}
+body.doctor-theme-active .record-actions-dialog.is-catalog-actions > header {
+  /* Catalog actions have their own sweeping header composition. */
+  background: linear-gradient(106deg, #fff 0%, #fff 45%, #d8f6f2 45%, #c5e8e3 100%) !important;
+}
+body.doctor-theme-active .record-actions-dialog.is-catalog-actions > header::after { background: rgb(255 255 255 / 98%) !important; }
+body.doctor-theme-active .record-actions-dialog :is(h2, .record-actions-summary-text strong) { color: var(--ink) !important; }
+body.doctor-theme-active .record-actions-dialog :is(header p, .record-actions-summary-text > span, .record-actions-option-copy small, footer span) { color: var(--text-muted) !important; }
+body.doctor-theme-active .record-actions-close { color: var(--primary) !important; }
+body.doctor-theme-active .record-actions-summary { border-color: var(--border) !important; background: var(--surface) !important; }
+body.doctor-theme-active .record-actions-avatar { background: var(--primary-soft) !important; color: var(--primary) !important; }
+body.doctor-theme-active .record-actions-summary > :is(img, .record-actions-avatar) + .record-actions-summary-text,
+body.doctor-theme-active .record-actions-status,
+body.doctor-theme-active .record-actions-option-copy,
+body.doctor-theme-active .record-actions-dialog > footer { border-color: var(--sidebar-border) !important; }
+body.doctor-theme-active .record-actions-option {
+  --action-color: var(--primary);
+  --action-icon-bg: var(--primary-soft);
+  border-color: var(--border) !important;
+  background: var(--hover-menu) !important;
+  color: var(--text) !important;
+}
+body.doctor-theme-active .record-actions-option:hover:not(:disabled) { border-color: var(--primary) !important; background: var(--primary-soft) !important; }
+body.doctor-theme-active .record-actions-option.is-destructive {
+  --action-color: var(--danger-text);
+  --action-icon-bg: var(--danger-bg);
+  border-color: var(--danger) !important;
+  background: var(--danger-bg) !important;
+  color: var(--danger-text) !important;
+}
+body.doctor-theme-active .record-actions-dialog > footer button { border-color: var(--primary) !important; background: var(--surface) !important; color: var(--primary) !important; }
+body.doctor-theme-active .record-actions-dialog > footer button:hover { background: var(--primary-soft) !important; }
+
+/* The second-level record detail dialogs (Owner Details, Pet Details, and audit views)
+   retain their existing layout, with every green surface mapped to the shared tokens. */
+body.doctor-theme-active .clinic-record-details-modal {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+body.doctor-theme-active .clinic-record-details-modal::backdrop { background: var(--overlay) !important; }
+body.doctor-theme-active .clinic-record-details-header {
+  border-bottom-color: var(--border) !important;
+  background: var(--surface) !important;
+}
+body.doctor-theme-active .clinic-record-details-header :is(h2, h3) { color: var(--ink) !important; }
+body.doctor-theme-active .clinic-record-details-header p,
+body.doctor-theme-active .clinic-record-details-modal > button[aria-label="Close dialog"] { color: var(--text-muted) !important; }
+body.doctor-theme-active .clinic-record-details-header > button {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--primary) !important;
+}
+body.doctor-theme-active .clinic-record-details-header > button:hover { color: var(--primary-hover) !important; }
+body.doctor-theme-active .record-details-profile { border-bottom-color: var(--border) !important; }
+body.doctor-theme-active .record-details-profile h3,
+body.doctor-theme-active .record-detail-section-item > span { color: var(--ink) !important; }
+body.doctor-theme-active .record-details-profile :is(p, span),
+body.doctor-theme-active .record-detail-section-item b { color: var(--text-muted) !important; }
+body.doctor-theme-active .record-detail-section {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+}
+body.doctor-theme-active .record-detail-section > h3 {
+  background: var(--table-head) !important;
+  color: var(--ink) !important;
+}
+body.doctor-theme-active .record-detail-section-item { border-color: var(--border) !important; }
+body.doctor-theme-active .record-details-avatar {
+  background: var(--primary-soft) !important;
+  color: var(--primary) !important;
+}
+body.doctor-theme-active .record-detail-status {
+  border-color: var(--border) !important;
+  background: var(--hover-row) !important;
+  color: var(--ink) !important;
+}
+body.doctor-theme-active .record-detail-status span { color: var(--text-muted) !important; }
+body.doctor-theme-active .clinic-record-details-footer { border-top-color: var(--border) !important; }
+body.doctor-theme-active .clinic-record-details-footer :is(button, .lab-audit-close-button) {
+  border-color: var(--primary) !important;
+  background: var(--surface) !important;
+  color: var(--primary) !important;
+}
+body.doctor-theme-active .clinic-record-details-footer .lab-audit-close-button,
+body.doctor-theme-active .clinic-record-details-footer button.is-save {
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+body.doctor-theme-active .clinic-record-details-footer :is(button, .lab-audit-close-button):hover {
+  border-color: var(--primary-hover) !important;
+  background: var(--primary-hover) !important;
+  color: #fff !important;
+}
+
+/* Patient detail navigation is a separate tab bar inside Patient Records. */
+body .admin-content.doctor-content .patient-records-page .detail-tabs {
+  border-color: var(--border) !important;
+  background: linear-gradient(180deg, #fcfefd 0%, #eef8f6 52%, #d8f6f2 100%) !important;
+}
+body .admin-content.doctor-content .patient-records-page .detail-tab {
+  background: transparent !important;
+  color: var(--ink) !important;
+}
+body .admin-content.doctor-content .patient-records-page .detail-tab:hover {
+  background: rgb(255 255 255 / 46%) !important;
+  color: var(--ink) !important;
+}
+body .admin-content.doctor-content .patient-records-page .detail-tab.active {
+  background: linear-gradient(150deg, #137a76, #0f6764 70%, #137a76) !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 19%), 0 1px 3px rgb(19 122 118 / 20%) !important;
+}
+body .admin-content.doctor-content .patient-records-page .detail-tab.active:hover {
+  background: linear-gradient(150deg, #0f6764, #137a76 70%, #0f6764) !important;
+}
+body .admin-content.doctor-content .patient-records-page .detail-tab:focus-visible {
+  outline-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--focus-ring) !important;
+}
+
+/* Patient Records modal family: retain each dialog's existing composition, replace old green tokens only. */
+body.doctor-theme-active .patient-records-page .patient-edit-backdrop { background: var(--overlay) !important; }
+body.doctor-theme-active .patient-records-page :is(.patient-edit-dialog, .owner-edit-dialog, .owner-profile-dialog, .export-report-dialog, .share-owner-dialog) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  box-shadow: 0 20px 60px rgb(13 74 72 / 22%) !important;
+}
+body.doctor-theme-active .patient-records-page :is(.patient-edit-header, .patient-edit-footer, .export-report-footer, .share-owner-footer) { border-color: var(--border) !important; }
+body.doctor-theme-active .patient-records-page :is(.patient-edit-header h2, .patient-edit-summary-name, .owner-profile-summary > div strong, .owner-profile-fields > div > strong, .owner-profile-pets-heading, .owner-profile-pet > div strong, .export-report-section-heading h3, .export-report-check, .export-report-option-label, .export-report-notes, .share-owner-section-heading h3, .share-owner-record, .share-owner-add-update-form select, .share-owner-add-update-form input, .share-owner-add-update-form textarea, .share-owner-message textarea, .share-owner-footer button) { color: var(--ink) !important; }
+body.doctor-theme-active .patient-records-page :is(.patient-edit-header p, .patient-edit-summary-meta, .owner-edit-app p, .owner-profile-summary > div span, .owner-profile-fields > div > span, .owner-profile-pet > div span, .export-report-section-heading p, .export-report-notes small, .share-owner-link-status p, .share-owner-instructions, .share-owner-record-info small, .share-owner-record time, .share-owner-notify small) { color: var(--text-muted) !important; }
+body.doctor-theme-active .patient-records-page .patient-edit-close { color: var(--primary) !important; }
+body.doctor-theme-active .patient-records-page :is(.patient-edit-summary, .owner-profile-summary, .export-report-notes, .share-owner-record, .share-owner-notify) {
+  border-color: var(--border) !important;
+  background: var(--hover-row) !important;
+}
+body.doctor-theme-active .patient-records-page :is(.patient-edit-field, .owner-edit-field) { color: var(--ink) !important; }
+body.doctor-theme-active .patient-records-page :is(.patient-edit-field input, .patient-edit-field select, .patient-edit-field textarea, .owner-edit-field input, .owner-edit-field select, .owner-edit-field textarea, .export-report-option-label select, .share-owner-add-update-form select, .share-owner-add-update-form input, .share-owner-add-update-form textarea, .share-owner-message textarea) {
+  border-color: var(--input-border) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+body.doctor-theme-active .patient-records-page :is(.patient-edit-field input, .patient-edit-field select, .patient-edit-field textarea, .owner-edit-field input, .owner-edit-field select, .owner-edit-field textarea):focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px var(--focus-ring) !important;
+}
+body.doctor-theme-active .patient-records-page :is(.patient-edit-footer button, .export-report-footer button, .share-owner-footer button, .share-owner-add-update-actions button) {
+  border-color: var(--primary) !important;
+  background: var(--surface) !important;
+  color: var(--primary) !important;
+}
+body.doctor-theme-active .patient-records-page :is(.patient-edit-footer button[type="submit"], .owner-profile-footer button:last-child, .export-report-footer button[type="submit"], .share-owner-footer button[type="submit"], .share-owner-add-update-actions button[type="submit"]) {
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+body.doctor-theme-active .patient-records-page .owner-edit-app {
+  border-color: var(--border) !important;
+  background: var(--primary-soft) !important;
+  color: var(--text) !important;
+}
+body.doctor-theme-active .patient-records-page .owner-edit-app-icon { background: var(--primary) !important; }
+body.doctor-theme-active .patient-records-page .owner-edit-app span { color: var(--primary) !important; }
+body.doctor-theme-active .patient-records-page .owner-profile-linked { background: var(--success-bg) !important; color: var(--success-text) !important; }
+body.doctor-theme-active .patient-records-page .export-report-section,
+body.doctor-theme-active .patient-records-page :is(.export-report-check, .share-owner-record-section) { border-color: var(--border) !important; }
+body.doctor-theme-active .patient-records-page .export-report-section-heading { background: var(--table-head) !important; }
+body.doctor-theme-active .patient-records-page .export-report-format-buttons button[aria-pressed="true"] {
+  border-color: var(--primary) !important;
+  background: var(--primary-soft) !important;
+  color: var(--primary) !important;
+  box-shadow: inset 0 0 0 1px var(--primary) !important;
+}
+body.doctor-theme-active .patient-records-page .share-owner-link-status {
+  border-color: #b7dfe6 !important;
+  background: var(--info-bg) !important;
+  color: var(--info-text) !important;
+}
+body.doctor-theme-active .patient-records-page .share-owner-add-update { border-color: var(--sidebar-border) !important; background: var(--hover-row) !important; }
+body.doctor-theme-active .patient-records-page .share-owner-notify { color: var(--text) !important; }
+
+/* Receptionist workflows use the same current teal palette as doctor workflows.
+   Feature layout and behavior remain defined by their branch components. */
+body .admin-content.staff-content {
+  background: var(--page) !important;
+  color: var(--text) !important;
+}
+body .admin-content.staff-content .page-topbar {
+  background: var(--header-surface) !important;
+  border-bottom-color: var(--header-border) !important;
+}
+body .admin-content.staff-content .page-topbar :is(h1, h2, h3, .page-topbar-account-name) { color: var(--ink) !important; }
+body .admin-content.staff-content .page-topbar :is(p, .page-topbar-account-role) { color: var(--text-muted) !important; }
+body .admin-content.staff-content :is(input, select, textarea) {
+  border-color: var(--input-border) !important;
+  color: var(--text) !important;
+}
+body .admin-content.staff-content :is(input, select, textarea):focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--focus-ring) !important;
+  outline: 0;
+}
+body .admin-content.staff-content :is([class*="card"], [class*="panel"], [class*="table-wrap"], [class*="dialog"]) {
+  border-color: var(--border) !important;
+}
+body .admin-content.staff-content :is(th, [class*="table"] th) {
+  background: var(--table-head) !important;
+  color: var(--ink) !important;
+}
+body .admin-content.staff-content :is(td, [class*="table"] td) { border-color: var(--border) !important; }
+body .admin-content.staff-content :is(button[class*="primary"], button[type="submit"], .appointment-stat-card.is-active) {
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+body .admin-content.staff-content :is(button[class*="primary"], button[type="submit"], .appointment-stat-card.is-active):hover {
+  border-color: var(--primary-hover) !important;
+  background: var(--primary-hover) !important;
+}
+
+/*
+ * Doctor card system
+ *
+ * Keep every doctor workspace anchored to the same quiet summary-card treatment:
+ * an almost-white sage wash, a fine green border, soft corners, and restrained
+ * depth.  This intentionally excludes headers and dialog drawers; those are
+ * controls/overlays rather than page cards.
+ */
+body .admin-content:is(.doctor-content, .staff-content) {
+  --doctor-card-background: linear-gradient(110deg, #fcfefd 0%, #f0f9f1 100%);
+  --doctor-card-border: #d3e2da;
+  --doctor-card-divider: #c5d8cb;
+  --doctor-card-accent: #d6eedb;
+  --doctor-card-text: #071c10;
+  --doctor-card-muted: #32483d;
+}
+
+body .admin-content.doctor-content :is(
+  [class*="-card"],
+  [class*="-panel"]
+):not(:is(
+  [class*="-card-heading"],
+  .overview-stats-cell,
+  [class*="-card-title"],
+  [class*="-card-body"],
+  [class*="-card-count"],
+  [class*="-card-subtitle"],
+  [class*="-panel-heading"],
+  [class*="-panel-backdrop"],
+  [class*="-panel-content"],
+  [class*="detail-panel"],
+  [class*="dialog"],
+  [class*="modal"]
+)) {
+  border-color: var(--doctor-card-border) !important;
+  border-radius: 15px !important;
+  background: var(--doctor-card-background) !important;
+  box-shadow: 0 1px 2px rgb(7 28 16 / 3%) !important;
+}
+
+/* Doctor summaries share the My Schedule surface and metric layout. */
+body .admin-content.doctor-content :is(.overview-stats-band, .monitoring-summary, .surveillance-stats, .co-stats, .oar-summary) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  gap: 0 !important;
+  padding: 17px 0 16px !important;
+  border: 1px solid var(--doctor-card-border) !important;
+  border-radius: 15px !important;
+  background: var(--doctor-card-background) !important;
+  box-shadow: none !important;
+}
+
+body .admin-content.doctor-content :is(.overview-stats-band, .monitoring-summary, .surveillance-stats, .co-stats, .oar-summary)::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: -60px;
+  bottom: -95px;
+  width: 32%;
+  height: 130px;
+  border-radius: 50%;
+  background: var(--doctor-card-accent);
+  transform: rotate(-22deg);
+  pointer-events: none;
+}
+
+body .admin-content.doctor-content :is(.overview-stats-band, .monitoring-summary, .surveillance-stats, .co-stats, .oar-summary) > :is(article, .overview-stats-cell, .surveillance-stat, .oar-stat) {
+  display: block;
+  min-width: 0;
+  min-height: 88px !important;
+  padding: 0 26px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body .admin-content.doctor-content :is(.overview-stats-band, .monitoring-summary, .surveillance-stats, .co-stats, .oar-summary) > :is(article, .overview-stats-cell, .surveillance-stat, .oar-stat) + :is(article, .overview-stats-cell, .surveillance-stat, .oar-stat) {
+  border-inline-start: 1px solid var(--doctor-card-divider) !important;
+}
+
+body .admin-content.doctor-content :is(.overview-stats-band, .monitoring-summary, .surveillance-stats, .co-stats, .oar-summary) :is(.overview-stats-label, h2, .oar-stat strong) {
+  margin: 0;
+  color: #101914;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: normal;
+}
+
+body .admin-content.doctor-content :is(.overview-stats-band, .monitoring-summary, .surveillance-stats, .co-stats, .oar-summary) :is(.overview-stats-value, article > strong, .surveillance-stat > strong, .oar-stat b) {
+  display: block;
+  margin: 4px 0 0;
+  color: var(--doctor-card-text);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: normal;
+}
+
+body .admin-content.doctor-content :is(.overview-stats-band, .monitoring-summary, .surveillance-stats, .co-stats, .oar-summary) :is(.overview-stats-note, article > p, .surveillance-stat > div, .oar-stat small) {
+  display: block;
+  margin: 6px 0 0;
+  color: var(--doctor-card-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+body .admin-content.doctor-content .oar-summary .oar-stat-dot { display: none; }
+body .admin-content.doctor-content .oar-summary .oar-stat:is(:hover, [aria-pressed="true"]) {
+  background: var(--hover-band) !important;
+}
+body .admin-content.doctor-content .oar-summary .oar-stat:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -3px;
+}
+
+@media (max-width: 850px) {
+  body .admin-content.doctor-content :is(.overview-stats-band, .monitoring-summary, .surveillance-stats, .co-stats, .oar-summary):not(.risk-metrics, .oar-summary) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  body .admin-content.doctor-content :is(.overview-stats-band, .monitoring-summary, .surveillance-stats, .co-stats, .oar-summary) > :is(article, .overview-stats-cell, .surveillance-stat, .oar-stat) { padding-inline: 16px !important; }
+  body .admin-content.doctor-content :is(.overview-stats-band, .monitoring-summary, .surveillance-stats, .co-stats, .oar-summary):not(.risk-metrics, .oar-summary) > :nth-child(odd) {
+    border-inline-start: 0 !important;
+  }
+  body .admin-content.doctor-content :is(.overview-stats-band, .monitoring-summary, .surveillance-stats, .co-stats, .oar-summary):not(.risk-metrics, .oar-summary) > :nth-child(n + 3) {
+    border-top: 1px solid var(--doctor-card-divider) !important;
+    padding-top: 12px !important;
+  }
+}
+
+@media (max-width: 650px) {
+  body .admin-content.doctor-content :is(.risk-metrics.monitoring-summary, .oar-summary) { grid-template-columns: 1fr !important; }
+  body .admin-content.doctor-content :is(.risk-metrics.monitoring-summary, .oar-summary) > :nth-child(n + 2) {
+    border-inline-start: 0 !important;
+    border-top: 1px solid var(--doctor-card-divider) !important;
+    padding-top: 12px !important;
+  }
+}
+
+/* Explicit page hooks: these pages each ship a self-contained stylesheet, so
+   keep their cards pinned to the shared treatment rather than relying on a
+   generic class-name match. */
+body .admin-content.doctor-content :is(
+  .surveillance-dashboard .surveillance-card,
+  .dce-page .dm-panel,
+  .risk-page .dm-panel,
+  .intake-shell .intake-table-wrap,
+  .intake-shell .intake-review-card,
+  .intake-shell .oar-table-wrap
+) {
+  border-color: var(--doctor-card-border) !important;
+  border-radius: 15px !important;
+  background: var(--doctor-card-background) !important;
+  box-shadow: 0 1px 2px rgb(7 28 16 / 3%) !important;
+}
+
+body .admin-content.doctor-content :is(
+  .surveillance-dashboard .surveillance-card,
+  .dce-page .dm-panel,
+  .risk-page .dm-panel
+) :is(h2, h3, strong) {
+  color: var(--doctor-card-text) !important;
+}
+
+body .admin-content.doctor-content :is(
+  .surveillance-dashboard .surveillance-card,
+  .dce-page .dm-panel,
+  .risk-page .dm-panel
+) > p {
+  color: var(--doctor-card-muted) !important;
+}
+
+/* Appointment management and patient registration are also available to
+   clinician accounts in deployments that grant the associated permissions. */
+body .admin-content:is(.doctor-content, .staff-content) :is(
+  .appointment-stat-grid,
+  .patient-registration-card,
+  .patient-registration-progress,
+  .patient-registration-summary,
+  .patient-submissions,
+  .patient-submissions-table-wrap
+) {
+  border-color: var(--doctor-card-border) !important;
+  border-radius: 15px !important;
+  background: var(--doctor-card-background) !important;
+  box-shadow: 0 1px 2px rgb(7 28 16 / 3%) !important;
+}
+
+body .admin-content:is(.doctor-content, .staff-content) .appointment-stat-grid {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  gap: 0 !important;
+  padding: 17px 0 !important;
+}
+
+body .admin-content:is(.doctor-content, .staff-content) .appointment-stat-grid::after {
+  position: absolute;
+  z-index: -1;
+  right: -60px;
+  bottom: -95px;
+  width: 32%;
+  height: 130px;
+  border-radius: 50%;
+  background: var(--doctor-card-accent) !important;
+  content: '';
+  transform: rotate(-22deg);
+}
+
+body .admin-content:is(.doctor-content, .staff-content) .appointment-stat-card {
+  min-height: 88px;
+  padding: 0 26px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body .admin-content:is(.doctor-content, .staff-content) .appointment-stat-card + .appointment-stat-card {
+  border-left: 1px solid var(--doctor-card-divider) !important;
+}
+
+body .admin-content:is(.doctor-content, .staff-content) :is(
+  .appointment-stat-copy > span,
+  .patient-registration-card :is(h2, h3, h4, strong),
+  .patient-registration-progress :is(h2, h3, h4, strong),
+  .patient-registration-summary :is(h2, h3, h4, strong)
+) {
+  color: var(--doctor-card-text) !important;
+}
+
+body .admin-content:is(.doctor-content, .staff-content) :is(
+  .appointment-stat-copy > small,
+  .patient-registration-card p,
+  .patient-registration-progress p,
+  .patient-registration-summary p
+) {
+  color: var(--doctor-card-muted) !important;
+}
+
+@media (max-width: 900px) {
+  body .admin-content:is(.doctor-content, .staff-content) .appointment-stat-card:nth-child(odd) {
+    border-left: 0 !important;
+  }
+  body .admin-content:is(.doctor-content, .staff-content) .appointment-stat-card:nth-child(n + 3) {
+    border-top: 1px solid var(--doctor-card-divider) !important;
+    padding-top: 16px !important;
+  }
+  :is(.admin-sidebar-doctor, .admin-sidebar-veterinarian, .admin-sidebar-assistant_doctor) { border-right: 1px solid var(--sidebar-border); }
+}
+
+/* Inactive tabs read as labels on the shared tab bar. */
+body .admin-content.doctor-content :is(
+  .clinic-records-tabnav,
+  .patient-records-page .detail-tabs,
+  .patient-archive-tabs,
+  .appointment-tabs,
+  .billing-tabs,
+  .doctor-billing-attention-tabs,
+  .patient-registration-tabs,
+  .patient-submissions-tabs,
+  .services-management-tabs,
+  .urm-staff-tabs
+) > :is(button, a):not(.active, .is-active, .selected, [aria-current="page"], [aria-pressed="true"], [aria-selected="true"]),
+body .admin-content.doctor-content [role="tablist"] [role="tab"][aria-selected="false"] {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Local Clinic Records: bring the page chrome and controls onto Seafoam while
+   keeping the established card surfaces untouched. */
+body .admin-content.doctor-content .clinic-records-shell :is(
+  .clinic-records-content,
+  .clinic-dashboard-date,
+  .clinic-dashboard-tabs-toolbar,
+  .clinic-archive-toolbar,
+  .lab-status-row,
+  .lab-filter-bar,
+  .lab-list-controls,
+  .clinic-management-toolbar,
+  .clinic-management-status-row,
+  .clinic-appointment-type-tabs,
+  .lab-archive-tabs,
+  .lab-status-filters
+) {
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+body .admin-content.doctor-content .clinic-records-shell :is(
+  .lab-status-filters button,
+  .lab-archive-tabs button,
+  .clinic-appointment-type-tabs button,
+  .lab-view-toggle button,
+  .clinic-archive-toolbar button:not(.clinic-dashboard-export),
+  .clinic-records-content a
+):not(.active, .is-active, .selected, [aria-current="page"], [aria-pressed="true"], [aria-selected="true"]) {
+  color: var(--ink) !important;
+}
+
+body .admin-content.doctor-content .clinic-records-shell :is(
+  .lab-status-filters button:hover,
+  .lab-archive-tabs button:hover,
+  .clinic-appointment-type-tabs button:hover,
+  .lab-view-toggle button:hover
+):not(.active, .is-active, .selected, [aria-current="page"], [aria-pressed="true"], [aria-selected="true"]) {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--ink) !important;
+  box-shadow: none !important;
+}
+
+body .admin-content.doctor-content .clinic-records-shell :is(
+  .clinic-dashboard-export,
+  .lab-results-add,
+  button.clinic-management-primary,
+  button[class$="-primary"]
+):hover:not(:disabled) {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+body .admin-content.doctor-content .clinic-records-shell :is(button, a) { transition: none !important; }
+body .admin-content.doctor-content .clinic-records-shell :is(button, a):disabled,
+body .admin-content.doctor-content .clinic-records-shell :is(button, a)[aria-disabled="true"] {
+  border-color: var(--border) !important;
+  background: var(--disabled-bg) !important;
+  color: var(--disabled-text) !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+}
+
+body .admin-content.doctor-content .clinic-records-shell :is(
+  .lab-status-filters button.active,
+  .lab-archive-tabs button.active,
+  .clinic-appointment-type-tabs button.active,
+  .lab-view-toggle button.active,
+  .clinic-records-content [role="tab"][aria-selected="true"]
+) {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+body .admin-content.doctor-content .clinic-records-shell :is(
+  .lab-filter-bar,
+  .clinic-records-content form,
+  .clinic-records-content .clinic-add-form-dialog,
+  .clinic-records-content .lab-add-test-dialog
+) :is(input, select, textarea) {
+  border-color: var(--input-border) !important;
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+  accent-color: var(--primary) !important;
+}
+
+body .admin-content.doctor-content .clinic-records-shell :is(input, select, textarea)::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 1;
+}
+
+body .admin-content.doctor-content .clinic-records-shell :is(input, select, textarea):focus-visible,
+body .admin-content.doctor-content .clinic-records-shell :is(button, a):focus-visible {
+  outline-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--focus-ring) !important;
+}
+
+body .admin-content.doctor-content .clinic-records-shell :is(
+  .lab-results-header h2,
+  .lab-results-header h3,
+  .lab-results-list-header h3,
+  .clinic-records-content h1,
+  .clinic-records-content h2,
+  .clinic-records-content h3,
+  .clinic-records-content h4
+) { color: var(--ink) !important; }
+
+body .admin-content.doctor-content .clinic-records-shell :is(
+  .lab-results-description,
+  .lab-results-list-header p,
+  .clinic-records-content small,
+  .clinic-records-content .empty-state,
+  .clinic-records-content .lab-results-empty
+) { color: var(--text-muted) !important; }
+
+body .admin-content.doctor-content .clinic-records-shell :is(
+  .lab-results-table,
+  .clinic-management-table,
+  .vaccination-records-table,
+  .lab-measurement-entry-table,
+  .lab-audit-result-table
+) :is(th, td) { border-color: var(--border) !important; }
+body .admin-content.doctor-content .clinic-records-shell :is(
+  .lab-results-table,
+  .clinic-management-table,
+  .vaccination-records-table,
+  .lab-measurement-entry-table,
+  .lab-audit-result-table
+) tbody tr:hover { background: var(--hover-row) !important; }
+
+body.doctor-theme-active :is(
+  .clinic-inpatient-details-portal,
+  .clinic-inpatient-summary-dialog,
+  .clinic-add-form-dialog,
+  .lab-audit-dialog,
+  .lab-result-entry-dialog,
+  .lab-wizard-dialog,
+  .lab-result-editor,
+  .clinic-record-details-modal,
+  .clinic-vaccination-details-modal
+) {
+  border-color: var(--border) !important;
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+body.doctor-theme-active :is(
+  .clinic-inpatient-details-portal,
+  .clinic-inpatient-summary-dialog,
+  .clinic-add-form-dialog,
+  .lab-audit-dialog,
+  .lab-result-entry-dialog,
+  .lab-wizard-dialog,
+  .lab-result-editor,
+  .clinic-record-details-modal,
+  .clinic-vaccination-details-modal
+) :is(h1, h2, h3, h4, label, strong) { color: var(--ink) !important; }
+
+body.doctor-theme-active :is(
+  .clinic-inpatient-details-portal,
+  .clinic-inpatient-summary-dialog,
+  .clinic-add-form-dialog,
+  .lab-audit-dialog,
+  .lab-result-entry-dialog,
+  .lab-wizard-dialog,
+  .lab-result-editor,
+  .clinic-record-details-modal,
+  .clinic-vaccination-details-modal
+) :is(input, select, textarea) {
+  border-color: var(--input-border) !important;
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+body.doctor-theme-active :is(.clinic-records-shell, .clinic-inpatient-details-portal, .clinic-add-form-dialog, .lab-audit-dialog, .lab-wizard-dialog) :is(button, a):focus-visible {
+  outline-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--focus-ring) !important;
+}
+
+/* Add and cancel actions use the same filled treatment as Patient Records. */
+body .admin-content.doctor-content .clinic-records-shell :is(
+  .clinic-records-content button.clinic-dashboard-export,
+  .clinic-records-content button.lab-results-add,
+  .lab-results-add,
+  button.clinic-management-primary,
+  .clinic-inpatient-details-primary,
+  .lab-wizard-next,
+  .patient-primary-add,
+  button[class$="-primary"],
+  .clinic-add-form-footer > button[type="submit"]
+),
+body.doctor-theme-active :is(
+  .clinic-inpatient-details-portal,
+  .clinic-inpatient-summary-dialog,
+  .clinic-add-form-dialog,
+  .lab-audit-dialog,
+  .lab-result-entry-dialog,
+  .lab-wizard-dialog,
+  .lab-result-editor,
+  .clinic-record-details-modal,
+  .clinic-vaccination-details-modal
+) :is(.clinic-inpatient-details-primary, .lab-wizard-next, .clinic-add-form-footer > button[type="submit"]) {
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+
+body .admin-content.doctor-content .clinic-records-shell :is(
+  .clinic-records-content button.clinic-dashboard-export,
+  .clinic-records-content button.lab-results-add,
+  .lab-results-add,
+  button.clinic-management-primary,
+  .clinic-inpatient-details-primary,
+  .lab-wizard-next,
+  .patient-primary-add,
+  button[class$="-primary"],
+  .clinic-add-form-footer > button[type="submit"]
+):hover:not(:disabled),
+body.doctor-theme-active :is(
+  .clinic-inpatient-details-portal,
+  .clinic-inpatient-summary-dialog,
+  .clinic-add-form-dialog,
+  .lab-audit-dialog,
+  .lab-result-entry-dialog,
+  .lab-wizard-dialog,
+  .lab-result-editor,
+  .clinic-record-details-modal,
+  .clinic-vaccination-details-modal
+) :is(.clinic-inpatient-details-primary, .lab-wizard-next, .clinic-add-form-footer > button[type="submit"]):hover:not(:disabled) {
+  border-color: var(--primary-hover) !important;
+  background: var(--primary-hover) !important;
+  color: #fff !important;
+}
+
+body .admin-content.doctor-content .clinic-records-shell :is(
+  button.cancel,
+  button[class*="cancel"],
+  .clinic-add-form-footer > button[type="button"],
+  .clinic-inpatient-discharge-actions .clinic-inpatient-details-secondary
+),
+body.doctor-theme-active :is(
+  .clinic-inpatient-details-portal,
+  .clinic-inpatient-summary-dialog,
+  .clinic-add-form-dialog,
+  .lab-audit-dialog,
+  .lab-result-entry-dialog,
+  .lab-wizard-dialog,
+  .lab-result-editor,
+  .clinic-record-details-modal,
+  .clinic-vaccination-details-modal
+) :is(button.cancel, button[class*="cancel"], .clinic-add-form-footer > button[type="button"]) {
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+
+body .admin-content.doctor-content .clinic-records-shell .clinic-visits-page-header { align-items: center !important; gap: 12px !important; margin-bottom: 10px !important; }
+body .admin-content.doctor-content .clinic-records-shell .clinic-visits-page-header .lab-archive-tabs { margin-left: auto !important; flex: 0 0 auto !important; }
+body .admin-content.doctor-content .clinic-records-shell .clinic-visits-tab .clinic-action-row:hover > td { background: var(--hover-row) !important; }
+body .admin-content.doctor-content .clinic-records-shell .clinic-visits-tab .clinic-action-row:focus-visible { outline-color: var(--primary) !important; }
+
+body .admin-content.doctor-content .clinic-records-shell .clinic-management-page-header { align-items: center !important; gap: 16px !important; }
+body .admin-content.doctor-content .clinic-records-shell .clinic-management-page-header > .lab-results-add { flex: 0 0 auto !important; margin: 0 !important; }
+body .admin-content.doctor-content .clinic-records-shell .clinic-management-archive-row { display: flex !important; justify-content: flex-end !important; margin: -5px 0 12px !important; }
+body .admin-content.doctor-content .clinic-records-shell .clinic-management-archive-row .lab-archive-tabs { flex: 0 0 auto !important; }
+
+@media (max-width: 560px) {
+  body .admin-content.doctor-content .clinic-records-shell .clinic-management-page-header { align-items: flex-start !important; }
+  body .admin-content.doctor-content .clinic-records-shell .clinic-management-page-header > .lab-results-add { white-space: nowrap; }
+}
+
+body .admin-content.doctor-content .clinic-records-shell :is(
+  button.cancel,
+  button[class*="cancel"],
+  .clinic-add-form-footer > button[type="button"],
+  .clinic-inpatient-discharge-actions .clinic-inpatient-details-secondary
+):hover:not(:disabled),
+body.doctor-theme-active :is(
+  .clinic-inpatient-details-portal,
+  .clinic-inpatient-summary-dialog,
+  .clinic-add-form-dialog,
+  .lab-audit-dialog,
+  .lab-result-entry-dialog,
+  .lab-wizard-dialog,
+  .lab-result-editor,
+  .clinic-record-details-modal,
+  .clinic-vaccination-details-modal
+) :is(button.cancel, button[class*="cancel"], .clinic-add-form-footer > button[type="button"]):hover:not(:disabled) {
+  border-color: var(--primary-hover) !important;
+  background: var(--primary-hover) !important;
+  color: #fff !important;
+}
+

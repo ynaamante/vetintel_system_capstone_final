@@ -1,4 +1,5 @@
 import AppHeader from '../components/AppHeader';
+import { roundedScreenPanel } from '../components/HeaderSurface';
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -41,7 +42,7 @@ export default function AddPetScreen({ navigation }: any) {
   return (
     <SafeAreaView style={s.safe}>
       <AppHeader title={needsFirstPet ? "Add Your First Pet" : "Add New Pet"} onBack={leave} backDisabled={saving} />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.panel}>
         <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
           <View style={s.iconSection}><View style={s.petIcon}><Ionicons name="paw" size={40} color={colors.primary} /></View><Text style={s.iconHint}>Tap to add a photo</Text></View>
           <View style={s.card}>
@@ -65,7 +66,7 @@ export default function AddPetScreen({ navigation }: any) {
             <Text style={s.label}>Color</Text>
             <TextInput style={s.input} value={form.color} onChangeText={v => set('color', v)} placeholder="e.g. Golden" placeholderTextColor={tc.textMuted} />
           </View>
-          <TouchableOpacity style={s.btn} disabled={saving} onPress={save}>{saving ? <ActivityIndicator color="#fff" /> : <><Ionicons name="paw" size={18} color="#fff" /><Text style={s.btnText}>Add Pet</Text></>}</TouchableOpacity>
+          <TouchableOpacity style={s.btn} disabled={saving} onPress={save}>{saving ? <ActivityIndicator color={colors.white} /> : <><Ionicons name="paw" size={18} color={colors.white} /><Text style={s.btnText}>Add Pet</Text></>}</TouchableOpacity>
           <TouchableOpacity disabled={saving} style={{ alignItems: 'center', paddingVertical: 12 }} onPress={leave}><Text style={{ fontSize: 15, color: tc.textSecondary }}>{needsFirstPet ? 'Skip for now' : 'Cancel'}</Text></TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -75,12 +76,13 @@ export default function AddPetScreen({ navigation }: any) {
 
 const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: tc.background },
+  panel: { ...roundedScreenPanel, backgroundColor: tc.background },
   nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tc.border },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   navTitle: { fontSize: 17, fontWeight: '600', color: tc.text },
   container: { padding: spacing.md, paddingBottom: 40 },
   iconSection: { alignItems: 'center', marginBottom: 20 },
-  petIcon: { width: 100, height: 100, borderRadius: 50, backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.primary, borderStyle: 'dashed', marginBottom: 8 },
+  petIcon: { width: 100, height: 100, borderRadius: 50, backgroundColor: isDark ? colors.primarySoftDark : colors.primarySoft, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.primary, borderStyle: 'dashed', marginBottom: 8 },
   iconHint: { fontSize: 13, color: tc.textMuted },
   card: { backgroundColor: tc.surface, borderRadius: radius.lg, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: tc.border },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: tc.text, marginBottom: 16 },
@@ -88,8 +90,8 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   input: { borderWidth: 1, borderColor: tc.border, borderRadius: radius.md, padding: 12, fontSize: 15, color: tc.text, backgroundColor: tc.inputBg, marginBottom: 8 },
   speciesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   speciesBtn: { borderWidth: 1, borderColor: tc.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8 },
-  speciesBtnActive: { borderColor: colors.primary, backgroundColor: isDark ? '#1e3a5f' : '#EFF6FF' },
+  speciesBtnActive: { borderColor: colors.primary, backgroundColor: isDark ? colors.primarySoftDark : colors.primarySoft },
   speciesBtnText: { fontSize: 13, color: tc.textSecondary, textTransform: 'capitalize' },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 14, marginBottom: 10 },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  btnText: { color: colors.white, fontSize: 16, fontWeight: '600' },
 });

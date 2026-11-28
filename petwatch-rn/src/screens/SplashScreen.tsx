@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import Animated, { Easing, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Path, Polyline } from 'react-native-svg';
+import { colors } from '../theme/colors';
 
 const LOGO_MARK = require('../images/LogoMark.png');
 const LOGO_WORDMARK = require('../images/LogoWordmarkTagline.png');
@@ -70,9 +71,9 @@ export default function SplashScreen() {
     <StatusBar style="dark" />
     <View pointerEvents="none" style={styles.waves} accessible={false} importantForAccessibility="no-hide-descendants">
       <Svg width="100%" height="100%" viewBox="0 0 390 150" preserveAspectRatio="none">
-        <Path d="M0 56 C58 70 85 120 153 119 C232 118 278 42 390 28 L390 150 L0 150 Z" fill="#E5F5EB" />
-        <Path d="M0 100 C58 74 105 94 163 120 C229 150 281 106 390 72 L390 150 L0 150 Z" fill="#C5EBD4" />
-        <Path d="M0 125 C75 101 117 123 180 140 C257 161 325 112 390 103 L390 150 L0 150 Z" fill="#A9DDBE" opacity={0.75} />
+        <Path d="M0 56 C58 70 85 120 153 119 C232 118 278 42 390 28 L390 150 L0 150 Z" fill={colors.hoverBand} />
+        <Path d="M0 100 C58 74 105 94 163 120 C229 150 281 106 390 72 L390 150 L0 150 Z" fill={colors.primarySoft} />
+        <Path d="M0 125 C75 101 117 123 180 140 C257 161 325 112 390 103 L390 150 L0 150 Z" fill={colors.bannerEnd} opacity={0.75} />
       </Svg>
     </View>
 
@@ -80,9 +81,9 @@ export default function SplashScreen() {
       <Animated.View style={[styles.markStage, { width: markWidth, bottom: wordmarkHeight + 24 }, markStyle]}>
         <Image source={LOGO_MARK} style={styles.image} resizeMode="contain" />
         <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 1560 1240">
-          <AnimatedPath d={RING_PATH} fill="none" strokeLinejoin="round" stroke="#096341" strokeWidth={30} strokeLinecap="round" strokeDasharray={[RING_LENGTH, RING_LENGTH]} animatedProps={ringHaloProps} />
-          <AnimatedPath d={RING_PATH} fill="none" strokeLinejoin="round" stroke="#1D885B" strokeWidth={19} strokeLinecap="round" strokeDasharray={[RING_LENGTH, RING_LENGTH]} animatedProps={ringProps} />
-          <AnimatedPath d={RING_PATH} fill="none" strokeLinejoin="round" stroke="#38A36D" strokeWidth={9} strokeLinecap="round" strokeDasharray={[RING_LENGTH * 0.12, RING_LENGTH]} animatedProps={ringHeadProps} />
+          <AnimatedPath d={RING_PATH} fill="none" strokeLinejoin="round" stroke={colors.primaryHover} strokeWidth={30} strokeLinecap="round" strokeDasharray={[RING_LENGTH, RING_LENGTH]} animatedProps={ringHaloProps} />
+          <AnimatedPath d={RING_PATH} fill="none" strokeLinejoin="round" stroke={colors.primary} strokeWidth={19} strokeLinecap="round" strokeDasharray={[RING_LENGTH, RING_LENGTH]} animatedProps={ringProps} />
+          <AnimatedPath d={RING_PATH} fill="none" strokeLinejoin="round" stroke={colors.chart2} strokeWidth={9} strokeLinecap="round" strokeDasharray={[RING_LENGTH * 0.12, RING_LENGTH]} animatedProps={ringHeadProps} />
         </Svg>
       </Animated.View>
       <Animated.View style={[{ width: wordmarkWidth, height: wordmarkHeight }, wordmarkStyle]}>
@@ -90,8 +91,8 @@ export default function SplashScreen() {
       </Animated.View>
       <Animated.View pointerEvents="none" style={[styles.pulse, { width: Math.min(width * 0.46, 180), top: wordmarkHeight + 16 }, pulseStyle]}>
         <Svg width="100%" height={32} viewBox="0 0 180 36">
-          <AnimatedPolyline points={PULSE_LINE} fill="none" stroke="#0C7550" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={[PULSE_LENGTH, PULSE_LENGTH]} animatedProps={pulseProps} />
-          <AnimatedPolyline points={PULSE_LINE} fill="none" stroke="#42BA88" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={[PULSE_LENGTH * 0.16, PULSE_LENGTH]} animatedProps={pulseHighlightProps} />
+          <AnimatedPolyline points={PULSE_LINE} fill="none" stroke={colors.primary} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={[PULSE_LENGTH, PULSE_LENGTH]} animatedProps={pulseProps} />
+          <AnimatedPolyline points={PULSE_LINE} fill="none" stroke={colors.chart2} strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={[PULSE_LENGTH * 0.16, PULSE_LENGTH]} animatedProps={pulseHighlightProps} />
         </Svg>
       </Animated.View>
     </View>
@@ -99,7 +100,7 @@ export default function SplashScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: colors.light.background },
   waves: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
   // Anchor the wordmark, rather than the combined logo/wordmark stack, so the
   // Vetintel name stays at the visual center on both phone and web viewports.

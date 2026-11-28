@@ -2,6 +2,7 @@ import { apiFetch as fetch } from '../utils/apiFetch.js';
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { paymentMethodOptions } from '../utils/billingView';
+import Topbar from '../components/Topbar';
 import './paymentQrSettings.css';
 
 const methods = paymentMethodOptions.filter(item => ['qr_ph', 'gcash', 'maya', 'bank_transfer'].includes(item.value));
@@ -78,7 +79,27 @@ export default function PaymentQrSettings({ user, hideHeading = false, standalon
     } catch (failure) { setError(failure.message); } finally { setSaving(false); }
   };
   return <div className={`payment-qr-settings${standalone ? ' payment-qr-page' : ''}`}>
-    {standalone && <><nav className="payment-qr-breadcrumb"><button type="button" onClick={() => onNavigate?.('financial')}>Financial Monitoring</button><span>›</span><strong>Payment QR Codes</strong></nav><header className="payment-qr-page-heading"><div><h1>Payment QR Codes</h1><p>Manage the QR codes your clinic accepts for payments.</p></div><button type="button" onClick={() => setAddDialogOpen(true)}>Add Payment Method</button></header><div className="payment-qr-tabs" role="tablist" aria-label="Payment methods">{methods.map(item => <button type="button" role="tab" aria-selected={method === item.value} className={method === item.value ? 'active' : ''} key={item.value} onClick={() => setMethod(item.value)}>{item.label}</button>)}</div></>}
+    {standalone && <>
+      <Topbar
+        className="payment-qr-topbar"
+        user={user}
+        title="Payment QR Codes"
+        subtitle="Manage the QR codes your clinic accepts for payments."
+      />
+      <div className="payment-qr-page-content">
+        <nav className="payment-qr-breadcrumb" aria-label="Breadcrumb">
+          <button type="button" onClick={() => onNavigate?.('financial')}>Financial Monitoring</button>
+          <span aria-hidden="true">›</span>
+          <strong>Payment QR Codes</strong>
+        </nav>
+        <div className="payment-qr-page-actions">
+          <button type="button" className="payment-qr-add-button" onClick={() => setAddDialogOpen(true)}>Add Payment Method</button>
+        </div>
+        <div className="payment-qr-tabs" role="tablist" aria-label="Payment methods">
+          {methods.map(item => <button type="button" role="tab" aria-selected={method === item.value} className={method === item.value ? 'active' : ''} key={item.value} onClick={() => setMethod(item.value)}>{item.label}</button>)}
+        </div>
+      </div>
+    </>}
     <form onSubmit={event => { event.preventDefault(); save(false); }}>
       {!hideHeading && !standalone && <><h2>Clinic payment QR codes</h2><p>Upload the clinic’s payment QR from its bank or payment app for each supported method.</p></>}
       <fieldset disabled={loading || saving}>

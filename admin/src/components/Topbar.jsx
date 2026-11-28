@@ -7,8 +7,6 @@ const INITIAL_NOTIFICATIONS = [];
 const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
 
 export default function Topbar({ user, title, subtitle, actions, headerContent, className = '' }) {
-  const avatarInitials = user?.initials?.trim() || user?.name?.trim().split(/\s+/).slice(0, 2)
-    .map(word => word.charAt(0).toUpperCase()).join('');
   const notificationStorageKey = `vetintel_notifications_${user?.id || user?.clinic_id || 'user'}`;
   const [notifications, setNotifications] = useState(() => {
     try {
@@ -182,19 +180,6 @@ export default function Topbar({ user, title, subtitle, actions, headerContent, 
               </button>
             </div>
           )}
-
-          <div className="page-topbar-account" style={s.pill}>
-            <div className="page-topbar-avatar" style={s.avatar} aria-hidden="true">
-              {avatarInitials || <span style={s.avatarIcon}>{Icons.user}</span>}
-            </div>
-            <div>
-              <div className="page-topbar-account-name" style={s.pillName}>{user.name}</div>
-              <div className="page-topbar-account-role" style={s.pillRole}>{user.role}</div>
-            </div>
-            <svg className="page-topbar-account-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="m4 6 4 4 4-4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
         </div>
       </div>
     </div>
@@ -263,9 +248,9 @@ const s = {
   notificationBell: { width: 15, height: 15, display: 'flex', color: '#64748b' },
   newBadge: { padding: '4px 8px', borderRadius: 8, background: '#fee2e2', color: '#dc2626', fontSize: '.64rem', fontWeight: 600 },
   notificationHeaderActions: { display: 'flex', alignItems: 'center', gap: 7 },
-  filterButton: { border: 0, borderRadius: 12, padding: '4px 8px', background: '#fff', color: '#013826', fontSize: '.64rem', cursor: 'pointer', whiteSpace: 'nowrap' },
-  filterButtonActive: { background: '#086b50', color: '#fff' },
-  markAllButton: { border: 0, background: 'transparent', color: '#013826', fontSize: '.64rem', cursor: 'pointer', whiteSpace: 'nowrap' },
+  filterButton: { border: 0, borderRadius: 12, padding: '4px 8px', background: '#fff', color: 'var(--ink)', fontSize: '.64rem', cursor: 'pointer', whiteSpace: 'nowrap' },
+  filterButtonActive: { background: 'var(--primary)', color: '#fff' },
+  markAllButton: { border: 0, background: 'transparent', color: 'var(--ink)', fontSize: '.64rem', cursor: 'pointer', whiteSpace: 'nowrap' },
   closeButton: { width: 18, height: 18, display: 'flex', padding: 1, border: 0, background: 'transparent', color: '#94a3b8', cursor: 'pointer' },
   notificationSummary: { padding: '8px 12px', background: '#f8fafc', color: '#64748b', fontSize: '.64rem', borderBottom: '1px solid #edf2f7' },
   notificationList: { maxHeight: 462, overflowY: 'auto' },
@@ -278,10 +263,10 @@ const s = {
   unreadDot: { width: 5, height: 5, borderRadius: '50%', flexShrink: 0 },
   notificationText: { marginTop: 3, color: '#405673', fontSize: '.68rem', lineHeight: 1.35 },
   notificationMeta: { marginTop: 4, color: '#8aa0bd', fontSize: '.63rem' },
-  notificationArrow: { alignSelf: 'center', minWidth: 48, border: 0, background: 'transparent', color: '#013826', fontSize: '.62rem', cursor: 'pointer', padding: 0, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' },
+  notificationArrow: { alignSelf: 'center', minWidth: 48, border: 0, background: 'transparent', color: 'var(--ink)', fontSize: '.62rem', cursor: 'pointer', padding: 0, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' },
   notificationArrowIcon: { width: 12, height: 12, display: 'flex', color: '#cbd5e1' },
   emptyNotifications: { padding: '30px 12px', textAlign: 'center', color: '#64748b', fontSize: '.75rem' },
-  viewAllButton: { width: '100%', padding: '12px', border: 0, borderTop: '1px solid #e7edf4', background: '#fff', color: '#013826', fontSize: '.75rem', cursor: 'pointer' },
+  viewAllButton: { width: '100%', padding: '12px', border: 0, borderTop: '1px solid #e7edf4', background: '#fff', color: 'var(--ink)', fontSize: '.75rem', cursor: 'pointer' },
   pill: {
     display: 'flex',
     alignItems: 'center',

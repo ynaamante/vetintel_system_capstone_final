@@ -6370,7 +6370,7 @@ html body .lab-intake-wizard .lab-wizard-test-options > button[aria-selected="tr
 }
 
 .sidebar-clinical-section {
-  border-top: 1px solid rgba(255, 255, 255, .24);
+  border-top: 2px solid rgba(255, 255, 255, .24);
   margin-top: 9px;
   padding-top: 5px;
 }
@@ -6445,6 +6445,39 @@ html body .lab-intake-wizard .lab-wizard-test-options > button[aria-selected="tr
   font-size: 18px;
   --admin-content-scale: 1.12;
   zoom: var(--admin-content-scale);
+}
+
+/* Side drawers anchor to the viewport. Let their bodies shrink and scroll
+   independently so the header and footer stay inside the visible panel. */
+body :is(.intake-detail-body, .visit-detail-body, .vaccine-detail-body, .oar-drawer-body, .ltd-content, .invoice-review-body, .audit-drawer-content) {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scroll-padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+:is(.intake-detail-panel, .visit-detail-panel, .vaccine-detail-panel) > :is(header, footer),
+:is(.intake-detail-panel, .invoice-review-panel) :is(.intake-detail-actions, .invoice-review-footer) {
+  flex-shrink: 0;
+}
+
+body :is(.intake-detail-body, .visit-detail-body, .vaccine-detail-body, .audit-drawer-content),
+body :is(.intake-detail-actions, .ltd-footer) {
+  padding-block-end: max(24px, env(safe-area-inset-bottom));
+}
+
+@media (max-height: 480px) {
+  body :is(.intake-detail-panel, .visit-detail-panel, .vaccine-detail-panel, .ltd-drawer, .invoice-review-panel) {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  body :is(.intake-detail-body, .visit-detail-panel .visit-detail-body, .vaccine-detail-body, .ltd-content, .invoice-review-body) {
+    flex: 1 0 auto;
+    overflow-y: visible;
+  }
+
+  body .ltd-drawer[open] { grid-template-rows: auto auto auto minmax(min-content, 1fr) auto; }
 }
 
 @media (min-width: 901px) and (max-width: 1200px) {

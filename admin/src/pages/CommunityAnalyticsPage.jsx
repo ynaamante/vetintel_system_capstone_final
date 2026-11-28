@@ -112,7 +112,7 @@ export function CommunityAnalyticsPage({ user }) {
         {severityData.length ? <ResponsiveContainer width="100%" height={190}><BarChart data={severityData} barSize={42}>
           <CartesianGrid strokeDasharray="3 3" stroke="#b8c4d3" /><XAxis dataKey="level" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltip suffix=" cases" />} />
-          <Bar dataKey="cases" radius={[4, 4, 0, 0]}>{severityData.map((item, index) => <Cell key={index} fill={({ Critical: '#dc2626', High: '#f97316', Moderate: '#f59e0b', Low: '#16a34a', Unrated: '#94a3b8' })[item.level]} />)}</Bar>
+          <Bar dataKey="cases" radius={[4, 4, 0, 0]}>{severityData.map((item, index) => <Cell key={index} fill={({ Critical: '#dc2626', High: '#f97316', Moderate: '#f59e0b', Low: 'var(--success)', Unrated: '#94a3b8' })[item.level]} />)}</Bar>
         </BarChart></ResponsiveContainer> : <p style={{ color: '#64748b', fontSize: '.8rem' }}>No saved diagnosis records to summarize.</p>}
       </div>
       <div style={s.insightsRow}>
@@ -160,7 +160,7 @@ const s = {
 
   warningBanner: {
     display: 'flex', alignItems: 'center', gap: 8,
-    background: '#fffbeb', border: '1px solid #fde68a',
+    background: 'var(--warning-bg)', border: '1px solid #fde68a',
     borderRadius: 8, padding: '10px 14px', marginTop: 14,
   },
 

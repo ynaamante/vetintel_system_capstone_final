@@ -1,4 +1,5 @@
 import AppHeader from '../components/AppHeader';
+import { roundedScreenPanel } from '../components/HeaderSurface';
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, Modal, TextInput, Linking, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -84,7 +85,7 @@ export default function PetDetailsScreen({ route, navigation }: any) {
   }, [token, pet?.name, sharedRecordsRetry]);
   if (!pet) return <SafeAreaView style={s.safe}>
     <AppHeader title="Pet Profile" />
-    <View style={s.center}>{loading ? <><ActivityIndicator color={colors.primary} /><Text style={{ color: tc.textSecondary, marginTop: 12 }}>Loading pet profile…</Text></> : <>
+    <View style={[s.panel, s.center]}>{loading ? <><ActivityIndicator color={colors.primary} /><Text style={{ color: tc.textSecondary, marginTop: 12 }}>Loading pet profile…</Text></> : <>
       <Text accessibilityRole="alert" style={{ color: tc.text, textAlign: 'center', margin: 20 }}>{loadError || 'This pet was not found in your account.'}</Text>
       <TouchableOpacity onPress={() => setRetry(value => value + 1)}><Text style={{ color: colors.primary }}>Try again</Text></TouchableOpacity>
     </>}</View>
@@ -111,9 +112,9 @@ export default function PetDetailsScreen({ route, navigation }: any) {
   return (
     <SafeAreaView style={s.safe}>
       <AppHeader title="Pet Profile" />
-      <ScrollView contentContainerStyle={s.container}>
+      <ScrollView style={s.panel} contentContainerStyle={s.container}>
         {clinic?.phone && <TouchableOpacity style={s.emergencyBtn} onPress={() => Linking.openURL(`tel:${clinic.phone}`)}>
-          <Ionicons name="call" size={20} color="#fff" /><Text style={s.emergencyBtnText}>Emergency: Call {clinic?.name || 'Vet Clinic'}</Text>
+          <Ionicons name="call" size={20} color={colors.white} /><Text style={s.emergencyBtnText}>Emergency: Call {clinic?.name || 'Vet Clinic'}</Text>
         </TouchableOpacity>}
         {!!loadError && <View style={{ marginBottom: 12 }}><Text accessibilityRole="alert" style={{ color: colors.danger }}>{loadError}</Text><TouchableOpacity onPress={() => setRetry(value => value + 1)}><Text style={{ color: colors.primary }}>Try again</Text></TouchableOpacity></View>}
         <View style={s.profileCard}>
@@ -138,9 +139,9 @@ export default function PetDetailsScreen({ route, navigation }: any) {
           <View style={s.dewormCard}><View style={s.dewormIcon}><Ionicons name="medical-outline" size={20} color={colors.secondary} /></View><View style={{ flex: 1 }}><Text style={s.dewormTitle}>Deworming Schedule</Text><Text style={s.dewormSub}>Next: {format(parseISO(pet.nextDewormingDate), 'MMMM dd, yyyy')}</Text></View></View>
         )}
         <TouchableOpacity style={s.reportBanner} onPress={() => navigation.navigate('HealthReport', { petId, pet })}>
-          <View style={s.reportIcon}><Ionicons name="document-text" size={24} color="#fff" /></View>
+          <View style={s.reportIcon}><Ionicons name="document-text" size={24} color={colors.white} /></View>
           <View style={{ flex: 1 }}><Text style={s.reportTitle}>Send Health Report to Vet</Text><Text style={s.reportSub}>Share medical history with {clinic?.name || 'your vet'}</Text></View>
-          <Ionicons name="chevron-forward" size={20} color="#fff" />
+          <Ionicons name="chevron-forward" size={20} color={colors.white} />
         </TouchableOpacity>
         <View style={s.quickGrid}>
           {[{ icon: 'alert-circle-outline', label: 'Report Symptoms', c: colors.warning, route: 'ReportSymptoms', p: { petId, pet } },
@@ -176,7 +177,7 @@ export default function PetDetailsScreen({ route, navigation }: any) {
                     <Text style={s.sharedRecordTitle}>{item.title}</Text>
                     {item.category === 'Vaccine' && item.clinicVerified && (
                       <View style={s.sharedVerifiedBadge}>
-                        <Ionicons name="shield-checkmark" size={13} color="#087f65" />
+                        <Ionicons name="shield-checkmark" size={13} color={colors.successText} />
                         <Text style={s.sharedVerifiedText}>Clinic Verified</Text>
                       </View>
                     )}
@@ -217,7 +218,7 @@ export default function PetDetailsScreen({ route, navigation }: any) {
             </ScrollView>
             <View style={s.modalBtns}>
               <TouchableOpacity style={s.outlineBtn} onPress={() => setEditModal(false)}><Text style={s.outlineBtnText}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={s.primaryBtn} disabled={saving} onPress={save}>{saving ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>Save</Text>}</TouchableOpacity>
+              <TouchableOpacity style={s.primaryBtn} disabled={saving} onPress={save}>{saving ? <ActivityIndicator color={colors.white} /> : <Text style={s.primaryBtnText}>Save</Text>}</TouchableOpacity>
             </View>
           </View>
         </View>
@@ -228,13 +229,14 @@ export default function PetDetailsScreen({ route, navigation }: any) {
 
 const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: tc.background },
+  panel: { ...roundedScreenPanel, backgroundColor: tc.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: tc.border },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   navTitle: { fontSize: 17, fontWeight: '600', color: tc.text },
   container: { padding: spacing.md, paddingBottom: 40 },
   emergencyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.danger, borderRadius: radius.md, paddingVertical: 14, marginBottom: 16 },
-  emergencyBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  emergencyBtnText: { color: colors.white, fontSize: 15, fontWeight: '700' },
   profileCard: { backgroundColor: tc.surface, borderRadius: radius.lg, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: tc.border },
   petImg: { width: 80, height: 80, borderRadius: 40, backgroundColor: tc.border },
   petName: { fontSize: 20, fontWeight: '700', color: tc.text, marginBottom: 6 },
@@ -244,13 +246,13 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   infoVal: { fontSize: 14, fontWeight: '600', color: tc.text },
   outlineBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: tc.border, borderRadius: radius.md, paddingVertical: 10 },
   outlineBtnText: { fontSize: 14, color: tc.text },
-  dewormCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#2E1065' : '#F5F3FF', borderWidth: 1, borderColor: isDark ? '#7C3AED' : '#DDD6FE', borderRadius: radius.md, padding: 14, marginBottom: 14, gap: 12 },
-  dewormIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#4C1D95' : '#EDE9FE', alignItems: 'center', justifyContent: 'center' },
-  dewormTitle: { fontSize: 15, fontWeight: '600', color: isDark ? '#C4B5FD' : '#5B21B6' },
-  dewormSub: { fontSize: 13, color: isDark ? '#A78BFA' : '#7C3AED' },
+  dewormCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? colors.primarySoftDark : colors.hoverMenu, borderWidth: 1, borderColor: tc.border, borderRadius: radius.md, padding: 14, marginBottom: 14, gap: 12 },
+  dewormIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? colors.dark.surface : colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  dewormTitle: { fontSize: 15, fontWeight: '600', color: isDark ? colors.dark.text : colors.ink },
+  dewormSub: { fontSize: 13, color: tc.textMuted },
   reportBanner: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.lg, padding: 16, marginBottom: 16, gap: 12, backgroundColor: colors.primary },
   reportIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  reportTitle: { fontSize: 15, fontWeight: '600', color: '#fff' },
+  reportTitle: { fontSize: 15, fontWeight: '600', color: colors.white },
   reportSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)' },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   quickCard: { width: '47%', backgroundColor: tc.surface, borderRadius: radius.md, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: tc.border, gap: 8 },
@@ -265,23 +267,23 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   sharedRecord: { paddingVertical: 9, borderTopWidth: 1, borderTopColor: tc.border },
   sharedRecordCategory: { marginBottom: 2, color: tc.textMuted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' },
   sharedRecordTitle: { color: tc.text, fontSize: 14, fontWeight: '600' },
-  sharedVerifiedBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, paddingHorizontal: 8, paddingVertical: 4, marginTop: 6, borderRadius: 99, backgroundColor: '#E5F7F1' },
-  sharedVerifiedText: { color: '#087f65', fontSize: 11, fontWeight: '700' },
+  sharedVerifiedBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, paddingHorizontal: 8, paddingVertical: 4, marginTop: 6, borderRadius: 99, backgroundColor: colors.successBg },
+  sharedVerifiedText: { color: colors.successText, fontSize: 11, fontWeight: '700' },
   sharedVerifiedBy: { marginTop: 4, color: tc.textSecondary, fontSize: 11 },
   sharedRecordDate: { marginTop: 3, color: tc.textMuted, fontSize: 11 },
   sharedRecordsHint: { color: tc.textSecondary, fontSize: 12, lineHeight: 17 },
-  vacRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF7ED', borderRadius: radius.md, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#FED7AA' },
-  vacName: { fontSize: 14, fontWeight: '600', color: '#9A3412' },
-  vacDate: { fontSize: 12, color: '#C2410C' },
+  vacRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.warningBg, borderRadius: radius.md, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: colors.warning },
+  vacName: { fontSize: 14, fontWeight: '600', color: colors.warningText },
+  vacDate: { fontSize: 12, color: colors.warningText },
   symRow: { borderRadius: radius.md, padding: 12, marginBottom: 8, borderWidth: 1 },
   symSymptoms: { fontSize: 14, fontWeight: '600', color: tc.text, flex: 1 },
   badge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { color: '#fff', fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
+  badgeText: { color: colors.white, fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
   symDesc: { fontSize: 13, color: tc.textSecondary, marginBottom: 4 },
   symDate: { fontSize: 12, color: tc.textMuted },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center', padding: 20 },
   qrBox: { backgroundColor: tc.surface, borderRadius: radius.xl, padding: 24, alignItems: 'center', width: '100%', maxWidth: 360 },
-  qrWrap: { backgroundColor: '#fff', padding: 16, borderRadius: radius.md, marginVertical: 16, borderWidth: 2, borderColor: tc.border },
+  qrWrap: { backgroundColor: colors.white, padding: 16, borderRadius: radius.md, marginVertical: 16, borderWidth: 2, borderColor: tc.border },
   qrName: { fontSize: 16, fontWeight: '700', color: tc.text },
   qrBreed: { fontSize: 14, color: tc.textSecondary },
   qrOwner: { fontSize: 13, color: tc.textMuted, marginTop: 4, marginBottom: 16 },
@@ -292,5 +294,5 @@ const styles = (tc: any, isDark: boolean) => StyleSheet.create({
   input: { borderWidth: 1, borderColor: tc.border, borderRadius: radius.md, padding: 12, fontSize: 15, color: tc.text, backgroundColor: tc.inputBg },
   modalBtns: { flexDirection: 'row', gap: 10, marginTop: 16 },
   primaryBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, alignItems: 'center' },
-  primaryBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  primaryBtnText: { color: colors.white, fontSize: 15, fontWeight: '600' },
 });
