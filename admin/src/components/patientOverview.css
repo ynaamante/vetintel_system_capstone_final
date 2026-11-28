@@ -12,14 +12,16 @@
 .patient-records-page .records-detail .detail-action { min-height: 33px; border-color: var(--border); border-radius: 8px; color: var(--color-deep-forest); font-weight: 650; font-size: 11px; background: #fff; }
 .patient-records-page .records-detail .detail-action.primary { color: white; border-color: var(--color-botanical-teal); background: linear-gradient(135deg, var(--color-deep-forest), var(--color-botanical-teal)); }
 .patient-records-page .records-detail .detail-action.archive { color: #a62d30; border-color: #dc9298; }
-.patient-records-page .records-detail .detail-summary { gap: 12px; margin: 16px 0; }
-.patient-records-page .records-detail .detail-summary-card { display: flex; align-items: center; gap: 12px; min-height: 74px; padding: 12px; border: 1px solid var(--border); border-radius: 13px; background: var(--color-warm-ivory); }
-.patient-records-page .records-detail .detail-summary-icon { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; border-radius: 12px; background: var(--color-pale-sage); color: var(--color-botanical-teal); }
-.patient-records-page .records-detail .detail-summary-icon svg { width: 24px; height: 24px; }
+.patient-records-page .records-detail .detail-summary { position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0; margin: 16px 0; overflow: hidden; border: 1px solid #d2e5d9; border-radius: 18px; background: linear-gradient(110deg,#fcfefd,#eff8f0); }
+.patient-records-page .records-detail .detail-summary::after { position: absolute; z-index: -1; right: -45px; bottom: -82px; width: 28%; height: 140px; border-radius: 50%; background: #d5eddc; content: ''; transform: rotate(-15deg); }
+.patient-records-page .records-detail .detail-summary-card { display: flex; min-width: 0; min-height: 116px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; padding: 14px 22px; border: 0; border-radius: 0; background: transparent; }
+.patient-records-page .records-detail .detail-summary-card + .detail-summary-card { border-left: 1px solid #bfd4c6; }
+.patient-records-page .records-detail .detail-summary-icon { display: none; }
 .patient-records-page .records-detail .detail-summary-text { min-width: 0; }
-.patient-records-page .records-detail .detail-summary-label { color: var(--color-botanical-teal); font-size: 11px; }
-.patient-records-page .records-detail .detail-summary-value { margin-top: 4px; color: var(--ink); font-size: 14px; }
-.patient-records-page .records-detail .detail-summary-note { color: var(--muted); line-height: 1.4; }
+.patient-records-page .records-detail .detail-summary-label { color: #00866b; font-size: 14px; font-weight: 500; }
+.patient-records-page .records-detail .detail-summary-value { margin-top: 4px; color: #172b24; font-size: 28px; line-height: 1.15; font-weight: 800; }
+.patient-records-page .records-detail .detail-summary-value.is-text { font-size: clamp(15px, 1vw, 18px); line-height: 1.25; font-weight: 700; white-space: nowrap; }
+.patient-records-page .records-detail .detail-summary-note { margin-top: 6px; color: #7183a1; font-size: 13px; line-height: 1.4; }
 .patient-records-page .records-detail .detail-tabs { margin-bottom: 22px; border-radius: 12px; }
 .patient-records-page .records-detail .detail-tab { height: 38px; font-size: clamp(10px,.72vw,12px); padding: 8px; }
 .patient-records-page .detail-overview-columns { grid-template-columns: 1.02fr 1fr; gap: 18px; }

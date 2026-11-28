@@ -1,5 +1,6 @@
 import OwnerAppointmentRequests from '../components/OwnerAppointmentRequests';
 import { hasAction } from '../utils/permissionUtils';
+import './summaryStats.css';
 import { usePageState } from '../utils/usePageState.js';
 import { apiFetch as fetch } from '../utils/apiFetch.js';
 import IntakeScreeningReview from '../components/IntakeScreeningReview';
@@ -370,28 +371,22 @@ export default function PatientIntakesPage({ user }) {
         </div>
         <div id="request-panel-patients" role="tabpanel" aria-labelledby="request-tab-patients" hidden={requestTab !== 'patients'}>
         {loadError && <div className="intake-load-error" role="alert">{loadError}</div>}
-        <section className="intake-summary" aria-label="Intake summary">
+        <section className="intake-summary overview-stats-band" aria-label="Intake summary">
           {[
-            ['Needs review', countFor('Needs review'), 'Waiting for your review', '#3d78ff', '#eff4ff', Icons.clock],
-            ['Waiting on reception', countFor('Waiting on reception'), 'Sent back to reception', '#c96d08', '#fff7e9', Icons.refresh],
-            ['Approved', countFor('Approved'), 'Patient records created', '#15966c', '#eaf8f1', Icons.check],
-            ['Rejected', countFor('Rejected'), 'Registrations declined', '#e64c4c', '#fff0f0', Icons.xCircle],
-          ].map(([label, value, caption, color, tint, icon]) => (
-            <button
+            ['Needs review', countFor('Needs review'), 'Waiting for your review'],
+            ['Waiting on reception', countFor('Waiting on reception'), 'Sent back to reception'],
+            ['Approved', countFor('Approved'), 'Patient records created'],
+            ['Rejected', countFor('Rejected'), 'Registrations declined'],
+          ].map(([label, value, caption], index) => (
+            <div
               key={label}
-              type="button"
-              aria-pressed={activeFilter === label}
-              onClick={() => setActiveFilter(label)}
-              className={`intake-summary-card${activeFilter === label ? ' intake-summary-card-active' : ''}`}
+              className={`intake-summary-card overview-stats-cell${index ? ' intake-summary-divider' : ''}`}
               style={styles.summaryCard}
             >
-              <span style={{ ...styles.summaryIcon, color, background: tint }}>{icon}</span>
-              <span style={styles.summaryCopy}>
-                <span style={styles.summaryLabel}>{label}</span>
-                <strong style={styles.summaryValue}>{value}</strong>
-                <span style={styles.summaryCaption}>{caption}</span>
-              </span>
-            </button>
+              <span className="overview-stats-label">{label}</span>
+              <strong className="overview-stats-value">{value}</strong>
+              <small className="overview-stats-note">{caption}</small>
+            </div>
           ))}
         </section>
 
@@ -490,38 +485,40 @@ export default function PatientIntakesPage({ user }) {
               <span>{selected.status === 'Waiting on reception' ? 'Correction requested' : 'Registration summary'}</span>
               <p>{selected.reason}</p>
             </section>}
-            <section className="intake-detail-section">
-              <h3>Owner information</h3>
-              <div className="intake-detail-grid">
-                <Detail label="Full name" value={selected.owner} />
-                <Detail label="Phone" value={selected.phone} link />
-                <Detail label="Email" value={selected.email} />
-                <Detail label="Address" value={selected.ownerAddress} />
-              </div>
-            </section>
-            <section className="intake-detail-section">
-              <h3>Pet information</h3>
-              <div className="intake-detail-grid">
-                <Detail label="Pet name" value={selected.pet} />
-                <Detail label="Species" value={selected.species} />
-                <Detail label="Breed" value={selected.breed} />
-                <Detail label="Gender" value={selected.gender} />
-                <Detail label="Date of birth" value={formatDateText(selected.dateOfBirth)} />
-                <Detail label="Weight" value={selected.weight} />
-                <Detail label="Color" value={selected.color} />
-                <Detail label="Known allergies" value={selected.allergies} />
-              </div>
-            </section>
-            <section className="intake-detail-section">
-              <h3>Attached files</h3>
+            <div className="intake-patient-info-grid">
+              <section className="intake-detail-section">
+                <h3>Owner Information</h3>
+                <div className="intake-detail-grid">
+                  <Detail label="Full name" value={selected.owner} />
+                  <Detail label="Phone" value={selected.phone} link />
+                  <Detail label="Email" value={selected.email} />
+                  <Detail label="Address" value={selected.ownerAddress} />
+                </div>
+              </section>
+              <section className="intake-detail-section">
+                <h3>Pet Information</h3>
+                <div className="intake-detail-grid">
+                  <Detail label="Pet name" value={selected.pet} />
+                  <Detail label="Species" value={selected.species} />
+                  <Detail label="Breed" value={selected.breed} />
+                  <Detail label="Gender" value={selected.gender} />
+                  <Detail label="Date of birth" value={formatDateText(selected.dateOfBirth)} />
+                  <Detail label="Weight" value={selected.weight} />
+                  <Detail label="Color" value={selected.color} />
+                  <Detail label="Known allergies" value={selected.allergies} />
+                </div>
+              </section>
+            </div>
+            <section className="intake-detail-section intake-attachments-section">
+              <h3>Attached Files</h3>
               {selected.attachments?.length
                 ? selected.attachments.map(attachment => <div className="intake-attachment" key={attachment.id}><div><strong>{attachment.filename}</strong><small>{attachment.content_type} · {selected.attachmentMeta}</small></div><button type="button" onClick={() => setPreviewAttachment(attachment)}>View</button></div>)
                 : <p className="intake-no-attachment">No files attached.</p>}
             </section>
             <section className="intake-detail-section intake-activity">
               <button type="button" className="intake-activity-toggle" aria-expanded={showActivity} onClick={() => setShowActivity(current => !current)}>
-                <h3>Activity ({selected.activity.length})</h3>
-                {showActivity ? '−' : '+'}
+                <h3>Activity Log ({selected.activity.length})</h3>
+                <svg aria-hidden="true" className={showActivity ? 'is-expanded' : ''} viewBox="0 0 16 16" fill="none"><path d="m4 6 4 4 4-4" /></svg>
               </button>
               {showActivity && selected.activity.map((entry, index) => <p key={`${entry}-${index}`}><i />{entry}</p>)}
             </section>
@@ -674,20 +671,16 @@ const responsiveStyles = `
   .intake-top-search svg { width: 100%; height: 100%; }
   .intake-top-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #253631; font: inherit; font-size: 11px; }
   .intake-top-search input::placeholder { color: #84908d; }
-  .intake-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 13px; }
-  .intake-summary-card { display: flex; align-items: center; gap: 11px; min-height: 79px; box-sizing: border-box; padding: 12px 14px; border: 1px solid #e2e9e7; border-radius: 12px; background: #fff; color: #111; text-align: left; cursor: pointer; font: inherit; transition: border-color .15s, background .15s, box-shadow .15s; }
-  .intake-summary-card-active { border-color: #14856c; background: #eff9f5; box-shadow: 0 0 0 1px #14856c inset; }
-  .intake-summary-card > span:last-child { flex: 1; }
-  .intake-summary-card > span:first-child { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 auto; border-radius: 10px; }
-  .intake-summary-card svg { width: 16px; height: 16px; }
-  .intake-summary-card > span:last-child { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
-  .intake-summary-card strong { margin: 2px 0 1px; color: #141c1a; font-size: 17px; line-height: 1.05; }
-  .intake-summary-card span span:first-child { color: #1b2420; font-size: 12px; font-weight: 550; }
-  .intake-summary-card span span:last-child { color: #303b36; font-size: 11px; white-space: normal; line-height: 1.3; }
+  .intake-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-bottom: 13px; }
+  .intake-summary-card { display: block; width: 100%; min-height: 88px; padding: 0 18px; border: 0; border-radius: 0; background: transparent; color: inherit; text-align: left; font: inherit; }
+  .intake-summary-divider { border-left: 1px solid #c5d8cb; }
+  .intake-summary-card .overview-stats-value { text-align: left; }
+  .intake-summary-card .overview-stats-note { white-space: normal; line-height: 1.3; }
   .intake-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-  .intake-tabs { display: flex; align-items: center; gap: 2px; max-width: 100%; overflow-x: auto; padding: 4px; border-radius: 13px; background: #eef2f2; }
-  .intake-tab { flex: 0 0 auto; padding: 9px 12px; border: 0; border-radius: 9px; background: transparent; color: #111; cursor: pointer; font: inherit; font-size: 12px; white-space: nowrap; }
-  .intake-tab-active { background: #12836a; color: #fff; box-shadow: 0 1px 3px #1e32291c; font-weight: 700; }
+  .intake-tabs { display: flex; align-items: center; gap: 2px; max-width: 100%; overflow-x: auto; padding: 4px; border: 1px solid #d5e8dc; border-radius: 14px; background: #eaf4ee; scrollbar-width: thin; }
+  .intake-tab { flex: 0 0 auto; min-height: 38px; padding: 0 14px; border: 1px solid #dcebe2; border-radius: 10px; background: #f4f8f5; color: #26372d; cursor: pointer; font: inherit; font-size: 13px; font-weight: 500; white-space: nowrap; transition: background-color .16s ease, color .16s ease, box-shadow .16s ease; }
+  .intake-tab:hover:not(.intake-tab-active) { background: #e1eee6; }
+  .intake-tab-active { border-color: #064e3b; background: #064e3b; color: #fff; box-shadow: 0 1px 3px rgba(6, 78, 59, .2); font-weight: 700; }
   .intake-toolbar { display: flex; align-items: center; gap: 7px; }
   .intake-sort { position: relative; }
   .intake-sort select { width: 145px; height: 37px; padding: 0 11px; border: 1px solid #dce5e3; border-radius: 9px; background: #fff; color: #293632; font: inherit; font-size: 11px; }
@@ -709,17 +702,20 @@ const responsiveStyles = `
   .intake-screening-details { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px 0; }
   .intake-screening-details > div { display: grid; gap: 6px; font-size: 12px; }
   .intake-screening-details > p { flex-basis: 100%; margin: 0; font-size: 12px; color: #62716c; }
-  .intake-table-wrap { overflow-x: auto; border: 1px solid #e2e9e7; border-radius: 12px; background: #fff; }
-  .intake-table { width: 100%; min-width: 1250px; border-collapse: collapse; text-align: left; }
-  .intake-table th { height: 39px; padding: 0 15px; border-bottom: 1px solid #e3eae8; background: #f8faf9; color: #111; font-size: 12px; font-weight: 650; }
+  .intake-table-wrap { overflow-x: auto; padding: 12px; border: 1px solid #d6e5dc; border-radius: 16px; background: #fff; }
+  .intake-table { width: 100%; min-width: 1250px; table-layout: fixed; border-collapse: separate; border-spacing: 0; text-align: left; }
+  .intake-table th { height: 54px; padding: 0 14px; border-bottom: 1px solid #d7e7dc; background: #eaf3ec; color: #143c2d; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .intake-table th:first-child { border-radius: 12px 0 0 12px; }
+  .intake-table th:last-child { border-radius: 0 12px 12px 0; }
   .intake-table th:first-child { width: 90px; }
   .intake-table th:nth-child(2), .intake-table th:nth-child(3) { width: 14%; }
   .intake-table th:nth-child(4) { width: 19%; }
   .intake-table th:nth-child(5), .intake-table th:nth-child(6) { width: 12%; }
-  .intake-table td { height: 84px; padding: 9px 15px; border-bottom: 1px solid #e4eae8; color: #26332f; font-size: 12px; vertical-align: middle; }
+  .intake-table td { height: 84px; padding: 12px 14px; border-bottom: 1px solid #e1ebe4; color: #26332f; font-size: 13px; vertical-align: middle; overflow-wrap: anywhere; }
   .intake-table th:last-child, .intake-table td:last-child { width: 42px; padding-right: 10px; padding-left: 4px; text-align: right; }
   .intake-table tbody tr:last-child td { border-bottom: 0; }
   .intake-table tbody tr:not(:has(.intake-empty)) { cursor: pointer; }
+  .intake-table tbody tr:not(:has(.intake-empty)):hover td { background: #f5faf6; }
   .intake-id { display: block; color: #000; font-family: 'DM Sans', sans-serif; font-size: 12px; }
   .intake-tag { display: inline-flex; margin-top: 6px; padding: 3px 8px; border-radius: 10px; font-size: 9px; font-weight: 800; line-height: 1; }
   .intake-tag-new { background: #eaf0ff; color: #3372ff; }
@@ -738,25 +734,52 @@ const responsiveStyles = `
   .intake-empty { height: 90px !important; text-align: center; color: #71807b !important; }
   .intake-row-selected td { background: #e8f6f1; }
   .intake-row-selected td:first-child { box-shadow: inset 3px 0 #139675; }
-  .intake-detail-backdrop { position: fixed; z-index: 39; inset: 0; background: rgba(15, 38, 42, .18); }
-  .intake-detail-panel { position: fixed; z-index: 40; inset: 0 0 0 auto; display: flex; flex-direction: column; width: min(560px, 100vw); box-sizing: border-box; border-left: 1px solid #e2e9e7; background: #fff; color: #111827; font-family: 'DM Sans', sans-serif; box-shadow: -10px 0 32px rgba(20, 48, 43, .12); }
-  .intake-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; min-height: 84px; box-sizing: border-box; padding: 17px 17px 12px; border-bottom: 1px solid #e7ecea; }
+  .intake-detail-backdrop { position: fixed; z-index: 39; inset: 0; background: rgba(15, 38, 42, .42); backdrop-filter: blur(2px); }
+  .intake-detail-panel { position: fixed; z-index: 40; inset: 0 0 0 auto; display: flex; flex-direction: column; width: min(540px, 78vw); height: 100vh; height: 100dvh; box-sizing: border-box; overflow: hidden; border: 1px solid #dbe7e1; border-right: 0; border-radius: 16px 0 0 16px; background: #fff; color: #111827; font-family: 'DM Sans', sans-serif; box-shadow: -16px 0 48px rgba(20, 48, 43, .2); }
+  .intake-detail-head { position: relative; isolation: isolate; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; min-height: 94px; box-sizing: border-box; overflow: hidden; padding: 17px 26px 12px; border-bottom: 1px solid #e4ece8; background: radial-gradient(ellipse 48% 90px at 78% -5%, #d5eee4 99%, transparent 100%), #f8fbf9; }
   .intake-detail-heading { min-width: 0; }
-  .intake-detail-heading h2 { margin: 0 0 6px; color: #111827; font-size: 19px; font-weight: 700; }
-  .intake-detail-heading p { margin: 0 0 8px; color: #374151; font-size: 13px; line-height: 1.45; }
-  .intake-detail-heading .status-indicator { padding: 5px 10px; border-radius: 20px; background: #edf3ff; color: #2867ee !important; font-size: 13px !important; }
+  .intake-detail-heading h2 { margin: 0 0 3px; color: #064e3b; font-size: 24px; font-weight: 750; }
+  .intake-detail-heading p { margin: 0 0 6px; color: #526175; font-size: 12px; line-height: 1.4; }
+  .intake-detail-heading .status-indicator { padding: 4px 10px; border-radius: 20px; background: #eaf1ff; color: #2867ee !important; font-size: 11px !important; }
   .intake-detail-heading .status-indicator-dot { display: none; }
-  .intake-detail-head > button { min-height: 36px; flex: 0 0 auto; padding: 8px 13px; border: 1px solid #b9d9ce; border-radius: 8px; background: #fff; color: #086b57; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
-  .intake-detail-body { flex: 1; overflow-y: auto; padding: 13px 17px 7px; }
+  .intake-detail-head > button { min-height: 36px; flex: 0 0 auto; padding: 8px 13px; border: 1px solid #d4e1dc; border-radius: 8px; background: #fff; color: #173b30; cursor: pointer; font: inherit; font-size: 12px; font-weight: 650; }
+  .intake-detail-body { flex: 1; overflow-y: auto; padding: 14px 18px 8px; }
+  .intake-screening-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; margin: 0 0 12px; padding: 13px 16px; border: 1px solid #e3ece7; border-radius: 12px; background: linear-gradient(110deg, #f8fafb, #f0f7f2); }
+  .intake-screening-details > div { display: grid; align-content: start; gap: 7px; font-size: 12px; }
+  .intake-screening-details > div:nth-child(2) { padding-left: 17px; border-left: 1px solid #cbdad3; }
+  .intake-screening-details > div > strong { color: #1c2932; font-size: 13px; }
+  .intake-screening-details > p { grid-column: 1 / -1; margin: 0; color: #61716d; font-size: 11px; line-height: 1.4; }
+  .intake-review-card { overflow: hidden; margin-bottom: 12px; border: 1px solid #dce8e2; border-radius: 12px; background: #fff; }
+  .intake-review-card-heading { padding: 10px 14px; background: #006b4b; color: #fff; }
+  .intake-review-card-heading h3 { margin: 0; font-size: 15px; font-weight: 700; }
+  .intake-review-card-body { padding: 11px 13px 10px; }
+  .intake-review-facts { display: grid; gap: 0; }
+  .intake-review-facts > div { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 9px; padding: 6px 0; border-bottom: 1px solid #e1e8e5; font-size: 11px; line-height: 1.4; }
+  .intake-review-facts > div strong { padding: 5px 8px; border-radius: 6px; background: #e8f3ed; color: #164c39; }
+  .intake-review-facts > div span { align-self: center; color: #34423e; }
+  .intake-review-rule-note { margin: 7px 0 9px; color: #64748b; font-size: 10px; line-height: 1.4; }
+  .intake-review-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 12px; }
+  .intake-review-form > label { display: grid; align-content: start; gap: 5px; color: #1f2937; font-size: 11px; font-weight: 650; }
+  .intake-review-form select, .intake-review-form textarea { width: 100%; min-height: 37px; box-sizing: border-box; padding: 8px 10px; border: 1px solid #d3dce4; border-radius: 8px; background: #fff; color: #273548; font: inherit; font-size: 11px; }
+  .intake-review-form textarea { min-height: 54px; resize: vertical; }
+  .intake-review-form .intake-review-note { grid-column: 1 / -1; }
+  .intake-review-note > span { color: #718096; font-size: 10px; font-weight: 400; }
+  .intake-review-form > button { grid-column: 2; justify-self: end; width: min(100%, 250px); min-height: 38px; padding: 8px 14px; border: 1px solid #086b50; border-radius: 8px; background: #086b50; color: #fff; cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; }
+  .intake-review-form > button:disabled { cursor: wait; opacity: .65; }
+  .intake-review-message { grid-column: 1 / -1; margin: 0; color: #08734e; font-size: 11px; }
+  .intake-review-message.is-error { color: #b42318; }
+  .intake-review-disclaimer { margin: 8px 0 0; color: #64748b; font-size: 10px; line-height: 1.4; }
   .intake-reason { margin-bottom: 17px; padding: 12px 13px; border-left: 3px solid #149477; border-radius: 9px; background: #f3f8f6; }
   .intake-reason > span { color: #485650; font-size: 12px; }
   .intake-reason p { margin: 4px 0 0; color: #111; font-size: 15px; font-weight: 550; line-height: 1.45; }
-  .intake-detail-section { padding: 0 0 14px; margin-bottom: 14px; border-bottom: 1px solid #e8edeb; }
-  .intake-detail-section h3 { margin: 0 0 8px; color: #111827; font-size: 15px; font-weight: 700; }
-  .intake-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; row-gap: 12px; }
-  .intake-detail-field { display: grid; gap: 4px; min-width: 0; }
-  .intake-detail-field > span { color: #374151; font-size: 10px; font-weight: 700; letter-spacing: .055em; line-height: 1.35; text-transform: uppercase; }
-  .intake-detail-field > strong { color: #111827; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; line-height: 1.4; }
+  .intake-patient-info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 4px; }
+  .intake-detail-section { min-width: 0; padding: 0 0 10px; margin-bottom: 12px; border: 1px solid #dce7e2; border-radius: 10px; overflow: hidden; background: #fff; }
+  .intake-detail-section h3 { margin: 0 0 6px; padding: 9px 11px; background: #e5f3e9; color: #164c39; font-size: 14px; font-weight: 750; }
+  .intake-detail-grid { display: grid; grid-template-columns: minmax(0, 1fr); padding: 0 11px; }
+  .intake-detail-field { display: grid; grid-template-columns: minmax(76px, .75fr) minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; padding: 6px 0; border-bottom: 1px solid #e6ece9; }
+  .intake-detail-field:last-child { border-bottom: 0; }
+  .intake-detail-field > span { color: #465469; font-size: 10px; font-weight: 500; letter-spacing: 0; line-height: 1.35; text-transform: none; }
+  .intake-detail-field > strong { color: #111827; font-size: 11px; font-weight: 500; overflow-wrap: anywhere; line-height: 1.4; }
   .intake-detail-field > strong.intake-detail-link { color: #2769e9; }
   .intake-attachment { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 10px; border: 1px solid #dce5e3; border-radius: 9px; background: #f8faf9; }
   .intake-attachment > div { display: grid; flex: 1; min-width: 0; gap: 3px; }
@@ -764,8 +787,16 @@ const responsiveStyles = `
   .intake-attachment small { color: #374151; font-size: 12px; }
   .intake-attachment button { min-height: 36px; padding: 8px 13px; border: 1px solid #b9d9ce; border-radius: 8px; background: #fff; color: #086b57; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
   .intake-no-attachment { margin: 0; color: #374151; font-size: 13px; }
-  .intake-activity-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0; border: 0; background: transparent; color: #394741; cursor: pointer; font: inherit; font-size: 16px; }
-  .intake-activity-toggle h3 { margin: 0; }
+  .intake-activity-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 9px 11px; border: 0; background: #f7f9fa; color: #18252d; cursor: pointer; font: inherit; font-size: 14px; }
+  .intake-activity-toggle h3 { margin: 0; font-size: 14px; }
+  .intake-activity { padding: 0; margin-bottom: 10px; }
+  .intake-activity-toggle { min-height: 48px; background: #f8fafb; }
+  .intake-activity-toggle > svg { width: 16px; height: 16px; flex: 0 0 auto; stroke: #15202b; stroke-width: 1.7; transition: transform .15s ease; }
+  .intake-activity-toggle > svg.is-expanded { transform: rotate(180deg); }
+  .intake-attachments-section { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 12px; min-height: 64px; padding: 0 12px; margin-bottom: 10px; background: #f8fafb; }
+  .intake-attachments-section h3 { margin: 0; padding: 0; background: transparent; color: #15202b; font-size: 14px; }
+  .intake-attachments-section .intake-no-attachment { grid-column: 1; grid-row: 2; padding-bottom: 10px; color: #64748b; font-size: 11px; }
+  .intake-attachments-section .intake-attachment { grid-column: 1 / -1; width: 100%; box-sizing: border-box; margin: 6px 0; }
   .intake-activity p { display: flex; align-items: flex-start; gap: 8px; margin: 8px 0 0; color: #303b36; font-size: 13px; line-height: 1.45; }
   .intake-activity p i { display: none; }
   .intake-detail-actions { display: grid; grid-template-columns: 60px minmax(95px, 1fr) minmax(116px, 1fr); gap: 7px; padding: 11px 17px 13px; border-top: 1px solid #e7ecea; background: #fff; }
@@ -854,7 +885,7 @@ const responsiveStyles = `
   @media (max-width: 900px) {
     .intake-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .intake-content { padding: 14px 16px 24px; }
-    .intake-detail-panel { width: min(560px, 100vw); box-shadow: -10px 0 32px rgba(20, 48, 43, .12); }
+    .intake-detail-panel { width: min(540px, 88vw); }
   }
   @media (max-width: 640px) {
     .intake-top-search { display: none; }
@@ -862,6 +893,14 @@ const responsiveStyles = `
     .intake-controls { align-items: flex-start; flex-direction: column; }
     .intake-toolbar { align-self: flex-end; }
     .intake-tabs { width: 100%; box-sizing: border-box; }
+    .intake-detail-panel { inset: 0 0 0 auto; width: min(100vw, 560px); height: 100vh; height: 100dvh; max-height: none; transform: none; border-radius: 0; }
+    .intake-detail-head { min-height: 86px; padding: 14px 15px 10px; }
+    .intake-detail-heading h2 { font-size: 20px; }
+    .intake-detail-body { padding: 11px 12px 6px; }
+    .intake-screening-details { grid-template-columns: 1fr 1fr; gap: 8px; padding: 11px; }
+    .intake-patient-info-grid { grid-template-columns: 1fr; gap: 0; }
+    .intake-review-facts > div { grid-template-columns: 115px minmax(0, 1fr); gap: 7px; }
+    .intake-detail-actions { padding-right: 12px; padding-left: 12px; }
     .correction-modal { padding: 19px; }
     .correction-reasons { gap: 7px; }
     .correction-reasons button { padding: 8px 11px; font-size: 12px; }
@@ -873,9 +912,4 @@ const styles = {
   shell: { flex: 1, minWidth: 0, overflowY: 'auto', minHeight: '100%', background: '#fff', color: '#182522' },
   content: {},
   summaryCard: {},
-  summaryIcon: {},
-  summaryCopy: {},
-  summaryLabel: {},
-  summaryValue: {},
-  summaryCaption: {},
 };

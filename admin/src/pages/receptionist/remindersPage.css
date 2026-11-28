@@ -377,13 +377,6 @@
   padding: 20px 20px 30px;
 }
 
-.reminders-intro {
-  color: #23332b;
-  font-size: .9rem;
-  font-weight: 500;
-  line-height: 1.45;
-}
-
 .reminders-toolbar {
   display: flex;
   align-items: center;
