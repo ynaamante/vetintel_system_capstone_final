@@ -33,6 +33,8 @@ router.get('/owner/pets/:id', auth.required, require('../controllers/petOwnerAcc
 router.put('/owner/pets/:id', auth.required, require('../controllers/petOwnerAccountController').updatePet);
 router.post('/owner/pets', auth.required, require('../controllers/petOwnerAccountController').addPet);
 router.get('/owner/care', auth.required, require('../controllers/ownerCareController').overview);
+router.get('/owner/inbox-archives', auth.required, require('../controllers/ownerInboxController').archives);
+router.post('/owner/inbox-archives', auth.required, require('../controllers/ownerInboxController').setArchive);
 router.get('/owner/inbox', auth.required, require('../controllers/ownerInboxController').list);
 router.post('/owner/inbox', auth.required, require('../controllers/ownerInboxController').create);
 router.patch('/owner/inbox/:id', auth.required, require('../controllers/ownerInboxController').update);
@@ -49,6 +51,7 @@ router.get('/pet-sharing/requests/:id', auth.required, require('../controllers/p
 router.put('/owner/clinic-pets/:id', auth.required, require('../controllers/ownerCareController').updatePet);
 router.post('/owner/clinic-pets/:id/photo', auth.required, require('../controllers/ownerPetPhotoController').clinic);
 router.post('/owner/pets/:id/photo', auth.required, require('../controllers/ownerPetPhotoController').personal);
+router.get('/owner/appointment-availability', auth.required, require('../controllers/ownerCareController').availability);
 router.post('/owner/appointments', auth.required, require('../controllers/ownerCareController').book);
 router.get('/me', auth.required, users.me);
 router.post('/password/change', auth.required, users.changePassword);
@@ -103,6 +106,8 @@ router.post('/clinic-records/pets/:id/diagnoses', auth.required, patientDiagnose
 router.put('/clinic-records/pets/:id/diagnoses/:diagnosisId', auth.required, patientDiagnoses.save);
 router.get('/clinic-records/pets/:id/intake-summary', auth.required, patientRegistrations.getPatientIntakeSummary);
 router.get('/clinic-records/registration-doctors', auth.required, patientRegistrations.listDoctors);
+router.get('/clinic-records/registration-intakes/appointment-requests', auth.required, require('../controllers/ownerAppointmentRequestController').list);
+router.patch('/clinic-records/registration-intakes/appointment-requests/:id/review', auth.required, require('../controllers/ownerAppointmentRequestController').review);
 router.get('/clinic-records/registration-intakes', auth.required, patientRegistrations.listIntakes);
 router.get('/clinic-records/registration-intakes/:id/patient-record', auth.required, patientRegistrations.getPatientRecord);
 router.post('/clinic-records/registration-intakes', auth.required, patientRegistrations.submitIntake);

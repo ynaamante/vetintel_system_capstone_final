@@ -3,7 +3,7 @@ const { publish } = require('../utils/clinicEvents');
 const { ownerThread, makeThread } = require('../utils/ownerInbox');
 function identity(req, res) {
   const email = String(req.user?.email || '').trim().toLowerCase();
-  if (!email || !['user', 'pet_owner'].includes(req.user?.role)) { res.status(403).json({ error: 'Sign in with a pet-owner account.' }); return null; }
+  if (!req.user?.id || !email || !['', 'user', 'pet_owner'].includes(req.user?.role || '')) { res.status(403).json({ error: 'Sign in with a pet-owner account.' }); return null; }
   return email;
 }
 const ownedPets = `FROM pets p JOIN clients c ON c.id=p.client_id AND c.clinic_id=p.clinic_id
@@ -70,5 +70,26 @@ exports.update = async (req, res, next) => {
     if (!result.rows.length) return res.status(404).json({ error: 'Conversation not found.' });
     publish(pet.clinic_id, 'inbox-updated');
     res.json(ownerThread(result.rows[0].value, pet.clinic_name));
+  } catch (error) { next(error); }
+};
+
+exports.archives = async (req, res, next) => {
+  if (!identity(req, res)) return;
+  try {
+    const result = await db.query("SELECT COALESCE(metadata->'inbox_archives','{}'::jsonb) AS archives FROM users WHERE id=$1", [req.user.id]);
+    res.json(Object.keys(result.rows[0]?.archives || {}));
+  } catch (error) { next(error); }
+};
+exports.setArchive = async (req, res, next) => {
+  if (!identity(req, res)) return;
+  const { key, archived } = req.body;
+  if (typeof key !== 'string' || key.length > 300 || !/^(thread:pet-\d+|share:[^:]+:.+|notification:.+)$/.test(key) || typeof archived !== 'boolean')
+    return res.status(422).json({ error: 'Choose a valid inbox item and archive action.' });
+  try {
+    await db.query(archived
+      ? "UPDATE users SET metadata=jsonb_set(COALESCE(metadata,'{}'::jsonb),'{inbox_archives}',COALESCE(metadata->'inbox_archives','{}'::jsonb) || jsonb_build_object($2::text,true)) WHERE id=$1"
+      : "UPDATE users SET metadata=jsonb_set(COALESCE(metadata,'{}'::jsonb),'{inbox_archives}',COALESCE(metadata->'inbox_archives','{}'::jsonb) - $2::text) WHERE id=$1",
+      [req.user.id, key]);
+    res.json({ success: true, key, archived });
   } catch (error) { next(error); }
 };

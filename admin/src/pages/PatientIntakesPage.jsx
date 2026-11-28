@@ -1,3 +1,4 @@
+import OwnerAppointmentRequests from '../components/OwnerAppointmentRequests';
 import { hasAction } from '../utils/permissionUtils';
 import { usePageState } from '../utils/usePageState.js';
 import { apiFetch as fetch } from '../utils/apiFetch.js';
@@ -84,6 +85,8 @@ function AlertIcon() {
 }
 
 export default function PatientIntakesPage({ user }) {
+  const [appointmentRequestCount, setAppointmentRequestCount] = useState(0);
+  const [requestTab, setRequestTab] = useState('appointments');
   const [intakes, setIntakes] = usePageState(user, "pages/PatientIntakesPage.jsx:intakes", []);
   const [doctors, setDoctors] = usePageState(user, "pages/PatientIntakesPage.jsx:doctors", []);
   const [loadError, setLoadError] = usePageState(user, "pages/PatientIntakesPage.jsx:loadError", '');
@@ -346,8 +349,26 @@ export default function PatientIntakesPage({ user }) {
   return (
     <div className="intake-shell" style={styles.shell}>
       <style>{responsiveStyles}</style>
-      <Topbar className="intake-topbar" user={user} title="New Patient Intakes" subtitle="Review and approve new patient registrations submitted by receptionists." actions={searchControl} />
+      <Topbar className="intake-topbar" user={user} title="Patient Intakes" subtitle="Review patient registrations and appointment requests from pet owners." actions={requestTab === 'patients' ? searchControl : undefined} />
       <main className="intake-content" style={styles.content}>
+        <div className="request-type-tabs" role="tablist" aria-label="Request type">
+          {[['appointments', 'Appointment Requests'], ['patients', 'Patient Registrations']].map(([key, label]) => <button key={key}
+            type="button" role="tab" id={'request-tab-' + key} aria-controls={'request-panel-' + key}
+            aria-selected={requestTab === key} tabIndex={requestTab === key ? 0 : -1}
+            className={'request-type-tab' + (requestTab === key ? ' is-active' : '')}
+            onClick={() => { setRequestTab(key); setSelectedId(null); setPreviewAttachment(null); }}
+            onKeyDown={event => {
+              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+              event.preventDefault();
+              const next = event.key === 'Home' ? 'appointments' : event.key === 'End' ? 'patients' : key === 'patients' ? 'appointments' : 'patients';
+              setRequestTab(next); setSelectedId(null); setPreviewAttachment(null);
+              document.getElementById('request-tab-' + next)?.focus();
+            }}>{key === 'appointments' ? Icons.calendar : Icons.users}{label}{key === 'appointments' ? ' (' + appointmentRequestCount + ')' : ''}</button>)}
+        </div>
+        <div id="request-panel-appointments" role="tabpanel" aria-labelledby="request-tab-appointments" hidden={requestTab !== 'appointments'}>
+          <OwnerAppointmentRequests user={user} onCountChange={setAppointmentRequestCount} />
+        </div>
+        <div id="request-panel-patients" role="tabpanel" aria-labelledby="request-tab-patients" hidden={requestTab !== 'patients'}>
         {loadError && <div className="intake-load-error" role="alert">{loadError}</div>}
         <section className="intake-summary" aria-label="Intake summary">
           {[
@@ -441,6 +462,7 @@ export default function PatientIntakesPage({ user }) {
           </table>
         </div>
         <section className="intake-screening-note"><span aria-hidden="true">&#9432;</span><div><strong>How priority and infection risk are determined</strong><p>These are preliminary screening indicators calculated from structured symptoms and exposure selections recorded by reception. They are not confirmed diagnoses. Illustrative rules require veterinary approval before clinical use. The veterinarian reviews or overrides these indicators.</p></div></section>
+        </div>
       </main>
 
       {selected && (

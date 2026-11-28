@@ -155,7 +155,8 @@ export const ownerCareApi = {
   uploadPhoto: (id: string, clinic: boolean, data: string, token: string) => apiCall(`/owner/${clinic ? 'clinic-pets' : 'pets'}/${encodeURIComponent(id)}/photo`, { method: 'POST', token, body: { data } }),
   updatePet: (id: string, data: any, token: string) => apiCall(`/owner/clinic-pets/${encodeURIComponent(id)}`, { method: 'PUT', token, body: data }),
   overview: (token: string) => apiCall('/owner/care', { token }),
-  book: (data: { pet_id: string; clinic_id: string; start_time: string; reason: string; notes: string }, token: string) =>
+  availability: (petId: string, clinicId: string, date: string, token: string): Promise<{ timezone: string; slots: { start_time: string; end_time: string; label: string }[] }> => apiCall('/owner/appointment-availability?' + new URLSearchParams({ pet_id: petId, clinic_id: clinicId, date }).toString(), { token }),
+  book: (data: { pet_id: string; clinic_id: string; start_time: string; reason: string; notes: string; reason_for_visit?: string }, token: string) =>
     apiCall('/owner/appointments', { method: 'POST', token, body: data }),
 };
 
@@ -287,6 +288,8 @@ export type OwnerConversation = {
   messages: { text: string; time: string; source: string; author: string; sharedRecord?: { shareId: string; recordId: string; title: string; type?: string; category?: string; detail?: string; date?: string } }[];
 };
 export const ownerInboxApi = {
+  archives: (token: string): Promise<string[]> => apiCall('/owner/inbox-archives', { token }),
+  archive: (token: string, key: string, archived: boolean) => apiCall('/owner/inbox-archives', { method: 'POST', token, body: { key, archived } }),
   list: (token: string): Promise<OwnerConversation[]> => apiCall('/owner/inbox', { token }),
   create: (token: string, petId: number): Promise<OwnerConversation> => apiCall('/owner/inbox', { method: 'POST', token, body: { pet_id: petId } }),
   send: (token: string, id: string, text: string, sharedRecord?: { shareId: string; recordId: string }): Promise<OwnerConversation> => apiCall(`/owner/inbox/${encodeURIComponent(id)}`, { method: 'PATCH', token, body: { text, ...(sharedRecord ? { sharedRecord } : {}) } }),

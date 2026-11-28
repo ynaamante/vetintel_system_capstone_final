@@ -1,0 +1,180 @@
+﻿.request-type-tabs { display:flex; align-items:stretch; gap:8px; border-bottom:1px solid #438c66; margin-bottom:22px; max-width:100%; overflow-x:auto; }
+.request-type-tabs .request-type-tab { position:relative; display:flex; align-items:center; gap:8px; flex-shrink:0; border:0; background:transparent; color:#101827; font:inherit; font-size:14px; font-weight:700; padding:11px 24px; margin-bottom:7px; border-radius:11px; cursor:pointer; }
+.request-type-tab > svg { width:19px; height:19px; }
+.request-type-tabs .request-type-tab.is-active { background:linear-gradient(110deg,#006c43,#004d2e); color:white; box-shadow:0 2px 4px #00563816; }
+.request-type-tabs .request-type-tab.is-active::after { content:''; position:absolute; height:4px; border-radius:4px; background:#007347; bottom:-9px; left:0; right:0; }
+.oar { color:#131b2c; }
+.oar-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-bottom:24px; }
+.oar-stat { display:flex; align-items:center; gap:16px; padding:16px; min-height:104px; text-align:left; border:1px solid #e5eae7; border-radius:16px; box-shadow:0 1px 2px #142c1910; font:inherit; color:inherit; cursor:pointer; }
+.oar-stat-pending { background:linear-gradient(110deg,#fffcf5,#fcf9f2); }
+.oar-stat-approved { background:linear-gradient(110deg,#f4faf7,#f1f8f5); }
+.oar-stat-declined { background:linear-gradient(110deg,#fff7f7,#fcf4f5); }
+.oar-stat strong { display:block; font-size:14px; line-height:20px; }
+.oar-stat b { display:block; font-size:30px; line-height:35px; }
+.oar-stat-approved b { color:#005638; }
+.oar-stat small { display:block; font-size:14px; line-height:21px; color:#526078; }
+.oar-stat-dot { width:40px; height:40px; display:grid; place-items:center; border-radius:50%; background:#fff0d5; flex-shrink:0; }
+.oar-stat-dot i { width:14px; height:14px; border-radius:50%; background:#e79b00; }
+.oar-stat-approved .oar-stat-dot { background:#ddf5e5; }
+.oar-stat-approved .oar-stat-dot i { background:#008d43; }
+.oar-stat-declined .oar-stat-dot { background:#ffe3e3; }
+.oar-stat-declined .oar-stat-dot i { background:#e3211b; }
+.oar-controls { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+.oar-filters { display:flex; gap:4px; padding:4px; background:#eff4f4; border-radius:15px; max-width:100%; overflow-x:auto; }
+.oar-filters button { white-space:nowrap; border:0; border-radius:11px; padding:10px 19px; font:inherit; font-size:12px; font-weight:600; background:transparent; color:#192235; cursor:pointer; }
+.oar-filters button.is-active { background:linear-gradient(110deg,#007449,#005638); color:#fff; box-shadow:0 1px 3px #00563828; }
+.oar-tools { display:flex; gap:12px; align-items:center; margin-left:auto; }
+.oar-tools select { border:1px solid #e0e7eb; border-radius:13px; height:43px; padding:0 18px; min-width:170px; background:#fff; color:#192235; font:inherit; font-size:12px; }
+.oar-filter-button { display:grid; place-items:center; height:43px; width:49px; border:1px solid #e0e7eb; border-radius:13px; background:white; color:#26364b; cursor:pointer; }
+.oar-extra-filters { display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; margin-bottom:16px; padding:14px; border:1px solid #e0e7e4; border-radius:12px; }
+.oar-extra-filters label { display:grid; gap:6px; font-size:12px; color:#53627a; }
+.oar-extra-filters input,.oar-extra-filters select { padding:8px 12px; border:1px solid #dce5e0; border-radius:8px; font:inherit; min-width:180px; color:#192235; }
+.oar-extra-filters button { border:0; background:transparent; color:#006b43; padding:8px; cursor:pointer; }
+.oar-table-wrap { border:1px solid #e0e8e4; border-radius:16px; overflow-x:auto; box-shadow:0 2px 2px #142c1910; }
+.oar-table { width:100%; border-collapse:collapse; min-width:1050px; font-size:13px; }
+.oar-table th { background:#f2f8f5; text-align:left; font-weight:700; font-size:12px; padding:13px 18px; white-space:nowrap; }
+.oar-table td { border-top:1px solid #e6ebef; padding:13px 18px; vertical-align:middle; line-height:20px; }
+.oar-table tbody tr { cursor:pointer; }
+.oar-table tbody tr:hover { background:#f8fcf9; }
+.oar-table strong { font-weight:700; }
+.oar-pet { display:flex; gap:13px; align-items:center; min-width:205px; }
+.oar-pet img,.oar-photo-placeholder { width:51px; height:51px; border-radius:9px; object-fit:cover; flex-shrink:0; }
+.oar-photo-placeholder { background:#e2f1e7; color:#006344; display:grid; place-items:center; }
+.oar-photo-placeholder svg { width:25px; height:25px; }
+.oar-pet small { display:block; font-size:11px; line-height:17px; }
+.oar-reason { min-width:150px; max-width:230px; overflow-wrap:anywhere; }
+.oar-status { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; border-radius:20px; padding:4px 10px; white-space:nowrap; line-height:18px; }
+.oar-status i { width:9px; height:9px; border-radius:50%; background:currentColor; }
+.oar-status-pending { background:#fff2da; color:#b47000; }
+.oar-status-approved { background:#e4fbe7; color:#00853c; }
+.oar-status-declined { background:#ffebeb; color:#be3028; }
+.oar-status-reschedule { background:#e9f0ff; color:#3864a3; }
+.oar-open { display:grid; place-items:center; width:25px; height:32px; background:transparent; border:0; color:#496079; cursor:pointer; }
+.oar-open svg { width:18px; height:18px; }
+.oar-table td.oar-empty { text-align:center; padding:42px; color:#53627a; }
+.oar-about { display:flex; gap:18px; padding:21px 23px; background:linear-gradient(110deg,#f2f9f6,#f5faf7); border:1px solid #e0eee6; border-radius:15px; margin-top:24px; }
+.oar-info { display:grid; place-items:center; border:1.5px solid #007248; border-radius:50%; color:#007248; width:27px; height:27px; flex-shrink:0; font-size:22px; font-family:serif; margin-top:5px; }
+.oar-about strong { font-size:17px; color:#00633b; }
+.oar-about p { color:#526078; margin:5px 0 0; font-size:13px; line-height:21px; }
+.oar-error { color:#b42318; margin-bottom:12px; padding:10px 12px; background:#fff3f2; border-radius:8px; }
+.oar-error button { margin-left:12px; background:none; border:0; color:inherit; text-decoration:underline; cursor:pointer; }
+.oar-dialog { border:1px solid #dce6df; border-radius:18px; padding:24px; width:min(640px,calc(100vw - 40px)); max-height:85vh; color:#192235; box-sizing:border-box; }
+.oar-dialog::backdrop { background:#12241c70; }
+.oar-dialog header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+.oar-dialog h2 { font-size:20px; margin:0 0 12px; }
+.oar-dialog header > button { border:0; background:none; font-size:27px; cursor:pointer; }
+.oar-dialog dl { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:24px 0; }
+.oar-dialog dt { font-size:12px; color:#53627a; margin-bottom:5px; }
+.oar-dialog dd { margin:0; font-size:14px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.oar-dialog footer { display:flex; gap:10px; justify-content:flex-end; }
+.oar-dialog footer button { padding:10px 16px; border:1px solid #dce6df; border-radius:9px; background:#fff; cursor:pointer; font:inherit; }
+.oar-dialog footer .oar-approve { background:#005638; border-color:#005638; color:white; }
+.oar-dialog footer .oar-decline { border-color:#e5c7c4; color:#b42318; }
+.oar-dialog button:disabled { opacity:.6; cursor:wait; }
+@media(max-width:800px) { .oar-summary { gap:10px; } .oar-stat { padding:13px; gap:10px; } .oar-stat small { font-size:12px; } .request-type-tabs .request-type-tab { padding:11px 15px; font-size:13px; } }
+@media(max-width:560px) { .oar-summary { grid-template-columns:1fr; } .oar-stat { min-height:90px; } .oar-dialog dl { grid-template-columns:1fr; } .oar-about { padding:16px; } }
+.oar-dialog.oar-drawer { position:fixed; inset:0 0 0 auto; margin:0; width:510px; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh; padding:0 21px; border:0; border-radius:16px 0 0 16px; background:#fff; color:#101628; box-sizing:border-box; overflow:hidden; box-shadow:-8px 0 35px #102d2220; }
+.oar-dialog.oar-drawer[open] { display:flex; flex-direction:column; }
+.oar-drawer .oar-drawer-header { flex-shrink:0; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:18px 0 23px; border-bottom:1px solid #e1e6e9; }
+.oar-drawer .oar-drawer-header h2 { margin:0 0 3px; font-size:23px; line-height:29px; font-weight:750; letter-spacing:-.6px; color:#0e1425; }
+.oar-drawer .oar-drawer-header p { margin:0; font-size:13px; line-height:19px; color:#4e5870; }
+.oar-drawer .oar-drawer-header > button { display:grid; place-items:center; width:24px; height:29px; padding:0; color:#111827; flex-shrink:0; }
+.oar-drawer-body { flex:1; min-height:0; overflow-y:auto; padding-bottom:20px; }
+.oar-drawer-pet { display:flex; align-items:flex-start; gap:19px; padding:23px 0 22px; border-bottom:1px solid #d4dce0; }
+.oar-drawer-photo { width:104px; height:107px; flex-shrink:0; object-fit:cover; border-radius:13px; }
+.oar-drawer-photo-placeholder { display:grid; place-items:center; background:#e3f2e9; color:#00633b; }
+.oar-drawer-photo-placeholder svg { width:44px; height:44px; }
+.oar-drawer-owner { flex:1; min-width:0; }
+.oar-drawer-owner h3 { font-size:20px; line-height:25px; margin:0 0 3px; color:#0e1425; font-weight:750; letter-spacing:-.3px; }
+.oar-drawer-owner p { font-size:14px; line-height:21px; margin:0; overflow-wrap:anywhere; }
+.oar-drawer-owner p.oar-drawer-breed { color:#505b70; font-size:13px; line-height:20px; margin-bottom:5px; }
+.oar-drawer-pet > .oar-status { position:absolute; right:21px; margin-top:5px; font-size:11px; }
+.oar-drawer-owner { padding-right:0; }
+.oar-drawer-owner h3 { padding-right:117px; }
+.oar-drawer .oar-drawer-details > h3 { margin:18px 0 12px; font-size:17px; line-height:23px; color:#005638; font-weight:750; }
+.oar-drawer .oar-drawer-details dl { display:block; margin:0; border:1px solid #e1e6e9; border-radius:11px; overflow:hidden; }
+.oar-drawer .oar-drawer-details dl > div { display:grid; grid-template-columns:37% 63%; border-bottom:1px solid #dfe5e8; }
+.oar-drawer .oar-drawer-details dl > div:last-child { border-bottom:0; }
+.oar-drawer .oar-drawer-details dt { display:flex; align-items:center; margin:0; padding:13px 20px; background:#edf6f0; color:#111827; font-size:13px; line-height:18px; }
+.oar-drawer .oar-drawer-details dd { display:flex; align-items:center; margin:0; padding:13px 21px; color:#111827; font-size:13px; line-height:18px; white-space:pre-wrap; overflow-wrap:anywhere; min-width:0; }
+.oar-drawer .oar-drawer-footer { flex-shrink:0; display:flex; gap:14px; border-top:1px solid #e1e6e9; padding:15px 0 38px; margin:0; background:#fff; }
+.oar-drawer .oar-drawer-footer button { flex:1; min-height:45px; padding:10px 12px; font-size:14px; line-height:20px; font-weight:700; border-radius:10px; }
+.oar-drawer .oar-drawer-footer .oar-decline { color:#005638; border-color:#22774d; background:#fff; }
+.oar-drawer .oar-drawer-footer .oar-approve { border-color:#005638; background:linear-gradient(110deg,#00603c,#004e2f); color:#fff; }
+@media(max-width:520px) {
+  .oar-dialog.oar-drawer { width:100vw; border-radius:0; padding:0 16px; }
+  .oar-drawer-photo { width:78px; height:83px; }
+  .oar-drawer-pet { gap:12px; flex-wrap:wrap; }
+  .oar-drawer-pet > .oar-status { position:static; margin:0 0 0 90px; }
+  .oar-drawer-owner h3 { padding-right:0; }
+  .oar-drawer .oar-drawer-details dt,.oar-drawer .oar-drawer-details dd { padding:12px; }
+  .oar-drawer .oar-drawer-footer { padding-bottom:max(20px,env(safe-area-inset-bottom)); }
+}
+/* Keep the review drawer independent of shared dialog sizing and typography. */
+#oar-appointment-drawer { position:fixed; top:0; right:0; bottom:0; left:auto; margin:0; width:min(510px,100vw); min-width:0; max-width:100vw; height:100dvh; min-height:0; max-height:100dvh; padding:0; border:0; border-radius:15px 0 0 15px; overflow:hidden; font-family:'DM Sans',Arial,sans-serif; }
+#oar-appointment-drawer[open] { display:block; }
+#oar-appointment-drawer .oar-drawer-layout { height:100%; min-height:0; display:grid; grid-template-rows:auto minmax(0,1fr) auto; padding:0 21px; }
+#oar-appointment-drawer .oar-drawer-header { margin:0; padding:16px 0 22px; gap:10px; min-height:86px; }
+#oar-appointment-drawer .oar-drawer-header h2 { font-size:23px; line-height:29px; font-weight:800; letter-spacing:-.7px; margin:0; }
+#oar-appointment-drawer .oar-drawer-header p { font-size:13px; line-height:19px; font-weight:400; margin:2px 0 0; }
+#oar-appointment-drawer .oar-drawer-header > button { border:0; background:none; width:24px; height:28px; min-width:24px; min-height:28px; padding:0; display:grid; place-items:center; font-size:0; }
+#oar-appointment-drawer .oar-drawer-header > button::before,
+#oar-appointment-drawer .oar-drawer-header > button::after { content:none; }
+#oar-appointment-drawer .oar-drawer-header > button svg { display:block; width:19px; height:19px; }
+#oar-appointment-drawer .oar-drawer-body { min-height:0; overflow-y:auto; padding-bottom:20px; }
+#oar-appointment-drawer .oar-drawer-pet { position:relative; margin:0; padding:23px 0 21px; min-height:155px; gap:19px; }
+#oar-appointment-drawer .oar-drawer-photo { width:104px; height:107px; border-radius:13px; object-fit:cover; }
+#oar-appointment-drawer .oar-drawer-owner h3 { font-size:20px; line-height:25px; font-weight:800; margin:0 0 3px; padding-right:110px; }
+#oar-appointment-drawer .oar-drawer-owner p { font-size:14px; line-height:21px; font-weight:400; margin:0; }
+#oar-appointment-drawer .oar-drawer-owner .oar-drawer-breed { font-size:13px; line-height:20px; color:#505b70; margin-bottom:5px; }
+#oar-appointment-drawer .oar-drawer-pet > .oar-status { right:0; top:27px; margin:0; font-size:11px; font-weight:700; }
+#oar-appointment-drawer .oar-drawer-details > h3 { font-size:17px; line-height:23px; font-weight:800; margin:18px 0 12px; }
+#oar-appointment-drawer .oar-drawer-details dl > div { grid-template-columns:37% 63%; }
+#oar-appointment-drawer .oar-drawer-details dt { padding:13px 20px; font-size:13px; line-height:18px; font-weight:400; }
+#oar-appointment-drawer .oar-drawer-details dd { padding:13px 21px; font-size:13px; line-height:18px; font-weight:400; }
+#oar-appointment-drawer .oar-drawer-footer { display:flex; position:static; width:100%; height:auto; min-height:98px; max-height:none; margin:0; padding:15px 0 38px; gap:14px; border-top:1px solid #e1e6e9; background:#fff; z-index:1; }
+#oar-appointment-drawer .oar-drawer-footer > button { display:flex; flex:1; align-items:center; justify-content:center; min-height:45px; height:45px; padding:10px 12px; font-size:14px; line-height:20px; font-weight:750; border-radius:10px; }
+#oar-appointment-drawer .oar-drawer-footer > .oar-decline { color:#005638; border:1px solid #22774d; background:#fff; }
+#oar-appointment-drawer .oar-drawer-footer > .oar-approve { color:#fff; border:1px solid #005638; background:linear-gradient(110deg,#00603c,#004e2f); }
+@media(max-width:510px) {
+  #oar-appointment-drawer { width:100vw; border-radius:0; }
+  #oar-appointment-drawer .oar-drawer-layout { padding:0 16px; }
+  #oar-appointment-drawer .oar-drawer-pet { gap:12px; }
+  #oar-appointment-drawer .oar-drawer-photo { width:85px; height:90px; }
+  #oar-appointment-drawer .oar-drawer-owner h3 { padding-right:0; }
+  #oar-appointment-drawer .oar-drawer-pet > .oar-status { position:static; margin-left:97px; }
+  #oar-appointment-drawer .oar-drawer-details dt,
+  #oar-appointment-drawer .oar-drawer-details dd { padding:12px; }
+  #oar-appointment-drawer .oar-drawer-footer { min-height:80px; padding-bottom:max(20px,env(safe-area-inset-bottom)); }
+}
+#oar-appointment-drawer { font-family:Arial,sans-serif; }
+#oar-appointment-drawer .oar-drawer-header > div { flex:1; min-width:0; }
+#oar-appointment-drawer .oar-drawer-header > button { flex:0 0 24px; color:#101628; align-self:flex-start; }
+#oar-appointment-drawer .oar-drawer-header h2 { font-family:Arial,sans-serif; font-weight:750; }
+#oar-appointment-drawer .oar-drawer-owner h3,
+#oar-appointment-drawer .oar-drawer-details > h3 { font-family:Arial,sans-serif; font-weight:750; }
+#oar-appointment-drawer .oar-drawer-details dt { white-space:nowrap; }
+@media(max-width:400px) {
+  #oar-appointment-drawer .oar-drawer-details dt { white-space:normal; }
+}
+#oar-appointment-drawer .oar-close-mark { display:block; color:#101628; font-family:Arial,sans-serif; font-size:28px; font-weight:400; line-height:24px; width:24px; height:24px; text-align:center; }
+#oar-appointment-drawer { border-radius:0; }
+#oar-appointment-drawer .oar-drawer-header > button {
+  flex:0 0 auto;
+  width:auto;
+  min-width:62px;
+  height:33px;
+  min-height:33px;
+  padding:5px 10px;
+  border:1px solid #cbd9d1;
+  border-radius:6px;
+  background:#fff;
+  color:#005638;
+}
+#oar-appointment-drawer .oar-close-label {
+  display:block;
+  font-family:Arial,sans-serif;
+  font-size:13px;
+  font-weight:600;
+  line-height:20px;
+}

@@ -1,7 +1,8 @@
+import ArchiveDialog from '../components/ArchiveDialog';
 import AppHeader from '../components/AppHeader';
 import React, { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Image, Modal, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Image, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -70,7 +71,7 @@ export default function HomeScreen({ navigation }: any) {
       if (target.source === 'clinic') setCare((current: any) => ({ ...current, clinicPets: current.clinicPets.filter((p: any) => String(p.id) !== String(target.id)) }));
       else setPets(current => current.filter(p => String(p.id) !== String(target.id)));
       setArchiveTarget(null);
-      Toast.show({ type: 'success', text1: `${target.name} archived`, text2: 'Restore this pet from Archived pets.' });
+      Toast.show({ type: 'conversationSuccess', text1: `${target.name} archived`, text2: 'Moved to Archived pets.' });
       await load();
     } catch (failure: any) { Toast.show({ type: 'error', text1: failure.message || 'Unable to archive this pet.' }); }
     finally { setArchiving(false); }
@@ -117,7 +118,9 @@ export default function HomeScreen({ navigation }: any) {
       {shares.length > 0 && <>{section('Shared by your clinic')}{records(shares)}</>}
     </ScrollView>
     </View>
-    <Modal visible={!!archiveTarget} transparent animationType="none" onRequestClose={() => { if (!archiving) setArchiveTarget(null); }}><View style={{ flex: 1, backgroundColor: '#00000066', justifyContent: 'center', padding: 24 }}><View style={{ backgroundColor: tc.surface, borderRadius: 18, padding: 22 }}><Text style={[s.sectionTitle, { fontSize: 20, marginBottom: 12 }]}>Archive {archiveTarget?.name}?</Text><Text style={[s.body, { fontSize: 15, lineHeight: 22 }]}>Do you want to archive {archiveTarget?.name}? You can restore this pet anytime from Archived pets.</Text><TouchableOpacity disabled={archiving} onPress={confirmArchive} style={[s.book, { marginTop: 20, marginBottom: 8, minHeight: 48, opacity: archiving ? 0.6 : 1 }]}><Text style={s.bookText}>{archiving ? 'Archiving...' : 'Archive'}</Text></TouchableOpacity><TouchableOpacity disabled={archiving} onPress={() => setArchiveTarget(null)} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center' }}><Text style={[s.name, { fontSize: 15 }]}>Cancel</Text></TouchableOpacity></View></View></Modal>
+    <ArchiveDialog visible={!!archiveTarget} title="Archive pet?" subject={archiveTarget?.name}
+      description="This pet will move to Archived pets. Restore it anytime; clinic records stay safe."
+      confirmLabel="Archive pet" busy={archiving} onConfirm={() => void confirmArchive()} onCancel={() => setArchiveTarget(null)} />
   </SafeAreaView>;
 }
 const styles = (tc: any, dark: boolean) => StyleSheet.create({
